@@ -7,6 +7,8 @@
 #define _ZEN_MEMCTRL_H_
 
 // -- CXX Headers
+#include <vector>
+#include <map>
 
 // -- SST Headers
 #include "zen_sst.h"
@@ -21,8 +23,48 @@ namespace SST::Forza{
   class ZENMemOp{
   public:
     enum MemOp{
+      ZEN_MemOpREAD       = 0,
+      ZEN_MemOpWRITE      = 1,
     };
+
+    /// ZENMemOp: constructor
+    ZENMemOp(MemOp Op, uint64_t Addr, uint32_t Size)
+      : Op(Op), Addr(Addr), Size(Size){}
+
+    /// ZENMemOp: overloaded constructor
+    ZENMemOp(MemOp Op, uint64_t Addr, uint32_t Size,
+             std::vector<uint8_t> buffer)
+      : Op(Op), Addr(Addr), Size(Size), membuf(buffer){}
+
+    /// ZENMemOp: destructor
+    ~ZENMemOp() = default;
+
+    /// ZENMemOp: retrieve the operation type
+    uint64_t getOp() const { return Op; }
+
+    /// ZENMemOp: retrieve the address
+    uint64_t getAddr() const { return Addr; }
+
+    /// ZENMemOp: retrieve the size
+    uint32_t getSize() const { return Size; }
+
+    /// ZENMemOp: retrieve the buffer
+    std::vector<uint8_t> getBuf() const { return membuf; }
+
+    /// ZENMemOp: set the operation type
+    void setOp(MemOp O) { Op = O; }
+
+    /// ZENMemOp: set the address
+    void setAddr(uint64_t A) { Addr = A; }
+
+    /// ZENMemOp: set the size
+    void setSize(uint32_t S) {Size = S; }
+
   private:
+    MemOp Op;                       ///< ZENMemOp: target memory operation
+    uint64_t Addr;                  ///< ZENMemOp: address
+    uint32_t Size;                  ///< ZENMemOp: size of the request
+    std::vector<uint8_t> membuf;    ///< ZENMemOp: memory buffer
   };
 
   // ------------------------------------------------------------
@@ -71,6 +113,13 @@ namespace SST::Forza{
     /// ZENMemCtrl: handle an invalidate response
     virtual void handleInvResp(StandardMem::InvNotify* ev) = 0;
 
+    /// ZENMemCtrl: send a read request
+    virtual bool sendWRITERequest(uint64_t Addr, uint32_t Size,
+                                  std::vector<uint8_t> buf) = 0;
+
+    /// ZENMemCtrl: send a read request
+    virtual bool sendREADRequest(uint64_t Addr, uint32_t Size) = 0;
+
   protected:
     SST::Output output;       ///< ZENMemCtrl: sst output object
 
@@ -95,8 +144,9 @@ namespace SST::Forza{
     SST_ELI_DOCUMENT_PARAMS(
       { "verbose",        "Set the verbosity of output for the memory controller",    "0" },
       { "clock",          "Sets the clock frequency of the memory conroller",         "1Ghz" },
-      { "mzop_per_cycle", "Sets the number of MZOPs to dispatch per cycle",           "16"},
-      { "hzop_per_cycle", "Sets the number of HZOPs to dispatch per cycle",           "16"}
+      { "num_read",       "Sets the number of outstanding reads",                     "16" },
+      { "num_write",      "Sets the number of outstanding write",                     "16" },
+      { "ops_per_cycle",  "Sets the number of ops per cycle",                         "32" }
     )
 
     SST_ELI_DOCUMENT_SUBCOMPONENT_SLOTS(
@@ -145,6 +195,13 @@ namespace SST::Forza{
     /// ZENBasicMemCtrl: handle an invalidate response
     virtual void handleInvResp(StandardMem::InvNotify* ev) override;
 
+    /// ZENMemCtrl: send a read request
+    virtual bool sendWRITERequest(uint64_t Addr, uint32_t Size,
+                                  std::vector<uint8_t> buf) override;
+
+    /// ZENMemCtrl: send a read request
+    virtual bool sendREADRequest(uint64_t Addr, uint32_t Size) override;
+
   protected:
     class ZENStdMemHandlers : public Interfaces::StandardMem::RequestHandler {
     public:
@@ -191,10 +248,32 @@ namespace SST::Forza{
 
     // Private methods
 
+    /// ZENBasicMemCtrl: process the next memory request
+    bool processNextRqst( unsigned &t_max_ops );
+
+    /// ZENBasicMemCtrl: determine if there available injection slots
+    bool isOpenSlots();
+
+    /// ZENBasicMemCtrl: is the target memory op available to send?
+    bool isMemOpAvail(ZENMemOp *op);
+
+    /// ZENBasicMemCtrl: build a StandardMem request for the current operation
+    bool buildStandardMemRqst(ZENMemOp *op, bool &success);
+
     // Private data
     StandardMem* memIface;                    ///< StandardMem memory interfaces
     ZENStdMemHandlers *stdMemHandlers;        ///< StandardMem interface handlers
     unsigned LineSize;                        ///< Cache line size
+    unsigned NumRead;                         ///< maximum number of outstanding reads
+    unsigned NumWrite;                        ///< maximum number of outstanding writes
+    unsigned OpsPerCycle;                     ///< number of ops per cycle to dispatch
+
+    unsigned OutstandingReads;                ///< number of outstanding reads
+    unsigned OutstandingWrites;               ///< number of outstanding writes
+
+    std::vector<StandardMem::Request::id_t> requests; ///< outstanding StandardMem requests
+    std::vector<ZENMemOp *> rqstQ;                    ///< queued memory requests
+    std::map<StandardMem::Request::id_t, ZENMemOp *> outstanding;    ///< map of outstanding requests
 
   }; // class ZENBasicMemCtrl
 } // namespace SST::ZEN
