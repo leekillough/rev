@@ -155,7 +155,12 @@ namespace SST::Forza{
 
     SST_ELI_DOCUMENT_PORTS()
 
-    SST_ELI_DOCUMENT_STATISTICS()
+    SST_ELI_DOCUMENT_STATISTICS(
+      {"TotalNumReads",     "Total number of read operations",        "count", 1},
+      {"TotalNumWrites",    "Total number of write operations",       "count", 1},
+      {"OutstandingReads",  "Number of oustanding write operations",  "count", 1},
+      {"OutstandingWrites", "Number of outstanding write operations", "count", 1}
+    )
 
     // Public class members
 
@@ -274,6 +279,12 @@ namespace SST::Forza{
     std::vector<StandardMem::Request::id_t> requests; ///< outstanding StandardMem requests
     std::vector<ZIPMemOp *> rqstQ;                    ///< queued memory requests
     std::map<StandardMem::Request::id_t, ZIPMemOp *> outstanding;    ///< map of outstanding requests
+
+    // Statistics
+    Statistic<uint64_t>* TotalReads;          ///< total number of reads
+    Statistic<uint64_t>* TotalWrites;         ///< total number of writes
+    Statistic<uint64_t>* OutReads;            ///< number of outstanding reads
+    Statistic<uint64_t>* OutWrites;           ///< number of outstanding writes
 
   }; // class ZIPBasicMemCtrl
 } // namespace SST::ZIP

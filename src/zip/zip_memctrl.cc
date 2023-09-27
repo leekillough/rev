@@ -32,6 +32,12 @@ ZIPBasicMemCtrl::ZIPBasicMemCtrl(ComponentId_t id, const Params& params)
     new StandardMem::Handler<SST::Forza::ZIPBasicMemCtrl>(
       this, &ZIPBasicMemCtrl::processMemEvent));
 
+  // register the statistics
+  TotalReads = registerStatistic<uint64_t>("TotalReads");
+  TotalWrites = registerStatistic<uint64_t>("TotalWrites");
+  OutReads = registerStatistic<uint64_t>("OutstandingReads");
+  OutWrites = registerStatistic<uint64_t>("OutstandingWrites");
+
   // register the clock
   registerClock(ClockFreq,
                 new Clock::Handler<ZIPBasicMemCtrl>(this,
@@ -89,20 +95,54 @@ void ZIPBasicMemCtrl::processMemEvent(StandardMem::Request* ev){
 }
 
 void ZIPBasicMemCtrl::handleReadResp(StandardMem::ReadResp* ev){
+  if( std::find(requests.begin(), requests.end(), ev->getID()) != requests.end() ){
+    requests.erase(std::find(requests.begin(), requests.end(), ev->getID()));
+    ZIPMemOp *op = outstanding[ev->getID()];
+    if( !op ){
+      output.fatal(CALL_INFO, -1, "Error : RevMemOp is null in the handleReadResp\n" );
+    }
+
+    // copy the data to the target buffer
+    for( unsigned i=0; i<op->getSize(); i++ ){
+      // target[i] = ev->data[i];
+    }
+
+    delete op;
+    outstanding.erase(ev->getID());
+    delete ev;
+  }else{
+    output.fatal(CALL_INFO, -1, "Error : found unknown ReadResp\n");
+  }
   OutstandingReads--;
 }
 
 void ZIPBasicMemCtrl::handleWriteResp(StandardMem::WriteResp* ev){
+  if( std::find(requests.begin(), requests.end(), ev->getID()) != requests.end() ){
+    requests.erase(std::find(requests.begin(), requests.end(), ev->getID()));
+    ZIPMemOp *op = outstanding[ev->getID()];
+    if( !op ){
+      output.fatal(CALL_INFO, -1, "Error : RevMemOp is null in the handleWriteResp\n" );
+    }
+
+    delete op;
+    outstanding.erase(ev->getID());
+    delete ev;
+  }else{
+    output.fatal(CALL_INFO, -1, "Error : found unknown ReadResp\n");
+  }
   OutstandingWrites--;
 }
 
 void ZIPBasicMemCtrl::handleFlushResp(StandardMem::FlushResp* ev){
+  output.fatal(CALL_INFO, -1, "Error : flush events are not supported\n");
 }
 
 void ZIPBasicMemCtrl::handleCustomResp(StandardMem::CustomResp* ev){
+  output.fatal(CALL_INFO, -1, "Error : custom events are not supported\n");
 }
 
 void ZIPBasicMemCtrl::handleInvResp(StandardMem::InvNotify* ev){
+  output.fatal(CALL_INFO, -1, "Error : invalidate events are not supported\n");
 }
 
 bool ZIPBasicMemCtrl::isOpenSlots(){
@@ -149,6 +189,7 @@ bool ZIPBasicMemCtrl::buildStandardMemRqst(ZIPMemOp *op,
     outstanding[rqst->getID()] = op;
     memIface->send(rqst);
     OutstandingReads++;
+    TotalReads->addData(1);
     success = true;
     return true;
     break;
@@ -161,6 +202,7 @@ bool ZIPBasicMemCtrl::buildStandardMemRqst(ZIPMemOp *op,
     outstanding[rqst->getID()] = op;
     memIface->send(rqst);
     OutstandingWrites++;
+    TotalWrites->addData(1);
     success = true;
     return true;
     break;
@@ -169,6 +211,7 @@ bool ZIPBasicMemCtrl::buildStandardMemRqst(ZIPMemOp *op,
     return false;
     break;
   }
+  success = false;
   return false;
 }
 
@@ -227,6 +270,10 @@ bool ZIPBasicMemCtrl::clock(Cycle_t cycle){
       done = true;
     }
   }
+
+  // record the outstanding operation statistics
+  OutReads->addData(OutstandingReads);
+  OutWrites->addData(OutstandingWrites);
 
   return false;
 }
