@@ -33,7 +33,10 @@ const char splash_msg[] = "\
 ";
 
 RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params )
-  : SST::Component( id ), PrivTag( 0 ), address( -1 ), EnableMemH( false ), DisableCoprocClock( false ), Nic( nullptr ),
+: SST::Component( id ), testStage(0), PrivTag( 0 ), address( -1 ),
+  PrevAddr(_PAN_RDMA_MAILBOX_), EnableCoProc(false), EnableRZA(false),
+  EnablePANStats(false), EnableMemH( false ), DisableCoprocClock( false ),
+  EnableCoProc(false), EnableRZA(false), ReadyForRevoke(false), Nic( nullptr ), PNic(nullptr), PExec(nullptr),
     Ctrl( nullptr ), ClockHandler( nullptr ) {
 
   const int Verbosity = params.find<int>( "verbose", 0 );
@@ -47,8 +50,12 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params )
   timeConverter              = registerClock( cpuClock, ClockHandler );
 
   // Inform SST to wait until we authorize it to exit
+  EnableRZA    = params.find<bool>("enableRZA", 0);
+  if( !EnableRZA ){
+    // RZA's do not call these are they are effectively peripheral components
   registerAsPrimaryComponent();
   primaryComponentDoNotEndSim();
+  }
 
   // Derive the simulation parameters
   // We must always derive the number of cores before initializing the options
@@ -180,6 +187,37 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params )
       CoProcs.push_back( CoProc );
       Procs[i]->SetCoProc( CoProc );
     }
+  }else if(EnableRZA){
+    // retrieve each of the RZA pipeline models
+    if( numCores != 2 ){
+      output.fatal(CALL_INFO, -1,
+                   "Error : FORZA RZA devices can only utilize a single Proc\n" );
+    }
+
+    Procs.reserve(Procs.size() + numCores);
+    for( unsigned i=0; i<numCores; i++ ){
+      Procs.push_back( new RevProc( i, Opts, numHarts, Mem, Loader,
+                                    AssignedThreads.at(i), this->GetNewTID(),
+                                    &output ) );
+    }
+
+    RevCoProc *LSProc = loadUserSubComponent<RevCoProc>("rza_ls", SST::ComponentInfo::SHARE_NONE, Procs[0]);
+    if( LSProc ){
+      output.fatal(CALL_INFO, -1, "Error : failed to initialize the RZA LS pipeline\n" );
+    }
+    RevCoProc *AMOProc = loadUserSubComponent<RevCoProc>("rza_amo", SST::ComponentInfo::SHARE_NONE, Procs[1]);
+    if( AMOProc ){
+      output.fatal(CALL_INFO, -1, "Error : failed to initialize the RZA AMO pipeline\n" );
+    }
+    CoProcs.push_back(LSProc);
+    CoProcs.push_back(AMOProc);
+    Procs[0]->SetCoProc(LSProc);
+    Procs[1]->SetCoProc(AMOProc);
+  }else{
+    // Create the processor objects
+    Procs.reserve(Procs.size() + numCores);
+    for( unsigned i=0; i<numCores; i++ ){
+      Procs.push_back( new RevProc( i, Opts, numHarts, Mem, Loader, AssignedThreads.at(i), this->GetNewTID(), &output ) );
   }
 
   // Memory dumping option(s)
