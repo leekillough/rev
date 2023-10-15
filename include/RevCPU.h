@@ -110,6 +110,7 @@ public:
     {"enable_memH",     "Enable memHierarchy",                          "0"},
     {"enableRDMAMbox",  "Enable the RDMA mailbox",                      "1"},
     {"enableCoProc",    "Enable an attached coProcessor for all cores", "0"},
+    {"enableRZA",       "[FORZA] Enables the RZA functionality",        "0"},
     {"enable_faults",   "Enable the fault injection logic",             "0"},
     {"faults",          "Enable specific faults",                       "decode,mem,reg,alu"},
     {"fault_width",     "Specify the bit width of potential faults",    "single,word,N"},
@@ -134,6 +135,8 @@ public:
     {"pan_nic", "PAN Network interface", "SST::RevCPU::PanNet"},
     {"memory", "Memory interface to utilize for cache/memory hierachy", "SST::RevCPU::RevMemCtrl"},
     {"co_proc", "Co-processor attached to RevProc", "SST::RevCPU::RevSimpleCoProc"},
+    {"rza_ls",  "[FORZA] RZA Load/Store Pipeline", "SST::RevCPU::RZALSCoProc"},
+    {"rza_amo", "[FORZA] RZA AMO Pipeline", "SST::RevCPU::RZAAMOCoProc"},
     )
 
   // -------------------------------------------------------
@@ -295,6 +298,7 @@ private:
 
   bool EnableMemH;                    ///< RevCPU: Enable memHierarchy
   bool EnableCoProc;                  ///< RevCPU: Enable a co-processor attached to all cores
+  bool EnableRZA;                     ///< RevCPU: Enables the RZA functionality
 
   bool EnableFaults;                  ///< RevCPU: Enable fault injection logic
   bool EnableCrackFaults;             ///< RevCPU: Enable Crack+Decode Faults
