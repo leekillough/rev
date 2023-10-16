@@ -39,6 +39,12 @@
 #include "RevRand.h"
 #include "RevThread.h"
 
+// -- FORZA Headers
+#include "ZOPNET.h"
+
+// -- PAN Common Headers
+#include "../common/include/PanAddr.h"
+
 namespace SST::RevCPU {
 
 class RevCPU : public SST::Component {
@@ -300,6 +306,12 @@ private:
   RevMemCtrl* Ctrl{};  ///< RevCPU: Rev memory controller
 
   std::vector<RevCoProc*> CoProcs{};  ///< RevCPU: CoProcessor attached to Rev
+
+  nicAPI *Nic;                        ///< RevCPU: Network interface controller
+  panNicAPI *PNic;                    ///< RevCPU: PAN network interface controller
+  PanExec *PExec;                     ///< RevCPU: PAN execution context
+  RevMemCtrl *Ctrl;                   ///< RevCPU: Rev memory controller
+  zopAPI *zNic;                       ///< RevCPU: FORZA ZOP NIC
 
   SST::Clock::Handler<RevCPU>* ClockHandler{};  ///< RevCPU: Clock Handler
 
