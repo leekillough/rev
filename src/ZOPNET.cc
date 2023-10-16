@@ -21,6 +21,10 @@ zopNIC::zopNIC(ComponentId_t id, Params& params)
   int verbosity = params.find<int>("verbose", 0);
   output.init("zopNIC[" + getName() + ":@p:@t]: ",
               verbosity, 0, SST::Output::STDOUT);
+  ReqPerCycle = params.find<unsigned>("req_per_cycle", 1);
+
+  // register the stats
+  registerStats();
 
   // register the clock handler
   const std::string cpuFreq = params.find<std::string>("clock", "1GHz");
@@ -49,6 +53,22 @@ zopNIC::zopNIC(ComponentId_t id, Params& params)
 }
 
 zopNIC::~zopNIC(){
+}
+
+void zopNIC::registerStats(){
+  for( auto* stat : {
+    "BytesSent",
+    "MZOPSent",
+    "HZOPSent",
+    "RZOPSent",
+    "MSGSent",
+    "ACKSent",
+    "NACKSent",
+    "SYSCSent",
+    "EXCPSent",
+  }){
+    stats.push_back(registerStatistic<uint64_t>(stat));
+  }
 }
 
 void zopNIC::setMsgHandler(Event::HandlerBase* handler){
@@ -101,8 +121,46 @@ void zopNIC::init(unsigned int phase){
   }
 }
 
-void zopNIC::send(zopEvent *ev, uint32_t dest ){
+void zopNIC::send(zopEvent *ev, zopEndP dest ){
+  SST::Interfaces::SimpleNetwork::Request *req =
+    new SST::Interfaces::SimpleNetwork::Request();
+  output.verbose(CALL_INFO, 9, 0,
+                 "Sending message from %s @ id=%d to endpoint=%s\n",
+                 getName().c_str(), (uint32_t)(getAddress()),
+                 endPToStr(dest).c_str() );
+  uint32_t realDest = 0;
+  for(auto const& [key, val] : hostMap){
+    if( val == dest ){
+      realDest = key;
+    }
+  }
+  auto Packet = ev->getPacket();
+  Packet[1] = realDest;
+  Packet[2] = (uint32_t)(getAddress());
+  ev->setPacket(Packet);
+  req->dest = realDest;
+  req->src = getAddress();
+  req->givePayload(ev);
+  sendQ.push(req);
 }
+
+void zopNIC::send(zopEvent *ev, uint32_t dest ){
+  SST::Interfaces::SimpleNetwork::Request *req =
+    new SST::Interfaces::SimpleNetwork::Request();
+  output.verbose(CALL_INFO, 9, 0,
+                 "Sending message from %s @ id=%d to endpoint=%d\n",
+                 getName().c_str(), (uint32_t)(getAddress()),
+                 dest);
+  auto Packet = ev->getPacket();
+  Packet[1] = dest;
+  Packet[2] = (uint32_t)(getAddress());
+  ev->setPacket(Packet);
+  req->dest = dest;
+  req->src = getAddress();
+  req->givePayload(ev);
+  sendQ.push(req);
+}
+
 
 bool zopNIC::msgNotify(int vn){
   SST::Interfaces::SimpleNetwork::Request* req = iFace->recv(0);
@@ -130,6 +188,20 @@ SST::Interfaces::SimpleNetwork::nid_t zopNIC::getAddress(){
 }
 
 bool zopNIC::clockTick(SST::Cycle_t cycle){
+  unsigned thisCycle = 0;
+  while( (!sendQ.empty()) && (thisCycle < ReqPerCycle) ){
+    SST::Interfaces::SimpleNetwork::Request *R = sendQ.front();
+    zopEvent *ev = static_cast<zopEvent*>(R->takePayload());
+    auto P = ev->getPacket();
+    if( iFace->spaceToSend(0, P.size()*32) &&
+        iFace->send(sendQ.front(), 0) ){
+      sendQ.pop();
+      thisCycle++;
+    }else{
+      break;
+    }
+  }
+
   return false;
 }
 
