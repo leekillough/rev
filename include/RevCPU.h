@@ -111,6 +111,7 @@ public:
     {"enableRDMAMbox",  "Enable the RDMA mailbox",                      "1"},
     {"enableCoProc",    "Enable an attached coProcessor for all cores", "0"},
     {"enableRZA",       "[FORZA] Enables the RZA functionality",        "0"},
+    {"enableZoneNIC",   "[FORZA] Enables the zone NIC functionality",   "0"},
     {"enable_faults",   "Enable the fault injection logic",             "0"},
     {"faults",          "Enable specific faults",                       "decode,mem,reg,alu"},
     {"fault_width",     "Specify the bit width of potential faults",    "single,word,N"},
@@ -141,6 +142,7 @@ public:
     {"co_proc", "Co-processor attached to RevProc", "SST::RevCPU::RevSimpleCoProc"},
     {"rza_ls",  "[FORZA] RZA Load/Store Pipeline", "SST::RevCPU::RZALSCoProc"},
     {"rza_amo", "[FORZA] RZA AMO Pipeline", "SST::RevCPU::RZAAMOCoProc"},
+    {"zone_nic","[FORZA] Zone NIC", "SST::RevCPU::zopNIC"},
     )
 
   // -------------------------------------------------------
@@ -296,6 +298,7 @@ private:
   bool EnableMemH;                    ///< RevCPU: Enable memHierarchy
   bool EnableCoProc;                  ///< RevCPU: Enable a co-processor attached to all cores
   bool EnableRZA;                     ///< RevCPU: Enables the RZA functionality
+  bool EnableZopNIC;                  ///< RevCPU: Enables the ZONE/ZOP NIC functionality
 
   bool DisableCoprocClock{};  ///< RevCPU: Disables manual coproc clocking
 
@@ -402,6 +405,33 @@ private:
 
   /// RevCPU: RevNIC message handler
   void handleMessage( SST::Event* ev );
+
+  /// RevCPU: PAN NIC message handler
+  void handlePANMessage(SST::Event *ev);
+
+  /// RevCPU: Handle PAN host-side message (host only)
+  void handleHostPANMessage(panNicEvent *event);
+
+  /// RevCPU: Handle PAN network-side messages (NIC's or switches)
+  void handleNetPANMessage(panNicEvent *event);
+
+  /// RevCPU: Handle FORZA ZOP Message
+  void handleZOPMessage(SST::Event *ev);
+
+  /// RevCPU: Sends a PAN message
+  bool sendPANMessage();
+
+  /// RevCPU: handles the memory write operations from incoming PAN messages
+  bool processPANMemRead();
+
+  /// RevCPU: handles the PAN RDMA mailbox
+  bool PANProcessRDMAMailbox();
+
+  /// RevCPU: handles the PAN zero address put requests
+  bool processPANZeroAddr();
+
+  /// RevCPU: converts an RDMA payload to a panNicEvent command
+  bool PANConvertRDMAtoEvent(uint64_t Addr, panNicEvent *event);
 
   /// RevCPU: Creates a unique tag for this message
   uint8_t createTag();

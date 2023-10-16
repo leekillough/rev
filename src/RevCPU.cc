@@ -33,11 +33,11 @@ const char splash_msg[] = "\
 ";
 
 RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params )
-: SST::Component( id ), testStage(0), PrivTag( 0 ), address( -1 ),
-  PrevAddr(_PAN_RDMA_MAILBOX_), EnableCoProc(false), EnableRZA(false),
-  EnablePANStats(false), EnableMemH( false ), DisableCoprocClock( false ),
-  EnableCoProc(false), EnableRZA(false), ReadyForRevoke(false), Nic( nullptr ), PNic(nullptr), PExec(nullptr),
-    Ctrl( nullptr ), ClockHandler( nullptr ) {
+  : SST::Component(id), testStage(0), PrivTag(0), address(-1), PrevAddr(_PAN_RDMA_MAILBOX_),
+    EnableNIC(false), EnablePAN(false), EnablePANStats(false), EnableMemH(false), DisableCoprocClock( false ),
+    EnableCoProc(false), EnableRZA(false), EnableZopNIC(false),
+    ReadyForRevoke(false), Nic(nullptr), PNic(nullptr), PExec(nullptr), Ctrl(nullptr),
+    ClockHandler(nullptr) {
 
   const int Verbosity = params.find<int>( "verbose", 0 );
 
@@ -112,6 +112,74 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params )
 
     // record the number of injected messages per cycle
     msgPerCycle = params.find<unsigned>( "msgPerCycle", 1 );
+  }
+
+  // See if we should the load PAN network interface controller
+  EnablePAN = params.find<bool>("enable_pan", 0);
+  EnablePANStats = params.find<bool>("enable_pan_stats", 0);
+
+  if( EnablePAN ){
+    // Look up the network component
+
+    PNic = loadUserSubComponent<panNicAPI>("pan_nic");
+
+    // check to see if the nic was loaded.  if not, DO NOT load an anonymous endpoint
+    if(!PNic)
+      output.fatal(CALL_INFO, -1, "Error: no PAN NIC object loaded into RevCPU\n");
+
+    PNic->setMsgHandler(new Event::Handler<RevCPU>(this, &RevCPU::handlePANMessage));
+
+    // setup the PAN target device execution context
+    if( !PNic->IsHost() ){
+      // TODO: Use std::nothrow to return null instead of throwing std::bad_alloc
+      PExec = new PanExec();
+      if( PExec == nullptr ){
+        for( size_t i=0; i<Procs.size(); i++ ){
+          Procs[i]->SetExecCtx(PExec);
+        }
+      }
+      RevokeHasArrived = false;
+    }else{
+      RevokeHasArrived = true;
+    }
+
+    // record the number of injected messages per cycle
+    msgPerCycle = params.find<unsigned>("msgPerCycle", 1);
+    RDMAPerCycle = params.find<unsigned>("RDMAPerCycle", 1);
+    EnableRDMAMBox = params.find<bool>("enableRDMAMbox", 1);
+
+    if( EnablePANStats )
+      registerStatistics();
+  }else{
+    RevokeHasArrived = true;
+  }
+
+  // setup the FORZA NoC NIC endpoint for the Zone
+  EnableZopNIC = params.find<bool>("enableZoneNIC", 0);
+  if( EnableZopNIC ){
+    zNic = loadUserSubComponent<zopAPI>("zone_nic");
+    if( !zNic ){
+      output.fatal(CALL_INFO, -1, "Error: no ZONE NIC object loaded into RevCPU\n" );
+    }
+
+    zNic->setMsgHandler(new Event::Handler<RevCPU>(this, &RevCPU::handleZOPMessage));
+
+
+    // now that the NIC has been loaded, we need to ensure that the NIC knows
+    // what type of endpoint it is
+    if( EnableRZA ){
+      // This Rev instance is an RZA
+      zNic->setEndpointType(zopEndP::Z_RZA);
+    }else{
+      // This Rev instance is a ZAP
+      zNic->setEndpointType(zopEndP::Z_ZAP);
+    }
+  }
+
+  // See if we should load the test harness as opposed to a binary payload
+  if( EnablePANTest && (!EnablePAN) ){
+    output.fatal(CALL_INFO, -1, "Error: enabling PAN tests requires a pan_nic");
+>>>>>>> d1472daf (wiring in zopNic interfaces into RevCPU)
   }
 
   // Look for the fault injection logic
@@ -515,6 +583,9 @@ void RevCPU::setup() {
   if( EnableMemH ) {
     Ctrl->setup();
   }
+  if( EnableZopNIC ){
+    zNic->setup();
+  }
 }
 
 void RevCPU::finish() {}
@@ -523,7 +594,18 @@ void RevCPU::init( unsigned int phase ) {
   if( EnableNIC )
     Nic->init( phase );
   if( EnableMemH )
-    Ctrl->init( phase );
+    Ctrl->init(phase);
+  if( EnableZopNIC )
+    zNic->init(phase);
+}
+
+void RevCPU::handleZOPMessage(Event *ev){
+  // handle a FORZA ZOP Message
+  if( EnableRZA ){
+    // I am an RZA device, handle the packet accordingly
+  }else{
+    // I am a ZAP device, handle the message accordingly
+  }
 }
 
 void RevCPU::handleMessage( Event* ev ) {
