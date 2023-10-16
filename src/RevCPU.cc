@@ -40,7 +40,7 @@ const char pan_splash_msg[] = "\
 RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params )
   : SST::Component(id), testStage(0), PrivTag(0), address(-1), PrevAddr(_PAN_RDMA_MAILBOX_),
     EnableNIC(false), EnablePAN(false), EnablePANStats(false), EnableMemH(false),
-    EnableCoProc(false), EnableRZA(false),
+    EnableCoProc(false), EnableRZA(false), EnableZopNIC(false),
     ReadyForRevoke(false), Nic(nullptr), PNic(nullptr), PExec(nullptr), Ctrl(nullptr),
     ClockHandler(nullptr) {
 
@@ -78,7 +78,7 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params )
   // If the PAN tests are enabled, override the number cores and force them to '0'
   numCores = params.find<unsigned>("numCores", "1");
   numHarts = params.find<uint16_t>("numHarts", "1");
-  
+
   // Make sure someone isn't trying to have more than 65536 harts per core
   if( numHarts > _MAX_HARTS_ ){
     output.fatal(CALL_INFO, -1, "Error: number of harts must be <= %" PRIu32 "\n", _MAX_HARTS_);
@@ -188,6 +188,28 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params )
       registerStatistics();
   }else{
     RevokeHasArrived = true;
+  }
+
+  // setup the FORZA NoC NIC endpoint for the Zone
+  EnableZopNIC = params.find<bool>("enableZoneNIC", 0);
+  if( EnableZopNIC ){
+    zNic = loadUserSubComponent<zopAPI>("zone_nic");
+    if( !zNic ){
+      output.fatal(CALL_INFO, -1, "Error: no ZONE NIC object loaded into RevCPU\n" );
+    }
+
+    zNic->setMsgHandler(new Event::Handler<RevCPU>(this, &RevCPU::handleZOPMessage));
+
+
+    // now that the NIC has been loaded, we need to ensure that the NIC knows
+    // what type of endpoint it is
+    if( EnableRZA ){
+      // This Rev instance is an RZA
+      zNic->setEndpointType(zopEndP::Z_RZA);
+    }else{
+      // This Rev instance is a ZAP
+      zNic->setEndpointType(zopEndP::Z_ZAP);
+    }
   }
 
   // See if we should load the test harness as opposed to a binary payload
@@ -583,6 +605,9 @@ void RevCPU::setup(){
   if( EnableMemH ){
     Ctrl->setup();
   }
+  if( EnableZopNIC ){
+    zNic->setup();
+  }
 }
 
 void RevCPU::finish(){
@@ -595,6 +620,17 @@ void RevCPU::init( unsigned int phase ){
     PNic->init(phase);
   if( EnableMemH )
     Ctrl->init(phase);
+  if( EnableZopNIC )
+    zNic->init(phase);
+}
+
+void RevCPU::handleZOPMessage(Event *ev){
+  // handle a FORZA ZOP Message
+  if( EnableRZA ){
+    // I am an RZA device, handle the packet accordingly
+  }else{
+    // I am a ZAP device, handle the message accordingly
+  }
 }
 
 void RevCPU::handleMessage(Event *ev){
