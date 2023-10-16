@@ -41,6 +41,9 @@
 #include "RevCoProc.h"
 #include "RevRand.h"
 
+// -- FORZA Headers
+#include "ZOPNET.h"
+
 // -- PAN Common Headers
 #include "../common/include/PanAddr.h"
 
@@ -316,6 +319,7 @@ private:
   panNicAPI *PNic;                    ///< RevCPU: PAN network interface controller
   PanExec *PExec;                     ///< RevCPU: PAN execution context
   RevMemCtrl *Ctrl;                   ///< RevCPU: Rev memory controller
+  zopAPI *zNic;                       ///< RevCPU: FORZA ZOP NIC
 
   std::vector<RevCoProc*> CoProcs;    ///< RevCPU: CoProcessor attached to Rev
 
