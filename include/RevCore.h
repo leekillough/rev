@@ -662,6 +662,10 @@ private:
   EcallStatus ECALL_dump_stack();             // 9002, dump_stack()
   EcallStatus ECALL_dump_stack_to_file();     // 9003, dump_stack(const char* outputFile)
 
+  /// FORZA
+  EcallStatus ECALL_forza_scratchpad_alloc(RevInst& inst); // 4000, forza_scratchpad_alloc(size_t size);
+  EcallStatus ECALL_forza_scratchpad_free(RevInst& inst);  // 4001, forza_scratchpad_free(size_t size);
+
   EcallStatus ECALL_dump_valid_mem();         // 9004, dump_valid_mem()
   EcallStatus ECALL_dump_valid_mem_to_file(); // 9005, dump_valid_mem_to_file(const char* outputFile)
 

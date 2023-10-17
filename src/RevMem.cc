@@ -603,9 +603,12 @@ bool RevMem::WriteMem( unsigned Hart, uint64_t Addr, size_t Len, const void* Dat
   std::cout << "Writing " << Len << " Bytes Starting at 0x" << std::hex << Addr << std::dec << std::endl;
 #endif
 
-  if( Addr == 0xDEADBEEF ) {
-    std::cout << "Found special write. Val = " << std::hex << *(int*) ( Data ) << std::dec << std::endl;
-  }
+  if( IsAddrInScratchpad(Addr)){
+    scratchpad->WriteMem(Hart, Addr, Len, Data); //, flags);
+  } else{
+    if( Addr == 0xDEADBEEF ){
+      std::cout << "Found special write. Val = " << std::hex << *(int*)(Data) << std::dec << std::endl;
+    }
   RevokeFuture( Addr );  // revoke the future if it is present; ignore the return
   uint64_t pageNum     = Addr >> addrShift;
   uint64_t physAddr    = CalcPhysAddr( pageNum, Addr );
@@ -654,6 +657,7 @@ bool RevMem::WriteMem( unsigned Hart, uint64_t Addr, size_t Len, const void* Dat
       }
     }
   }
+  }
   memStats.bytesWritten += Len;
   return true;
 }
@@ -665,8 +669,11 @@ bool RevMem::WriteMem( unsigned Hart, uint64_t Addr, size_t Len, const void* Dat
 
   TRACE_MEM_WRITE( Addr, Len, Data );
 
-  if( Addr == 0xDEADBEEF ) {
-    std::cout << "Found special write. Val = " << std::hex << *(int*) ( Data ) << std::dec << std::endl;
+  if( IsAddrInScratchpad(Addr)){
+    scratchpad->WriteMem(Hart, Addr, Len, Data);// , 0);
+  } else {
+    if(Addr == 0xDEADBEEF){
+      std::cout << "Found special write. Val = " << std::hex << *(int*)(Data) << std::dec << std::endl;
   }
   RevokeFuture( Addr );  // revoke the future if it is present; ignore the return
   uint64_t pageNum     = Addr >> addrShift;
@@ -734,6 +741,7 @@ bool RevMem::WriteMem( unsigned Hart, uint64_t Addr, size_t Len, const void* Dat
       }
     }
   }
+  }
   memStats.bytesWritten += Len;
   return true;
 }
@@ -782,6 +790,10 @@ bool RevMem::ReadMem( unsigned Hart, uint64_t Addr, size_t Len, void* Target, co
   std::cout << "NEW READMEM: Reading " << Len << " Bytes Starting at 0x" << std::hex << Addr << std::dec << std::endl;
 #endif
 
+  // FORZA: Check if scratchpad read
+  if( IsAddrInScratchpad(Addr) ){
+    scratchpad->ReadMem(Hart, Addr, Len, Target, req );//flags);
+  } else {
   uint64_t pageNum     = Addr >> addrShift;
   uint64_t physAddr    = CalcPhysAddr( pageNum, Addr );
   //check to see if we're about to walk off the page....
@@ -837,7 +849,7 @@ bool RevMem::ReadMem( unsigned Hart, uint64_t Addr, size_t Len, void* Target, co
       }
     }
   }
-
+  }
   memStats.bytesRead += Len;
   return true;
 }
@@ -1062,7 +1074,6 @@ void RevMem::DumpMem( const uint64_t startAddr, const uint64_t numBytes, const u
 }
 
 void RevMem::DumpMemSeg( const std::shared_ptr<MemSegment>& MemSeg, const uint64_t bytesPerRow, std::ostream& outputStream ) {
-
   outputStream << "// " << *MemSeg << std::endl;
   DumpMem( MemSeg->getBaseAddr(), MemSeg->getSize(), bytesPerRow, outputStream );
 }
@@ -1087,7 +1098,6 @@ void RevMem::DumpValidMem( const uint64_t bytesPerRow, std::ostream& outputStrea
 }
 
 void RevMem::DumpThreadMem( const uint64_t bytesPerRow, std::ostream& outputStream ) {
-
   outputStream << "Thread Memory Segments:" << std::endl;
   std::sort( ThreadMemSegs.begin(), ThreadMemSegs.end() );
   for( const auto& MemSeg : ThreadMemSegs ) {
@@ -1099,6 +1109,52 @@ void RevMem::DumpThreadMem( const uint64_t bytesPerRow, std::ostream& outputStre
 void RevMem::AddDumpRange( const std::string& Name, const uint64_t BaseAddr, const uint64_t Size ) {
   DumpRanges[Name] = std::make_shared<MemSegment>( BaseAddr, Size );
 }
+
+void RevMem::InitScratchpad(const unsigned ZapNum, size_t ScratchpadSize, size_t ChunkSize){
+  // Allocate the scratchpad memory
+  scratchpad = std::make_shared<RevScratchpad>(ZapNum, _SCRATCHPAD_SIZE_, _CHUNK_SIZE_, output);
+  if( !scratchpad ){
+    output->fatal(CALL_INFO, -1, "Error: could not allocate backing memory\n");
+  }
+}
+
+// FORZA: Checks if its a scratchpad addr
+bool RevMem::IsAddrInScratchpad(const uint64_t& Addr){
+  //// Mask with bits 56 and 57 set to 1
+  uint64_t Mask = (1ULL << 56) | (1ULL << 57);
+  return (Addr & Mask) == Mask;
+  //return scratchpad->Contains(Addr);
+}
+
+uint64_t RevMem::ScratchpadAlloc(size_t numBytes){
+  uint64_t Addr = scratchpad->Alloc(numBytes);
+
+  // Sanity check: Make sure that if the allocation succeeded (Addr != _INVALID_ADDR_) its in the scratchpad
+  if( Addr != _INVALID_ADDR_ && !scratchpad->Contains(Addr) ){
+    output->fatal(CALL_INFO, 11, "Error: Scratchpad allocated address 0x%" PRIx64 " is not in the scratchpad. The scratchpad"
+                               " is defined as addresses 0x%" PRIx64 " to 0x%" PRIx64 ".\n",
+                              Addr, scratchpad->GetBaseAddr(), scratchpad->GetTopAddr());
+
+  }
+
+  if( Addr == _INVALID_ADDR_ ){
+    output->verbose(CALL_INFO, 4, 11, "Error: Scratchpad allocation failed. Requested %zu bytes.\n", numBytes);
+  } else {
+    output->verbose(CALL_INFO, 4, 99, "Allocated 0x%zu bytes in the scratchpad at address 0x%" PRIx64 "\n", numBytes, Addr);
+  }
+  return Addr;
+}
+
+void RevMem::ScratchpadFree(uint64_t Addr, size_t size){
+  if( !IsAddrInScratchpad(Addr) ){
+    output->fatal(CALL_INFO, -1, "Error: Request to perform a free in the scratchpad at address 0x%" PRIx64
+                                 ", however, this address is not in the scratchpad.", Addr);
+
+  }
+  scratchpad->Free(Addr, size);
+  return;
+}
+
 }  // namespace SST::RevCPU
 
 // EOF

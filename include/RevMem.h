@@ -41,6 +41,9 @@
 #include "RevRand.h"
 #include "RevTracer.h"
 
+// -- FORZA Headers
+#include "RevScratchpad.h"
+
 #ifndef _REVMEM_BASE_
 #define _REVMEM_BASE_ 0x00000000
 #endif
@@ -381,6 +384,18 @@ public:
 
   void DumpThreadMem( const uint64_t bytesPerRow = 16, std::ostream& outputStream = std::cout );
 
+  /// FORZA: Checks if address is in scratchpad (ie. bits 56 & 57 are set)
+  inline bool IsAddrInScratchpad(const uint64_t& Addr);
+
+  /// FORZA: Init Scratchpad
+  void InitScratchpad(const unsigned ZapNum, const size_t Size, const size_t ChunkSize);
+
+  /// FORZA: Interface for allocating in the Scratchpad
+  uint64_t ScratchpadAlloc(size_t numBytes);
+
+  /// FORZA: Interface for freeing from Scratchpad
+  void ScratchpadFree(uint64_t Addr, size_t size);
+
 protected:
   char* physMem = nullptr;  ///< RevMem: memory container
 
@@ -396,6 +411,7 @@ private:
   RevOpts*            opts{};      ///< RevMem: options object
   RevMemCtrl*         ctrl{};      ///< RevMem: memory controller object
   SST::Output*        output{};    ///< RevMem: output handler
+  std::shared_ptr<RevScratchpad> scratchpad; ///< FORZA: Scratchpad
 
   std::vector<std::shared_ptr<MemSegment>> MemSegs{};        // Currently Allocated MemSegs
   std::vector<std::shared_ptr<MemSegment>> FreeMemSegs{};    // MemSegs that have been unallocated

@@ -230,6 +230,9 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params )
       );
   }
 
+  // FORZA: initialize scratchpad
+  Mem->InitScratchpad(id, _SCRATCHPAD_SIZE_, _CHUNK_SIZE_);
+
   // Set TLB Size
   const uint64_t tlbSize = params.find<unsigned long>( "tlbSize", 512 );
   Mem->SetTLBSize( tlbSize );

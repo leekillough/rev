@@ -3236,7 +3236,35 @@ EcallStatus RevCore::ECALL_pthread_join() {
   return rtval;
 }
 
-// 9000, rev_dump_mem_range(uint64_t addr, uint64_t size)
+// 4000, forza_scratchpad_alloc(size_t size);
+EcallStatus RevProc::ECALL_forza_scratchpad_alloc(RevInst& inst){
+  output->verbose(CALL_INFO, 2, 0, "ECALL: forza_scratchpad_alloc called by thread %" PRIu32 " on hart %" PRIu32 "\n", GetActiveThreadID(), HartToExec);
+  uint64_t size = RegFile->GetX<uint64_t>(RevReg::a0);
+
+  output->verbose(CALL_INFO, 4, 0, "ECALL: forza_scratchpad_alloc attempting to allocate %" PRIu64 " bytes\n", size);
+  uint64_t Addr = mem->ScratchpadAlloc(size);
+
+  if( Addr == _INVALID_ADDR_ ){
+    output->verbose(CALL_INFO, 2, 0, "ECALL: forza_scratchpad_alloc failed to allocate %" PRIu64 " bytes\n", size);
+    RegFile->SetX(RevReg::a0, (uint64_t)nullptr);
+  } else {
+    output->verbose(CALL_INFO, 2, 0, "ECALL: forza_scratchpad_alloc allocated %" PRIu64 " bytes at address %" PRIx64 "\n", size, Addr);
+    RegFile->SetX(RevReg::a0, Addr);
+  }
+  return EcallStatus::SUCCESS;
+}
+
+// 4001, forza_scratchpad_dealloc(size_t size);
+EcallStatus RevProc::ECALL_forza_scratchpad_free(RevInst& inst){
+  output->verbose(CALL_INFO, 2, 0, "ECALL: forza_scratchpad_free called by thread %" PRIu32 " on hart %" PRIu32 "\n", GetActiveThreadID(), HartToExec);
+  uint64_t addr = RegFile->GetX<uint64_t>(RevReg::a0);
+  uint64_t size = RegFile->GetX<uint64_t>(RevReg::a1);
+  mem->ScratchpadFree(addr, size);
+
+  return EcallStatus::SUCCESS;
+}
+
+  // 9000, rev_dump_mem_range(uint64_t addr, uint64_t size)
 EcallStatus RevCore::ECALL_dump_mem_range() {
   auto& EcallState = Harts.at( HartToExecID )->GetEcallState();
   if( EcallState.bytesRead == 0 ) {
@@ -3718,6 +3746,10 @@ const std::unordered_map<uint32_t, EcallStatus(RevCore::*)()> RevCore::Ecalls = 
     { 9005, &RevCore::ECALL_dump_valid_mem_to_file },   // rev_dump_valid_mem_to_file(const char* filename)
     { 9004, &RevCore::ECALL_dump_thread_mem },          // rev_dump_thread_mem()
     { 9005, &RevCore::ECALL_dump_thread_mem_to_file },  // rev_dump_thread_mem_to_file(const char* filename)
+
+    // FORZA
+    { 4000, &RevProc::ECALL_forza_scratchpad_alloc },
+    { 4001, &RevProc::ECALL_forza_scratchpad_free },
 };
 // clang-format on
 
