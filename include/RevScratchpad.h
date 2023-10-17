@@ -16,6 +16,11 @@
 #include "../common/include/RevCommon.h"
 #include <bitset>
 
+// FORZA: SCRATCHPAD
+#define _CHUNK_SIZE_ 512
+#define _SCRATCHPAD_SIZE_ (_CHUNK_SIZE_*1024)
+#define _SCRATCHPAD_BASE_ 0x0300000000000000
+
 
 namespace SST::RevCPU{
 
@@ -47,7 +52,6 @@ public:
 
     // find N contiguous chunks
     size_t FirstChunk = FindContiguousChunks(numChunks);
-    std::cout << "===> First Chunk: " << FirstChunk << std::endl;
     if( FirstChunk == FreeList.size() ){
       output->verbose(CALL_INFO, 1, 0, "Error: Unable to find %zu contiguous chunks in the scratchpad\n", numChunks);
       AllocedAt = _INVALID_ADDR_;
@@ -57,7 +61,6 @@ public:
         FreeList.set(i, false);
       }
     }
-    std::cout << "===> AllocedAt: 0x" << std::hex << AllocedAt << std::endl;
     return AllocedAt;
   }
 
@@ -68,7 +71,7 @@ public:
     size_t numChunks = (Size + ChunkSize - 1) / ChunkSize;
     // Make sure were not trying to free beyond the end of the scratchpad
     if( BaseChunkNum + numChunks > FreeList.size() ){
-      output->fatal(CALL_INFO, 11, "Error: Attempting to free memory starting at 0x%" PRIx64 " with size %zu\n"
+      output->fatal(CALL_INFO, 6, "Error: Attempting to free memory starting at 0x%" PRIx64 " with size %zu\n"
                                "While this scratchpad starts at 0x%" PRIx64 " and ends at 0x%" PRIx64 "\n",
                                Addr, Size, BaseAddr, TopAddr);
     }
@@ -120,7 +123,7 @@ private:
   size_t ChunkSize;
   std::bitset<_SCRATCHPAD_SIZE_/_CHUNK_SIZE_> FreeList;
   char *BackingMem = nullptr;                           ///< RevMem: Scratchpad memory container for FORZA
-  uint64_t BaseAddr = 0x0300000000000000;               ///< RevMem: Base address of the scratchpad
+  uint64_t BaseAddr = _SCRATCHPAD_BASE_;               ///< RevMem: Base address of the scratchpad
   uint64_t TopAddr;               ///< RevScratchpad: Base address of the scratchpad
   SST::Output *output; ///< RevScratchpad: Output stream
 };
