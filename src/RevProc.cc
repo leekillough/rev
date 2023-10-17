@@ -2391,6 +2391,10 @@ void RevProc::InitEcallTable(){
     { 440, &RevProc::ECALL_process_madvise},        //  rev_process_madvise(int pidfd, const struct iovec  *vec, size_t vlen, int behavior, unsigned int flags)
     { 1000, &RevProc::ECALL_pthread_create},        //
     { 1001, &RevProc::ECALL_pthread_join},          //
+
+    // FORZA
+    { 4000, &RevProc::ECALL_forza_scratchpad_alloc },
+    { 4001, &RevProc::ECALL_forza_scratchpad_free },
   };
 }
 

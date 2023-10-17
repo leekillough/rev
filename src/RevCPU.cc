@@ -262,6 +262,9 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params )
       output.verbose(CALL_INFO, 1, 0, "Warning: memory faults cannot be enabled with memHierarchy support\n");
   }
 
+  // FORZA: initialize scratchpad
+  Mem->InitScratchpad(id, _SCRATCHPAD_SIZE_, _CHUNK_SIZE_);
+
   // Set TLB Size
   const uint64_t tlbSize = params.find<unsigned long>("tlbSize", 512);
   Mem->SetTLBSize(tlbSize);
@@ -2774,7 +2777,7 @@ void RevCPU::CheckForThreadStateChanges(uint32_t ProcID){
 
         // -- 3b.
         AssignedThreads.at(ProcID).erase(Thread->GetThreadID());
-        
+
         if( AssignedThreads.at(ProcID).empty() ){
           Enabled[ProcID] = false;
         }
