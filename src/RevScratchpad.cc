@@ -54,13 +54,12 @@ bool RevScratchpad::WriteMem( unsigned Hart, uint64_t Addr, size_t Len, const vo
   output->verbose(CALL_INFO, 8, 0, "Scratchpad Write: Addr = 0x%" PRIx64 ", Len = %zu, BaseChunkNum = %zu, TopChunkNum = %zu\n", Addr, Len, BaseChunkNum, TopChunkNum);
 
   // Figure out the bounds of this read request... Need to make sure that all chunks involved in the read are allocated
-  // FIXME: Also test the chunks in between
-  if( FreeList.test(BaseChunkNum) || FreeList.test(TopChunkNum) ){
-    output->fatal(CALL_INFO, 11, "Error: Hart %" PRIu32 " is attempting to write to unallocated memory"
-                                 " in the scratchpad (Addr = 0x %" PRIx64 ", Len = %zu)\n", Hart, Addr, Len);
+  for( size_t i=BaseChunkNum; i<=TopChunkNum; i++ ){
+    if( FreeList.test(i) ){
+      output->fatal(CALL_INFO, 11, "Error: Hart %" PRIu32 " is attempting to write to unallocated memory"
+                                   " in the scratchpad (Addr = 0x %" PRIx64 ", Len = %zu)\n", Hart, Addr, Len);
+    }
   }
-
-  // Check if the read will go beyond end of scratchpad space
 
   // write the memory to the BackingStore
   std::memcpy(&BackingMem[Addr - BaseAddr], Data, Len);

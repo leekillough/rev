@@ -30,10 +30,6 @@
 
 #define _MAX_HARTS_ 65536
 
-// FORZA: SCRATCHPAD
-#define _CHUNK_SIZE_ 512
-#define _SCRATCHPAD_SIZE_ (_CHUNK_SIZE_*1024)
-
 namespace SST::RevCPU{
 
 /// Zero-extend value of bits size
