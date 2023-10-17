@@ -23,6 +23,11 @@
 namespace SST::RevCPU{
 
 // --------------------------------------------
+// Preprocessor defs
+// --------------------------------------------
+#define Z_MSG_TYPE  28
+
+// --------------------------------------------
 // zopMsgT
 // --------------------------------------------
 enum class zopMsgT : uint8_t {
@@ -117,7 +122,7 @@ public:
 
   explicit zopEvent(zopMsgT Type, zopOpc Opc)
     : Event(){
-    Packet.push_back(((uint32_t)(Type) << 28) | (uint32_t)(Opc));
+    Packet.push_back(((uint32_t)(Type) << Z_MSG_TYPE) | (uint32_t)(Opc));
   }
 
   /// zopEvent: virtual function to clone an event
@@ -318,10 +323,11 @@ public:
     HZOPSent      = 2,
     RZOPSent      = 3,
     MSGSent       = 4,
-    ACKSent       = 5,
-    NACKSent      = 6,
-    SYSCSent      = 7,
-    EXCPSent      = 8,
+    TMGSent       = 5,
+    ACKSent       = 6,
+    NACKSent      = 7,
+    SYSCSent      = 8,
+    EXCPSent      = 9,
   };
 
   /// zopNIC: constructor
@@ -364,7 +370,14 @@ public:
   virtual bool clockTick(Cycle_t cycle);
 
 private:
+  /// zopNIC: registers all the statistics with SST
   void registerStats();
+
+  /// zopNIC: adds a statistic value to the desired entry
+  void recordStat(zopNIC::zopStats Stat, uint64_t Data);
+
+  /// zopNIC: retrieve the zopStat entry from the target zopEvent
+  zopNIC::zopStats getStatFromPacket(zopEvent *ev);
 
   SST::Output output;                       ///< zopNIC: SST output object
   SST::Interfaces::SimpleNetwork * iFace;   ///< zopNIC: SST network interface
