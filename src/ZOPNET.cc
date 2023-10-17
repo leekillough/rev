@@ -14,7 +14,7 @@ using namespace SST;
 using namespace RevCPU;
 
 zopNIC::zopNIC(ComponentId_t id, Params& params)
-  : zopAPI(id, params), msgHandler(nullptr),
+  : zopAPI(id, params), iFace(nullptr), msgHandler(nullptr),
     initBroadcastSent(false), numDest(0), Type(zopEndP::Z_ZAP){
 
   // read the parameters
@@ -40,9 +40,9 @@ zopNIC::zopNIC(ComponentId_t id, Params& params)
     // load the anonymous NIC
     Params netparams;
     netparams.insert("port_name", params.find<std::string>("port", "network"));
-    netparams.insert("in_buf_size", "256B");
-    netparams.insert("out_buf_size", "256B");
-    netparams.insert("link_bw", "40GiB/s");
+    netparams.insert("in_buf_size", "2048B");
+    netparams.insert("out_buf_size", "2048B");
+    netparams.insert("link_bw", "100GiB/s");
     iFace = loadAnonymousSubComponent<SST::Interfaces::SimpleNetwork>("merlin.linkcontrol",
                                                                       "iface",
                                                                       0,
@@ -50,6 +50,10 @@ zopNIC::zopNIC(ComponentId_t id, Params& params)
                                                                       netparams,
                                                                       1);
   }
+
+  // setup the notification function
+  iFace->setNotifyOnReceive(
+    new SST::Interfaces::SimpleNetwork::Handler<zopNIC>(this, &zopNIC::msgNotify));
 }
 
 zopNIC::~zopNIC(){
@@ -90,6 +94,11 @@ void zopNIC::init(unsigned int phase){
                  getName().c_str(), phase );
 
   // pass the init on to the actual interface
+  if( !iFace ){
+    output.fatal(CALL_INFO, -1,
+                 "%s, Error : network interface is null\n",
+                 getName().c_str());
+  }
   iFace->init(phase);
 
   // determine if we need to send the discovery broadcast message
@@ -103,6 +112,9 @@ void zopNIC::init(unsigned int phase){
       req->src = iFace->getEndpointID();
       req->givePayload(ev);
       iFace->sendUntimedData(req);
+
+      // add myself to the local endpoint table
+      hostMap[iFace->getEndpointID()] = getEndpointType();
     }
   }
 
@@ -115,10 +127,30 @@ void zopNIC::init(unsigned int phase){
     std::vector<uint32_t> Pkt = ev->getPacket();
     hostMap[srcID] = static_cast<zopEndP>(Pkt[0]);
     output.verbose(CALL_INFO, 7, 0,
-                   "%s received init broadcas messages from %d of type %s\n",
+                   "%s received init broadcast messages from %d of type %s\n",
                    getName().c_str(), (uint32_t)(srcID),
                    endPToStr(hostMap[srcID]).c_str());
   }
+
+  // --- begin print out the host mapping table
+  if( phase == 4 ){
+    output.verbose(CALL_INFO, 9, 0,
+                  "------------------------------------------------------\n");
+    output.verbose(CALL_INFO, 9, 0,
+                  "               ZOP NETWORK MAPPING\n");
+    output.verbose(CALL_INFO, 9, 0,
+                  "------------------------------------------------------\n");
+
+    for(auto const& [key, val] : hostMap){
+      output.verbose(CALL_INFO, 9, 0,
+                    "Endpoint ID=%d is of Type=%s\n",
+                    (uint32_t)(key), endPToStr(val).c_str());
+    }
+
+    output.verbose(CALL_INFO, 9, 0,
+                  "------------------------------------------------------\n");
+  }
+  // --- end print out the host mapping table
 }
 
 void zopNIC::send(zopEvent *ev, zopEndP dest ){

@@ -193,22 +193,28 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params )
   // setup the FORZA NoC NIC endpoint for the Zone
   EnableZopNIC = params.find<bool>("enableZoneNIC", 0);
   if( EnableZopNIC ){
+    output.verbose(CALL_INFO, 4, 0, "[FORZA] Enabling zone NIC on device=%s\n",
+                     getName().c_str());
     zNic = loadUserSubComponent<zopAPI>("zone_nic");
     if( !zNic ){
       output.fatal(CALL_INFO, -1, "Error: no ZONE NIC object loaded into RevCPU\n" );
     }
 
+    // set the message handler for the NoC interface
     zNic->setMsgHandler(new Event::Handler<RevCPU>(this, &RevCPU::handleZOPMessage));
-
 
     // now that the NIC has been loaded, we need to ensure that the NIC knows
     // what type of endpoint it is
     if( EnableRZA ){
       // This Rev instance is an RZA
       zNic->setEndpointType(zopEndP::Z_RZA);
+      output.verbose(CALL_INFO, 4, 0, "[FORZA] device=%s initialized as RZA device\n",
+                     getName().c_str());
     }else{
       // This Rev instance is a ZAP
       zNic->setEndpointType(zopEndP::Z_ZAP);
+      output.verbose(CALL_INFO, 4, 0, "[FORZA] device=%s initialized as ZAP device\n",
+                     getName().c_str());
     }
   }
 
@@ -295,7 +301,7 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params )
     // retrieve each of the RZA pipeline models
     if( numCores != 2 ){
       output.fatal(CALL_INFO, -1,
-                   "Error : FORZA RZA devices can only utilize a single Proc\n" );
+                   "Error : FORZA RZA devices require at least 2 cores\n" );
     }
 
     Procs.reserve(Procs.size() + numCores);
@@ -306,11 +312,11 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params )
     }
 
     RevCoProc *LSProc = loadUserSubComponent<RevCoProc>("rza_ls", SST::ComponentInfo::SHARE_NONE, Procs[0]);
-    if( LSProc ){
+    if( !LSProc ){
       output.fatal(CALL_INFO, -1, "Error : failed to initialize the RZA LS pipeline\n" );
     }
     RevCoProc *AMOProc = loadUserSubComponent<RevCoProc>("rza_amo", SST::ComponentInfo::SHARE_NONE, Procs[1]);
-    if( AMOProc ){
+    if( !AMOProc ){
       output.fatal(CALL_INFO, -1, "Error : failed to initialize the RZA AMO pipeline\n" );
     }
     CoProcs.push_back(LSProc);
@@ -453,7 +459,7 @@ RevCPU::~RevCPU(){
   delete Opts;
 
   // delete the clock handler object
-  delete ClockHandler;
+  //delete ClockHandler;
 
 }
 
@@ -625,12 +631,14 @@ void RevCPU::init( unsigned int phase ){
 }
 
 void RevCPU::handleZOPMessage(Event *ev){
+  zopEvent *zev = static_cast<zopEvent*>(ev);
   // handle a FORZA ZOP Message
   if( EnableRZA ){
     // I am an RZA device, handle the packet accordingly
   }else{
     // I am a ZAP device, handle the message accordingly
   }
+  delete zev;
 }
 
 void RevCPU::handleMessage(Event *ev){
