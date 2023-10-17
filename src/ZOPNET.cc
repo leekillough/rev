@@ -75,6 +75,61 @@ void zopNIC::registerStats(){
   }
 }
 
+void zopNIC::recordStat(zopNIC::zopStats Stat, uint64_t Data){
+  if( Stat > zopNIC::zopStats::EXCPSent ){
+    return ;
+  }
+
+  stats[Stat]->addData(Data);
+}
+
+zopNIC::zopStats zopNIC::getStatFromPacket(zopEvent *ev){
+  auto Packet = ev->getPacket();
+  if( Packet.size() == 0 ){
+    output.fatal(CALL_INFO, -1,
+                 "Error: recording stat for a null packet\n" );
+  }
+
+  uint32_t Header = Packet[0];
+  Header = ((Header >> Z_MSG_TYPE) & 0b1111);
+  switch( (zopMsgT)(Header) ){
+  case zopMsgT::Z_MZOP:
+    return zopStats::MZOPSent;
+    break;
+  case zopMsgT::Z_HZOP:
+    return zopStats::HZOPSent;
+    break;
+  case zopMsgT::Z_RZOP:
+    return zopStats::RZOPSent;
+    break;
+  case zopMsgT::Z_MSG:
+    return zopStats::MSGSent;
+    break;
+  case zopMsgT::Z_TMG:
+    return zopStats::TMGSent;
+    break;
+  case zopMsgT::Z_ACK:
+    return zopStats::ACKSent;
+    break;
+  case zopMsgT::Z_NACK:
+    return zopStats::NACKSent;
+    break;
+  case zopMsgT::Z_SYSC:
+    return zopStats::SYSCSent;
+    break;
+  case zopMsgT::Z_EXCP:
+    return zopStats::EXCPSent;
+    break;
+  default :
+    output.fatal(CALL_INFO, -1,
+                 "Error: unknown packet type=%d\n", Header );
+    break;
+  }
+
+  // we should never reach this point
+  return zopStats::MZOPSent;
+}
+
 void zopNIC::setMsgHandler(Event::HandlerBase* handler){
   msgHandler = handler;
 }
@@ -227,6 +282,7 @@ bool zopNIC::clockTick(SST::Cycle_t cycle){
     auto P = ev->getPacket();
     if( iFace->spaceToSend(0, P.size()*32) &&
         iFace->send(sendQ.front(), 0) ){
+      recordStat( getStatFromPacket(ev), 1 );
       sendQ.pop();
       thisCycle++;
     }else{
