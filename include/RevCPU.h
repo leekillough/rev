@@ -141,7 +141,7 @@ public:
     {"co_proc", "Co-processor attached to RevProc", "SST::RevCPU::RevSimpleCoProc"},
     {"rza_ls",  "[FORZA] RZA Load/Store Pipeline", "SST::RevCPU::RZALSCoProc"},
     {"rza_amo", "[FORZA] RZA AMO Pipeline", "SST::RevCPU::RZAAMOCoProc"},
-    {"zone_nic","[FORZA] Zone NIC", "SST::RevCPU::zopNIC"},
+    {"zone_nic","[FORZA] Zone NIC", "SST::Forza::zopNIC"},
     )
 
   // -------------------------------------------------------
@@ -322,7 +322,7 @@ private:
   panNicAPI *PNic;                    ///< RevCPU: PAN network interface controller
   PanExec *PExec;                     ///< RevCPU: PAN execution context
   RevMemCtrl *Ctrl;                   ///< RevCPU: Rev memory controller
-  zopAPI *zNic;                       ///< RevCPU: FORZA ZOP NIC
+  Forza::zopAPI *zNic;                ///< RevCPU: FORZA ZOP NIC
 
   std::vector<RevCoProc*> CoProcs;    ///< RevCPU: CoProcessor attached to Rev
 
@@ -439,6 +439,12 @@ private:
 
   /// RevCPU: Handle FORZA ZOP Message
   void handleZOPMessage(SST::Event *ev);
+
+  /// RevCPU:: Handle FORZA ZOP Message for RZA devices
+  void handleZOPMessageRZA(Forza::zopEvent *zev);
+
+  /// RevCPU: Handle FORZA ZOP Message for ZAP devices
+  void handleZOPMessageZAP(Forza::zopEvent *zev);
 
   /// RevCPU: Sends a PAN message
   bool sendPANMessage();

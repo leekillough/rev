@@ -20,7 +20,7 @@
 // -- SST Headers
 #include "SST.h"
 
-namespace SST::RevCPU{
+namespace SST::Forza{
 
 // --------------------------------------------
 // Preprocessor defs
@@ -32,13 +32,14 @@ namespace SST::RevCPU{
 // --------------------------------------------
 enum class zopMsgT : uint8_t {
   Z_MZOP  = 0b0000,   /// FORZA MZOP
-  Z_HZOP  = 0b0001,   /// FORZA HZOP
-  Z_RZOP  = 0b0010,   /// FORZA RZOP
-  Z_MSG   = 0b0011,   /// FORZA MESSAGING
-  Z_TMG   = 0b0100,   /// FORZA THREAD MIGRATION
-  Z_ACK   = 0b0101,   /// FORZA ACK
-  Z_NACK  = 0b0110,   /// FORZA NACK
+  Z_HZOPAC= 0b0001,   /// FORZA HZOP ATOMICS/CUSTOM
+  Z_HZOPV = 0b0010,   /// FORZA HZOP VECTOR
+  Z_RZOP  = 0b0011,   /// FORZA RZOP
+  Z_MSG   = 0b0100,   /// FORZA MESSAGING
+  Z_TMIG  = 0b0101,   /// FORZA THREAD MIGRATION
+  Z_TMGT  = 0b0110,   /// FORZA THREAD MANAGEMENT
   Z_SYSC  = 0b0111,   /// FORZA SYSCALL
+  Z_RESP  = 0b1000,   /// FORZA RESPONSE
   // -- 0b1000 - 0b1110 UNASSIGNED
   Z_EXCP  = 0b1111,   /// FORZA EXCEPTION
 };
@@ -159,6 +160,10 @@ public:
     Packet[1] = destID;
   }
 
+  /// zopEvent: decode this event and set the appropriate internal structures
+  void decodeEvent(){
+  }
+
 private:
   std::vector<uint32_t> Packet; ///< zopEvent: data payload
 
@@ -173,7 +178,7 @@ public:
   }
 
   // zopEvent: implements the nic serialization
-  ImplementSerializable(SST::RevCPU::zopEvent);
+  ImplementSerializable(SST::Forza::zopEvent);
 
 };  // class zopEvent
 
@@ -182,7 +187,7 @@ public:
 // --------------------------------------------
 class zopAPI : public SST::SubComponent{
 public:
-  SST_ELI_REGISTER_SUBCOMPONENT_API(SST::RevCPU::zopAPI)
+  SST_ELI_REGISTER_SUBCOMPONENT_API(SST::Forza::zopAPI)
 
   /// zopAPI: constructor
   zopAPI(ComponentId_t id, Params& params) : SubComponent(id) { }
@@ -244,8 +249,11 @@ public:
     case zopMsgT::Z_MZOP:
       return "MZOP";
       break;
-    case zopMsgT::Z_HZOP:
-      return "HZOP";
+    case zopMsgT::Z_HZOPAC:
+      return "HZOPAC";
+      break;
+    case zopMsgT::Z_HZOPV:
+      return "HZOPV";
       break;
     case zopMsgT::Z_RZOP:
       return "RZOP";
@@ -253,17 +261,17 @@ public:
     case zopMsgT::Z_MSG:
       return "MSG";
       break;
-    case zopMsgT::Z_TMG:
-      return "TMG";
+    case zopMsgT::Z_TMIG:
+      return "TMIG";
       break;
-    case zopMsgT::Z_ACK:
-      return "ACK";
-      break;
-    case zopMsgT::Z_NACK:
-      return "NACK";
+    case zopMsgT::Z_TMGT:
+      return "TMGT";
       break;
     case zopMsgT::Z_SYSC:
       return "SYSC";
+      break;
+    case zopMsgT::Z_RESP:
+      return "RESP";
       break;
     case zopMsgT::Z_EXCP:
       return "EXCP";
@@ -283,11 +291,11 @@ public:
   // register ELI with the SST core
   SST_ELI_REGISTER_SUBCOMPONENT(
     zopNIC,
-    "revcpu",
+    "Forza",
     "zopNIC",
     SST_ELI_ELEMENT_VERSION(1, 0, 0),
     "FORZA ZOP NIC",
-    SST::RevCPU::zopAPI
+    SST::Forza::zopAPI
   )
 
   SST_ELI_DOCUMENT_PARAMS(
@@ -308,26 +316,29 @@ public:
   SST_ELI_DOCUMENT_STATISTICS(
     {"BytesSent",       "Number of bytes sent",     "bytes",    1},
     {"MZOPSent",        "Number of MZOPs sent",     "count",    1},
-    {"HZOPSent",        "Number of HZOPs sent",     "count",    1},
+    {"HZOPACSent",      "Number of HZOPACs sent",   "count",    1},
+    {"HZOPVSent",       "Number of HZOPVs sent",    "count",    1},
     {"RZOPSent",        "Number of RZOPs sent",     "count",    1},
     {"MSGSent",         "Number of MSGs sent",      "count",    1},
-    {"ACKSent",         "Number of ACKs sent",      "count",    1},
-    {"NACKSent",        "Number of NACKs sent",     "count",    1},
+    {"TMIGSent",        "Number of TMIGs sent",     "count",    1},
+    {"TMGTSent",        "Number of TMGTs sent",     "count",    1},
     {"SYSCSent",        "Number of Syscalls sent",  "count",    1},
+    {"RESPSent",        "Number of RESPs sent",     "count",    1},
     {"EXCPSent",        "Number of Exceptions sent","count",    1},
   )
 
   enum zopStats : uint32_t {
     BytesSent     = 0,
     MZOPSent      = 1,
-    HZOPSent      = 2,
-    RZOPSent      = 3,
-    MSGSent       = 4,
-    TMGSent       = 5,
-    ACKSent       = 6,
-    NACKSent      = 7,
+    HZOPACSent    = 2,
+    HZOPVSent     = 3,
+    RZOPSent      = 4,
+    MSGSent       = 5,
+    TMIGSent      = 6,
+    TMGTSent      = 7,
     SYSCSent      = 8,
-    EXCPSent      = 9,
+    RESPSent      = 9,
+    EXCPSent      = 10,
   };
 
   /// zopNIC: constructor
@@ -394,7 +405,7 @@ private:
 };  // zopNIC
 
 
-} // namespace SST::RevCPU
+} // namespace SST::Forza
 
 #endif // _SST_ZOPNET_H_
 
