@@ -221,6 +221,15 @@ if(RV32_Missing MATCHES "Cannot find suitable multilib set for '-march=rv32")
   message(WARNING "RV32 tests disabled because ${RVCC} does not support RV32:\n${RV32_Missing}")
 else()
   message(STATUS "RV32 tests enabled")
+
+# -- PROCESS CTest Config Variables
+if(NOT CTEST_BLAS_REQUIRED_TESTS)
+  set_tests_properties (TEST_DOT_SINGLE PROPERTIES DISABLED True)
+  set_tests_properties (TEST_DOT_DOUBLE PROPERTIES DISABLED True)
+  message(NOTICE "   * Tests requiring BLAS headers are disabled (ie. -DCTEST_BLAS_REQUIRED_TESTS=OFF)
+    - If you'd like to still run these tests run: `ctest -L blas_required`")
+  message(VERBOSE "   TEST_DOT_SINGLE - Disabled")
+  message(VERBOSE "   TEST_DOT_DOUBLE - Disabled")
 endif()
 
 # add_rev_test(test_name test_dir timeout labels)
@@ -291,5 +300,22 @@ add_subdirectory(syscalls)
 add_subdirectory(threading)
 add_subdirectory(cxx)
 add_subdirectory(fenv)
+
+# -- FORZA TESTS
+add_test(NAME NOC_DISCOVERY COMMAND run_noc_discovery.sh WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/FORZA/noc_discovery" )
+set_tests_properties(NOC_DISCOVERY
+  PROPERTIES
+    ENVIRONMENT "RVCC=${RVCC}"
+    TIMEOUT 30
+    PASS_REGULAR_EXPRESSION "${passRegex}"
+    LABELS "all;rv64;forza-required"
+)
+
+if(NOT CTEST_FORZA_TESTS)
+  set_tests_properties (NOC_DISCOVERY PROPERTIES DISABLED True)
+  message(NOTICE "   * Tests requiring FORZA are disabled (ie. -DCTEST_FORZA_REQUIRED_TESTS=OFF)
+    - If you'd like to still run these tests run: `ctest -L forza_required`")
+  message(VERBOSE "NOC_DISCOVERY - Disabled")
+endif()
 
 # EOF

@@ -159,7 +159,7 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params )
   if( EnableZopNIC ){
     output.verbose(CALL_INFO, 4, 0, "[FORZA] Enabling zone NIC on device=%s\n",
                      getName().c_str());
-    zNic = loadUserSubComponent<zopAPI>("zone_nic");
+    zNic = loadUserSubComponent<Forza::zopAPI>("zone_nic");
     if( !zNic ){
       output.fatal(CALL_INFO, -1, "Error: no ZONE NIC object loaded into RevCPU\n" );
     }
@@ -171,12 +171,12 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params )
     // what type of endpoint it is
     if( EnableRZA ){
       // This Rev instance is an RZA
-      zNic->setEndpointType(zopEndP::Z_RZA);
+      zNic->setEndpointType(Forza::zopEndP::Z_RZA);
       output.verbose(CALL_INFO, 4, 0, "[FORZA] device=%s initialized as RZA device\n",
                      getName().c_str());
     }else{
       // This Rev instance is a ZAP
-      zNic->setEndpointType(zopEndP::Z_ZAP);
+      zNic->setEndpointType(Forza::zopEndP::Z_ZAP);
       output.verbose(CALL_INFO, 4, 0, "[FORZA] device=%s initialized as ZAP device\n",
                      getName().c_str());
     }
@@ -611,13 +611,24 @@ void RevCPU::init( unsigned int phase ) {
     zNic->init(phase);
 }
 
+void RevCPU::handleZOPMessageRZA(Forza::zopEvent *zev){
+  output.verbose(CALL_INFO, 1, 0, "[FORZA][RZA] Handling ZOP Message\n");
+  auto Pkt = zev->getPacket();
+}
+
+void RevCPU::handleZOPMessageZAP(Forza::zopEvent *zev){
+  output.verbose(CALL_INFO, 1, 0, "[FORZA][ZAP] Handling ZOP Message\n");
+  auto Pkt = zev->getPacket();
+}
+
 void RevCPU::handleZOPMessage(Event *ev){
-  zopEvent *zev = static_cast<zopEvent*>(ev);
+  Forza::zopEvent *zev = static_cast<Forza::zopEvent*>(ev);
   // handle a FORZA ZOP Message
   if( EnableRZA ){
-    // I am an RZA device, handle the packet accordingly
+    handleZOPMessageRZA(zev);
   }else{
     // I am a ZAP device, handle the message accordingly
+    handleZOPMessageZAP(zev);
   }
   delete zev;
 }
