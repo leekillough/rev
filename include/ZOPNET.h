@@ -28,7 +28,7 @@ namespace SST::Forza{
 #define Z_MSG_TYPE  28
 
 // --------------------------------------------
-// zopMsgT
+// zopMsgT : ZOP Type
 // --------------------------------------------
 enum class zopMsgT : uint8_t {
   Z_MZOP  = 0b0000,   /// FORZA MZOP
@@ -45,7 +45,7 @@ enum class zopMsgT : uint8_t {
 };
 
 // --------------------------------------------
-// zopOpc
+// zopOpc : ZOP Opcode
 // --------------------------------------------
 enum class zopOpc : uint8_t {
   // -- MZOPs --
@@ -88,7 +88,7 @@ enum class zopOpc : uint8_t {
 };
 
 // --------------------------------------------
-// zopEndP
+// zopEndP : ZOP Endpoint
 // --------------------------------------------
 enum class zopEndP : uint32_t {
   Z_ZAP = 1u << 0,    /// FORZA ZAP endpoint
@@ -162,10 +162,35 @@ public:
 
   /// zopEvent: decode this event and set the appropriate internal structures
   void decodeEvent(){
+    auto Pkt0 = Packet[0];
+    auto Pkt1 = Packet[1];
+    auto Pkt2 = Packet[2];
+    auto Pkt3 = Packet[3];
+
+    Opc     = (uint8_t)(Pkt0 & 0xFF);
+    Credit  = (uint8_t)((Pkt0 >> 9)  & 0x1F);
+    ID      = (uint8_t)((Pkt0 >> 14) & 0x1F);
+    Length  = (uint8_t)((Pkt0 >> 19) & 0xFF);
+    NB      = (uint8_t)((Pkt0 >> 27) & 0b1);
+    Type    = (Forza::zopMsgT)(Pkt0 >> 28);
+    Dest    = (Pkt1 & 0x3FFFFFFF);
+    Src     = (Pkt2 & 0x3FFFFFFF);
+    AppID   = Pkt3;
   }
 
 private:
   std::vector<uint32_t> Packet; ///< zopEvent: data payload
+
+  // -- private, non-serialized data members
+  zopMsgT Type;                 ///< zopEvent: message type
+  uint8_t NB;                   ///< zopEvent: blocking/non-blocking
+  uint8_t Length;               ///< zopEvent: packet length (in flits)
+  uint8_t ID;                   ///< zopEvent: message ID
+  uint8_t Credit;               ///< zopEvent: credit piggyback
+  uint8_t Opc;                  ///< zopEvent: opcode
+  uint32_t Dest;                ///< zopEvent: destination
+  uint32_t Src;                 ///< zopEvent: source
+  uint32_t AppID;               ///< zopEvent: application source
 
 public:
   // zopEvent: secondary constructor
@@ -173,6 +198,7 @@ public:
 
   // zopEvent: event serializer
   void serialize_order(SST::Core::Serialization::serializer &ser) override{
+    // we only serialize the raw packet
     Event::serialize_order(ser);
     ser & Packet;
   }

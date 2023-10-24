@@ -613,16 +613,16 @@ void RevCPU::init( unsigned int phase ) {
 
 void RevCPU::handleZOPMessageRZA(Forza::zopEvent *zev){
   output.verbose(CALL_INFO, 1, 0, "[FORZA][RZA] Handling ZOP Message\n");
-  auto Pkt = zev->getPacket();
 }
 
 void RevCPU::handleZOPMessageZAP(Forza::zopEvent *zev){
   output.verbose(CALL_INFO, 1, 0, "[FORZA][ZAP] Handling ZOP Message\n");
-  auto Pkt = zev->getPacket();
 }
 
 void RevCPU::handleZOPMessage(Event *ev){
   Forza::zopEvent *zev = static_cast<Forza::zopEvent*>(ev);
+  zev->decodeEvent();
+
   // handle a FORZA ZOP Message
   if( EnableRZA ){
     handleZOPMessageRZA(zev);
