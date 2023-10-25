@@ -36,19 +36,11 @@
 #include "RevProc.h"
 #include "RevThread.h"
 #include "RevNIC.h"
-#include "PanNet.h"
-#include "PanExec.h"
 #include "RevCoProc.h"
 #include "RevRand.h"
 
 // -- FORZA Headers
 #include "ZOPNET.h"
-
-// -- PAN Common Headers
-#include "../common/include/PanAddr.h"
-
-#define _MAX_PAN_TEST_ 11
-#define LARGE_PRIME 2147483647
 
 namespace SST::RevCPU{
 
@@ -72,9 +64,6 @@ public:
 
   /// RevCPU: standard SST component clock function
   bool clockTick( SST::Cycle_t currentCycle );
-
-  /// RevCPU: test harness clock tick function
-  bool clockTickPANTest( SST::Cycle_t currentCycle );
 
   // -------------------------------------------------------
   // RevCPU Component Registration Data
@@ -300,11 +289,6 @@ private:
   uint64_t PrevAddr;                  ///< RevCPU: previous address for handling PAN messages
 
   bool EnableNIC;                     ///< RevCPU: Flag for enabling the NIC
-  bool EnablePAN;                     ///< RevCPU: Flag for enabling the PAN operations
-  bool EnablePANTest;                 ///< RevCPU: Flag for enabling the PAN test operations
-  bool EnablePANStats;                ///< RevCPU: Flag for enabling PAN statistics
-  bool EnableRDMAMBox;                ///< RevCPU: Enable the RDMA Mailbox
-
   bool EnableMemH;                    ///< RevCPU: Enable memHierarchy
   bool EnableCoProc;                  ///< RevCPU: Enable a co-processor attached to all cores
   bool EnableRZA;                     ///< RevCPU: Enables the RZA functionality
@@ -318,15 +302,10 @@ private:
 
   bool DisableCoprocClock;            ///< RevCPU: Disables manual coproc clocking
 
-  bool ReadyForRevoke;                ///< RevCPU: Is the CPU ready for revocation?
-  bool RevokeHasArrived;              ///< RevCPU: Determines whether the REVOKE command has arrived
-
   TimeConverter* timeConverter;       ///< RevCPU: SST time conversion handler
   SST::Output output;                 ///< RevCPU: SST output handler
 
   nicAPI *Nic;                        ///< RevCPU: Network interface controller
-  panNicAPI *PNic;                    ///< RevCPU: PAN network interface controller
-  PanExec *PExec;                     ///< RevCPU: PAN execution context
   RevMemCtrl *Ctrl;                   ///< RevCPU: Rev memory controller
   Forza::zopAPI *zNic;                ///< RevCPU: FORZA ZOP NIC
 
@@ -334,7 +313,6 @@ private:
 
   SST::Clock::Handler<RevCPU>* ClockHandler;  ///< RevCPU: Clock Handler
 
-  std::queue<std::pair<panNicEvent *, int>> SendMB;  ///< RevCPU: outgoing command mailbox; pair<Cmd, Dest>
   std::queue<std::pair<uint32_t, char *>> ZeroRqst;  ///< RevCPU: tracks incoming zero address put requests; pair<Size, Data>
   std::list<std::pair<uint8_t, int>> TrackTags;      ///< RevCPU: tracks the outgoing messages; pair<Tag, Dest>
   std::vector<std::tuple<uint8_t,
@@ -419,29 +397,14 @@ private:
   // -- FUNCTIONS
   //-------------------------------------------------------
 
-  /// RevCPU: initializes the PAN NIC tables
-  void initNICMem();
-
   /// RevCPU: decode the fault codes
   void DecodeFaultCodes(const std::vector<std::string>& faults);
 
   /// RevCPU:: decode the fault width
   void DecodeFaultWidth(const std::string& width);
 
-  /// RevCPU: executes the PAN test harness
-  void ExecPANTest();
-
   /// RevCPU: RevNIC message handler
   void handleMessage(SST::Event *ev);
-
-  /// RevCPU: PAN NIC message handler
-  void handlePANMessage(SST::Event *ev);
-
-  /// RevCPU: Handle PAN host-side message (host only)
-  void handleHostPANMessage(panNicEvent *event);
-
-  /// RevCPU: Handle PAN network-side messages (NIC's or switches)
-  void handleNetPANMessage(panNicEvent *event);
 
   /// RevCPU: Handle FORZA ZOP Message
   void handleZOPMessage(SST::Event *ev);
@@ -452,32 +415,11 @@ private:
   /// RevCPU: Handle FORZA ZOP Message for ZAP devices
   void handleZOPMessageZAP(Forza::zopEvent *zev);
 
-  /// RevCPU: Sends a PAN message
-  bool sendPANMessage();
-
-  /// RevCPU: handles the memory write operations from incoming PAN messages
-  bool processPANMemRead();
-
-  /// RevCPU: handles the PAN RDMA mailbox
-  bool PANProcessRDMAMailbox();
-
-  /// RevCPU: handles the PAN zero address put requests
-  bool processPANZeroAddr();
-
-  /// RevCPU: converts an RDMA payload to a panNicEvent command
-  bool PANConvertRDMAtoEvent(uint64_t Addr, panNicEvent *event);
-
   /// RevCPU: Creates a unique tag for this message
   uint8_t createTag();
 
   /// RevCPU: Registers all the internal statistics
   void registerStatistics();
-
-  // RevCPU: Register send message statistics
-  void registerSendCmd(panNicEvent *event);
-
-  /// RevCPU: handle a zero address Put command where the NIC chooses the destination buffer
-  bool PANHandleZeroAddrPut(uint32_t Size, void *Data);
 
   /// RevCPU: handle fault injection
   void HandleFaultInjection(SST::Cycle_t currentCycle);
@@ -493,93 +435,6 @@ private:
 
   /// RevCPU: handle ALU fault
   void HandleALUFault(SST::Cycle_t currentCycle);
-
-  /// RevCPU: handle the SyncGet command
-  void PANHandleSyncGet(panNicEvent *event);
-
-  /// RevCPU: handle the SyncPut command
-  void PANHandleSyncPut(panNicEvent *event);
-
-  /// RevCPU: handle the AsyncGet command
-  void PANHandleAsyncGet(panNicEvent *event);
-
-  /// RevCPU: handle the AsyncPut command
-  void PANHandleAsyncPut(panNicEvent *event);
-
-  /// RevCPU: handle the SyncStreamGet commmand
-  void PANHandleSyncStreamGet(panNicEvent *event);
-
-  /// RevCPU: handle the SyncStreamPut command
-  void PANHandleSyncStreamPut(panNicEvent *event);
-
-  /// RevCPU: handle the AsyncStreamGet command
-  void PANHandleAsyncStreamGet(panNicEvent *event);
-
-  /// RevCPU: handle the AsyncStreamPut command
-  void PANHandleAsyncStreamPut(panNicEvent *event);
-
-  /// RevCPU: Exec command
-  void PANHandleExec(panNicEvent *event);
-
-  /// RevCPU: Status command
-  void PANHandleStatus(panNicEvent *event);
-
-  /// RevCPU: Cancel command
-  void PANHandleCancel(panNicEvent *event);
-
-  /// RevCPU: Reserve command
-  void PANHandleReserve(panNicEvent *event);
-
-  /// RevCPU: Revoke command
-  void PANHandleRevoke(panNicEvent *event);
-
-  /// RevCPU: Halt command
-  void PANHandleHalt(panNicEvent *event);
-
-  /// RevCPU: Resume command
-  void PANHandleResume(panNicEvent *event);
-
-  /// RevCPU: ReadReg command
-  void PANHandleReadReg(panNicEvent *event);
-
-  /// RevCPU: WriteReg command
-  void PANHandleWriteReg(panNicEvent *event);
-
-  /// RevCPU: SingleStep command
-  void PANHandleSingleStep(panNicEvent *event);
-
-  /// RevCPU: SetFuture command
-  void PANHandleSetFuture(panNicEvent *event);
-
-  /// RevCPU: RevokeFuture command
-  void PANHandleRevokeFuture(panNicEvent *event);
-
-  /// RevCPU: StatusFuture command
-  void PANHandleStatusFuture(panNicEvent *event);
-
-  /// RevCPU: BOTW command
-  void PANHandleBOTW(panNicEvent *event);
-
-  /// RevCPU: Signal the host thread of a completed round trip message
-  void PANSignalMsgRecv(uint8_t tag, uint64_t sig);
-
-  /// RevCPU: Handle successful response
-  void PANHandleSuccess(panNicEvent *event);
-
-  /// RevCPU: Handle failed response
-  void PANHandleFailed(panNicEvent *event);
-
-  /// RevCPU: construct a failed PAN response command due to a token failure
-  ///         Implicitly pushes the failure command onto the send mailbox
-  void PANBuildFailedToken(panNicEvent *event);
-
-  /// RevCPU: construct a generic successful PAN response command.
-  ///         Implicitly pushes the success command onto the send mailbox
-  void PANBuildRawSuccess(panNicEvent *event);
-
-  /// RevCPU: construct a generic success command response in the target rtn packet.
-  ///         Does not push onto the send mailbox
-  void PANBuildBasicSuccess(panNicEvent *event, panNicEvent *rtn);
 
   /// RevCPU: updates sst statistics on a per core basis
   void UpdateCoreStatistics(unsigned coreNum);
