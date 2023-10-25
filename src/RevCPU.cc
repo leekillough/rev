@@ -36,6 +36,7 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params )
   : SST::Component(id), testStage(0), PrivTag(0), address(-1), PrevAddr(_PAN_RDMA_MAILBOX_),
     EnableNIC(false), EnablePAN(false), EnablePANStats(false), EnableMemH(false), DisableCoprocClock( false ),
     EnableCoProc(false), EnableRZA(false), EnableZopNIC(false),
+    DisableCoprocClock(false),
     ReadyForRevoke(false), Nic(nullptr), PNic(nullptr), PExec(nullptr), Ctrl(nullptr),
     ClockHandler(nullptr) {
 
