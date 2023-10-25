@@ -41,6 +41,9 @@
 #include "RevCoProc.h"
 #include "RevRand.h"
 
+// -- FORZA Headers
+#include "ZOPNET.h"
+
 // -- PAN Common Headers
 #include "../common/include/PanAddr.h"
 
@@ -110,6 +113,8 @@ public:
     {"enable_memH",     "Enable memHierarchy",                          "0"},
     {"enableRDMAMbox",  "Enable the RDMA mailbox",                      "1"},
     {"enableCoProc",    "Enable an attached coProcessor for all cores", "0"},
+    {"enableRZA",       "[FORZA] Enables the RZA functionality",        "0"},
+    {"enableZoneNIC",   "[FORZA] Enables the zone NIC functionality",   "0"},
     {"enable_faults",   "Enable the fault injection logic",             "0"},
     {"faults",          "Enable specific faults",                       "decode,mem,reg,alu"},
     {"fault_width",     "Specify the bit width of potential faults",    "single,word,N"},
@@ -138,6 +143,9 @@ public:
     {"pan_nic", "PAN Network interface", "SST::RevCPU::PanNet"},
     {"memory", "Memory interface to utilize for cache/memory hierachy", "SST::RevCPU::RevMemCtrl"},
     {"co_proc", "Co-processor attached to RevProc", "SST::RevCPU::RevSimpleCoProc"},
+    {"rza_ls",  "[FORZA] RZA Load/Store Pipeline", "SST::RevCPU::RZALSCoProc"},
+    {"rza_amo", "[FORZA] RZA AMO Pipeline", "SST::RevCPU::RZAAMOCoProc"},
+    {"zone_nic","[FORZA] Zone NIC", "SST::Forza::zopNIC"},
     )
 
   // -------------------------------------------------------
@@ -299,6 +307,8 @@ private:
 
   bool EnableMemH;                    ///< RevCPU: Enable memHierarchy
   bool EnableCoProc;                  ///< RevCPU: Enable a co-processor attached to all cores
+  bool EnableRZA;                     ///< RevCPU: Enables the RZA functionality
+  bool EnableZopNIC;                  ///< RevCPU: Enables the ZONE/ZOP NIC functionality
 
   bool EnableFaults;                  ///< RevCPU: Enable fault injection logic
   bool EnableCrackFaults;             ///< RevCPU: Enable Crack+Decode Faults
@@ -318,6 +328,7 @@ private:
   panNicAPI *PNic;                    ///< RevCPU: PAN network interface controller
   PanExec *PExec;                     ///< RevCPU: PAN execution context
   RevMemCtrl *Ctrl;                   ///< RevCPU: Rev memory controller
+  Forza::zopAPI *zNic;                ///< RevCPU: FORZA ZOP NIC
 
   std::vector<RevCoProc*> CoProcs;    ///< RevCPU: CoProcessor attached to Rev
 
@@ -431,6 +442,15 @@ private:
 
   /// RevCPU: Handle PAN network-side messages (NIC's or switches)
   void handleNetPANMessage(panNicEvent *event);
+
+  /// RevCPU: Handle FORZA ZOP Message
+  void handleZOPMessage(SST::Event *ev);
+
+  /// RevCPU:: Handle FORZA ZOP Message for RZA devices
+  void handleZOPMessageRZA(Forza::zopEvent *zev);
+
+  /// RevCPU: Handle FORZA ZOP Message for ZAP devices
+  void handleZOPMessageZAP(Forza::zopEvent *zev);
 
   /// RevCPU: Sends a PAN message
   bool sendPANMessage();

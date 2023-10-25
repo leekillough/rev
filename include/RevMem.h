@@ -41,6 +41,9 @@
 #include "RevRand.h"
 #include "../common/include/RevCommon.h"
 
+// -- FORZA Headers
+#include "RevScratchpad.h"
+
 #ifndef _REVMEM_BASE_
 #define _REVMEM_BASE_ 0x00000000
 #endif
@@ -70,7 +73,7 @@ public:
     MemSegment(uint64_t baseAddr, uint64_t size)
       : BaseAddr(baseAddr), Size(size) {
       TopAddr = baseAddr + size;
-    } // Permissions(permissions) {}
+    }
 
     uint64_t getTopAddr() const { return BaseAddr + Size; }
     uint64_t getBaseAddr() const { return BaseAddr; }
@@ -328,6 +331,18 @@ public:
 
   RevMemStats memStats = {};
 
+  /// FORZA: Checks if address is in scratchpad (ie. bits 56 & 57 are set)
+  inline bool IsAddrInScratchpad(const uint64_t& Addr);
+
+  /// FORZA: Init Scratchpad
+  void InitScratchpad(const unsigned ZapNum, const size_t Size, const size_t ChunkSize);
+
+  /// FORZA: Interface for allocating in the Scratchpad
+  uint64_t ScratchpadAlloc(size_t numBytes);
+
+  /// FORZA: Interface for freeing from Scratchpad
+  void ScratchpadFree(uint64_t Addr, size_t size);
+
 protected:
   char *physMem = nullptr;                 ///< RevMem: memory container
 
@@ -340,6 +355,8 @@ private:
   RevOpts *opts;                ///< RevMem: options object
   RevMemCtrl *ctrl;             ///< RevMem: memory controller object
   SST::Output *output;          ///< RevMem: output handler
+
+  std::shared_ptr<RevScratchpad> scratchpad; ///< FORZA: Scratchpad
 
 
   std::vector<std::shared_ptr<MemSegment>> MemSegs;       // Currently Allocated MemSegs

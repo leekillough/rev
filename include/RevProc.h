@@ -179,7 +179,7 @@ public:
 
   ///< RevProc: Allow a co-processor to manipulate the scoreboard by clearing a bit. Note the RevProcPassKey may only
   ///  be created by a RevCoProc (or a class derived from RevCoProc) so this funciton may not be called from even within
-  ///  RevProc 
+  ///  RevProc
   void ExternalDepClear(RevProcPasskey<RevCoProc>, uint16_t HartID, uint16_t RegNum, bool isFloat){
     DependencyClear(HartID, RegNum, isFloat);
   }
@@ -574,6 +574,10 @@ private:
   EcallStatus ECALL_pthread_create(RevInst& inst);         // 1000, rev_pthread_create(pthread_t *thread, const pthread_attr_t  *attr, void  *(*start_routine)(void  *), void  *arg)
   EcallStatus ECALL_pthread_join(RevInst& inst);           // 1001, rev_pthread_join(pthread_t thread, void **retval);
   EcallStatus ECALL_pthread_exit(RevInst& inst);           // 1002, rev_pthread_exit(void* retval);
+
+  /// FORZA
+  EcallStatus ECALL_forza_scratchpad_alloc(RevInst& inst); // 4000, forza_scratchpad_alloc(size_t size);
+  EcallStatus ECALL_forza_scratchpad_free(RevInst& inst);  // 4001, forza_scratchpad_free(size_t size);
 
   /// RevProc: Table of ecall codes w/ corresponding function pointer implementations
   std::unordered_map<uint32_t, std::function<EcallStatus(RevProc*, RevInst&)>> Ecalls;

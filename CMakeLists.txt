@@ -22,6 +22,8 @@ project(revcpu CXX)
 option(CTEST_BLAS_REQUIRED_TESTS "Enable tests which require BLAS headers" OFF)
 # Tests requiring 32-bit enabled compiler - Default: ON
 option(CTEST_MULTILIB_TESTS "Enable 32-bit tests" ON)
+# Tests requiring FORZA
+option(CTEST_FORZA_TESTS "Enable tests which require FORZA" OFF)
 
 
 
