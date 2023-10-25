@@ -28,12 +28,7 @@ namespace SST::RevCPU{
 /// at the integer type's numerical limits, whether signed or unsigned.
 template<typename FP, typename INT>
 bool CvtFpToInt(RevFeature *F, RevRegFile *R, RevMem *M, RevInst Inst) {
-  FP fp;
-  if constexpr(std::is_same_v<FP, double>){
-      fp = R->DPF[Inst.rs1];         // Read the double FP register directly
-    }else{
-    fp = R->GetFP32(Inst.rs1);  // Read the F or D register, unboxing if D
-  }
+  FP fp = R->GetFP<FP>(Inst.rs1); // Read the FP register
   constexpr INT max = std::numeric_limits<INT>::max();
   constexpr INT min = std::numeric_limits<INT>::min();
   INT res = std::isnan(fp) || fp > FP(max) ? max : fp < FP(min) ? min : static_cast<INT>(fp);
@@ -41,7 +36,7 @@ bool CvtFpToInt(RevFeature *F, RevRegFile *R, RevMem *M, RevInst Inst) {
   // Make final result signed so sign extension occurs when sizeof(INT) < XLEN
   R->SetX(Inst.rd, static_cast<std::make_signed_t<INT>>(res));
 
-  R->AdvancePC(Inst.instSize);
+  R->AdvancePC(Inst);
   return true;
 }
 
@@ -76,7 +71,8 @@ bool load(RevFeature *F, RevRegFile *R, RevMem *M, RevInst Inst) {
     static constexpr auto flags = sizeof(T) < sizeof(int32_t) ?
       REVMEM_FLAGS(std::is_signed_v<T> ? RevCPU::RevFlag::F_SEXT32 : RevCPU::RevFlag::F_ZEXT32) :
       REVMEM_FLAGS(0);
-    req.Set(R->GetX<uint64_t>(Inst.rs1) + Inst.ImmSignExt(12),
+    uint64_t rs1 = R->GetX<uint64_t>(Inst.rs1); // read once for tracer
+    req.Set(rs1 + Inst.ImmSignExt(12),
             Inst.rd, RevRegClass::RegGPR,
             F->GetHartToExec(),
             MemOp::MemOpREAD,
@@ -84,7 +80,7 @@ bool load(RevFeature *F, RevRegFile *R, RevMem *M, RevInst Inst) {
             R->GetMarkLoadComplete());
     R->LSQueueInsert({make_lsq_hash(Inst.rd, RevRegClass::RegGPR, F->GetHartToExec()), req});
     M->ReadVal(F->GetHartToExec(),
-               R->GetX<uint64_t>(Inst.rs1) + Inst.ImmSignExt(12),
+               rs1 + Inst.ImmSignExt(12),
                reinterpret_cast<std::make_unsigned_t<T>*>(&R->RV32[Inst.rd]),
                req,
                flags);
@@ -93,7 +89,8 @@ bool load(RevFeature *F, RevRegFile *R, RevMem *M, RevInst Inst) {
     static constexpr auto flags = sizeof(T) < sizeof(int64_t) ?
       REVMEM_FLAGS(std::is_signed_v<T> ? RevCPU::RevFlag::F_SEXT64 : RevCPU::RevFlag::F_ZEXT64) :
       REVMEM_FLAGS(0);
-    req.Set(R->GetX<uint64_t>(Inst.rs1) + Inst.ImmSignExt(12),
+    uint64_t rs1 = R->GetX<uint64_t>(Inst.rs1);
+    req.Set(rs1 + Inst.ImmSignExt(12),
             Inst.rd, RevRegClass::RegGPR,
             F->GetHartToExec(),
             MemOp::MemOpREAD,
@@ -101,7 +98,7 @@ bool load(RevFeature *F, RevRegFile *R, RevMem *M, RevInst Inst) {
             R->GetMarkLoadComplete());
     R->LSQueueInsert({make_lsq_hash(Inst.rd, RevRegClass::RegGPR, F->GetHartToExec()), req});
     M->ReadVal(F->GetHartToExec(),
-               R->GetX<uint64_t>(Inst.rs1) + Inst.ImmSignExt(12),
+               rs1 + Inst.ImmSignExt(12),
                reinterpret_cast<std::make_unsigned_t<T>*>(&R->RV64[Inst.rd]),
                req,
                flags);
@@ -110,7 +107,7 @@ bool load(RevFeature *F, RevRegFile *R, RevMem *M, RevInst Inst) {
 
   // update the cost
   R->cost += M->RandCost(F->GetMinCost(), F->GetMaxCost());
-  R->AdvancePC(Inst.instSize);
+  R->AdvancePC(Inst);
   return true;
 }
 
@@ -120,7 +117,7 @@ bool store(RevFeature *F, RevRegFile *R, RevMem *M, RevInst Inst) {
   M->Write(F->GetHartToExec(),
            R->GetX<uint64_t>(Inst.rs1) + Inst.ImmSignExt(12),
            R->GetX<T>(Inst.rs2));
-  R->AdvancePC(Inst.instSize);
+  R->AdvancePC(Inst);
   return true;
 }
 
@@ -132,7 +129,8 @@ bool fload(RevFeature *F, RevRegFile *R, RevMem *M, RevInst Inst) {
     static constexpr auto flags = sizeof(T) < sizeof(double) ?
       REVMEM_FLAGS(RevCPU::RevFlag::F_BOXNAN) : REVMEM_FLAGS(0);
 
-    req.Set(R->GetX<uint64_t>(Inst.rs1) + Inst.ImmSignExt(12),
+    uint64_t rs1 = R->GetX<uint64_t>(Inst.rs1);
+    req.Set(rs1 + Inst.ImmSignExt(12),
             Inst.rd,
             RevRegClass::RegFLOAT,
             F->GetHartToExec(),
@@ -141,17 +139,20 @@ bool fload(RevFeature *F, RevRegFile *R, RevMem *M, RevInst Inst) {
             R->GetMarkLoadComplete());
     R->LSQueue->insert({make_lsq_hash(Inst.rd, RevRegClass::RegFLOAT, F->GetHartToExec()), req});
     M->ReadVal(F->GetHartToExec(),
-               R->GetX<uint64_t>(Inst.rs1) + Inst.ImmSignExt(12),
+               rs1 + Inst.ImmSignExt(12),
                reinterpret_cast<T*>(&R->DPF[Inst.rd]),
                req,
                flags);
 
     // Box float value into 64-bit FP register
     if(std::is_same_v<T, float>){
-      BoxNaN(&R->DPF[Inst.rd], &R->DPF[Inst.rd]);
+      double fp = R->GetFP<double>(Inst.rd);
+      BoxNaN(&fp, &fp);
+      R->SetFP(Inst.rd, fp);
     }
   }else{
-    req.Set(R->GetX<uint64_t>(Inst.rs1) + Inst.ImmSignExt(12),
+    uint64_t rs1 = R->GetX<uint64_t>(Inst.rs1);
+    req.Set(rs1 + Inst.ImmSignExt(12),
             Inst.rd,
             RevRegClass::RegFLOAT,
             F->GetHartToExec(),
@@ -160,40 +161,31 @@ bool fload(RevFeature *F, RevRegFile *R, RevMem *M, RevInst Inst) {
             R->GetMarkLoadComplete());
     R->LSQueue->insert({make_lsq_hash(Inst.rd, RevRegClass::RegFLOAT, F->GetHartToExec()), req});
     M->ReadVal(F->GetHartToExec(),
-               R->GetX<uint64_t>(Inst.rs1) + Inst.ImmSignExt(12),
+               rs1 + Inst.ImmSignExt(12),
                &R->SPF[Inst.rd],
                req,
                REVMEM_FLAGS(0));
   }
   // update the cost
   R->cost += M->RandCost(F->GetMinCost(), F->GetMaxCost());
-  R->AdvancePC(Inst.instSize);
+  R->AdvancePC(Inst);
   return true;
 }
 
 /// Floating-point store template
 template<typename T>
 bool fstore(RevFeature *F, RevRegFile *R, RevMem *M, RevInst Inst) {
-  T val;
-  if constexpr(std::is_same_v<T, double>){
-    val = R->DPF[Inst.rs2];
-  }else{
-    val = R->GetFP32(Inst.rs2);
-  }
+  T val = R->GetFP<T>(Inst.rs2);
   M->Write(F->GetHartToExec(), R->GetX<uint64_t>(Inst.rs1) + Inst.ImmSignExt(12), val);
-  R->AdvancePC(Inst.instSize);
+  R->AdvancePC(Inst);
   return true;
 }
 
 /// Floating-point operation template
 template<typename T, template<class> class OP>
 bool foper(RevFeature *F, RevRegFile *R, RevMem *M, RevInst Inst) {
-  if constexpr(std::is_same_v<T, double>){
-    R->DPF[Inst.rd] = OP()(R->DPF[Inst.rs1], R->DPF[Inst.rs2]);
-  }else{
-    R->SetFP32(Inst.rd, OP()(R->GetFP32(Inst.rs1), R->GetFP32(Inst.rs2)));
-  }
-  R->AdvancePC(Inst.instSize);
+  R->SetFP(Inst.rd, OP()(R->GetFP<T>(Inst.rs1), R->GetFP<T>(Inst.rs2)));
+  R->AdvancePC(Inst);
   return true;
 }
 
@@ -214,14 +206,9 @@ struct FMax{
 /// Floating-point conditional operation template
 template<typename T, template<class> class OP>
 bool fcondop(RevFeature *F, RevRegFile *R, RevMem *M, RevInst Inst) {
-  bool res;
-  if constexpr(std::is_same_v<T, double>){
-    res = OP()(R->DPF[Inst.rs1], R->DPF[Inst.rs2]);
-  }else{
-    res = OP()(R->GetFP32(Inst.rs1), R->GetFP32(Inst.rs2));
-  }
+  bool res = OP()(R->GetFP<T>(Inst.rs1), R->GetFP<T>(Inst.rs2));
   R->SetX(Inst.rd, res);
-  R->AdvancePC(Inst.instSize);
+  R->AdvancePC(Inst);
   return true;
 }
 
@@ -250,7 +237,7 @@ template<template<class> class OP, OpKind KIND,
     // In W_MODE, cast the result to int32_t so that it's sign-extended
     R->SetX(Inst.rd, std::conditional_t<W_MODE, int32_t, T>(res));
   }
-  R->AdvancePC(Inst.instSize);
+  R->AdvancePC(Inst);
   return true;
 }
 
@@ -290,7 +277,7 @@ bool uppermul(RevFeature *F, RevRegFile *R, RevMem *M, RevInst Inst) {
     if (rs2_is_signed && (rs2 & (uint64_t{1}<<63)) != 0) mul -= rs1;
     R->SetX(Inst.rd, mul);
   }
-  R->AdvancePC(Inst.instSize);
+  R->AdvancePC(Inst);
   return true;
 }
 
@@ -330,7 +317,7 @@ template<DivRem DIVREM, template<class> class SIGN, bool W_MODE = false>
     // In W_MODE, cast the result to int32_t so that it's sign-extended
     R->SetX(Inst.rd, std::conditional_t<W_MODE, int32_t, T>(res));
   }
-  R->AdvancePC(Inst.instSize);
+  R->AdvancePC(Inst);
   return true;
 }
 
@@ -345,7 +332,11 @@ bool bcond(RevFeature *F, RevRegFile *R, RevMem *M, RevInst Inst) {
   }else{
     cond = OP()(R->GetX<SIGN<int64_t>>(Inst.rs1), R->GetX<SIGN<int64_t>>(Inst.rs2));
   }
-  R->AdvancePC(cond ? Inst.ImmSignExt(13) : Inst.instSize);
+  if(cond){
+    R->SetPC(R->GetPC() + Inst.ImmSignExt(13));
+  }else{
+    R->AdvancePC(Inst);
+  }
   return true;
 }
 

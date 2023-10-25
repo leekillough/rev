@@ -53,27 +53,27 @@ class RV32F : public RevExt{
   static constexpr auto& fsw = fstore<float>;
 
   static bool fmadds(RevFeature *F, RevRegFile *R, RevMem *M, RevInst Inst) {
-    R->SetFP32(Inst.rd, std::fmaf(R->GetFP32(Inst.rs1), R->GetFP32(Inst.rs2), R->GetFP32(Inst.rs3)));
-    R->AdvancePC(Inst.instSize);
+    R->SetFP(Inst.rd, std::fmaf(R->GetFP<float>(Inst.rs1), R->GetFP<float>(Inst.rs2), R->GetFP<float>(Inst.rs3)));
+    R->AdvancePC(Inst);
     return true;
   }
 
   static bool fmsubs(RevFeature *F, RevRegFile *R, RevMem *M, RevInst Inst) {
-    R->SetFP32(Inst.rd, std::fmaf(R->GetFP32(Inst.rs1), R->GetFP32(Inst.rs2), -R->GetFP32(Inst.rs3)));
-    R->AdvancePC(Inst.instSize);
+    R->SetFP(Inst.rd, std::fmaf(R->GetFP<float>(Inst.rs1), R->GetFP<float>(Inst.rs2), -R->GetFP<float>(Inst.rs3)));
+    R->AdvancePC(Inst);
     return true;
   }
 
   static bool fnmsubs(RevFeature *F, RevRegFile *R, RevMem *M, RevInst Inst)
     {
-      R->SetFP32(Inst.rd, std::fmaf(-R->GetFP32(Inst.rs1), R->GetFP32(Inst.rs2), R->GetFP32(Inst.rs3)));
-      R->AdvancePC(Inst.instSize);
+      R->SetFP(Inst.rd, std::fmaf(-R->GetFP<float>(Inst.rs1), R->GetFP<float>(Inst.rs2), R->GetFP<float>(Inst.rs3)));
+      R->AdvancePC(Inst);
       return true;
     }
 
   static bool fnmadds(RevFeature *F, RevRegFile *R, RevMem *M, RevInst Inst) {
-    R->SetFP32(Inst.rd, -std::fmaf(R->GetFP32(Inst.rs1), R->GetFP32(Inst.rs2), R->GetFP32(Inst.rs3)));
-    R->AdvancePC(Inst.instSize);
+    R->SetFP(Inst.rd, -std::fmaf(R->GetFP<float>(Inst.rs1), R->GetFP<float>(Inst.rs2), R->GetFP<float>(Inst.rs3)));
+    R->AdvancePC(Inst);
     return true;
   }
 
@@ -92,36 +92,36 @@ class RV32F : public RevExt{
   static constexpr auto& fcvtwus = CvtFpToInt<float, uint32_t>;
 
   static bool fsqrts(RevFeature *F, RevRegFile *R, RevMem *M, RevInst Inst) {
-    R->SetFP32(Inst.rd, sqrtf( R->GetFP32(Inst.rs1) ));
-    R->AdvancePC(Inst.instSize);
+    R->SetFP(Inst.rd, sqrtf( R->GetFP<float>(Inst.rs1) ));
+    R->AdvancePC(Inst);
     return true;
   }
 
   static bool fsgnjs(RevFeature *F, RevRegFile *R, RevMem *M, RevInst Inst) {
-    R->SetFP32(Inst.rd, std::copysign( R->GetFP32(Inst.rs1), R->GetFP32(Inst.rs2) ));
-    R->AdvancePC(Inst.instSize);
+    R->SetFP(Inst.rd, std::copysign( R->GetFP<float>(Inst.rs1), R->GetFP<float>(Inst.rs2) ));
+    R->AdvancePC(Inst);
     return true;
   }
 
   static bool fsgnjns(RevFeature *F, RevRegFile *R, RevMem *M, RevInst Inst) {
-    R->SetFP32(Inst.rd, std::copysign( R->GetFP32(Inst.rs1), -R->GetFP32(Inst.rs2) ));
-    R->AdvancePC(Inst.instSize);
+    R->SetFP(Inst.rd, std::copysign( R->GetFP<float>(Inst.rs1), -R->GetFP<float>(Inst.rs2) ));
+    R->AdvancePC(Inst);
     return true;
   }
 
   static bool fsgnjxs(RevFeature *F, RevRegFile *R, RevMem *M, RevInst Inst) {
-    float rs1 = R->GetFP32(Inst.rs1), rs2 = R->GetFP32(Inst.rs2);
-    R->SetFP32(Inst.rd, std::copysign(rs1, std::signbit(rs1) ? -rs2 : rs2));
-    R->AdvancePC(Inst.instSize);
+    float rs1 = R->GetFP<float>(Inst.rs1), rs2 = R->GetFP<float>(Inst.rs2);
+    R->SetFP(Inst.rd, std::copysign(rs1, std::signbit(rs1) ? -rs2 : rs2));
+    R->AdvancePC(Inst);
     return true;
   }
 
   static bool fmvxw(RevFeature *F, RevRegFile *R, RevMem *M, RevInst Inst) {
     int32_t i32;
-    float fp32 = R->GetFP32(Inst.rs1);      // The FP32 value
+    float fp32 = R->GetFP<float>(Inst.rs1);      // The FP32 value
     memcpy(&i32, &fp32, sizeof(i32));          // Reinterpreted as int32_t
     R->SetX(Inst.rd, i32);                  // Copied to the destination register
-    R->AdvancePC(Inst.instSize);
+    R->AdvancePC(Inst);
     return true;
   }
 
@@ -129,30 +129,30 @@ class RV32F : public RevExt{
     float fp32;
     auto i32 = R->GetX<int32_t>(Inst.rs1);  // The X register as a 32-bit value
     memcpy(&fp32, &i32, sizeof(fp32));         // Reinterpreted as float
-    R->SetFP32(Inst.rd, fp32);              // Copied to the destination register
-    R->AdvancePC(Inst.instSize);
+    R->SetFP(Inst.rd, fp32);              // Copied to the destination register
+    R->AdvancePC(Inst);
     return true;
   }
 
   static bool fclasss(RevFeature *F, RevRegFile *R, RevMem *M, RevInst Inst) {
-    float fp32 = R->GetFP32(Inst.rs1);
+    float fp32 = R->GetFP<float>(Inst.rs1);
     uint32_t i32;
     memcpy(&i32, &fp32, sizeof(i32));
     bool quietNaN = (i32 & uint32_t{1}<<22) != 0;
     R->SetX(Inst.rd, fclass(fp32, quietNaN));
-    R->AdvancePC(Inst.instSize);
+    R->AdvancePC(Inst);
     return true;
   }
 
   static bool fcvtsw(RevFeature *F, RevRegFile *R, RevMem *M, RevInst Inst) {
-    R->SetFP32(Inst.rd, static_cast<float>(R->GetX<int32_t>(Inst.rs1)));
-    R->AdvancePC(Inst.instSize);
+    R->SetFP(Inst.rd, static_cast<float>(R->GetX<int32_t>(Inst.rs1)));
+    R->AdvancePC(Inst);
     return true;
   }
 
   static bool fcvtswu(RevFeature *F, RevRegFile *R, RevMem *M, RevInst Inst) {
-    R->SetFP32(Inst.rd, static_cast<float>(R->GetX<uint32_t>(Inst.rs1)));
-    R->AdvancePC(Inst.instSize);
+    R->SetFP(Inst.rd, static_cast<float>(R->GetX<uint32_t>(Inst.rs1)));
+    R->AdvancePC(Inst);
     return true;
   }
 
@@ -191,15 +191,15 @@ class RV32F : public RevExt{
     {RevInstEntryBuilder<Rev32FInstDefaults>().SetMnemonic("fsgnjn.s %rd, %rs1, %rs2"       ).SetOpcode( 0b1010011).SetFunct3( 0b001    ).SetFunct7(0b0010000).Setrs2Class(RevRegClass::RegFLOAT  ).Setrs3Class(RevRegClass::RegUNKNOWN).SetFormat(RVTypeR).SetImplFunc(&fsgnjns ).InstEntry},
     {RevInstEntryBuilder<Rev32FInstDefaults>().SetMnemonic("fsgnjx.s %rd, %rs1, %rs2"       ).SetOpcode( 0b1010011).SetFunct3( 0b010    ).SetFunct7(0b0010000).Setrs2Class(RevRegClass::RegFLOAT  ).Setrs3Class(RevRegClass::RegUNKNOWN).SetFormat(RVTypeR).SetImplFunc(&fsgnjxs ).InstEntry},
 
-    {RevInstEntryBuilder<Rev32FInstDefaults>().SetMnemonic("fcvt.w.s %rd, %rs1"           ).SetOpcode( 0b1010011).SetFunct3( 0b0          ).SetFunct7(0b1100000).SetfpcvtOp(0b00000).Setrs2Class(RevRegClass::RegUNKNOWN).Setrs3Class(RevRegClass::RegUNKNOWN).SetFormat(RVTypeR).SetImplFunc(&fcvtws ).InstEntry},
-    {RevInstEntryBuilder<Rev32FInstDefaults>().SetMnemonic("fcvt.wu.s %rd, %rs1"                ).SetOpcode( 0b1010011).SetFunct3( 0b0    ).SetFunct7(0b1100000).SetfpcvtOp(0b00001).Setrs2Class(RevRegClass::RegUNKNOWN).Setrs3Class(RevRegClass::RegUNKNOWN).SetFormat(RVTypeR).SetImplFunc(&fcvtwus ).InstEntry},
+    {RevInstEntryBuilder<Rev32FInstDefaults>().SetMnemonic("fcvt.w.s %rd, %rs1"           ).SetOpcode( 0b1010011).SetFunct3( 0b0          ).SetFunct7(0b1100000).SetfpcvtOp(0b00000).Setrs2Class(RevRegClass::RegUNKNOWN).Setrs3Class(RevRegClass::RegUNKNOWN).SetFormat(RVTypeR).SetfpcvtOp(0b00).SetImplFunc(&fcvtws ).InstEntry},
+    {RevInstEntryBuilder<Rev32FInstDefaults>().SetMnemonic("fcvt.wu.s %rd, %rs1"                ).SetOpcode( 0b1010011).SetFunct3( 0b0    ).SetFunct7(0b1100000).SetfpcvtOp(0b00001).Setrs2Class(RevRegClass::RegUNKNOWN).Setrs3Class(RevRegClass::RegUNKNOWN).SetFormat(RVTypeR).SetfpcvtOp(0b01).SetImplFunc(&fcvtwus ).InstEntry},
     {RevInstEntryBuilder<Rev32FInstDefaults>().SetMnemonic("fmv.x.s %rd, %rs1"              ).SetOpcode( 0b1010011).SetFunct3( 0b000    ).SetFunct7(0b1110000).Setrs2Class(RevRegClass::RegUNKNOWN).Setrs3Class(RevRegClass::RegUNKNOWN).SetFormat(RVTypeR).SetImplFunc(&fmvxw ).InstEntry},
     {RevInstEntryBuilder<Rev32FInstDefaults>().SetMnemonic("feq.s %rd, %rs1, %rs2"              ).SetOpcode( 0b1010011).SetFunct3( 0b010        ).SetFunct7(0b1010000).Setrs2Class(RevRegClass::RegFLOAT  ).Setrs3Class(RevRegClass::RegUNKNOWN).SetFormat(RVTypeR).SetImplFunc(&feqs ).InstEntry},
     {RevInstEntryBuilder<Rev32FInstDefaults>().SetMnemonic("flt.s %rd, %rs1, %rs2"              ).SetOpcode( 0b1010011).SetFunct3( 0b001        ).SetFunct7(0b1010000).Setrs2Class(RevRegClass::RegFLOAT  ).Setrs3Class(RevRegClass::RegUNKNOWN).SetFormat(RVTypeR).SetImplFunc(&flts ).InstEntry},
     {RevInstEntryBuilder<Rev32FInstDefaults>().SetMnemonic("fle.s %rd, %rs1, %rs2"              ).SetOpcode( 0b1010011).SetFunct3( 0b000        ).SetFunct7(0b1010000).Setrs2Class(RevRegClass::RegFLOAT  ).Setrs3Class(RevRegClass::RegUNKNOWN).SetFormat(RVTypeR).SetImplFunc(&fles ).InstEntry},
     {RevInstEntryBuilder<Rev32FInstDefaults>().SetMnemonic("fclass.s %rd, %rs1"           ).SetOpcode( 0b1010011).SetFunct3( 0b001      ).SetFunct7(0b1110000).Setrs2Class(RevRegClass::RegUNKNOWN).Setrs3Class(RevRegClass::RegUNKNOWN).SetFormat(RVTypeR).SetImplFunc(&fclasss ).InstEntry},
-    {RevInstEntryBuilder<Rev32FInstDefaults>().SetMnemonic("fcvt.s.w %rd, %rs1"           ).SetOpcode( 0b1010011).SetFunct3( 0b0          ).SetFunct7(0b1101000).SetfpcvtOp(0b00000).Setrs2Class(RevRegClass::RegUNKNOWN).Setrs3Class(RevRegClass::RegUNKNOWN).SetFormat(RVTypeR).SetImplFunc(&fcvtsw ).InstEntry},
-    {RevInstEntryBuilder<Rev32FInstDefaults>().SetMnemonic("fcvt.s.wu %rd, %rs1"                  ).SetOpcode( 0b1010011).SetFunct3( 0b0          ).SetFunct7(0b1101000).SetfpcvtOp(0b00001).Setrs2Class(RevRegClass::RegUNKNOWN).Setrs3Class(RevRegClass::RegUNKNOWN).SetFormat(RVTypeR).SetImplFunc(&fcvtswu ).InstEntry},
+    {RevInstEntryBuilder<Rev32FInstDefaults>().SetMnemonic("fcvt.s.w %rd, %rs1"           ).SetOpcode( 0b1010011).SetFunct3( 0b0          ).SetFunct7(0b1101000).SetfpcvtOp(0b00000).Setrs2Class(RevRegClass::RegUNKNOWN).Setrs3Class(RevRegClass::RegUNKNOWN).SetFormat(RVTypeR).SetfpcvtOp(0b00).SetImplFunc(&fcvtsw ).InstEntry},
+    {RevInstEntryBuilder<Rev32FInstDefaults>().SetMnemonic("fcvt.s.wu %rd, %rs1"                  ).SetOpcode( 0b1010011).SetFunct3( 0b0          ).SetFunct7(0b1101000).SetfpcvtOp(0b00001).Setrs2Class(RevRegClass::RegUNKNOWN).Setrs3Class(RevRegClass::RegUNKNOWN).SetFormat(RVTypeR).SetfpcvtOp(0b01).SetImplFunc(&fcvtswu ).InstEntry},
     {RevInstEntryBuilder<Rev32FInstDefaults>().SetMnemonic("fmv.w.x %rd, %rs1"              ).SetOpcode( 0b1010011).SetFunct3( 0b000    ).SetFunct7(0b1111000).Setrs2Class(RevRegClass::RegUNKNOWN).Setrs3Class(RevRegClass::RegUNKNOWN).SetFormat(RVTypeR).SetImplFunc(&fmvwx ).InstEntry},
   };
 

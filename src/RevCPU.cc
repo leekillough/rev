@@ -40,6 +40,7 @@ const char pan_splash_msg[] = "\
 RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params )
   : SST::Component(id), testStage(0), PrivTag(0), address(-1), PrevAddr(_PAN_RDMA_MAILBOX_),
     EnableNIC(false), EnablePAN(false), EnablePANStats(false), EnableMemH(false),
+    DisableCoprocClock(false),
     EnableCoProc(false), EnableRZA(false), EnableZopNIC(false),
     ReadyForRevoke(false), Nic(nullptr), PNic(nullptr), PExec(nullptr), Ctrl(nullptr),
     ClockHandler(nullptr) {
@@ -85,7 +86,9 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params )
   }
   if( EnablePANTest )
     numCores = 1; // force the PAN test to use a single core
-  output.verbose(CALL_INFO, 1, 0, "Building Rev with %" PRIu32 " cores and %" PRIu32 " hart(s) on each core \n", numCores, numHarts);
+  output.verbose(CALL_INFO, 1, 0,
+                 "Building Rev with %" PRIu32 " cores and %" PRIu32 " hart(s) on each core \n",
+                 numCores, numHarts);
 
   // read the binary executable name
   Exe = params.find<std::string>("program", "a.out");
@@ -95,7 +98,7 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params )
 
   // Create the options object
   // TODO: Use std::nothrow to return null instead of throwing std::bad_alloc
-  Opts = new RevOpts(numCores, Verbosity);
+  Opts = new RevOpts(numCores, numHarts, Verbosity);
   if( !Opts )
     output.fatal(CALL_INFO, -1, "Error: failed to initialize the RevOpts object\n" );
 
@@ -109,7 +112,7 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params )
     std::vector<std::string> startSyms;
     params.find_array<std::string>("startSymbol", startSyms);
     if( !Opts->InitStartSymbols( startSyms ) )
-      output.fatal(CALL_INFO, -1, "Error: failed to initalized the starting symbols\n" );
+      output.fatal(CALL_INFO, -1, "Error: failed to initialize the starting symbols\n" );
 
     std::vector<std::string> machModels;
     params.find_array<std::string>("machine", machModels);
@@ -334,27 +337,72 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params )
     }
   }
 
+  #ifndef NO_REV_TRACER
+  // Configure tracer and assign to each core
+  if (output.getVerboseLevel()>=5) {
+    for( unsigned i=0; i<numCores; i++ ){
+      // Each core gets its very own tracer
+      RevTracer* trc = new RevTracer(getName(), &output);
+      std::string diasmType;
+      Opts->GetMachineModel(0,diasmType); // TODO first param is core
+      if (trc->SetDisassembler(diasmType))
+        output.verbose(CALL_INFO, 1, 0, "Warning: tracer could not find disassembler. Using REV default\n");
+      
+      trc->SetTraceSymbols(Loader->GetTraceSymbols());
+
+      // tracer user controls - cycle on and off. Ignored unless > 0
+      trc->SetStartCycle(params.find<uint64_t>("trcStartCycle",0));
+      trc->SetCycleLimit(params.find<uint64_t>("trcLimit",0));
+      trc->SetCmdTemplate(params.find<std::string>("trcOp", TRC_OP_DEFAULT).c_str());
+
+      trc->Reset();
+      Procs[i]->SetTracer(trc);
+    }
+  }
+  #endif
+
   // Initial thread setup
   uint32_t MainThreadID = id+1; // Prevents having MainThreadID == 0 which is reserved for INVALID
 
-  // set the pc
   uint64_t StartAddr = 0x00ull;
-  std::string StartSymbol = "main";
-  if( StartAddr == 0x00ull ){
-    // if( !Opts->GetStartSymbol( id, StartSymbol ) ){
-    //   output.fatal(CALL_INFO, -1,
-    //                 "Error: failed to init the start symbol address for main thread=\n");
-    // }
-    StartAddr = Loader->GetSymbolAddr(StartSymbol);
-  }
-  if( StartAddr == 0x00ull ){
-    // load "main" symbol
-    StartAddr = Loader->GetSymbolAddr("main");
-    if( StartAddr == 0x00ull ){
-      output.fatal(CALL_INFO, -1,
-                   "Error: failed to auto discover address for <main> for main thread\n");
+  std::string StartSymbol;
+
+  bool IsStartSymbolProvided = Opts->GetStartSymbol( id, StartSymbol );
+  bool IsStartAddrProvided = Opts->GetStartAddr( id, StartAddr ) && StartAddr != 0x00ull;
+  uint64_t ResolvedStartSymbolAddr = (IsStartSymbolProvided) ? Loader->GetSymbolAddr(StartSymbol) : 0x00ull;
+
+  // If no start address has been provided ...
+  if (!IsStartAddrProvided) {
+    // ... check if symbol was provided ...
+    if (!IsStartSymbolProvided) {
+        // ... no, try to default to 'main' ...
+        StartAddr = Loader->GetSymbolAddr("main");
+        if( StartAddr == 0x00ull ){
+          // ... no hope left!
+          output.fatal(CALL_INFO, -1,
+                       "Error: failed to auto discover address for <main> for main thread\n");
+        }
+    } else {
+      // ... if symbol was provided, check whether it is valid or not ...
+      if (!ResolvedStartSymbolAddr) {
+        // ... not valid, error out
+        output.fatal(CALL_INFO, -1,
+                  "Error: failed to resolve address for symbol <%s>\n", StartSymbol.c_str());
+      }
+      // ... valid use the resolved symbol
+      StartAddr = ResolvedStartSymbolAddr;
     }
+  } else { // A start address was provided ...
+    // ... check if a symbol was provided and is compatible with the start address ...
+    if ((IsStartSymbolProvided) && (ResolvedStartSymbolAddr != StartAddr)) {
+      // ... they are different, don't know the user intent so error out now
+      output.fatal(CALL_INFO, -1,
+                  "Error: start address and start symbol differ startAddr=0x%" PRIx64 " StartSymbol=%s ResolvedStartSymbolAddr=0x%" PRIx64 "\n",
+                   StartAddr, StartSymbol.c_str(), ResolvedStartSymbolAddr);
+    } // ... else no symbol provided, continue on with StartAddr as the target
   }
+
+  output.verbose(CALL_INFO, 11, 0, "Start address is 0x%" PRIx64 "\n", StartAddr);
 
   std::shared_ptr<RevThread> MainThread = std::make_shared<RevThread>(MainThreadID,                    // ThreadID
                                                                       _INVALID_TID_,                 // Parent ThreadID
@@ -366,8 +414,7 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params )
 
   InitThread(MainThread);
 
-  output.verbose(CALL_INFO, 11, 0, "Main thread initialized %s", MainThread->to_string().c_str());
-
+  output.verbose(CALL_INFO, 11, 0, "Main thread initialized %s\n", MainThread->to_string().c_str());
   SetupArgs(MainThreadID, Procs[0]->GetRevFeature());
 
   // setup the per-proc statistics
@@ -397,6 +444,8 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params )
     TLBMissesPerCore.push_back( registerStatistic<uint64_t>("TLBMissesPerCore", "core_" + std::to_string(s)));
   }
 
+  // determine whether we need to enable/disable manual coproc clocking
+  DisableCoprocClock = params.find<bool>("independentCoprocClock", 0);
 
   // setup the PAN execution contexts
   if( EnablePAN ){
@@ -460,10 +509,6 @@ RevCPU::~RevCPU(){
 
   // delete the options object
   delete Opts;
-
-  // delete the clock handler object
-  //delete ClockHandler;
-
 }
 
 void RevCPU::DecodeFaultWidth(const std::string& width){
@@ -2502,7 +2547,9 @@ bool RevCPU::clockTick( SST::Cycle_t currentCycle ){
         output.verbose(CALL_INFO, 5, 0, "Closing Processor %zu at Cycle: %" PRIu64 "\n",
                        i, currentCycle);
       }
-      if(EnableCoProc && !CoProcs[i]->ClockTick(currentCycle)){
+      if(EnableCoProc &&
+         !CoProcs[i]->ClockTick(currentCycle) &&
+         !DisableCoprocClock){
         output.verbose(CALL_INFO, 5, 0, "Closing Co-Processor %zu at Cycle: %" PRIu64 "\n",
                        i, currentCycle);
 
@@ -2704,10 +2751,8 @@ void RevCPU::CheckBlockedThreads(){
 // ----------------------------------
 void RevCPU::SetupArgs(uint32_t ThreadIDToSetup, RevFeature* feature){
   auto Argv = Opts->GetArgv();
-  // setup argc
   Threads.at(ThreadIDToSetup)->GetRegFile()->SetX(RevReg::a0, Argv.size());
   Threads.at(ThreadIDToSetup)->GetRegFile()->SetX(RevReg::a1, Mem->GetStackTop() + 60);
-  return;
 }
 
 // Checks core 'i' to see if it has any available harts to assign work to

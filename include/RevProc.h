@@ -46,11 +46,13 @@
 #include "PanExec.h"
 #include "RevPrefetcher.h"
 #include "RevCoProc.h"
+#include "RevTracer.h"
 #include "RevThread.h"
 #include "RevRand.h"
 #include "RevProcPasskey.h"
 #include "RevHart.h"
-#include "../common/syscalls/SysFlags.h"
+#define SYSCALL_TYPES_ONLY
+#include "../common/syscalls/syscalls.h"
 #include "../common/include/RevCommon.h"
 
 #define _PAN_FWARE_JUMP_            0x0000000000010000
@@ -65,7 +67,7 @@ public:
            std::unordered_map<uint32_t, std::shared_ptr<RevThread>>& AssignedThreads,
            std::function<uint32_t()> GetNewThreadID, SST::Output *Output );
 
-  /// RevProc: standard desctructor
+  /// RevProc: standard destructor
   ~RevProc() = default;
 
   /// RevProc: per-processor clock function
@@ -97,6 +99,9 @@ public:
 
   /// RevProc: Set the PAN execution context
   void SetExecCtx(PanExec *P) { PExec = P; }
+
+  /// RevProc: Set an optional tracer
+  void SetTracer(RevTracer *T) { Tracer = T; }
 
   /// RevProc: Retrieve a random memory cost value
   unsigned RandCost() { return mem->RandCost(feature->GetMinCost(), feature->GetMaxCost()); }
@@ -237,6 +242,8 @@ private:
 
   RevRegFile* RegFile = nullptr; ///< RevProc: Initial pointer to HartToDecode RegFile
 
+  RevTracer* Tracer = nullptr;            ///< RevProc: Tracer object
+  
   std::bitset<_MAX_HARTS_> CoProcStallReq;
   ///< RevProc: Utility function for system calls that involve reading a string from memory
   EcallStatus EcallLoadAndParseString(RevInst& inst, uint64_t straddr, std::function<void()>);
@@ -560,6 +567,9 @@ private:
   EcallStatus ECALL_faccessat2(RevInst& inst);             // 439, rev_faccessat2(int dfd, const char  *filename, int mode, int flags)
   EcallStatus ECALL_process_madvise(RevInst& inst);        // 440, rev_process_madvise(int pidfd, const struct iovec  *vec, size_t vlen, int behavior, unsigned int flags)
 
+  // =============== REV specific functions
+  EcallStatus ECALL_cpuinfo(RevInst& inst);                // 500, rev_cpuinfo(struct rev_cpuinfo *info);
+
   // =============== REV pthread functions
   EcallStatus ECALL_pthread_create(RevInst& inst);         // 1000, rev_pthread_create(pthread_t *thread, const pthread_attr_t  *attr, void  *(*start_routine)(void  *), void  *arg)
   EcallStatus ECALL_pthread_join(RevInst& inst);           // 1001, rev_pthread_join(pthread_t thread, void **retval);
@@ -627,9 +637,6 @@ private:
 
   /// RevProc: reset the core and its associated features
   bool Reset();
-
-  /// RevProc: setup the argc/argc arrays
-  void SetupArgs();
 
   /// RevProc: set the PC
   void SetPC(uint64_t PC) { RegFile->SetPC(PC); }

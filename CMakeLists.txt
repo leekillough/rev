@@ -85,15 +85,38 @@ set(LDFLAGS "${SST_LDFLAGS}  -fno-stack-protector")
 message (LDFLAGS="${LDFLAGS}")
 
 #------------------------------------------------------------------------
+#-- DISASM
+#------------------------------------------------------------------------
+option(REV_TRACER "Enable tracer compilation" ON)
+message (REV_TRACER="${REV_TRACER}")
+if(REV_TRACER)
+  option(REV_USE_SPIKE "Link to spike disasm static library" OFF)
+  if(REV_USE_SPIKE)
+    find_program(SPIKE spike)
+    cmake_path(GET SPIKE PARENT_PATH spike_dir)
+    find_library(DISASM_LIB disasm HINT "${spike_dir}/../lib")
+    include_directories("${spike_dir}/../include")
+    link_directories("${spike_dir}/../lib")
+    link_libraries("disasm")
+    add_compile_definitions("REV_USE_SPIKE")
+  endif()
+else()
+   # requires cmake 3.12
+  add_compile_definitions(NO_REV_TRACER)
+endif()
+
+#------------------------------------------------------------------------
 #-- COMPILER OPTIONS
 #------------------------------------------------------------------------
 if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
   set(WERROR_FLAG "")
+  set(FP_MODE_FLAG "-ffp-model=strict")
 else()
   set(WERROR_FLAG "-Werror")
+  set(FP_MODE_FLAG "-frounding-math")
 endif()
 
-set(CMAKE_CXX_FLAGS "-std=c++17 -O2 -Wall -Wextra ${WERROR_FLAG} -Wvla -Wuninitialized -Wfloat-conversion -Wdouble-promotion -Wno-unused-parameter -Wno-deprecated-declarations ${CMAKE_CXX_FLAGS} -I./ ${LDFLAGS} ${REVCPU_COMPILER_MACROS}")
+set(CMAKE_CXX_FLAGS "-std=c++17 ${FP_MODE_FLAG} -O2 -Wall -Wextra ${WERROR_FLAG} -Wvla -Wuninitialized -Wfloat-conversion -Wdouble-promotion -Wno-unused-parameter -Wno-deprecated-declarations ${CMAKE_CXX_FLAGS} -I./ ${LDFLAGS} ${REVCPU_COMPILER_MACROS}")
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0 -Wall ${REVCPU_COMPILER_MACROS}")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -Wall ${REVCPU_COMPILER_MACROS}")
 

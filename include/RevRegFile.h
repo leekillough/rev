@@ -51,6 +51,17 @@ enum class RevReg {
   fs8  = 24, fs9 = 25, fs10 = 26, fs11 = 27, ft8 = 28, ft9 = 29, ft10 = 30, ft11 = 31,
 };
 
+/// Floating-Point Rounding Mode
+enum class FRMode : uint8_t {
+  None = 0xff,
+  RNE = 0,   // Round to Nearest, ties to Even
+  RTZ = 1,   // Round towards Zero
+  RDN = 2,   // Round Down (towards -Inf)
+  RUP = 3,   // Round Up (towards +Inf)
+  RMM = 4,   // Round to Nearest, ties to Max Magnitude
+  DYN = 7,   // In instruction's rm field, selects dynamic rounding mode; invalid in FCSR
+};
+
 /// Floating-point control register
 // fcsr.NX, fcsr.UF, fcsr.OF, fcsr.DZ, fcsr.NV, fcsr.frm
 struct FCSR{
@@ -72,6 +83,7 @@ private:
   bool trigger{};                     ///< RevRegFile: Has the instruction been triggered?
   unsigned Entry{};                   ///< RevRegFile: Instruction entry
   uint32_t cost{};                    ///< RevRegFile: Cost of the instruction
+  RevTracer *Tracer = nullptr;                  ///< RegRegFile: Tracer object
 
   union{  // Anonymous union. We zero-initialize the largest member
     uint32_t RV32_PC;                   ///< RevRegFile: RV32 PC
@@ -161,6 +173,9 @@ public:
     LSQueue = std::move(lsq);
   }
 
+  /// Set the current tracer
+  void SetTracer(RevTracer *t) { Tracer = t; }
+
   /// Insert an item in the Load/Store Queue
   void LSQueueInsert(std::pair<uint64_t, MemReq> item){
     LSQueue->insert(std::move(item));
@@ -179,6 +194,11 @@ public:
   /// Invoke the MarkLoadComplete function
   void MarkLoadComplete(const MemReq& req) const {
     MarkLoadCompleteFunc(req);
+  }
+
+  /// Return the Floating-Point Rounding Mode
+  FRMode GetFPRound() const{
+    return static_cast<FRMode>(fcsr.frm);
   }
 
   /// Capture the PC of current instruction which raised exception
@@ -214,20 +234,29 @@ public:
   /// GetX: Get the specifed X register cast to a specific integral type
   template<typename T, typename U>
   T GetX(U rs) const {
+    T res;
     if( IsRV32 ){
-      return RevReg(rs) != RevReg::zero ? T(RV32[size_t(rs)]) : 0;
+      res = RevReg(rs) != RevReg::zero ? T(RV32[size_t(rs)]) : 0;
+      TRACE_REG_READ(size_t(rs), uint32_t(res));
     }else{
-      return RevReg(rs) != RevReg::zero ? T(RV64[size_t(rs)]) : 0;
+      res = RevReg(rs) != RevReg::zero ? T(RV64[size_t(rs)]) : 0;
+      TRACE_REG_READ(size_t(rs),uint64_t(res));
     }
+    return res;
   }
 
   /// SetX: Set the specifed X register to a specific value
   template<typename T, typename U>
   void SetX(U rd, T val) {
+    T res;
     if( IsRV32 ){
-      RV32[size_t(rd)] = RevReg(rd) != RevReg::zero ? uint32_t(val) : 0;
+      res = RevReg(rd) != RevReg::zero ? uint32_t(val) : 0;
+      RV32[size_t(rd)] = res;
+      TRACE_REG_WRITE(size_t(rd), uint32_t(res));
     }else{
-      RV64[size_t(rd)] = RevReg(rd) != RevReg::zero ? uint64_t(val) : 0;
+      res = RevReg(rd) != RevReg::zero ? uint64_t(val) : 0;
+      RV64[size_t(rd)] = res;
+      TRACE_REG_WRITE(size_t(rd), uint64_t(res));
     }
   }
 
@@ -245,25 +274,30 @@ public:
   void SetPC(T val) {
     if( IsRV32 ){
       RV32_PC = static_cast<uint32_t>(val);
+      TRACE_PC_WRITE(RV32_PC);
     }else{
       RV64_PC = static_cast<uint64_t>(val);
+      TRACE_PC_WRITE(RV64_PC);
     }
   }
 
-  /// AdvancePC: Advance the program counter a certain number of bytes
-  template<typename T>
-  void AdvancePC(T bytes) {
+  /// AdvancePC: Advance the program counter to the next instruction
+  // Note: This does not create tracer events like SetPC() does
+  template<typename T> // Used to allow RevInst to be incomplete type right now
+  void AdvancePC(const T& Inst) {
     if ( IsRV32 ) {
-      RV32_PC += bytes;
+      RV32_PC += Inst.instSize;
     }else{
-      RV64_PC += bytes;
+      RV64_PC += Inst.instSize;
     }
   }
 
-  /// GetFP32: Get the 32-bit float value of a specific FP register
-  template<typename U>
-  float GetFP32(U rs) const {
-    if( HasD ){
+  /// GetFP: Get the specified FP register cast to a specific FP type
+  template<typename T, typename U>
+  T GetFP(U rs) const {
+    if constexpr(std::is_same_v<T, double>){
+      return DPF[size_t(rs)];                // The FP64 register's value
+    }else if( HasD ){
       uint64_t i64;
       memcpy(&i64, &DPF[size_t(rs)], sizeof(i64));   // The FP64 register's value
       if (~i64 >> 32)                        // Check for boxed NaN
@@ -272,21 +306,23 @@ public:
       float fp32;
       memcpy(&fp32, &i32, sizeof(fp32));     // The bottom half of FP64
       return fp32;                           // Reinterpreted as FP32
-    } else {
+    }else{
       return SPF[size_t(rs)];                // The FP32 register's value
     }
   }
 
-  /// SetFP32: Set a specific FP register to a 32-bit float value
-  template<typename U>
-  void SetFP32(U rd, float value)
-    {
-      if( HasD ){
-        BoxNaN(&DPF[size_t(rd)], &value);    // Store NaN-boxed in FP64 register
-      } else {
-        SPF[size_t(rd)] = value;             // Store in FP32 register
-      }
+  /// SetFP: Set a specific FP register to a floating-point value
+  template<typename T, typename U>
+  void SetFP(U rd, T value)
+  {
+    if constexpr(std::is_same_v<T, double>){
+      DPF[size_t(rd)] = value;               // Store in FP64 register
+    }else if( HasD ){
+      BoxNaN(&DPF[size_t(rd)], &value);      // Store NaN-boxed float in FP64 register
+    }else {
+      SPF[size_t(rd)] = value;               // Store in FP32 register
     }
+  }
 
   // Friend functions and classes to access internal register state
   template<typename FP, typename INT>
@@ -315,9 +351,6 @@ public:
   friend class RevProc;
   friend class RV32A;
   friend class RV64A;
-  friend class RV32D;
-  friend class RV64D;
-
 }; // class RevRegFile
 
 } // namespace SST::RevCPU
