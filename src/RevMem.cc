@@ -596,66 +596,71 @@ bool RevMem::WriteMem( unsigned Hart, uint64_t Addr, size_t Len, const void *Dat
   std::cout << "Writing " << Len << " Bytes Starting at 0x" << std::hex << Addr << std::dec << std::endl;
 #endif
 
-  if(Addr == 0xDEADBEEF){
-    std::cout << "Found special write. Val = " << std::hex << *(int*)(Data) << std::dec << std::endl;
-  }
-  RevokeFuture(Addr); // revoke the future if it is present; ignore the return
-  uint64_t pageNum = Addr >> addrShift;
-  uint64_t physAddr = CalcPhysAddr(pageNum, Addr);
+  if( IsAddrInScratchpad(Addr)){
+    scratchpad->WriteMem(Hart, Addr, Len, Data); //, flags);
+  } else {
 
-  //check to see if we're about to walk off the page....
-  uint32_t adjPageNum = 0;
-  uint64_t adjPhysAddr = 0;
-  uint64_t endOfPage = (pageMap[pageNum].first << addrShift) + pageSize;
-  char *BaseMem = &physMem[physAddr];
-  char *DataMem = (char *)(Data);
-  if((physAddr + Len) > endOfPage){
-    uint32_t span = (physAddr + Len) - endOfPage;
-    adjPageNum = ((Addr+Len)-span) >> addrShift;
-    adjPhysAddr = CalcPhysAddr(adjPageNum, ((Addr+Len)-span));
+    if(Addr == 0xDEADBEEF){
+      std::cout << "Found special write. Val = " << std::hex << *(int*)(Data) << std::dec << std::endl;
+    }
+    RevokeFuture(Addr); // revoke the future if it is present; ignore the return
+    uint64_t pageNum = Addr >> addrShift;
+    uint64_t physAddr = CalcPhysAddr(pageNum, Addr);
+
+    //check to see if we're about to walk off the page....
+    uint32_t adjPageNum = 0;
+    uint64_t adjPhysAddr = 0;
+    uint64_t endOfPage = (pageMap[pageNum].first << addrShift) + pageSize;
+    char *BaseMem = &physMem[physAddr];
+    char *DataMem = (char *)(Data);
+    if((physAddr + Len) > endOfPage){
+      uint32_t span = (physAddr + Len) - endOfPage;
+      adjPageNum = ((Addr+Len)-span) >> addrShift;
+      adjPhysAddr = CalcPhysAddr(adjPageNum, ((Addr+Len)-span));
 #ifdef _REV_DEBUG_
-    std::cout << "Warning: Writing off end of page... " << std::endl;
+      std::cout << "Warning: Writing off end of page... " << std::endl;
 #endif
-    if( ctrl ){
-      ctrl->sendWRITERequest(Hart, Addr,
-                             (uint64_t)(BaseMem),
-                             Len,
-                             DataMem,
-                             flags);
-    }else{
-      for( unsigned i=0; i< (Len-span); i++ ){
-        BaseMem[i] = DataMem[i];
+      if( ctrl ){
+        ctrl->sendWRITERequest(Hart, Addr,
+                              (uint64_t)(BaseMem),
+                              Len,
+                              DataMem,
+                              flags);
+      }else{
+        for( unsigned i=0; i< (Len-span); i++ ){
+          BaseMem[i] = DataMem[i];
+        }
       }
-    }
-    BaseMem = &physMem[adjPhysAddr];
-    if( ctrl ){
-      // write the memory using RevMemCtrl
-      unsigned Cur = (Len-span);
-      ctrl->sendWRITERequest(Hart, Addr,
-                             (uint64_t)(BaseMem),
-                             Len,
-                             &(DataMem[Cur]),
-                             flags);
-    }else{
-      // write the memory using the internal RevMem model
-      unsigned Cur = (Len-span);
-      for( unsigned i=0; i< span; i++ ){
-        BaseMem[i] = DataMem[Cur];
-        Cur++;
+      BaseMem = &physMem[adjPhysAddr];
+      if( ctrl ){
+        // write the memory using RevMemCtrl
+        unsigned Cur = (Len-span);
+        ctrl->sendWRITERequest(Hart, Addr,
+                              (uint64_t)(BaseMem),
+                              Len,
+                              &(DataMem[Cur]),
+                              flags);
+      }else{
+        // write the memory using the internal RevMem model
+        unsigned Cur = (Len-span);
+        for( unsigned i=0; i< span; i++ ){
+          BaseMem[i] = DataMem[Cur];
+          Cur++;
+        }
       }
-    }
-  }else{
-    if( ctrl ){
-      // write the memory using RevMemCtrl
-      ctrl->sendWRITERequest(Hart, Addr,
-                             (uint64_t)(BaseMem),
-                             Len,
-                             DataMem,
-                             flags);
     }else{
-      // write the memory using the internal RevMem model
-      for( unsigned i=0; i<Len; i++ ){
-        BaseMem[i] = DataMem[i];
+      if( ctrl ){
+        // write the memory using RevMemCtrl
+        ctrl->sendWRITERequest(Hart, Addr,
+                              (uint64_t)(BaseMem),
+                              Len,
+                              DataMem,
+                              flags);
+      }else{
+        // write the memory using the internal RevMem model
+        for( unsigned i=0; i<Len; i++ ){
+          BaseMem[i] = DataMem[i];
+        }
       }
     }
   }
@@ -669,88 +674,93 @@ bool RevMem::WriteMem( unsigned Hart, uint64_t Addr, size_t Len, const void *Dat
   std::cout << "Writing " << Len << " Bytes Starting at 0x" << std::hex << Addr << std::dec << std::endl;
 #endif
 
+
   TRACE_MEM_WRITE(Addr, Len, Data);
+  
+  if( IsAddrInScratchpad(Addr)){
+    scratchpad->WriteMem(Hart, Addr, Len, Data);// , 0);
+  } else {
+    if(Addr == 0xDEADBEEF){
+      std::cout << "Found special write. Val = " << std::hex << *(int*)(Data) << std::dec << std::endl;
+    }
+    RevokeFuture(Addr); // revoke the future if it is present; ignore the return
+    uint64_t pageNum = Addr >> addrShift;
+    uint64_t physAddr = CalcPhysAddr(pageNum, Addr);
 
-  if(Addr == 0xDEADBEEF){
-    std::cout << "Found special write. Val = " << std::hex << *(int*)(Data) << std::dec << std::endl;
-  }
-  RevokeFuture(Addr); // revoke the future if it is present; ignore the return
-  uint64_t pageNum = Addr >> addrShift;
-  uint64_t physAddr = CalcPhysAddr(pageNum, Addr);
-
-  //check to see if we're about to walk off the page....
-  uint32_t adjPageNum = 0;
-  uint64_t adjPhysAddr = 0;
-  uint64_t endOfPage = (pageMap[pageNum].first << addrShift) + pageSize;
-  char *BaseMem = &physMem[physAddr];
-  char *DataMem = (char *)(Data);
-  if((physAddr + Len) > endOfPage){
-    uint32_t span = (physAddr + Len) - endOfPage;
-    adjPageNum = ((Addr+Len)-span) >> addrShift;
-    adjPhysAddr = CalcPhysAddr(adjPageNum, ((Addr+Len)-span));
+    //check to see if we're about to walk off the page....
+    uint32_t adjPageNum = 0;
+    uint64_t adjPhysAddr = 0;
+    uint64_t endOfPage = (pageMap[pageNum].first << addrShift) + pageSize;
+    char *BaseMem = &physMem[physAddr];
+    char *DataMem = (char *)(Data);
+    if((physAddr + Len) > endOfPage){
+      uint32_t span = (physAddr + Len) - endOfPage;
+      adjPageNum = ((Addr+Len)-span) >> addrShift;
+      adjPhysAddr = CalcPhysAddr(adjPageNum, ((Addr+Len)-span));
 
 #ifdef _REV_DEBUG_
-    std::cout << "ENDOFPAGE = " << std::hex << endOfPage << std::dec << std::endl;
-    for( unsigned i=0; i<(Len-span); i++ ){
-      std::cout << "WRITE TO: " << std::hex << (uint64_t)(&BaseMem[i]) << std::dec
-                << "; FROM LOGICAL PHYS=" << std::hex << physAddr + i << std::dec
-                << "; DATA=" << std::hex << (uint8_t)(BaseMem[i]) << std::dec
-                << "; VIRTUAL ADDR=" << std::hex << Addr+i << std::dec << std::endl;
-    }
-
-    std::cout << "TOTAL WRITE = " << Len << " Bytes" << std::endl;
-    std::cout << "PHYS Writing " << Len-span << " Bytes Starting at 0x" << std::hex << physAddr << std::dec
-              << "; translates to: " << std::hex << (uint64_t)(BaseMem) << std::dec << std::endl;
-    std::cout << "ADJ PHYS Writing " << span << " Bytes Starting at 0x" << std::hex << adjPhysAddr << std::dec
-              << "; translates to: " << std::hex << (uint64_t)(&physMem[adjPhysAddr]) << std::dec << std::endl;
-    std::cout << "Warning: Writing off end of page... " << std::endl;
-#endif
-    if( ctrl ){
-      ctrl->sendWRITERequest(Hart, Addr,
-                             (uint64_t)(BaseMem),
-                             Len,
-                             DataMem,
-                             0x00);
-    }else{
-      for( unsigned i=0; i< (Len-span); i++ ){
-        BaseMem[i] = DataMem[i];
-      }
-    }
-    BaseMem = &physMem[adjPhysAddr];
-    if( ctrl ){
-      // write the memory using RevMemCtrl
-      unsigned Cur = (Len-span);
-      ctrl->sendWRITERequest(Hart, Addr,
-                             (uint64_t)(BaseMem),
-                             Len,
-                             &(DataMem[Cur]),
-                             0x00);
-    }else{
-      // write the memory using the internal RevMem model
-      unsigned Cur = (Len-span);
-      for( unsigned i=0; i< span; i++ ){
-        BaseMem[i] = DataMem[Cur];
-#ifdef _REV_DEBUG_
-        std::cout << "ADJ WRITE TO: " << std::hex << (uint64_t)(&BaseMem[i]) << std::dec
-                  << "; FROM LOGICAL PHYS=" << std::hex << adjPhysAddr + i << std::dec
+      std::cout << "ENDOFPAGE = " << std::hex << endOfPage << std::dec << std::endl;
+      for( unsigned i=0; i<(Len-span); i++ ){
+        std::cout << "WRITE TO: " << std::hex << (uint64_t)(&BaseMem[i]) << std::dec
+                  << "; FROM LOGICAL PHYS=" << std::hex << physAddr + i << std::dec
                   << "; DATA=" << std::hex << (uint8_t)(BaseMem[i]) << std::dec
-                  << "; VIRTUAL ADDR=" << std::hex << Addr+Cur << std::dec << std::endl;
-#endif
-        Cur++;
+                  << "; VIRTUAL ADDR=" << std::hex << Addr+i << std::dec << std::endl;
       }
-    }
-  }else{
-    if( ctrl ){
-      // write the memory using RevMemCtrl
-      ctrl->sendWRITERequest(Hart, Addr,
-                             (uint64_t)(BaseMem),
-                             Len,
-                             DataMem,
-                             0x00);
+
+      std::cout << "TOTAL WRITE = " << Len << " Bytes" << std::endl;
+      std::cout << "PHYS Writing " << Len-span << " Bytes Starting at 0x" << std::hex << physAddr << std::dec
+                << "; translates to: " << std::hex << (uint64_t)(BaseMem) << std::dec << std::endl;
+      std::cout << "ADJ PHYS Writing " << span << " Bytes Starting at 0x" << std::hex << adjPhysAddr << std::dec
+                << "; translates to: " << std::hex << (uint64_t)(&physMem[adjPhysAddr]) << std::dec << std::endl;
+      std::cout << "Warning: Writing off end of page... " << std::endl;
+#endif
+      if( ctrl ){
+        ctrl->sendWRITERequest(Hart, Addr,
+                              (uint64_t)(BaseMem),
+                              Len,
+                              DataMem,
+                              0x00);
+      }else{
+        for( unsigned i=0; i< (Len-span); i++ ){
+          BaseMem[i] = DataMem[i];
+        }
+      }
+      BaseMem = &physMem[adjPhysAddr];
+      if( ctrl ){
+        // write the memory using RevMemCtrl
+        unsigned Cur = (Len-span);
+        ctrl->sendWRITERequest(Hart, Addr,
+                              (uint64_t)(BaseMem),
+                              Len,
+                              &(DataMem[Cur]),
+                              0x00);
+      }else{
+        // write the memory using the internal RevMem model
+        unsigned Cur = (Len-span);
+        for( unsigned i=0; i< span; i++ ){
+          BaseMem[i] = DataMem[Cur];
+#ifdef _REV_DEBUG_
+          std::cout << "ADJ WRITE TO: " << std::hex << (uint64_t)(&BaseMem[i]) << std::dec
+                    << "; FROM LOGICAL PHYS=" << std::hex << adjPhysAddr + i << std::dec
+                    << "; DATA=" << std::hex << (uint8_t)(BaseMem[i]) << std::dec
+                    << "; VIRTUAL ADDR=" << std::hex << Addr+Cur << std::dec << std::endl;
+#endif
+          Cur++;
+        }
+      }
     }else{
-      // write the memory using the internal RevMem model
-      for( unsigned i=0; i<Len; i++ ){
-        BaseMem[i] = DataMem[i];
+      if( ctrl ){
+        // write the memory using RevMemCtrl
+        ctrl->sendWRITERequest(Hart, Addr,
+                              (uint64_t)(BaseMem),
+                              Len,
+                              DataMem,
+                              0x00);
+      }else{
+        // write the memory using the internal RevMem model
+        for( unsigned i=0; i<Len; i++ ){
+          BaseMem[i] = DataMem[i];
+        }
       }
     }
   }
@@ -801,59 +811,64 @@ bool RevMem::ReadMem(unsigned Hart, uint64_t Addr, size_t Len, void *Target,
 #ifdef _REV_DEBUG_
   std::cout << "NEW READMEM: Reading " << Len << " Bytes Starting at 0x" << std::hex << Addr << std::dec << std::endl;
 #endif
-  uint64_t pageNum = Addr >> addrShift;
-  uint64_t physAddr = CalcPhysAddr(pageNum, Addr);
-  //check to see if we're about to walk off the page....
-  uint32_t adjPageNum = 0;
-  uint64_t adjPhysAddr = 0;
-  uint64_t endOfPage = (pageMap[pageNum].first << addrShift) + pageSize;
-  char *BaseMem = &physMem[physAddr];
-  char *DataMem = static_cast<char *>(Target);
 
-  if((physAddr + Len) > endOfPage){
-    uint32_t span = (physAddr + Len) - endOfPage;
-    adjPageNum = ((Addr+Len)-span) >> addrShift;
-    adjPhysAddr = CalcPhysAddr(adjPageNum, ((Addr+Len)-span));
-    if( ctrl ){
-      ctrl->sendREADRequest(Hart, Addr, (uint64_t)(BaseMem), Len, Target, req, flags);
-    }else{
-      for( unsigned i=0; i< (Len-span); i++ ){
-        DataMem[i] = BaseMem[i];
+  // FORZA: Check if scratchpad read
+  if( IsAddrInScratchpad(Addr) ){
+    scratchpad->ReadMem(Hart, Addr, Len, Target, req );//flags);
+  } else {
+    uint64_t pageNum = Addr >> addrShift;
+    uint64_t physAddr = CalcPhysAddr(pageNum, Addr);
+    //check to see if we're about to walk off the page....
+    uint32_t adjPageNum = 0;
+    uint64_t adjPhysAddr = 0;
+    uint64_t endOfPage = (pageMap[pageNum].first << addrShift) + pageSize;
+    char *BaseMem = &physMem[physAddr];
+    char *DataMem = static_cast<char *>(Target);
+
+    if((physAddr + Len) > endOfPage){
+      uint32_t span = (physAddr + Len) - endOfPage;
+      adjPageNum = ((Addr+Len)-span) >> addrShift;
+      adjPhysAddr = CalcPhysAddr(adjPageNum, ((Addr+Len)-span));
+      if( ctrl ){
+        ctrl->sendREADRequest(Hart, Addr, (uint64_t)(BaseMem), Len, Target, req, flags);
+      }else{
+        for( unsigned i=0; i< (Len-span); i++ ){
+          DataMem[i] = BaseMem[i];
+        }
       }
-    }
-    BaseMem = &physMem[adjPhysAddr];
-    if( ctrl ){
-      unsigned Cur = (Len-span);
-      ctrl->sendREADRequest(Hart, Addr, (uint64_t)(BaseMem), Len, ((char*)Target)+Cur, req, flags);
-    }else{
-      unsigned Cur = (Len-span);
-      for( unsigned i=0; i< span; i++ ){
-        DataMem[Cur] = BaseMem[i];
-        Cur++;
+      BaseMem = &physMem[adjPhysAddr];
+      if( ctrl ){
+        unsigned Cur = (Len-span);
+        ctrl->sendREADRequest(Hart, Addr, (uint64_t)(BaseMem), Len, ((char*)Target)+Cur, req, flags);
+      }else{
+        unsigned Cur = (Len-span);
+        for( unsigned i=0; i< span; i++ ){
+          DataMem[Cur] = BaseMem[i];
+          Cur++;
+        }
+        // clear the hazard - if this was an AMO operation then we will clear outside of this function in AMOMem()
+        if(MemOp::MemOpAMO != req.ReqType){
+          req.MarkLoadComplete(req);
+        }
       }
-      // clear the hazard - if this was an AMO operation then we will clear outside of this function in AMOMem()
-      if(MemOp::MemOpAMO != req.ReqType){
-        req.MarkLoadComplete(req);
-      }
-    }
 #ifdef _REV_DEBUG_
-    std::cout << "Warning: Reading off end of page... " << std::endl;
+      std::cout << "Warning: Reading off end of page... " << std::endl;
 #endif
-  }else{
-    if( ctrl ){
-      ctrl->sendREADRequest(Hart, Addr, (uint64_t)(BaseMem), Len, Target, req, flags);
     }else{
-      for( unsigned i=0; i<Len; i++ ){
-        DataMem[i] = BaseMem[i];
-      }
-      // clear the hazard- if this was an AMO operation then we will clear outside of this function in AMOMem()
-      if(MemOp::MemOpAMO != req.ReqType){
-        req.MarkLoadComplete(req);
+      if( ctrl ){
+        ctrl->sendREADRequest(Hart, Addr, (uint64_t)(BaseMem), Len, Target, req, flags);
+      }else{
+        for( unsigned i=0; i<Len; i++ ){
+          DataMem[i] = BaseMem[i];
+        }
+        // clear the hazard- if this was an AMO operation then we will clear outside of this function in AMOMem()
+        if(MemOp::MemOpAMO != req.ReqType){
+          req.MarkLoadComplete(req);
+        }
       }
       TRACE_MEM_READ(Addr, Len, DataMem);
     }
   }
-
   memStats.bytesRead += Len;
   return true;
 }
@@ -1002,5 +1017,51 @@ uint64_t RevMem::ExpandHeap(uint64_t Size){
 
   return heapend;
 }
+
+void RevMem::InitScratchpad(const unsigned ZapNum, size_t ScratchpadSize, size_t ChunkSize){
+  // Allocate the scratchpad memory
+  scratchpad = std::make_shared<RevScratchpad>(ZapNum, _SCRATCHPAD_SIZE_, _CHUNK_SIZE_, output);
+  if( !scratchpad ){
+    output->fatal(CALL_INFO, -1, "Error: could not allocate backing memory\n");
+  }
+}
+
+// FORZA: Checks if its a scratchpad addr
+bool RevMem::IsAddrInScratchpad(const uint64_t& Addr){
+  //// Mask with bits 56 and 57 set to 1
+  uint64_t Mask = (1ULL << 56) | (1ULL << 57);
+  return (Addr & Mask) == Mask;
+  //return scratchpad->Contains(Addr);
+}
+
+uint64_t RevMem::ScratchpadAlloc(size_t numBytes){
+  uint64_t Addr = scratchpad->Alloc(numBytes);
+
+  // Sanity check: Make sure that if the allocation succeeded (Addr != _INVALID_ADDR_) its in the scratchpad
+  if( Addr != _INVALID_ADDR_ && !scratchpad->Contains(Addr) ){
+    output->fatal(CALL_INFO, 11, "Error: Scratchpad allocated address 0x%" PRIx64 " is not in the scratchpad. The scratchpad"
+                               " is defined as addresses 0x%" PRIx64 " to 0x%" PRIx64 ".\n",
+                              Addr, scratchpad->GetBaseAddr(), scratchpad->GetTopAddr());
+
+  }
+
+  if( Addr == _INVALID_ADDR_ ){
+    output->verbose(CALL_INFO, 4, 11, "Error: Scratchpad allocation failed. Requested %zu bytes.\n", numBytes);
+  } else {
+    output->verbose(CALL_INFO, 4, 99, "Allocated 0x%zu bytes in the scratchpad at address 0x%" PRIx64 "\n", numBytes, Addr);
+  }
+  return Addr;
+}
+
+void RevMem::ScratchpadFree(uint64_t Addr, size_t size){
+  if( !IsAddrInScratchpad(Addr) ){
+    output->fatal(CALL_INFO, -1, "Error: Request to perform a free in the scratchpad at address 0x%" PRIx64
+                                 ", however, this address is not in the scratchpad.", Addr);
+
+  }
+  scratchpad->Free(Addr, size);
+  return;
+}
+
 
 // EOF

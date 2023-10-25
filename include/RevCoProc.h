@@ -179,6 +179,106 @@ private:
 
 }; //class RevSimpleCoProc
 
+// ----------------------------------------
+// RZALSCoProc
+// ----------------------------------------
+class RZALSCoProc: public RevCoProc{
+public:
+  // Subcomponent info
+  SST_ELI_REGISTER_SUBCOMPONENT(RZALSCoProc, "revcpu",
+                                "RZALSCoProc",
+                                SST_ELI_ELEMENT_VERSION(1,0,0),
+                                "FORZA RZA Load/Store CoProc",
+                                SST::RevCPU::RevCoProc)
+  // Register the paramaters
+  SST_ELI_DOCUMENT_PARAMS( {"verbose",    "Sets the verbosity",       "0" },
+                           {"clock",      "Sets the clock frequency", "1Ghz"},
+                         )
+
+  // Register subcomponent slots
+  SST_ELI_DOCUMENT_SUBCOMPONENT_SLOTS()
+
+  // Register any ports
+  SST_ELI_DOCUMENT_PORTS()
+
+  // Register statistics
+  SST_ELI_DOCUMENT_STATISTICS()
+
+
+  /// RZALSCoProc: default constructor
+  RZALSCoProc(ComponentId_t id, Params& params, RevProc* parent);
+
+  /// RZALSCoProc: default destructor
+  virtual ~RZALSCoProc();
+
+  /// RZALSCoProc: clock tick function
+  virtual bool ClockTick(SST::Cycle_t cycle);
+
+  /// RZALSCoProc: Enqueue a new instruction
+  virtual bool IssueInst(RevFeature *F, RevRegFile *R, RevMem *M, uint32_t Inst);
+
+  /// RZALSCoProc: reset the coproc
+  virtual bool Reset();
+
+  /// RZALSCoProc: teardown function when the attached Proc is complete
+  virtual bool Teardown() { return Reset(); }
+
+  /// RZALSCoProc: determines whether the coproc is complete
+  virtual bool IsDone();
+
+private:
+};  // RZALSCoProc
+
+// ----------------------------------------
+// RZAAMOCoProc
+// ----------------------------------------
+class RZAAMOCoProc: public RevCoProc{
+public:
+  // Subcomponent info
+  SST_ELI_REGISTER_SUBCOMPONENT(RZAAMOCoProc, "revcpu",
+                                "RZAAMOCoProc",
+                                SST_ELI_ELEMENT_VERSION(1,0,0),
+                                "FORZA RZA Load/Store CoProc",
+                                SST::RevCPU::RevCoProc)
+  // Register the paramaters
+  SST_ELI_DOCUMENT_PARAMS( {"verbose",    "Sets the verbosity",       "0" },
+                           {"clock",      "Sets the clock frequency", "1Ghz"},
+                         )
+
+  // Register subcomponent slots
+  SST_ELI_DOCUMENT_SUBCOMPONENT_SLOTS()
+
+  // Register any ports
+  SST_ELI_DOCUMENT_PORTS()
+
+  // Register statistics
+  SST_ELI_DOCUMENT_STATISTICS()
+
+
+  /// RZAAMOCoProc: default constructor
+  RZAAMOCoProc(ComponentId_t id, Params& params, RevProc* parent);
+
+  /// RZAAMOCoProc: default destructor
+  virtual ~RZAAMOCoProc();
+
+  /// RZAAMOCoProc: clock tick function
+  virtual bool ClockTick(SST::Cycle_t cycle);
+
+  /// RZAAMOCoProc: Enqueue a new instruction
+  virtual bool IssueInst(RevFeature *F, RevRegFile *R, RevMem *M, uint32_t Inst);
+
+  /// RZAAMOCoProc: reset the coproc
+  virtual bool Reset();
+
+  /// RZAAMOCoProc: teardown function when the attached Proc is complete
+  virtual bool Teardown() { return Reset(); }
+
+  /// RZAAMOCoProc: determines whether the coproc is complete
+  virtual bool IsDone();
+
+private:
+};  // RZAAMOCoProc
+
 } //namespace SST::RevCPU
 
 #endif

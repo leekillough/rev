@@ -370,9 +370,17 @@ set_tests_properties(COPROC_EX
     LABELS "all;rv64"
 )
 
+# -- FORZA TESTS
+add_test(NAME NOC_DISCOVERY COMMAND run_noc_discovery.sh WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/FORZA/noc_discovery" )
+set_tests_properties(NOC_DISCOVERY
+  PROPERTIES
+    ENVIRONMENT "RVCC=${RVCC}"
+    TIMEOUT 30
+    PASS_REGULAR_EXPRESSION "${passRegex}"
+    LABELS "all;rv64;forza-required"
+)
 
 
-# -- PROCESS CTest Config Variables
 # -- PROCESS CTest Config Variables
 if(NOT CTEST_BLAS_REQUIRED_TESTS)
   set_tests_properties (TEST_DOT_SINGLE PROPERTIES DISABLED True)
@@ -392,6 +400,13 @@ if(NOT CTEST_MULTILIB_TESTS)
   message(VERBOSE "TEST_EX1  - Disabled")
   message(VERBOSE "TEST_EX3  - Disabled")
   message(VERBOSE "TEST_EX4  - Disabled")
+endif()
+
+if(NOT CTEST_FORZA_TESTS)
+  set_tests_properties (NOC_DISCOVERY PROPERTIES DISABLED True)
+  message(NOTICE "   * Tests requiring FORZA are disabled (ie. -DCTEST_FORZA_REQUIRED_TESTS=OFF)
+    - If you'd like to still run these tests run: `ctest -L forza_required`")
+  message(VERBOSE "NOC_DISCOVERY - Disabled")
 endif()
 
 add_subdirectory(isa)
