@@ -150,15 +150,74 @@ public:
     Packet.clear();
   }
 
+  /// zopEvent: set the packet type
+  void setType(zopMsgT T){
+    Type = T;
+    Packet[0] |= (uint32_t)((uint32_t)(T) << 28);
+  }
+
+  /// zopEvent: set the NB flag
+  void setNB(uint8_t N){
+    NB = N;
+    Packet[0] |= ((uint32_t) N << 27);
+  }
+
+  /// zopEvent: set the packet ID
+  void setID(uint8_t I){
+    ID = I;
+    Packet[0] |= (((uint32_t)(I) & 0x1F) << 14);
+  }
+
+  /// zopEvent: set the credit
+  void setCredit(uint8_t C){
+    Credit = C;
+    Packet[0] |= (((uint32_t)(C) & 0x1F) << 9);
+  }
+
+  /// zopEvent: set the opcode
+  void setOpc(zopOpc O){
+    Opc = O;
+    Packet[0] |= ((uint32_t)(O) & 0xFF);
+  }
+
   /// zopEvent: set the source ID
   void setSrc(uint32_t srcID){
-    Packet[2] = srcID;
+    Packet[2] = (srcID & 0x3FFFFFFF);
+    Src = (srcID & 0x3FFFFFFF);
   }
 
   /// zopEvent: set the destination ID
   void setDest(uint32_t destID){
-    Packet[1] = destID;
+    Packet[1] = (destID & 0x3FFFFFFF);
+    Dest = (destID & 0x3FFFFFFF);
   }
+
+  /// zopEvent: get the packet type
+  zopMsgT getType() { return Type; }
+
+  /// zopEvent: get the NB flag
+  uint8_t getNB() { return NB; }
+
+  /// zopEvent: get the packet length
+  uint8_t getLength() { return Length; }
+
+  /// zopEvent: get the packet ID
+  uint8_t getID() { return ID; }
+
+  /// zopEvent: get the credit
+  uint8_t getCredit() { return Credit; }
+
+  /// zopEvent: get the opcode
+  zopOpc getOpcode() { return Opc; }
+
+  /// zopEvent: get the dest
+  uint32_t getDest() { return Dest; }
+
+  /// zopEvent: get the source
+  uint32_t getSrc() { return Src; }
+
+  /// zopEvent: get the application id
+  uint32_t getAppID() { return AppID; }
 
   /// zopEvent: decode this event and set the appropriate internal structures
   void decodeEvent(){
@@ -167,7 +226,7 @@ public:
     auto Pkt2 = Packet[2];
     auto Pkt3 = Packet[3];
 
-    Opc     = (uint8_t)(Pkt0 & 0xFF);
+    Opc     = (zopOpc)(Pkt0 & 0xFF);
     Credit  = (uint8_t)((Pkt0 >> 9)  & 0x1F);
     ID      = (uint8_t)((Pkt0 >> 14) & 0x1F);
     Length  = (uint8_t)((Pkt0 >> 19) & 0xFF);
@@ -176,6 +235,10 @@ public:
     Dest    = (Pkt1 & 0x3FFFFFFF);
     Src     = (Pkt2 & 0x3FFFFFFF);
     AppID   = Pkt3;
+  }
+
+  /// zopEvent: encode this event and set the appropriate internal packet structures
+  void encodeEvent(){
   }
 
 private:
@@ -187,7 +250,7 @@ private:
   uint8_t Length;               ///< zopEvent: packet length (in flits)
   uint8_t ID;                   ///< zopEvent: message ID
   uint8_t Credit;               ///< zopEvent: credit piggyback
-  uint8_t Opc;                  ///< zopEvent: opcode
+  zopOpc Opc;                   ///< zopEvent: opcode
   uint32_t Dest;                ///< zopEvent: destination
   uint32_t Src;                 ///< zopEvent: source
   uint32_t AppID;               ///< zopEvent: application source
