@@ -73,7 +73,7 @@ void ZEN::handleIncomingZOP(SST::Event *event) {
   }
   if (ev->getType() == SST::Forza::zopMsgT::Z_MSG && ev->getOpcode() == SST::Forza::zopOpc::Z_SEND) {
     // read harts/zone
-    zen_queue[ev->getSrc()].push_back(new ZENEntry(ev, 0));
+    zen_queue[ev->getDest()].push_back(new ZENEntry(ev, 0));
   } else if (ev->getType() == SST::Forza::zopMsgT::Z_RESP) {
     mem_acks.push_back(ev); // TODO: Add getMsgId() to ZOPNet
   } else if (ev->getType() == SST::Forza::zopMsgT::Z_MSG && ev->getOpcode() == SST::Forza::zopOpc::Z_ZENSETUP) {
@@ -120,9 +120,9 @@ void ZEN::notifyHARTScratchpad() {
         // TODO: issue memory request to scratchpad by looking up dest and addr
         uint64_t cur_tail = hart_tables[hart]->scratch_cur_tail;
         if (hart_tables[hart]->scratch_tail > hart_tables[hart]->scratch_cur_tail) {
-          hart_tables[hart]->scratch_cur_tail += 10; // TODO: Scratchpad size
+          hart_tables[hart]->scratch_cur_tail += zen_queue[hart][i]->msg->getLength(); // TODO: Scratchpad size, use payload size
         }
-        sendMsgToScratchpad(zen_queue[hart][i]->msg->getPacket()[1], cur_tail);
+        sendMsgToScratchpad(zen_queue[hart][i]->msg->getDest(), cur_tail);
         zen_queue[hart][i]->status = 3;
       }
     }
@@ -206,7 +206,7 @@ void ZEN::processEgressQueue() {
         output.verbose(CALL_INFO, 1, 0, "progress status %lu\n", zen_queue[harts][i]->status);
         // issue memory request
         // TODO: lookup table to find addr
-        uint64_t rza_addr = getRZATailQueue(harts, (uint64_t)zen_queue[harts][i]->msg->getPacket().size());
+        uint64_t rza_addr = getRZATailQueue(harts, (uint64_t)zen_queue[harts][i]->msg->getLength());
         if (rza_addr < 0) {
           sendNACKToZAP(harts);
           zen_queue[harts][i]->status = 5;
@@ -220,7 +220,7 @@ void ZEN::processEgressQueue() {
   }
 }
 
-void ZEN::processSetupMsgs() {
+void ZEN::processZAPCredits() {
   for (int i = 0; i < zap_credits.size(); ++i) {
     // TODO: Figure out HART id from this value
     // Top 3 bits are not used for dest
@@ -240,7 +240,7 @@ void ZEN::processSetupMsgs() {
     }), zap_credits.end());
 }
 
-void ZEN::processZAPCredits() {
+void ZEN::processSetupMsgs() {
   for (int i = 0; i < setup_reqs.size(); ++i) {
     uint64_t hart_id = setup_reqs[i]->getSrc();
     if (setup_reqs[i]->getPacket().size() < 8 || hart_tables.find(hart_id) == hart_tables.end()) {
