@@ -83,36 +83,6 @@ void ZEN::handleIncomingZOP(SST::Event *event) {
   }
 }
 
-/*
-bool ZEN::handleNetworkEvent(int vn) {
-  // Deprecated
-  if ( m_linkControl->requestToReceive(vn) ) {
-    SST::Interfaces::SimpleNetwork::Request* req = m_linkControl->recv(vn);
-    SST::ForzaElement::basicZOPEvent* ev = dynamic_cast<SST::ForzaElement::basicZOPEvent*>(req->takePayload());
-
-    if ( ev == NULL ) {
-      output.fatal(CALL_INFO, -1, "Error: Received event of wrong type!\n");
-    }
-    SST::ForzaElement::ZOPMsg recvZOP = ev->getPayload();
-    // Do something with recvZOP
-    // wrap in fn
-    if (recvZOP.Header < 5000) {
-      // read harts/zone
-      zen_queue.push_back(new ZENEntry(recvZOP, 0));
-    } else if (recvZOP.Header == 5000) {
-      mem_acks.push_back(recvZOP.msg_id);
-    } else {
-      // setup msg, setup tables
-    }
-    output.verbose(CALL_INFO, 1, 0, "Recv()\n");
-
-    delete ev;
-    delete req;
-    return false;
-  }
-  return false;
-}*/
-
 void ZEN::sendMsgToRZA(uint64_t addr) {
   // TODO: Find RZA address
   SST::Forza::zopEvent *rzaMsg = new SST::Forza::zopEvent(m_zop_iface->getAddress(), 1);
