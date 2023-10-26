@@ -16,6 +16,12 @@
 #include <queue>
 #include <map>
 #include <unistd.h>
+
+// -- SST Headers
+#include <vector>
+#include <queue>
+#include <map>
+#include <unistd.h>
 #include <sst/core/sst_config.h>
 #include <sst/core/component.h>
 #include <sst/core/event.h>
@@ -29,33 +35,32 @@
 #include <sst/core/model/element_python.h>
 #include <sst/core/rng/mersenne.h>
 
-namespace SST::Forza {
+namespace SST::Forza{
 
 // --------------------------------------------
 // Preprocessor defs
 // --------------------------------------------
 #define Z_MSG_TYPE  28
-#define Z_OPCODE_BITS 8
 
 // --------------------------------------------
-// zopMsgT
+// zopMsgT : ZOP Type
 // --------------------------------------------
 enum class zopMsgT : uint8_t {
   Z_MZOP  = 0b0000,   /// FORZA MZOP
-  Z_HZOP  = 0b0001,   /// FORZA HZOP
-  Z_RZOP  = 0b0010,   /// FORZA RZOP
-  Z_MSG   = 0b0011,   /// FORZA MESSAGING
-  Z_TMG   = 0b0100,   /// FORZA THREAD MIGRATION
-  Z_ACK   = 0b0101,   /// FORZA ACK
-  Z_NACK  = 0b0110,   /// FORZA NACK
+  Z_HZOPAC= 0b0001,   /// FORZA HZOP ATOMICS/CUSTOM
+  Z_HZOPV = 0b0010,   /// FORZA HZOP VECTOR
+  Z_RZOP  = 0b0011,   /// FORZA RZOP
+  Z_MSG   = 0b0100,   /// FORZA MESSAGING
+  Z_TMIG  = 0b0101,   /// FORZA THREAD MIGRATION
+  Z_TMGT  = 0b0110,   /// FORZA THREAD MANAGEMENT
   Z_SYSC  = 0b0111,   /// FORZA SYSCALL
-  Z_RZART = 0b1000,   /// RZA RESPONSE
+  Z_RESP  = 0b1000,   /// FORZA RESPONSE
   // -- 0b1000 - 0b1110 UNASSIGNED
   Z_EXCP  = 0b1111,   /// FORZA EXCEPTION
 };
 
 // --------------------------------------------
-// zopOpc
+// zopOpc : ZOP Opcode
 // --------------------------------------------
 enum class zopOpc : uint8_t {
   // -- MZOPs --
@@ -68,6 +73,7 @@ enum class zopOpc : uint8_t {
   Z_RZA_W     = 0b00000010,   /// FORZA WORD OPERATION
   Z_RZA_DW    = 0b00000011,   /// FORZA DOUBLEWORD OPERATION
   Z_SCR_STORE = 0b11100000,   /// FORZA SCRATCHPAD STORE
+
 
   // -- HZOPs --
   Z_AMOADD    = 0b00000000,   /// FORZA ATOMIC ADD
@@ -96,21 +102,12 @@ enum class zopOpc : uint8_t {
   Z_SEND      = 0b00000000,   /// FORZA MESSAGE SEND
   Z_CREDIT    = 0b00000001,   /// FORZA CREDIT REPLENISH
   Z_ZENSETUP  = 0b00000010,   /// FORZA ZEN SETUP
-  Z_ZEN_ACK   = 0b00000011,
-  Z_ZEN_NACK  = 0b00000100,
-
-
-  // -- RZA Responses --
-  Z_LOADRESP  = 0b00000000,   /// FORZA MESSAGE SEND
-  Z_LOADEXCP  = 0b00000001,   /// FORZA CREDIT REPLENISH
-  Z_STOREACK  = 0b00000010,   /// FORZA ZEN SETUP
-  Z_STORENACK = 0b00000011,   /// FORZA ZEN SETUP
-
-
+  Z_ZEN_ACK   = 0b00000011,   /// FORZA ZEN ACK
+  Z_ZEN_NACK  = 0b00000100,   /// FORZA ZEN NACK
 };
 
 // --------------------------------------------
-// zopEndP
+// zopEndP : ZOP Endpoint
 // --------------------------------------------
 enum class zopEndP : uint32_t {
   Z_ZAP = 1u << 0,    /// FORZA ZAP endpoint
@@ -159,12 +156,17 @@ public:
 
   /// zopEvent: set the packet payload.  NOTE: this is a destructive operation
   void setPacket(const std::vector<uint32_t> P){
-    clearPacket();
-    setPacketPayload(P);
+    Packet.clear();
+    for( auto i : P ){
+      Packet.push_back(i);
+    }
+    unsigned NumFlits = (Packet.size()-4)/2;
+    Packet[0] |= (NumFlits << 18);
   }
 
-  void setPacketPayload(const std::vector<uint32_t> P) {
-    for ( auto i : P ) {
+  /// zopEvent: set the packet payload.  NOTE: this is a destructive operation
+  void setPacketPayload(const std::vector<uint32_t> P){
+    for( auto i : P ){
       Packet.push_back(i);
     }
     unsigned NumFlits = (Packet.size()-4)/2;
@@ -176,18 +178,110 @@ public:
     Packet.clear();
   }
 
+  /// zopEvent: set the packet type
+  void setType(zopMsgT T){
+    Type = T;
+    Packet[0] |= (uint32_t)((uint32_t)(T) << 28);
+  }
+
+  /// zopEvent: set the NB flag
+  void setNB(uint8_t N){
+    NB = N;
+    Packet[0] |= ((uint32_t) N << 27);
+  }
+
+  /// zopEvent: set the packet ID
+  void setID(uint8_t I){
+    ID = I;
+    Packet[0] |= (((uint32_t)(I) & 0x1F) << 14);
+  }
+
+  /// zopEvent: set the credit
+  void setCredit(uint8_t C){
+    Credit = C;
+    Packet[0] |= (((uint32_t)(C) & 0x1F) << 9);
+  }
+
+  /// zopEvent: set the opcode
+  void setOpc(zopOpc O){
+    Opc = O;
+    Packet[0] |= ((uint32_t)(O) & 0xFF);
+  }
+
   /// zopEvent: set the source ID
   void setSrc(uint32_t srcID){
-    Packet[2] = srcID;
+    Packet[2] = (srcID & 0x3FFFFFFF);
+    Src = (srcID & 0x3FFFFFFF);
   }
 
   /// zopEvent: set the destination ID
   void setDest(uint32_t destID){
-    Packet[1] = destID;
+    Packet[1] = (destID & 0x3FFFFFFF);
+    Dest = (destID & 0x3FFFFFFF);
+  }
+
+  /// zopEvent: get the packet type
+  zopMsgT getType() { return Type; }
+
+  /// zopEvent: get the NB flag
+  uint8_t getNB() { return NB; }
+
+  /// zopEvent: get the packet length
+  uint8_t getLength() { return Length; }
+
+  /// zopEvent: get the packet ID
+  uint8_t getID() { return ID; }
+
+  /// zopEvent: get the credit
+  uint8_t getCredit() { return Credit; }
+
+  /// zopEvent: get the opcode
+  zopOpc getOpcode() { return Opc; }
+
+  /// zopEvent: get the dest
+  uint32_t getDest() { return Dest; }
+
+  /// zopEvent: get the source
+  uint32_t getSrc() { return Src; }
+
+  /// zopEvent: get the application id
+  uint32_t getAppID() { return AppID; }
+
+  /// zopEvent: decode this event and set the appropriate internal structures
+  void decodeEvent(){
+    auto Pkt0 = Packet[0];
+    auto Pkt1 = Packet[1];
+    auto Pkt2 = Packet[2];
+    auto Pkt3 = Packet[3];
+
+    Opc     = (zopOpc)(Pkt0 & 0xFF);
+    Credit  = (uint8_t)((Pkt0 >> 9)  & 0x1F);
+    ID      = (uint8_t)((Pkt0 >> 14) & 0x1F);
+    Length  = (uint8_t)((Pkt0 >> 19) & 0xFF);
+    NB      = (uint8_t)((Pkt0 >> 27) & 0b1);
+    Type    = (Forza::zopMsgT)(Pkt0 >> 28);
+    Dest    = (Pkt1 & 0x3FFFFFFF);
+    Src     = (Pkt2 & 0x3FFFFFFF);
+    AppID   = Pkt3;
+  }
+
+  /// zopEvent: encode this event and set the appropriate internal packet structures
+  void encodeEvent(){
   }
 
 private:
   std::vector<uint32_t> Packet; ///< zopEvent: data payload
+
+  // -- private, non-serialized data members
+  zopMsgT Type;                 ///< zopEvent: message type
+  uint8_t NB;                   ///< zopEvent: blocking/non-blocking
+  uint8_t Length;               ///< zopEvent: packet length (in flits)
+  uint8_t ID;                   ///< zopEvent: message ID
+  uint8_t Credit;               ///< zopEvent: credit piggyback
+  zopOpc Opc;                   ///< zopEvent: opcode
+  uint32_t Dest;                ///< zopEvent: destination
+  uint32_t Src;                 ///< zopEvent: source
+  uint32_t AppID;               ///< zopEvent: application source
 
 public:
   // zopEvent: secondary constructor
@@ -195,20 +289,9 @@ public:
 
   // zopEvent: event serializer
   void serialize_order(SST::Core::Serialization::serializer &ser) override{
+    // we only serialize the raw packet
     Event::serialize_order(ser);
     ser & Packet;
-  }
-
-  uint32_t getHeaderFirstFlit() {
-    return Packet[0];
-  }
-
-  uint8_t getType() {
-    return getHeaderFirstFlit() >> Z_MSG_TYPE;
-  }
-
-  uint32_t getOpcode() {
-    return getHeaderFirstFlit() % (1 << Z_OPCODE_BITS);
   }
 
   // zopEvent: implements the nic serialization
@@ -283,8 +366,11 @@ public:
     case zopMsgT::Z_MZOP:
       return "MZOP";
       break;
-    case zopMsgT::Z_HZOP:
-      return "HZOP";
+    case zopMsgT::Z_HZOPAC:
+      return "HZOPAC";
+      break;
+    case zopMsgT::Z_HZOPV:
+      return "HZOPV";
       break;
     case zopMsgT::Z_RZOP:
       return "RZOP";
@@ -292,17 +378,17 @@ public:
     case zopMsgT::Z_MSG:
       return "MSG";
       break;
-    case zopMsgT::Z_TMG:
-      return "TMG";
+    case zopMsgT::Z_TMIG:
+      return "TMIG";
       break;
-    case zopMsgT::Z_ACK:
-      return "ACK";
-      break;
-    case zopMsgT::Z_NACK:
-      return "NACK";
+    case zopMsgT::Z_TMGT:
+      return "TMGT";
       break;
     case zopMsgT::Z_SYSC:
       return "SYSC";
+      break;
+    case zopMsgT::Z_RESP:
+      return "RESP";
       break;
     case zopMsgT::Z_EXCP:
       return "EXCP";
@@ -322,7 +408,7 @@ public:
   // register ELI with the SST core
   SST_ELI_REGISTER_SUBCOMPONENT(
     zopNIC,
-    "revcpu",
+    "Forza",
     "zopNIC",
     SST_ELI_ELEMENT_VERSION(1, 0, 0),
     "FORZA ZOP NIC",
@@ -347,26 +433,29 @@ public:
   SST_ELI_DOCUMENT_STATISTICS(
     {"BytesSent",       "Number of bytes sent",     "bytes",    1},
     {"MZOPSent",        "Number of MZOPs sent",     "count",    1},
-    {"HZOPSent",        "Number of HZOPs sent",     "count",    1},
+    {"HZOPACSent",      "Number of HZOPACs sent",   "count",    1},
+    {"HZOPVSent",       "Number of HZOPVs sent",    "count",    1},
     {"RZOPSent",        "Number of RZOPs sent",     "count",    1},
     {"MSGSent",         "Number of MSGs sent",      "count",    1},
-    {"ACKSent",         "Number of ACKs sent",      "count",    1},
-    {"NACKSent",        "Number of NACKs sent",     "count",    1},
+    {"TMIGSent",        "Number of TMIGs sent",     "count",    1},
+    {"TMGTSent",        "Number of TMGTs sent",     "count",    1},
     {"SYSCSent",        "Number of Syscalls sent",  "count",    1},
+    {"RESPSent",        "Number of RESPs sent",     "count",    1},
     {"EXCPSent",        "Number of Exceptions sent","count",    1},
   )
 
   enum zopStats : uint32_t {
     BytesSent     = 0,
     MZOPSent      = 1,
-    HZOPSent      = 2,
-    RZOPSent      = 3,
-    MSGSent       = 4,
-    TMGSent       = 5,
-    ACKSent       = 6,
-    NACKSent      = 7,
+    HZOPACSent    = 2,
+    HZOPVSent     = 3,
+    RZOPSent      = 4,
+    MSGSent       = 5,
+    TMIGSent      = 6,
+    TMGTSent      = 7,
     SYSCSent      = 8,
-    EXCPSent      = 9,
+    RESPSent      = 9,
+    EXCPSent      = 10,
   };
 
   /// zopNIC: constructor
@@ -433,7 +522,7 @@ private:
 };  // zopNIC
 
 
-} // namespace SST::RevCPU
+} // namespace SST::Forza
 
 #endif // _SST_ZOPNET_H_
 

@@ -63,12 +63,14 @@ void zopNIC::registerStats(){
   for( auto* stat : {
     "BytesSent",
     "MZOPSent",
-    "HZOPSent",
+    "HZOPACSent",
+    "HZOPVSent",
     "RZOPSent",
     "MSGSent",
-    "ACKSent",
-    "NACKSent",
+    "TMIGSent",
+    "TMGTSent",
     "SYSCSent",
+    "RESPSent",
     "EXCPSent",
   }){
     stats.push_back(registerStatistic<uint64_t>(stat));
@@ -96,8 +98,11 @@ zopNIC::zopStats zopNIC::getStatFromPacket(zopEvent *ev){
   case zopMsgT::Z_MZOP:
     return zopStats::MZOPSent;
     break;
-  case zopMsgT::Z_HZOP:
-    return zopStats::HZOPSent;
+  case zopMsgT::Z_HZOPAC:
+    return zopStats::HZOPACSent;
+    break;
+  case zopMsgT::Z_HZOPV:
+    return zopStats::HZOPVSent;
     break;
   case zopMsgT::Z_RZOP:
     return zopStats::RZOPSent;
@@ -105,14 +110,14 @@ zopNIC::zopStats zopNIC::getStatFromPacket(zopEvent *ev){
   case zopMsgT::Z_MSG:
     return zopStats::MSGSent;
     break;
-  case zopMsgT::Z_TMG:
-    return zopStats::TMGSent;
+  case zopMsgT::Z_TMIG:
+    return zopStats::TMIGSent;
     break;
-  case zopMsgT::Z_ACK:
-    return zopStats::ACKSent;
+  case zopMsgT::Z_TMGT:
+    return zopStats::TMGTSent;
     break;
-  case zopMsgT::Z_NACK:
-    return zopStats::NACKSent;
+  case zopMsgT::Z_RESP:
+    return zopStats::RESPSent;
     break;
   case zopMsgT::Z_SYSC:
     return zopStats::SYSCSent;
@@ -292,5 +297,3 @@ bool zopNIC::clockTick(SST::Cycle_t cycle){
 
   return false;
 }
-
-// EOF
