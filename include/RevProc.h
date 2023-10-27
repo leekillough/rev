@@ -85,6 +85,9 @@ public:
   /// RevProc: retrieve the local PC for the correct feature set
   uint64_t GetPC() const { return RegFile->GetPC(); }
 
+  /// RevProc: set time converter for RTC
+  void SetTimeConverter(TimeConverter* tc) { timeConverter = tc; }
+
   /// RevProc: Debug mode read a register
   bool DebugReadReg(unsigned Idx, uint64_t *Value) const;
 
@@ -232,6 +235,7 @@ private:
   std::unique_ptr<RevPrefetcher> sfetch; ///< RevProc: stream instruction prefetcher
 
   std::shared_ptr<std::unordered_map<uint64_t, MemReq>> LSQueue; ///< RevProc: Load / Store queue used to track memory operations. Currently only tracks outstanding loads.
+  TimeConverter* timeConverter;          ///< RevProc: Time converter for RTC
 
   RevRegFile* RegFile = nullptr; ///< RevProc: Initial pointer to HartToDecode RegFile
 
@@ -562,6 +566,7 @@ private:
 
   // =============== REV specific functions
   EcallStatus ECALL_cpuinfo(RevInst& inst);                // 500, rev_cpuinfo(struct rev_cpuinfo *info);
+  EcallStatus ECALL_perf_stats(RevInst& inst);             // 501, rev_perf_stats(struct rev_stats *stats);
 
   // =============== REV pthread functions
   EcallStatus ECALL_pthread_create(RevInst& inst);         // 1000, rev_pthread_create(pthread_t *thread, const pthread_attr_t  *attr, void  *(*start_routine)(void  *), void  *arg)
