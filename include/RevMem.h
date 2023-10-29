@@ -43,6 +43,7 @@
 
 // -- FORZA Headers
 #include "RevScratchpad.h"
+#include "ZOPNET.h"
 
 #ifndef _REVMEM_BASE_
 #define _REVMEM_BASE_ 0x00000000
@@ -384,6 +385,9 @@ public:
 
   void DumpThreadMem( const uint64_t bytesPerRow = 16, std::ostream& outputStream = std::cout );
 
+  // ----------------------------------------------------
+  // ---- FORZA Interfaces
+  // ----------------------------------------------------
   /// FORZA: Checks if address is in scratchpad (ie. bits 56 & 57 are set)
   inline bool IsAddrInScratchpad(const uint64_t& Addr);
 
@@ -395,6 +399,37 @@ public:
 
   /// FORZA: Interface for freeing from Scratchpad
   void ScratchpadFree(uint64_t Addr, size_t size);
+
+  /// FORZA: set the ZOP NIC object
+  void setZNic( Forza::zopAPI *Z ) { zNic = Z; }
+
+  /// FORZA: set the RZA flag for this instance of RevMem
+  void setRZA() { isRZA = true; }
+
+private:
+  /// FORZA: convert a standard RISC-V opcode to a ZOP opcode
+  Forza::zopOpc flagToZOP(uint32_t flags);
+
+  /// FORZA: convert an incoming set of registers to a ZOP payload
+  //
+  // format32:
+  // Payload[0] = Data
+  // Payload[1] = Target
+  //
+  // format64:
+  // Payload[0] = Data[31:0]
+  // Payload[1] = Data[63:32]
+  // Payload[2] = Target[31:0]
+  // Payload[3] = Target[63:32]
+  std::vector<uint32_t> const buildZOPPayload(std::vector<unsigned char> Data,
+                                              std::vector<unsigned char> Target,
+                                              size_t Len);
+
+  /// FORZA: send an AMO request
+  bool ZOP_AMOMem(unsigned Hart, uint64_t Addr, size_t Len,
+                  void *Data, void *Target,
+                  const MemReq& req,
+                  StandardMem::Request::flags_t flags);
 
 protected:
   char* physMem = nullptr;  ///< RevMem: memory container
@@ -412,6 +447,8 @@ private:
   RevMemCtrl*         ctrl{};      ///< RevMem: memory controller object
   SST::Output*        output{};    ///< RevMem: output handler
   std::shared_ptr<RevScratchpad> scratchpad; ///< FORZA: Scratchpad
+  Forza::zopAPI *zNic;          ///< RevMem: FORZA ZOP NIC
+  bool isRZA;                   ///< RevMem: FORZA RZA flag; true if this device is an RZA
 
   std::vector<std::shared_ptr<MemSegment>> MemSegs{};        // Currently Allocated MemSegs
   std::vector<std::shared_ptr<MemSegment>> FreeMemSegs{};    // MemSegs that have been unallocated

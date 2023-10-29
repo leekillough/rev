@@ -15,7 +15,9 @@ using namespace Forza;
 
 zopNIC::zopNIC(ComponentId_t id, Params& params)
   : zopAPI(id, params), iFace(nullptr), msgHandler(nullptr),
-    initBroadcastSent(false), numDest(0), Type(zopEndP::Z_ZAP){
+    initBroadcastSent(false), numDest(0), numHarts(0),
+    Precinct(0), Zone(0),
+    Type(zopEndP::Z_ZAP), msgId(nullptr){
 
   // read the parameters
   int verbosity = params.find<int>("verbose", 0);
@@ -57,6 +59,30 @@ zopNIC::zopNIC(ComponentId_t id, Params& params)
 }
 
 zopNIC::~zopNIC(){
+  if( msgId )
+    delete[] msgId;
+}
+
+void zopNIC::setNumHarts(unsigned H){
+  numHarts = H;
+  msgId = new uint8_t [numHarts];
+  for( unsigned i=0; i<numHarts; i++ ){
+    msgId[i] = 0;
+  }
+}
+
+uint8_t zopNIC::getMsgId(unsigned H){
+  if( H > (numHarts-1) )
+    output.fatal(CALL_INFO, -1,
+                 "Error: error generating message id: unknown Hart=%d\n",
+                 H );
+
+  uint8_t id = msgId[H];
+  msgId[H]++;
+  if( msgId[H] == 0b11111111 )
+    msgId[H] = 0;
+
+  return id;
 }
 
 void zopNIC::registerStats(){
@@ -228,7 +254,7 @@ void zopNIC::send(zopEvent *ev, zopEndP dest ){
   }
   auto Packet = ev->getPacket();
   Packet[1] = realDest;
-  Packet[2] = (uint32_t)(getAddress());
+  Packet[2] = (uint32_t)(getAddress()); //FIXME
   ev->setPacket(Packet);
   req->dest = realDest;
   req->src = getAddress();

@@ -102,14 +102,19 @@ enum class zopEndP : uint32_t {
 // --------------------------------------------
 class zopEvent : public SST::Event{
 public:
+  // Note: all constructors create two full FLITs
+  // This is comprised of 4 x 32bit words
+
   /// zopEvent: standard constructor
   explicit zopEvent(unsigned srcId, unsigned destId)
     : Event(){
     // build the header
     Packet.push_back(0x00ul);
-    Packet.push_back(destId);
-    Packet.push_back(srcId);
+    Packet.push_back((destId & 0x3FFFFFFF));
+    Packet.push_back((srcId & 0x3FFFFFFF));
     Packet.push_back(0x00ul);
+    Src = (srcId & 0x3FFFFFFF);
+    Dest = (destId & 0x3FFFFFFF);
   }
 
   /// zopEvent: init broadcast constructor
@@ -117,13 +122,28 @@ public:
     : Event(){
     Packet.push_back((uint32_t)(Type));
     Packet.push_back(0x00ul);
-    Packet.push_back(srcId);
+    Packet.push_back((srcId & 0x3FFFFFFF));
+    Packet.push_back(0x00ul);
+    Src = (srcId & 0x3FFFFFFF);
+  }
+
+  /// zopEvent: raw event constructor
+  explicit zopEvent()
+    : Event(){
+    Packet.push_back(0x00ul);
+    Packet.push_back(0x00ul);
+    Packet.push_back(0x00ul);
     Packet.push_back(0x00ul);
   }
 
-  explicit zopEvent(zopMsgT Type, zopOpc Opc)
+  explicit zopEvent(zopMsgT T, zopOpc O)
     : Event(){
-    Packet.push_back(((uint32_t)(Type) << Z_MSG_TYPE) | (uint32_t)(Opc));
+    Packet.push_back(((uint32_t)(T) << Z_MSG_TYPE) | (uint32_t)(O));
+    Packet.push_back(0x00ul);
+    Packet.push_back(0x00ul);
+    Packet.push_back(0x00ul);
+    Type = T;
+    Opc = O;
   }
 
   /// zopEvent: virtual function to clone an event
@@ -142,7 +162,14 @@ public:
       Packet.push_back(i);
     }
     unsigned NumFlits = (Packet.size()-4)/2;
-    Packet[0] |= (NumFlits << 18);
+    Packet[0] |= (NumFlits << 19);
+  }
+
+  /// zopEvent: set the packet packet payload w/o the header. NOT a destructive operation
+  void setPayload(const std::vector<uint32_t> P){
+    for( auto i : P ){
+      Packet.push_back(i);
+    }
   }
 
   /// zopEvent: clear the packet payload
@@ -239,6 +266,19 @@ public:
 
   /// zopEvent: encode this event and set the appropriate internal packet structures
   void encodeEvent(){
+    // length
+    unsigned NumFlits = (Packet.size()-4)/2;
+    Packet[0] |= (NumFlits << 19);
+
+    Packet[0] |= ((uint32_t)(Opc) & 0xFF);
+    Packet[0] |= (((uint32_t)(Credit) & 0x1F) << 9);
+    Packet[0] |= (((uint32_t)(ID) & 0x1F) << 14);
+    Packet[0] |= (((uint32_t)(NumFlits) & 0xFF) << 19);
+    Packet[0] |= (((uint32_t)(NB) & 0b1) << 27);
+    Packet[0] |= (((uint32_t)(Type)) << 28);
+    Packet[1] = Dest;
+    Packet[2] = Src;
+    Packet[3] = AppID;
   }
 
 private:
@@ -256,9 +296,6 @@ private:
   uint32_t AppID;               ///< zopEvent: application source
 
 public:
-  // zopEvent: secondary constructor
-  zopEvent() : Event() {}
-
   // zopEvent: event serializer
   void serialize_order(SST::Core::Serialization::serializer &ser) override{
     // we only serialize the raw packet
@@ -310,6 +347,18 @@ public:
 
   /// zopAPI: get the type of the endpoint
   virtual zopEndP getEndpointType() = 0;
+
+  /// zopAPI: set the number of harts
+  virtual void setNumHarts(unsigned Hart) = 0;
+
+  /// zopAPI: set the precinct ID
+  virtual void setPrecinctID(unsigned Precinct) = 0;
+
+  /// zopAPI: set the zone ID
+  virtual void setZoneID(unsigned Zone) = 0;
+
+  /// zopAPI: retrieve the next message id for the target hart
+  virtual uint8_t getMsgId(unsigned Hart) = 0;
 
   /// zopAPI: convert endpoint to string name
   std::string const endPToStr(zopEndP T){
@@ -466,6 +515,18 @@ public:
   /// zopNIC: callback function for the SimpleNetwork interface
   bool msgNotify(int virtualNetwork);
 
+  /// zopNIC: initialize the number of Harts
+  virtual void setNumHarts(unsigned Hart);
+
+  /// zopNIC: retrieve the next message id for the target hart
+  virtual uint8_t getMsgId(unsigned Hart);
+
+  /// zopNIC: set the precinct ID
+  virtual void setPrecinctID(unsigned P){ Precinct = P; }
+
+  /// zopNIC: set the zone ID
+  virtual void setZoneID(unsigned Z){ Zone = Z; }
+
   /// zopNIC: clock tick function
   virtual bool clockTick(Cycle_t cycle);
 
@@ -485,14 +546,28 @@ private:
   bool initBroadcastSent;                   ///< zopNIC: has the broadcast msg been sent
   unsigned numDest;                         ///< zopNIC: number of destination endpoints
   unsigned ReqPerCycle;                     ///< zopNIC: max requests to send per cycle
+  unsigned numHarts;                        ///< zopNIC: number of attached Harts
+  unsigned Precinct;                        ///< zopNIC: precinct ID
+  unsigned Zone;                            ///< zopNIC: zone ID
   zopEndP Type;                             ///< zopNIC: endpoint type
 
-  std::queue<SST::Interfaces::SimpleNetwork::Request*> sendQ; ///< zopNIC: buffered send queue
+  uint8_t *msgId;                           ///< zopNIC: per hart message IDs
+
+  std::queue<SST::Interfaces::SimpleNetwork::Request*> sendQ;       ///< zopNIC: buffered send queue
   std::map<SST::Interfaces::SimpleNetwork::nid_t,zopEndP> hostMap;  ///< zopNIC: network ID to endpoint type mapping
+
+  ///< zopNIC: structure to track outstanding requests
+  std::vector<std::tuple<unsigned,
+                         uint32_t,
+                         uint32_t,
+                         uint8_t>> outstanding;
+  #define _ZOUT_HART 0
+  #define _ZOUT_SRC  1
+  #define _ZOUT_DEST 2
+  #define _ZOUT_ID   3
 
   std::vector<Statistic<uint64_t>*> stats;  ///< zopNIC: statistics vector
 };  // zopNIC
-
 
 } // namespace SST::Forza
 

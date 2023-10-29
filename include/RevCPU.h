@@ -112,6 +112,8 @@ public:
     {"enableCoProc",    "Enable an attached coProcessor for all cores", "0"},
     {"enableRZA",       "[FORZA] Enables the RZA functionality",        "0"},
     {"enableZoneNIC",   "[FORZA] Enables the zone NIC functionality",   "0"},
+    {"precinctId",      "[FORZA] The precinct ID of the local device",  "0"},
+    {"zoneId",          "[FORZA] The zone ID of the local device",      "0"},
     {"enable_faults",   "Enable the fault injection logic",             "0"},
     {"faults",          "Enable specific faults",                       "decode,mem,reg,alu"},
     {"fault_width",     "Specify the bit width of potential faults",    "single,word,N"},
@@ -309,6 +311,12 @@ private:
   RevMemCtrl* Ctrl{};  ///< RevCPU: Rev memory controller
 
   std::vector<RevCoProc*> CoProcs{};  ///< RevCPU: CoProcessor attached to Rev
+
+  unsigned Precinct{};                  ///< RevCPU: FORZA precinct ID
+  unsigned Zone{};                      ///< RevCPU: FORZA zone ID
+
+  TimeConverter* timeConverter{};       ///< RevCPU: SST time conversion handler
+  SST::Output output{};                 ///< RevCPU: SST output handler
 
   nicAPI *Nic;                        ///< RevCPU: Network interface controller
   panNicAPI *PNic;                    ///< RevCPU: PAN network interface controller
