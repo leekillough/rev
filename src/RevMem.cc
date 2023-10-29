@@ -21,7 +21,8 @@ using namespace SST::RevCPU;
 using MemSegment = RevMem::MemSegment;
 
 RevMem::RevMem( uint64_t MemSize, RevOpts *Opts, RevMemCtrl *Ctrl, SST::Output *Output )
-  : memSize(MemSize), opts(Opts), ctrl(Ctrl), output(Output) {
+  : memSize(MemSize), opts(Opts), ctrl(Ctrl), output(Output),
+    zNic(nullptr), isRZA(false) {
   // Note: this constructor assumes the use of the memHierarchy backend
   pageSize = 262144; //Page Size (in Bytes)
   addrShift = lg(pageSize);
@@ -38,7 +39,8 @@ RevMem::RevMem( uint64_t MemSize, RevOpts *Opts, RevMemCtrl *Ctrl, SST::Output *
 }
 
 RevMem::RevMem( uint64_t MemSize, RevOpts *Opts, SST::Output *Output )
-  : memSize(MemSize), opts(Opts), ctrl(nullptr), output(Output) {
+  : memSize(MemSize), opts(Opts), ctrl(nullptr), output(Output),
+    zNic(nullptr), isRZA(false) {
 
   // allocate the backing memory, zeroing it
   physMem = new char [memSize]{};
@@ -556,6 +558,9 @@ bool RevMem::AMOMem(unsigned Hart, uint64_t Addr, size_t Len,
     // sending to the RevMemCtrl
     ctrl->sendAMORequest(Hart, Addr, (uint64_t)(BaseMem), Len,
                          static_cast<char *>(Data), Target, req, flags);
+  }else if( zNic && !isRZA ){
+    // send a ZOP request to the RZA
+    ZOP_AMOMem(Hart, Addr, Len, Data, Target, req, flags);
   }else{
     // process the request locally
     char *TmpD = new char [8]{};
@@ -598,7 +603,7 @@ bool RevMem::WriteMem( unsigned Hart, uint64_t Addr, size_t Len, const void *Dat
 
   if( IsAddrInScratchpad(Addr)){
     scratchpad->WriteMem(Hart, Addr, Len, Data); //, flags);
-  } else {
+  }else{
 
     if(Addr == 0xDEADBEEF){
       std::cout << "Found special write. Val = " << std::hex << *(int*)(Data) << std::dec << std::endl;
@@ -674,9 +679,8 @@ bool RevMem::WriteMem( unsigned Hart, uint64_t Addr, size_t Len, const void *Dat
   std::cout << "Writing " << Len << " Bytes Starting at 0x" << std::hex << Addr << std::dec << std::endl;
 #endif
 
-
   TRACE_MEM_WRITE(Addr, Len, Data);
-  
+
   if( IsAddrInScratchpad(Addr)){
     scratchpad->WriteMem(Hart, Addr, Len, Data);// , 0);
   } else {
@@ -1018,6 +1022,10 @@ uint64_t RevMem::ExpandHeap(uint64_t Size){
   return heapend;
 }
 
+// ----------------------------------------------------
+// ---- FORZA Interfaces
+// ----------------------------------------------------
+
 void RevMem::InitScratchpad(const unsigned ZapNum, size_t ScratchpadSize, size_t ChunkSize){
   // Allocate the scratchpad memory
   scratchpad = std::make_shared<RevScratchpad>(ZapNum, _SCRATCHPAD_SIZE_, _CHUNK_SIZE_, output);
@@ -1063,5 +1071,96 @@ void RevMem::ScratchpadFree(uint64_t Addr, size_t size){
   return;
 }
 
+SST::Forza::zopOpc RevMem::flagToZOP(uint32_t flags){
+  static const std::pair<RevCPU::RevFlag, Forza::zopOpc> table[] = {
+    { RevCPU::RevFlag::F_AMOADD,  Forza::zopOpc::Z_AMOADD },
+    { RevCPU::RevFlag::F_AMOXOR,  Forza::zopOpc::Z_AMOXOR },
+    { RevCPU::RevFlag::F_AMOAND,  Forza::zopOpc::Z_AMOAND },
+    { RevCPU::RevFlag::F_AMOOR,   Forza::zopOpc::Z_AMOOR },
+    { RevCPU::RevFlag::F_AMOSWAP, Forza::zopOpc::Z_AMOSWAP },
+    { RevCPU::RevFlag::F_AMOMIN,  Forza::zopOpc::Z_AMOSMIN },
+    { RevCPU::RevFlag::F_AMOMAX,  Forza::zopOpc::Z_AMOSMAX },
+    { RevCPU::RevFlag::F_AMOMINU, Forza::zopOpc::Z_AMOUMIN },
+    { RevCPU::RevFlag::F_AMOMAXU, Forza::zopOpc::Z_AMOUMAX },
+  };
+
+  for (auto& flag : table){
+    if( flags & uint32_t(flag.first) ){
+      return flag.second;
+      break;
+    }
+  }
+
+  return SST::Forza::zopOpc::Z_NULL_OPC;
+}
+
+std::vector<uint32_t> const RevMem::buildZOPPayload(std::vector<unsigned char> Data,
+                                                    std::vector<unsigned char> Target,
+                                                    size_t Len){
+  std::vector<uint32_t> P;
+
+  if( Len == 32 ){
+    for( unsigned i=0; i<Data.size(); i++ ){
+      P[0] |= ((uint32_t)(Data[i]) << (i*8));
+      P[1] |= ((uint32_t)(Target[i]) << (i*8));
+    }
+  }else{
+    for( unsigned i=0; i<4; i++ ){
+      P[0] |= ((uint32_t)(Data[i]) << (i*8));
+      P[2] |= ((uint32_t)(Target[i]) << (i*8));
+    }
+    for( unsigned i=5; i<8; i++ ){
+      P[1] |= ((uint32_t)(Data[i]) << ((i-5)*8));
+      P[3] |= ((uint32_t)(Target[i]) << ((i-5)*8));
+    }
+  }
+
+  return P;
+}
+
+bool RevMem::ZOP_AMOMem(unsigned Hart, uint64_t Addr, size_t Len,
+                        void *Data, void *Target,
+                        const MemReq& req,
+                        StandardMem::Request::flags_t flags){
+
+  // create a new ZOP event
+  Forza::zopEvent *zev = new Forza::zopEvent();
+
+  // set all the constituent data values
+  // -- opcode
+  zev->setOpc(flagToZOP((uint32_t)(flags)));
+
+  // -- credit
+  zev->setCredit(0);  //TODO
+
+  // -- message id
+  zev->setID(zNic->getMsgId(Hart));
+
+  // -- NB
+  zev->setNB(0);
+
+  // -- Type
+  zev->setType(Forza::zopMsgT::Z_HZOPAC);
+
+  // -- Src
+  zev->setSrc((uint32_t)(zNic->getAddress()));
+
+  // -- Payload
+  std::vector<unsigned char> DVec(static_cast<char *>(Data),
+                                  static_cast<char *>(Data) + (Len/8));
+  std::vector<unsigned char> TVec(static_cast<char *>(Target),
+                                  static_cast<char *>(Target) + (Len/8));
+  zev->setPayload(buildZOPPayload(DVec, TVec, Len));
+
+  // encode the packet: note, this also sets the packet LENGTH field
+  zev->encodeEvent();
+
+  // send the packet: note, this also encodes the destination field
+  zNic->send(zev, Forza::zopEndP::Z_RZA);
+
+  // record the ZOP in the table
+
+  return true;
+}
 
 // EOF

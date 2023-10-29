@@ -31,9 +31,10 @@ const char splash_msg[] = "\
 
 RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params )
   : SST::Component(id), testStage(0), PrivTag(0), address(-1), EnableNIC(false),
-    EnableMemH(false), DisableCoprocClock(false), EnableCoProc(false),
-    EnableRZA(false), EnableZopNIC(false),
-    Nic(nullptr), Ctrl(nullptr), ClockHandler(nullptr) {
+    EnableMemH(false), EnableCoProc(false),
+    EnableRZA(false), EnableZopNIC(false), DisableCoprocClock(false),
+    Precinct(0), Zone(0),
+    Nic(nullptr), Ctrl(nullptr), zNic(nullptr), ClockHandler(nullptr) {
 
   const int Verbosity = params.find<int>("verbose", 0);
 
@@ -134,10 +135,16 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params )
   if( EnableZopNIC ){
     output.verbose(CALL_INFO, 4, 0, "[FORZA] Enabling zone NIC on device=%s\n",
                      getName().c_str());
+    Precinct = params.find<unsigned>("precinctId", 0);
+    Zone = params.find<unsigned>("zoneId", 0);
     zNic = loadUserSubComponent<Forza::zopAPI>("zone_nic");
     if( !zNic ){
       output.fatal(CALL_INFO, -1, "Error: no ZONE NIC object loaded into RevCPU\n" );
     }
+    Mem->setZNic(zNic);
+    zNic->setNumHarts(numHarts);
+    zNic->setPrecinct(Precinct);
+    zNic->setZone(Zone);
 
     // set the message handler for the NoC interface
     zNic->setMsgHandler(new Event::Handler<RevCPU>(this, &RevCPU::handleZOPMessage));
@@ -149,6 +156,8 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params )
       zNic->setEndpointType(Forza::zopEndP::Z_RZA);
       output.verbose(CALL_INFO, 4, 0, "[FORZA] device=%s initialized as RZA device\n",
                      getName().c_str());
+      // ensure the memory controller knows that it is an RZA device
+      Mem->setRZA();
     }else{
       // This Rev instance is a ZAP
       zNic->setEndpointType(Forza::zopEndP::Z_ZAP);
