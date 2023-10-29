@@ -1,6 +1,6 @@
-#include "../include/RevProc.h"
-#include "../include/RevSysCalls.h"
-#include "../../common/include/RevCommon.h"
+#include "RevProc.h"
+#include "RevSysCalls.h"
+#include "RevCommon.h"
 #include "RevMem.h"
 #include <bitset>
 #include <filesystem>
@@ -1195,6 +1195,18 @@ EcallStatus RevProc::ECALL_clock_gettime(RevInst& inst){
   output->verbose(CALL_INFO, 2, 0,
                   "ECALL: clock_gettime called by thread %" PRIu32
                   " on hart %" PRIu32 "\n", GetActiveThreadID(), HartToExec);
+  struct timespec src, *tp = (struct timespec *) RegFile->GetX<uint64_t>(RevReg::a1);
+
+  if (timeConverter == nullptr) {
+    RegFile->SetX(RevReg::a0, EINVAL);
+    return EcallStatus::SUCCESS;
+  }
+  memset(&src, 0, sizeof(*tp));
+  SimTime_t x = timeConverter->convertToCoreTime(Stats.totalCycles);
+  src.tv_sec = x / 1000000000000ull;
+  src.tv_nsec = (x / 1000) % 1000000000ull;
+  mem->WriteMem(HartToExec, (size_t)tp, sizeof(*tp), &src);
+  RegFile->SetX(RevReg::a0, 0);
   return EcallStatus::SUCCESS;
 }
 
@@ -3121,6 +3133,19 @@ EcallStatus RevProc::ECALL_cpuinfo(RevInst& inst){
   info.harts_per_core = opts->GetNumHarts();
   mem->WriteMem(HartToExec, addr, sizeof(info), &info);
   RegFile->SetX(RevReg::a0, 0);
+  return EcallStatus::SUCCESS;
+}
+
+// 501, rev_perf_stats(struct rev_perf_stats *stats)
+EcallStatus RevProc::ECALL_perf_stats(RevInst& inst){
+  output->verbose(CALL_INFO, 2, 0, "ECALL: perf_stats called by thread %" PRIu32 "\n", GetActiveThreadID());
+  struct rev_stats rs;
+  struct rev_stats *dest = (struct rev_stats*) RegFile->GetX<uint64_t>(RevReg::a0);
+
+  rs.cycles = Stats.totalCycles;
+  rs.instructions = Retired;
+  mem->WriteMem(HartToExec, (uint64_t)dest, sizeof(struct rev_stats), &rs);
+  RegFile->SetX(RevReg::a0 ,0);
   return EcallStatus::SUCCESS;
 }
 
