@@ -257,7 +257,13 @@ void zopNIC::send(zopEvent *ev, uint32_t dest ){
 bool zopNIC::msgNotify(int vn){
   SST::Interfaces::SimpleNetwork::Request* req = iFace->recv(0);
   if( req != nullptr ){
-    zopEvent *ev = static_cast<zopEvent*>(req->takePayload());
+    Event *evbase = req->takePayload();
+    if (!evbase) {
+      output.verbose(CALL_INFO, 9, 0,
+                    "%s received zop message\n",
+                    getName().c_str());
+    }
+    zopEvent *ev = static_cast<zopEvent*>(evbase);
     if( !ev ){
       output.fatal(CALL_INFO, -1, "%s, Error: zopEvent on zopNIC is null\n",
                    getName().c_str());
@@ -283,14 +289,14 @@ bool zopNIC::clockTick(SST::Cycle_t cycle){
   unsigned thisCycle = 0;
   while( (!sendQ.empty()) && (thisCycle < ReqPerCycle) ){
     SST::Interfaces::SimpleNetwork::Request *R = sendQ.front();
-    zopEvent *ev = static_cast<zopEvent*>(R->takePayload());
+    zopEvent *ev = static_cast<zopEvent*>(R->inspectPayload());
     auto P = ev->getPacket();
     if( iFace->spaceToSend(0, P.size()*32) &&
         iFace->send(sendQ.front(), 0) ){
       recordStat( getStatFromPacket(ev), 1 );
       sendQ.pop();
       thisCycle++;
-    }else{
+    } else{
       break;
     }
   }

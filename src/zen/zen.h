@@ -7,8 +7,6 @@
 #define _ZEN_H_
 
 #include "zen_sst.h"
-#include "zen_memctrl.h"
-#include "ZOPEvent.h"
 #include "ZOPNet.h"
 #include <string>
 
@@ -45,7 +43,7 @@ namespace SST::Forza{
     // register the component
     SST_ELI_REGISTER_COMPONENT(
       ZEN,                                    // component class
-      "ForzaZEN",                             // component libary
+      "Forza",                             // component libary
       "ZEN",                                  // component name
       SST_ELI_ELEMENT_VERSION(1,0,0),         // Version of the component
       "ZEN: Forza ZEN component",             // description
@@ -60,7 +58,7 @@ namespace SST::Forza{
 
     // describe the ports
     SST_ELI_DOCUMENT_PORTS(
-      {"rtrLink", "Links to Network.", {"merlin.linkcontrol"}}
+      {"rtrLink", "Links to Network.", {"merlin.linkcontrol"}},
     )
 
     // describe the statistics
@@ -68,7 +66,7 @@ namespace SST::Forza{
 
     // describe the subcomponent slots
     SST_ELI_DOCUMENT_SUBCOMPONENT_SLOTS(
-      {"memory", "Backend ZEN memory infrastruture", "SST::Forza::ZENMemCtrl"}
+      {"m_zop_iface","[FORZA] Zone NIC", "SST::Forza::zopNIC"},
     )
 
     // public class members
@@ -81,7 +79,7 @@ namespace SST::Forza{
     void setup() override;
     void complete(unsigned int phase) override;
     void finish() override;
-    void sendMsgToRZA(uint64_t addr, uint64_t msg_id);
+    void sendMsgToRZA(uint64_t addr, uint8_t msg_id);
     void sendMsgToScratchpad(uint64_t dest, uint64_t addr);
     void processEgressQueue();
     void notifyHARTScratchpad();
@@ -91,7 +89,10 @@ namespace SST::Forza{
     void sendACKToZAP(uint64_t hart_id);
     void processSetupMsgs();
     void processZAPCredits();
+    void sendMsgToZEN();
+    void sendSetupToZEN();
     uint64_t getRZATailQueue(uint64_t harts, uint64_t size);
+    void sendMZOPAckToZEN(SST::Forza::zopEvent *ev);
 
   private:
     // private class members
@@ -103,18 +104,18 @@ namespace SST::Forza{
 
     // private data members
     SST::Output output;             ///< ZEN: SST output handler
-    ZENMemCtrl *Ctrl;               ///< ZEN: memory controller
     SST::Interfaces::SimpleNetwork*     m_linkControl;
     std::map<uint64_t, ZENTableRow*> hart_tables;
     std::map<uint64_t, std::vector<ZENEntry*> > zen_queue;
     std::vector<SST::Forza::zopEvent*> mem_acks;
     std::vector<SST::Forza::zopEvent*> setup_reqs;
     std::vector<SST::Forza::zopEvent*> zap_credits;
-    std::map<uint64_t, std::pair<uint64_t, uint64_t> > outstanding_mem_req;
+    std::map<uint8_t, std::pair<uint64_t, uint64_t> > outstanding_mem_req;
     uint64_t int_id;
-    uint64_t msg_id;
+    uint8_t msg_id;
     uint64_t m_num_harts;
     SST::Forza::zopAPI* m_zop_iface;
+    bool sent;
   }; // class SST::ZEN
 } // namespace SST::Forza
 

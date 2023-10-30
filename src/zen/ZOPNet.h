@@ -145,6 +145,14 @@ public:
     Packet.push_back(((uint32_t)(Type) << Z_MSG_TYPE) | (uint32_t)(Opc));
   }
 
+  explicit zopEvent()
+    : Event(){
+    Packet.push_back(0x00ul);
+    Packet.push_back(0x00ul);
+    Packet.push_back(0x00ul);
+    Packet.push_back(0x00ul);
+  }
+
   /// zopEvent: virtual function to clone an event
   virtual Event* clone(void) override{
     zopEvent *ev = new zopEvent(*this);
@@ -267,6 +275,19 @@ public:
 
   /// zopEvent: encode this event and set the appropriate internal packet structures
   void encodeEvent(){
+    // length
+    unsigned NumFlits = (Packet.size()-4)/2;
+    Packet[0] |= (NumFlits << 19);
+
+    Packet[0] |= ((uint32_t)(Opc) & 0xFF);
+    Packet[0] |= (((uint32_t)(Credit) & 0x1F) << 9);
+    Packet[0] |= (((uint8_t)(ID) & 0x1F) << 14);
+    Packet[0] |= (((uint32_t)(NumFlits) & 0xFF) << 19);
+    Packet[0] |= (((uint32_t)(NB) & 0b1) << 27);
+    Packet[0] |= (((uint32_t)(Type)) << 28);
+    Packet[1] = Dest;
+    Packet[2] = Src;
+    Packet[3] = AppID;
   }
 
 private:
@@ -285,7 +306,6 @@ private:
 
 public:
   // zopEvent: secondary constructor
-  zopEvent() : Event() {}
 
   // zopEvent: event serializer
   void serialize_order(SST::Core::Serialization::serializer &ser) override{

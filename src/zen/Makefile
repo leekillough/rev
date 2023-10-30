@@ -10,10 +10,10 @@ endif
 CXX=$(shell sst-config --CXX)
 CXXFLAGS=$(shell sst-config --ELEMENT_CXXFLAGS)
 LDFLAGS=$(shell sst-config --ELEMENT_LDFLAGS)
-CPPFLAGS=-I./
+CPPFLAGS=-I./ -DDEBUG -g
 OPTIMIZE_FLAGS=-O2
 
-COMPONENT_LIB=libForzaZEN.so
+COMPONENT_LIB=libForza.so
 
 BASICCOMPONENT_SOURCES := $(wildcard *.cc)
 
@@ -31,8 +31,8 @@ $(COMPONENT_LIB): $(BASICCOMPONENT_OBJS)
 %.o:%.cc $(SIMPLEEXAMPLE_HEADERS)
 	$(CXX) $(OPTIMIZE_FLAGS) $(CXXFLAGS) $(CPPFLAGS) -c $<
 install: $(COMPONENT_LIB)
-	sst-register ForzaZEN ForzaZEN_LIBDIR=$(CURDIR)
+	sst-register Forza Forza_LIBDIR=$(CURDIR)
 uninstall:
-	sst-register -u ForzaZEN
+	sst-register -u Forza
 clean:
 	rm -Rf *.o $(COMPONENT_LIB)
