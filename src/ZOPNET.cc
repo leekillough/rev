@@ -17,7 +17,7 @@ zopNIC::zopNIC(ComponentId_t id, Params& params)
   : zopAPI(id, params), iFace(nullptr), msgHandler(nullptr),
     initBroadcastSent(false), numDest(0), numHarts(0),
     Precinct(0), Zone(0),
-    Type(zopEndP::Z_ZAP), msgId(nullptr){
+    Type(zopCompID::Z_ZAP0), msgId(nullptr){
 
   // read the parameters
   int verbosity = params.find<int>("verbose", 0);
@@ -154,7 +154,7 @@ zopNIC::zopStats zopNIC::getStatFromPacket(zopEvent *ev){
     break;
   default :
     output.fatal(CALL_INFO, -1,
-                 "Error: unknown packet type=%d\n", Header );
+                 "Error: unknown packet type=%d\n", (unsigned)(Type) );
     break;
   }
 
@@ -213,7 +213,7 @@ void zopNIC::init(unsigned int phase){
     numDest++;
     SST::Interfaces::SimpleNetwork::nid_t srcID = req->src;
     std::vector<uint64_t> Pkt = ev->getPacket();
-    hostMap[srcID] = static_cast<zopEndP>(Pkt[0] & Z_MASK_TYPE);
+    hostMap[srcID] = static_cast<zopCompID>(Pkt[0] & Z_MASK_TYPE);
     output.verbose(CALL_INFO, 7, 0,
                    "%s received init broadcast messages from %d of type %s\n",
                    getName().c_str(), (uint32_t)(srcID),
@@ -241,13 +241,20 @@ void zopNIC::init(unsigned int phase){
   // --- end print out the host mapping table
 }
 
-void zopNIC::send(zopEvent *ev){
+void zopNIC::send(zopEvent *ev, zopCompID dest){
   SST::Interfaces::SimpleNetwork::Request *req =
     new SST::Interfaces::SimpleNetwork::Request();
   output.verbose(CALL_INFO, 9, 0,
-                 "Sending message from %s @ id=%d to endpoint=%s\n",
+                 "Sending message from %s @ id=%d to endpoint[hart:zone:prec:Type]=[%d:%d:%d:%s\n",
                  getName().c_str(), (uint32_t)(getAddress()),
+                 ev->getDestHart(), ev->getDestZCID(), ev->getDestPCID(),
                  endPToStr(dest).c_str() );
+  auto realDest = 0;
+  for( auto i : hostMap ){
+    if( i.second == dest ){
+      realDest = i.first;
+    }
+  }
   ev->encodeEvent();
   req->dest = realDest;   // FIXME
   req->src = getAddress();

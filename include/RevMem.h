@@ -368,7 +368,7 @@ private:
   // Payload[1] = Data[63:32]
   // Payload[2] = Target[31:0]
   // Payload[3] = Target[63:32]
-  std::vector<uint32_t> const buildZOPPayload(std::vector<unsigned char> Data,
+  std::vector<uint64_t> const buildZOPPayload(std::vector<unsigned char> Data,
                                               std::vector<unsigned char> Target,
                                               size_t Len);
 

@@ -558,9 +558,9 @@ bool RevMem::AMOMem(unsigned Hart, uint64_t Addr, size_t Len,
     // sending to the RevMemCtrl
     ctrl->sendAMORequest(Hart, Addr, (uint64_t)(BaseMem), Len,
                          static_cast<char *>(Data), Target, req, flags);
-  }else if( zNic && !isRZA ){
+  //}else if( zNic && !isRZA ){
     // send a ZOP request to the RZA
-    ZOP_AMOMem(Hart, Addr, Len, Data, Target, req, flags);
+  //  ZOP_AMOMem(Hart, Addr, Len, Data, Target, req, flags);
   }else{
     // process the request locally
     char *TmpD = new char [8]{};
@@ -1072,6 +1072,7 @@ void RevMem::ScratchpadFree(uint64_t Addr, size_t size){
 }
 
 SST::Forza::zopOpc RevMem::flagToZOP(uint32_t flags){
+#if 0
   static const std::pair<RevCPU::RevFlag, Forza::zopOpc> table[] = {
     { RevCPU::RevFlag::F_AMOADD,  Forza::zopOpc::Z_AMOADD },
     { RevCPU::RevFlag::F_AMOXOR,  Forza::zopOpc::Z_AMOXOR },
@@ -1090,15 +1091,15 @@ SST::Forza::zopOpc RevMem::flagToZOP(uint32_t flags){
       break;
     }
   }
-
+#endif
   return SST::Forza::zopOpc::Z_NULL_OPC;
 }
 
-std::vector<uint32_t> const RevMem::buildZOPPayload(std::vector<unsigned char> Data,
+std::vector<uint64_t> const RevMem::buildZOPPayload(std::vector<unsigned char> Data,
                                                     std::vector<unsigned char> Target,
                                                     size_t Len){
-  std::vector<uint32_t> P;
-
+  std::vector<uint64_t> P;
+#if 0
   if( Len == 32 ){
     for( unsigned i=0; i<Data.size(); i++ ){
       P[0] |= ((uint32_t)(Data[i]) << (i*8));
@@ -1114,7 +1115,7 @@ std::vector<uint32_t> const RevMem::buildZOPPayload(std::vector<unsigned char> D
       P[3] |= ((uint32_t)(Target[i]) << ((i-5)*8));
     }
   }
-
+#endif
   return P;
 }
 
@@ -1122,43 +1123,6 @@ bool RevMem::ZOP_AMOMem(unsigned Hart, uint64_t Addr, size_t Len,
                         void *Data, void *Target,
                         const MemReq& req,
                         StandardMem::Request::flags_t flags){
-
-  // create a new ZOP event
-  Forza::zopEvent *zev = new Forza::zopEvent();
-
-  // set all the constituent data values
-  // -- opcode
-  zev->setOpc(flagToZOP((uint32_t)(flags)));
-
-  // -- credit
-  zev->setCredit(0);  //TODO
-
-  // -- message id
-  zev->setID(zNic->getMsgId(Hart));
-
-  // -- NB
-  zev->setNB(0);
-
-  // -- Type
-  zev->setType(Forza::zopMsgT::Z_HZOPAC);
-
-  // -- Src
-  zev->setSrc((uint32_t)(zNic->getAddress()));
-
-  // -- Payload
-  std::vector<unsigned char> DVec(static_cast<char *>(Data),
-                                  static_cast<char *>(Data) + (Len/8));
-  std::vector<unsigned char> TVec(static_cast<char *>(Target),
-                                  static_cast<char *>(Target) + (Len/8));
-  zev->setPayload(buildZOPPayload(DVec, TVec, Len));
-
-  // encode the packet: note, this also sets the packet LENGTH field
-  zev->encodeEvent();
-
-  // send the packet: note, this also encodes the destination field
-  zNic->send(zev, Forza::zopEndP::Z_RZA);
-
-  // record the ZOP in the table
 
   return true;
 }

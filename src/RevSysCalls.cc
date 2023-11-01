@@ -3204,7 +3204,7 @@ EcallStatus RevProc::ECALL_pthread_join(RevInst& inst){
 
 // 4000, forza_scratchpad_alloc(size_t size);
 EcallStatus RevProc::ECALL_forza_scratchpad_alloc(RevInst& inst){
-  output->verbose(CALL_INFO, 2, 0, "ECALL: forza_scratchpad_alloc called by thread %" PRIu32 " on hart %" PRIu32 "\n", GetActiveThreadID(), HartToExec);
+  output->verbose(CALL_INFO, 2, 0, "ECALL: forza_scratchpad_alloc called by thread %" PRIu32 " on hart %" PRIu32 "\n", GetActiveThreadID(), HartToExecID);
   uint64_t size = RegFile->GetX<uint64_t>(RevReg::a0);
 
   output->verbose(CALL_INFO, 4, 0, "ECALL: forza_scratchpad_alloc attempting to allocate %" PRIu64 " bytes\n", size);
@@ -3223,7 +3223,7 @@ EcallStatus RevProc::ECALL_forza_scratchpad_alloc(RevInst& inst){
 
 // 4001, forza_scratchpad_dealloc(size_t size);
 EcallStatus RevProc::ECALL_forza_scratchpad_free(RevInst& inst){
-  output->verbose(CALL_INFO, 2, 0, "ECALL: forza_scratchpad_free called by thread %" PRIu32 " on hart %" PRIu32 "\n", GetActiveThreadID(), HartToExec);
+  output->verbose(CALL_INFO, 2, 0, "ECALL: forza_scratchpad_free called by thread %" PRIu32 " on hart %" PRIu32 "\n", GetActiveThreadID(), HartToExecID);
   uint64_t addr = RegFile->GetX<uint64_t>(RevReg::a0);
   uint64_t size = RegFile->GetX<uint64_t>(RevReg::a1);
   mem->ScratchpadFree(addr, size);
