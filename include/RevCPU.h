@@ -114,6 +114,7 @@ public:
     {"enableZoneNIC",   "[FORZA] Enables the zone NIC functionality",   "0"},
     {"precinctId",      "[FORZA] The precinct ID of the local device",  "0"},
     {"zoneId",          "[FORZA] The zone ID of the local device",      "0"},
+    {"zapId",           "[FORZA] The ZAP ID if the device is a ZAP",    "0"},
     {"enable_faults",   "Enable the fault injection logic",             "0"},
     {"faults",          "Enable specific faults",                       "decode,mem,reg,alu"},
     {"fault_width",     "Specify the bit width of potential faults",    "single,word,N"},

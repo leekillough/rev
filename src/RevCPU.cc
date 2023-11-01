@@ -169,8 +169,8 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params )
     }
     Mem->setZNic(zNic);
     zNic->setNumHarts(numHarts);
-    zNic->setPrecinct(Precinct);
-    zNic->setZone(Zone);
+    zNic->setPrecinctID(Precinct);
+    zNic->setZoneID(Zone);
 
     // set the message handler for the NoC interface
     zNic->setMsgHandler(new Event::Handler<RevCPU>(this, &RevCPU::handleZOPMessage));
@@ -179,16 +179,48 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params )
     // what type of endpoint it is
     if( EnableRZA ){
       // This Rev instance is an RZA
-      zNic->setEndpointType(Forza::zopEndP::Z_RZA);
+      zNic->setEndpointType(Forza::zopCompID::Z_RZA);
       output.verbose(CALL_INFO, 4, 0, "[FORZA] device=%s initialized as RZA device\n",
                      getName().c_str());
       // ensure the memory controller knows that it is an RZA device
       Mem->setRZA();
     }else{
       // This Rev instance is a ZAP
-      zNic->setEndpointType(Forza::zopEndP::Z_ZAP);
-      output.verbose(CALL_INFO, 4, 0, "[FORZA] device=%s initialized as ZAP device\n",
-                     getName().c_str());
+      unsigned zap = params.find<unsigned>("zapId", 0);
+      Forza::zopCompID zapId;
+      switch( zap ){
+      case 0:
+        zapId = Forza::zopCompID::Z_ZAP0;
+        break;
+      case 1:
+        zapId = Forza::zopCompID::Z_ZAP1;
+        break;
+      case 2:
+        zapId = Forza::zopCompID::Z_ZAP2;
+        break;
+      case 3:
+        zapId = Forza::zopCompID::Z_ZAP3;
+        break;
+      case 4:
+        zapId = Forza::zopCompID::Z_ZAP4;
+        break;
+      case 5:
+        zapId = Forza::zopCompID::Z_ZAP5;
+        break;
+      case 6:
+        zapId = Forza::zopCompID::Z_ZAP6;
+        break;
+      case 7:
+        zapId = Forza::zopCompID::Z_ZAP7;
+        break;
+      default:
+        output.fatal(CALL_INFO, -1,
+                     "Error: zapId is out of range [0-7]\n");
+        break;
+      }
+      zNic->setEndpointType(zapId);
+      output.verbose(CALL_INFO, 4, 0, "[FORZA] device=%s initialized as ZAP device: ZAP%d\n",
+                     getName().c_str(), zap);
     }
   }
 
@@ -283,9 +315,7 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params )
 
     Procs.reserve(Procs.size() + numCores);
     for( unsigned i=0; i<numCores; i++ ){
-      Procs.push_back( new RevProc( i, Opts, numHarts, Mem, Loader,
-                                    AssignedThreads.at(i), this->GetNewTID(),
-                                    &output ) );
+      Procs.push_back( new RevProc( i, Opts, numHarts, Mem, Loader, this->GetNewTID(), &output ) );
     }
 
     RevCoProc *LSProc = loadUserSubComponent<RevCoProc>("rza_ls", SST::ComponentInfo::SHARE_NONE, Procs[0]);
