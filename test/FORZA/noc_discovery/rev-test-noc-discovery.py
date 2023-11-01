@@ -33,7 +33,10 @@ zap_cpu1.addParams({
         "startAddr" : "[0:0x00000000]",               # Starting address for core 0
         "memCost" : "[0:1:10]",                       # Memory loads required 1-10 cycles
         "program" : os.getenv("REV_EXE", "ex2.exe"),  # Target executable
-        "enableZoneNIC" : 1,                          # Enable the zone NIC
+        "enableZoneNIC" : 1,                          # [FORZA] Enable the zone NIC
+        "precinctId" : 0,                             # [FORZA] precinct ID
+        "zoneId" : 0,                                 # [FORZA] zone ID
+        "zapId" : 0,                                  # [FORZA] zap ID
         "splash" : 0                                  # Display the splash message
 })
 
@@ -50,8 +53,10 @@ rza.addParams({
         "machine" : "[CORES:RV64G]",                  # Core:Config; RV64I for core 0
         "startAddr" : "[CORES:0x00000000]",           # Starting address for core 0
         "program" : os.getenv("REV_EXE", "ex2.exe"),  # Target executable
-        "enableZoneNIC" : 1,                          # Enable the zone NIC
-        "enableRZA" : 1,                              # Enable RZA functionality
+        "enableZoneNIC" : 1,                          # [FORZA] Enable the zone NIC
+        "enableRZA" : 1,                              # [FORZA] Enable RZA functionality
+        "precinctId" : 0,                             # [FORZA] precinct ID
+        "zoneId" : 0,                                 # [FORZA] zone ID
         "enable_memH" : 1,                            # Enable memHierarchy support
         "splash" : 0                                  # Display the splash message
 })
