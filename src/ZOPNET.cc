@@ -78,9 +78,11 @@ uint8_t zopNIC::getMsgId(unsigned H){
                  H );
 
   uint8_t id = msgId[H];
-  msgId[H]++;
-  if( msgId[H] == 0b11111111 )
+  if( msgId[H] == Z_MASK_MSGID ){
     msgId[H] = 0;
+  }else{
+    msgId[H]++;
+  }
 
   return id;
 }
@@ -118,9 +120,8 @@ zopNIC::zopStats zopNIC::getStatFromPacket(zopEvent *ev){
                  "Error: recording stat for a null packet\n" );
   }
 
-  uint32_t Header = Packet[0];
-  Header = ((Header >> Z_MSG_TYPE) & 0b1111);
-  switch( (zopMsgT)(Header) ){
+  zopMsgT Type = ev->getType();
+  switch( (zopMsgT)(Type) ){
   case zopMsgT::Z_MZOP:
     return zopStats::MZOPSent;
     break;
@@ -193,7 +194,8 @@ void zopNIC::init(unsigned int phase){
       initBroadcastSent = true;
       zopEvent *ev = new zopEvent(iFace->getEndpointID(),
                                   getEndpointType());
-      SST::Interfaces::SimpleNetwork::Request * req = new SST::Interfaces::SimpleNetwork::Request();
+      SST::Interfaces::SimpleNetwork::Request * req =
+        new SST::Interfaces::SimpleNetwork::Request();
       req->dest = SST::Interfaces::SimpleNetwork::INIT_BROADCAST_ADDR;
       req->src = iFace->getEndpointID();
       req->givePayload(ev);
@@ -210,8 +212,8 @@ void zopNIC::init(unsigned int phase){
     zopEvent *ev = static_cast<zopEvent*>(req->takePayload());
     numDest++;
     SST::Interfaces::SimpleNetwork::nid_t srcID = req->src;
-    std::vector<uint32_t> Pkt = ev->getPacket();
-    hostMap[srcID] = static_cast<zopEndP>(Pkt[0]);
+    std::vector<uint64_t> Pkt = ev->getPacket();
+    hostMap[srcID] = static_cast<zopEndP>(Pkt[0] & Z_MASK_TYPE);
     output.verbose(CALL_INFO, 7, 0,
                    "%s received init broadcast messages from %d of type %s\n",
                    getName().c_str(), (uint32_t)(srcID),
@@ -239,46 +241,19 @@ void zopNIC::init(unsigned int phase){
   // --- end print out the host mapping table
 }
 
-void zopNIC::send(zopEvent *ev, zopEndP dest ){
+void zopNIC::send(zopEvent *ev){
   SST::Interfaces::SimpleNetwork::Request *req =
     new SST::Interfaces::SimpleNetwork::Request();
   output.verbose(CALL_INFO, 9, 0,
                  "Sending message from %s @ id=%d to endpoint=%s\n",
                  getName().c_str(), (uint32_t)(getAddress()),
                  endPToStr(dest).c_str() );
-  uint32_t realDest = 0;
-  for(auto const& [key, val] : hostMap){
-    if( val == dest ){
-      realDest = key;
-    }
-  }
-  auto Packet = ev->getPacket();
-  Packet[1] = realDest;
-  Packet[2] = (uint32_t)(getAddress()); //FIXME
-  ev->setPacket(Packet);
-  req->dest = realDest;
+  ev->encodeEvent();
+  req->dest = realDest;   // FIXME
   req->src = getAddress();
   req->givePayload(ev);
   sendQ.push(req);
 }
-
-void zopNIC::send(zopEvent *ev, uint32_t dest ){
-  SST::Interfaces::SimpleNetwork::Request *req =
-    new SST::Interfaces::SimpleNetwork::Request();
-  output.verbose(CALL_INFO, 9, 0,
-                 "Sending message from %s @ id=%d to endpoint=%d\n",
-                 getName().c_str(), (uint32_t)(getAddress()),
-                 dest);
-  auto Packet = ev->getPacket();
-  Packet[1] = dest;
-  Packet[2] = (uint32_t)(getAddress());
-  ev->setPacket(Packet);
-  req->dest = dest;
-  req->src = getAddress();
-  req->givePayload(ev);
-  sendQ.push(req);
-}
-
 
 bool zopNIC::msgNotify(int vn){
   SST::Interfaces::SimpleNetwork::Request* req = iFace->recv(0);
@@ -288,9 +263,10 @@ bool zopNIC::msgNotify(int vn){
       output.fatal(CALL_INFO, -1, "%s, Error: zopEvent on zopNIC is null\n",
                    getName().c_str());
     }
+    ev->decodeEvent();
     output.verbose(CALL_INFO, 9, 0,
-                   "%s received zop message\n",
-                   getName().c_str());
+                   "%s received zop message of type %s\n",
+                   getName().c_str(), this->msgTToStr(ev->getType()).c_str());
     (*msgHandler)(ev);
     delete req;
   }
