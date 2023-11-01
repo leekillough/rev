@@ -131,7 +131,48 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params )
     msgPerCycle = params.find<unsigned>("msgPerCycle", 1);
   }
 
+  // Look for the fault injection logic
+  EnableFaults = params.find<bool>("enable_faults", 0);
+  if( EnableFaults ){
+    std::vector<std::string> faults;
+    params.find_array<std::string>("faults", faults);
+    DecodeFaultCodes(faults);
+
+    std::string width = params.find<std::string>("fault_width", "1");
+    DecodeFaultWidth(width);
+
+    fault_width = params.find<int64_t>("fault_range", "65536");
+    FaultCntr = fault_width;
+  }
+
+  // Create the memory object
+  const uint64_t memSize = params.find<unsigned long>("memSize", 1073741824);
+  EnableMemH = params.find<bool>("enable_memH", 0);
+  if( !EnableMemH ){
+    // TODO: Use std::nothrow to return null instead of throwing std::bad_alloc
+    Mem = new RevMem( memSize, Opts,  &output );
+    if( !Mem )
+      output.fatal(CALL_INFO, -1, "Error: failed to initialize the memory object\n" );
+  }else{
+    Ctrl = loadUserSubComponent<RevMemCtrl>("memory");
+    if( !Ctrl )
+      output.fatal(CALL_INFO, -1, "Error : failed to inintialize the memory controller subcomponent\n");
+
+    // TODO: Use std::nothrow to return null instead of throwing std::bad_alloc
+    Mem = new RevMem( memSize, Opts, Ctrl, &output );
+    if( !Mem )
+      output.fatal(CALL_INFO, -1, "Error : failed to initialize the memory object\n" );
+
+    if( EnableFaults )
+      output.verbose(CALL_INFO, 1, 0, "Warning: memory faults cannot be enabled with memHierarchy support\n");
+  }
+
+  // FORZA: initialize scratchpad
+  Mem->InitScratchpad(id, _SCRATCHPAD_SIZE_, _CHUNK_SIZE_);
+
+  // FORZA: initialize the network
   // setup the FORZA NoC NIC endpoint for the Zone
+  // Note that this must occur AFTER memory initialization
   EnableZopNIC = params.find<bool>("enableZoneNIC", 0);
   if( EnableZopNIC ){
     output.verbose(CALL_INFO, 4, 0, "[FORZA] Enabling zone NIC on device=%s\n",
@@ -198,45 +239,6 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params )
                      getName().c_str(), zap);
     }
   }
-
-  // Look for the fault injection logic
-  EnableFaults = params.find<bool>("enable_faults", 0);
-  if( EnableFaults ){
-    std::vector<std::string> faults;
-    params.find_array<std::string>("faults", faults);
-    DecodeFaultCodes(faults);
-
-    std::string width = params.find<std::string>("fault_width", "1");
-    DecodeFaultWidth(width);
-
-    fault_width = params.find<int64_t>("fault_range", "65536");
-    FaultCntr = fault_width;
-  }
-
-  // Create the memory object
-  const uint64_t memSize = params.find<unsigned long>("memSize", 1073741824);
-  EnableMemH = params.find<bool>("enable_memH", 0);
-  if( !EnableMemH ){
-    // TODO: Use std::nothrow to return null instead of throwing std::bad_alloc
-    Mem = new RevMem( memSize, Opts,  &output );
-    if( !Mem )
-      output.fatal(CALL_INFO, -1, "Error: failed to initialize the memory object\n" );
-  }else{
-    Ctrl = loadUserSubComponent<RevMemCtrl>("memory");
-    if( !Ctrl )
-      output.fatal(CALL_INFO, -1, "Error : failed to inintialize the memory controller subcomponent\n");
-
-    // TODO: Use std::nothrow to return null instead of throwing std::bad_alloc
-    Mem = new RevMem( memSize, Opts, Ctrl, &output );
-    if( !Mem )
-      output.fatal(CALL_INFO, -1, "Error : failed to initialize the memory object\n" );
-
-    if( EnableFaults )
-      output.verbose(CALL_INFO, 1, 0, "Warning: memory faults cannot be enabled with memHierarchy support\n");
-  }
-
-  // FORZA: initialize scratchpad
-  Mem->InitScratchpad(id, _SCRATCHPAD_SIZE_, _CHUNK_SIZE_);
 
   // Set TLB Size
   const uint64_t tlbSize = params.find<unsigned long>("tlbSize", 512);
