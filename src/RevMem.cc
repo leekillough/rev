@@ -1114,7 +1114,6 @@ bool RevMem::ZOP_AMOMem(unsigned Hart, uint64_t Addr, size_t Len,
   SST::Forza::zopEvent *zev = new SST::Forza::zopEvent();
 
   // set all the fields
-  zev->setOpc(flagToZOP(flags, Len));
   zev->setType(SST::Forza::zopMsgT::Z_HZOPAC);
   zev->setNB(0);
   zev->setID(zNic->getMsgId(Hart));
