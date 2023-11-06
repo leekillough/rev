@@ -558,9 +558,9 @@ bool RevMem::AMOMem(unsigned Hart, uint64_t Addr, size_t Len,
     // sending to the RevMemCtrl
     ctrl->sendAMORequest(Hart, Addr, (uint64_t)(BaseMem), Len,
                          static_cast<char *>(Data), Target, req, flags);
-  //}else if( zNic && !isRZA ){
+  }else if( zNic && !isRZA ){
     // send a ZOP request to the RZA
-  //  ZOP_AMOMem(Hart, Addr, Len, Data, Target, req, flags);
+    ZOP_AMOMem(Hart, Addr, Len, Data, Target, req, flags);
   }else{
     // process the request locally
     char *TmpD = new char [8]{};
@@ -1071,58 +1071,78 @@ void RevMem::ScratchpadFree(uint64_t Addr, size_t size){
   return;
 }
 
-SST::Forza::zopOpc RevMem::flagToZOP(uint32_t flags){
-#if 0
-  static const std::pair<RevCPU::RevFlag, Forza::zopOpc> table[] = {
-    { RevCPU::RevFlag::F_AMOADD,  Forza::zopOpc::Z_AMOADD },
-    { RevCPU::RevFlag::F_AMOXOR,  Forza::zopOpc::Z_AMOXOR },
-    { RevCPU::RevFlag::F_AMOAND,  Forza::zopOpc::Z_AMOAND },
-    { RevCPU::RevFlag::F_AMOOR,   Forza::zopOpc::Z_AMOOR },
-    { RevCPU::RevFlag::F_AMOSWAP, Forza::zopOpc::Z_AMOSWAP },
-    { RevCPU::RevFlag::F_AMOMIN,  Forza::zopOpc::Z_AMOSMIN },
-    { RevCPU::RevFlag::F_AMOMAX,  Forza::zopOpc::Z_AMOSMAX },
-    { RevCPU::RevFlag::F_AMOMINU, Forza::zopOpc::Z_AMOUMIN },
-    { RevCPU::RevFlag::F_AMOMAXU, Forza::zopOpc::Z_AMOUMAX },
+SST::Forza::zopOpc RevMem::flagToZOP(uint32_t flags, size_t Len){
+
+  static const std::tuple<RevCPU::RevFlag, size_t, Forza::zopOpc> table[] = {
+    { RevCPU::RevFlag::F_AMOADD,  4,  Forza::zopOpc::Z_HAC_32_BASE_ADD  },
+    { RevCPU::RevFlag::F_AMOXOR,  4,  Forza::zopOpc::Z_HAC_32_BASE_XOR  },
+    { RevCPU::RevFlag::F_AMOAND,  4,  Forza::zopOpc::Z_HAC_32_BASE_AND  },
+    { RevCPU::RevFlag::F_AMOOR,   4,  Forza::zopOpc::Z_HAC_32_BASE_OR   },
+    { RevCPU::RevFlag::F_AMOSWAP, 4,  Forza::zopOpc::Z_HAC_32_BASE_SWAP },
+    { RevCPU::RevFlag::F_AMOMIN,  4,  Forza::zopOpc::Z_HAC_32_BASE_SMIN },
+    { RevCPU::RevFlag::F_AMOMAX,  4,  Forza::zopOpc::Z_HAC_32_BASE_SMAX },
+    { RevCPU::RevFlag::F_AMOMINU, 4,  Forza::zopOpc::Z_HAC_32_BASE_MIN  },
+    { RevCPU::RevFlag::F_AMOMAXU, 4,  Forza::zopOpc::Z_HAC_32_BASE_MAX  },
+    { RevCPU::RevFlag::F_AMOADD,  8,  Forza::zopOpc::Z_HAC_64_BASE_ADD  },
+    { RevCPU::RevFlag::F_AMOXOR,  8,  Forza::zopOpc::Z_HAC_64_BASE_XOR  },
+    { RevCPU::RevFlag::F_AMOAND,  8,  Forza::zopOpc::Z_HAC_64_BASE_AND  },
+    { RevCPU::RevFlag::F_AMOOR,   8,  Forza::zopOpc::Z_HAC_64_BASE_OR   },
+    { RevCPU::RevFlag::F_AMOSWAP, 8,  Forza::zopOpc::Z_HAC_64_BASE_SWAP },
+    { RevCPU::RevFlag::F_AMOMIN,  8,  Forza::zopOpc::Z_HAC_64_BASE_SMIN },
+    { RevCPU::RevFlag::F_AMOMAX,  8,  Forza::zopOpc::Z_HAC_64_BASE_SMAX },
+    { RevCPU::RevFlag::F_AMOMINU, 8,  Forza::zopOpc::Z_HAC_64_BASE_MIN  },
+    { RevCPU::RevFlag::F_AMOMAXU, 8,  Forza::zopOpc::Z_HAC_64_BASE_MAX  },
   };
 
   for (auto& flag : table){
-    if( flags & uint32_t(flag.first) ){
-      return flag.second;
+    if((flags & uint32_t(std::get<0>(flag))) &&
+        (Len == std::get<1>(flag))){
+      return std::get<2>(flag);
       break;
     }
   }
-#endif
-  return SST::Forza::zopOpc::Z_NULL_OPC;
-}
 
-std::vector<uint64_t> const RevMem::buildZOPPayload(std::vector<unsigned char> Data,
-                                                    std::vector<unsigned char> Target,
-                                                    size_t Len){
-  std::vector<uint64_t> P;
-#if 0
-  if( Len == 32 ){
-    for( unsigned i=0; i<Data.size(); i++ ){
-      P[0] |= ((uint32_t)(Data[i]) << (i*8));
-      P[1] |= ((uint32_t)(Target[i]) << (i*8));
-    }
-  }else{
-    for( unsigned i=0; i<4; i++ ){
-      P[0] |= ((uint32_t)(Data[i]) << (i*8));
-      P[2] |= ((uint32_t)(Target[i]) << (i*8));
-    }
-    for( unsigned i=5; i<8; i++ ){
-      P[1] |= ((uint32_t)(Data[i]) << ((i-5)*8));
-      P[3] |= ((uint32_t)(Target[i]) << ((i-5)*8));
-    }
-  }
-#endif
-  return P;
+  return SST::Forza::zopOpc::Z_NULL_OPC;
 }
 
 bool RevMem::ZOP_AMOMem(unsigned Hart, uint64_t Addr, size_t Len,
                         void *Data, void *Target,
                         const MemReq& req,
                         StandardMem::Request::flags_t flags){
+
+  // create a new event
+  SST::Forza::zopEvent *zev = new SST::Forza::zopEvent();
+
+  // set all the fields
+  zev->setOpc(flagToZOP(flags, Len));
+  zev->setType(SST::Forza::zopMsgT::Z_HZOPAC);
+  zev->setNB(0);
+  zev->setID(zNic->getMsgId(Hart));
+  zev->setCredit(0);
+  zev->setOpc(flagToZOP(flags, Len));
+  zev->setAppID(0);
+  zev->setDestHart(Z_HZOP_PIPE_HART);
+  zev->setDestZCID((uint8_t)(SST::Forza::zopCompID::Z_RZA));
+  zev->setDestPCID((uint8_t)(zNic->getPCID(zNic->getZoneID())));
+  zev->setDestPrec((uint8_t)(zNic->getPrecinctID()));
+  zev->setSrcHart(Hart);
+  zev->setSrcZCID((uint8_t)(zNic->getEndpointType()));
+  zev->setSrcPCID((uint8_t)(zNic->getPCID(zNic->getZoneID())));
+  zev->setSrcPrec((uint8_t)(zNic->getPrecinctID()));
+
+  // set the payload
+  std::vector<uint64_t> payload;
+  payload.push_back(0x00ull);   //  ACS
+  payload.push_back(Addr);      //  address
+  payload.push_back(*(static_cast<uint64_t *>(Data)));
+  zev->setPayload(payload);
+
+  // record the outgoing packet
+  auto V = std::make_tuple(Hart, zev->getID(), req);
+  outstanding.push_back(V);
+
+  // inject the new packet
+  zNic->send(zev, SST::Forza::zopCompID::Z_RZA);
 
   return true;
 }

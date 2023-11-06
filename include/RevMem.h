@@ -355,22 +355,7 @@ public:
 
 private:
   /// FORZA: convert a standard RISC-V opcode to a ZOP opcode
-  Forza::zopOpc flagToZOP(uint32_t flags);
-
-  /// FORZA: convert an incoming set of registers to a ZOP payload
-  //
-  // format32:
-  // Payload[0] = Data
-  // Payload[1] = Target
-  //
-  // format64:
-  // Payload[0] = Data[31:0]
-  // Payload[1] = Data[63:32]
-  // Payload[2] = Target[31:0]
-  // Payload[3] = Target[63:32]
-  std::vector<uint64_t> const buildZOPPayload(std::vector<unsigned char> Data,
-                                              std::vector<unsigned char> Target,
-                                              size_t Len);
+  Forza::zopOpc flagToZOP(uint32_t flags, size_t Len);
 
   /// FORZA: send an AMO request
   bool ZOP_AMOMem(unsigned Hart, uint64_t Addr, size_t Len,
@@ -430,6 +415,13 @@ private:
 #define LRSC_VAL  3
   std::vector<std::tuple<unsigned, uint64_t,
                          unsigned, uint64_t*>> LRSC;   ///< RevMem: load reserve/store conditional vector
+
+  #define _ZOUT_HART 0
+  #define _ZOUT_ID   1
+  #define _ZOUT_REQ  2
+  std::vector<std::tuple<unsigned,
+                         uint8_t,
+                         const MemReq &>> outstanding;  ///< RevMem: outstanding ZOP requests
 
 }; // class RevMem
 
