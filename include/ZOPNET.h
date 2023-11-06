@@ -61,6 +61,10 @@ namespace SST::Forza{
 #define Z_FLIT_DEST         0
 #define Z_FLIT_SRC          1
 
+#define Z_MZOP_PIPE_HART    0
+#define Z_HZOP_PIPE_HART    1
+#define Z_RZOP_PIPE_HART    2
+
 // --------------------------------------------
 // zopMsgT : ZOP Type
 // --------------------------------------------
@@ -287,7 +291,7 @@ enum class zopCompID : uint8_t {
 };
 
 // --------------------------------------------
-// zopPrecID : ZOP Precinct ID
+// zopPrecID : ZOP Precinct Component ID
 // --------------------------------------------
 enum class zopPrecID : uint8_t {
   Z_ZONE0       = 0b00000000,   /// zopPrecID: ZONE0
@@ -603,8 +607,86 @@ public:
   /// zopAPI: set the zone ID
   virtual void setZoneID(unsigned Zone) = 0;
 
+  /// zopAPI: get the precinct ID
+  virtual unsigned getPrecinctID() = 0;
+
+  /// zopAPI: get the zone ID
+  virtual unsigned getZoneID() = 0;
+
   /// zopAPI: retrieve the next message id for the target hart
   virtual uint8_t getMsgId(unsigned Hart) = 0;
+
+  /// zopAPI: convert the precinct ID to zopPrecID
+  SST::Forza::zopPrecID getPCID(unsigned Z){
+    switch( Z ){
+    case 0:
+      return SST::Forza::zopPrecID::Z_ZONE0;
+      break;
+    case 1:
+      return SST::Forza::zopPrecID::Z_ZONE1;
+      break;
+    case 2:
+      return SST::Forza::zopPrecID::Z_ZONE2;
+      break;
+    case 3:
+      return SST::Forza::zopPrecID::Z_ZONE3;
+      break;
+    case 4:
+      return SST::Forza::zopPrecID::Z_ZONE4;
+      break;
+    case 5:
+      return SST::Forza::zopPrecID::Z_ZONE5;
+      break;
+    case 6:
+      return SST::Forza::zopPrecID::Z_ZONE6;
+      break;
+    case 7:
+      return SST::Forza::zopPrecID::Z_ZONE7;
+      break;
+    default:
+      return SST::Forza::zopPrecID::Z_PMP;
+      break;
+    }
+    return SST::Forza::zopPrecID::Z_ZIP;
+  }
+
+  /// zopAPI: convert the zone ID to zopCompID
+  SST::Forza::zopCompID getZCID(unsigned Z, bool isRZA){
+    if( isRZA )
+      return SST::Forza::zopCompID::Z_RZA;
+
+    switch( Z ){
+    case 0:
+      return SST::Forza::zopCompID::Z_ZAP0;
+      break;
+    case 1:
+      return SST::Forza::zopCompID::Z_ZAP1;
+      break;
+    case 2:
+      return SST::Forza::zopCompID::Z_ZAP2;
+      break;
+    case 3:
+      return SST::Forza::zopCompID::Z_ZAP3;
+      break;
+    case 4:
+      return SST::Forza::zopCompID::Z_ZAP4;
+      break;
+    case 5:
+      return SST::Forza::zopCompID::Z_ZAP5;
+      break;
+    case 6:
+      return SST::Forza::zopCompID::Z_ZAP6;
+      break;
+    case 7:
+      return SST::Forza::zopCompID::Z_ZAP7;
+      break;
+    default:
+      return SST::Forza::zopCompID::Z_ZEN;
+      break;
+    }
+
+    return SST::Forza::zopCompID::Z_ZEN;
+  }
 
   /// zopAPI: convert endpoint to string name
   std::string const endPToStr(zopCompID T){
@@ -788,6 +870,12 @@ public:
   /// zopNIC: set the zone ID
   virtual void setZoneID(unsigned Z){ Zone = Z; }
 
+  /// zopNIC: get the precinct ID
+  virtual unsigned getPrecinctID() { return Precinct; }
+
+  /// zopNIC: get the zone ID
+  virtual unsigned getZoneID() { return Zone; }
+
   /// zopNIC: clock tick function
   virtual bool clockTick(Cycle_t cycle);
 
@@ -816,16 +904,6 @@ private:
 
   std::queue<SST::Interfaces::SimpleNetwork::Request*> sendQ;       ///< zopNIC: buffered send queue
   std::map<SST::Interfaces::SimpleNetwork::nid_t,zopCompID> hostMap;  ///< zopNIC: network ID to endpoint type mapping
-
-  ///< zopNIC: structure to track outstanding requests
-  std::vector<std::tuple<unsigned,
-                         uint32_t,
-                         uint32_t,
-                         uint8_t>> outstanding;
-  #define _ZOUT_HART 0
-  #define _ZOUT_SRC  1
-  #define _ZOUT_DEST 2
-  #define _ZOUT_ID   3
 
   std::vector<Statistic<uint64_t>*> stats;  ///< zopNIC: statistics vector
 };  // zopNIC
