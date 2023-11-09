@@ -111,7 +111,7 @@ bool RevMem::StatusFuture(uint64_t Addr){
 bool RevMem::LRBase(unsigned Hart, uint64_t Addr, size_t Len,
                     void *Target, uint8_t aq, uint8_t rl,
                     const MemReq& req,
-                    StandardMem::Request::flags_t flags){
+                    RevFlag flags){
   for( auto it = LRSC.begin(); it != LRSC.end(); ++it ){
     if( (Hart == std::get<LRSC_HART>(*it)) &&
         (Addr == std::get<LRSC_ADDR>(*it)) ){
@@ -157,7 +157,7 @@ bool RevMem::LRBase(unsigned Hart, uint64_t Addr, size_t Len,
 
 bool RevMem::SCBase(unsigned Hart, uint64_t Addr, size_t Len,
                     void *Data, void *Target, uint8_t aq, uint8_t rl,
-                    StandardMem::Request::flags_t flags){
+                    RevFlag flags){
   std::vector<std::tuple<unsigned, uint64_t, unsigned, uint64_t*>>::iterator it;
 
   for( it = LRSC.begin(); it != LRSC.end(); ++it ){
@@ -545,7 +545,7 @@ bool RevMem::FenceMem(unsigned Hart){
 bool RevMem::AMOMem(unsigned Hart, uint64_t Addr, size_t Len,
                     void *Data, void *Target,
                     const MemReq& req,
-                    StandardMem::Request::flags_t flags){
+                    RevFlag flags){
 #ifdef _REV_DEBUG_
   std::cout << "AMO of " << Len << " Bytes Starting at 0x" << std::hex << Addr << std::dec << std::endl;
 #endif
@@ -596,7 +596,7 @@ bool RevMem::AMOMem(unsigned Hart, uint64_t Addr, size_t Len,
 }
 
 bool RevMem::WriteMem( unsigned Hart, uint64_t Addr, size_t Len, const void *Data,
-                       StandardMem::Request::flags_t flags){
+                       RevFlag flags){
 #ifdef _REV_DEBUG_
   std::cout << "Writing " << Len << " Bytes Starting at 0x" << std::hex << Addr << std::dec << std::endl;
 #endif
@@ -723,7 +723,7 @@ bool RevMem::WriteMem( unsigned Hart, uint64_t Addr, size_t Len, const void *Dat
                               (uint64_t)(BaseMem),
                               Len,
                               DataMem,
-                              0x00);
+                              RevFlag::F_NONE);
       }else{
         for( unsigned i=0; i< (Len-span); i++ ){
           BaseMem[i] = DataMem[i];
@@ -737,7 +737,7 @@ bool RevMem::WriteMem( unsigned Hart, uint64_t Addr, size_t Len, const void *Dat
                               (uint64_t)(BaseMem),
                               Len,
                               &(DataMem[Cur]),
-                              0x00);
+                              RevFlag::F_NONE);
       }else{
         // write the memory using the internal RevMem model
         unsigned Cur = (Len-span);
@@ -752,6 +752,15 @@ bool RevMem::WriteMem( unsigned Hart, uint64_t Addr, size_t Len, const void *Dat
           Cur++;
         }
       }
+    }
+  }else{
+    if( ctrl ){
+      // write the memory using RevMemCtrl
+      ctrl->sendWRITERequest(Hart, Addr,
+                             (uint64_t)(BaseMem),
+                             Len,
+                             DataMem,
+                             RevFlag::F_NONE);
     }else{
       if( ctrl ){
         // write the memory using RevMemCtrl
@@ -759,7 +768,7 @@ bool RevMem::WriteMem( unsigned Hart, uint64_t Addr, size_t Len, const void *Dat
                               (uint64_t)(BaseMem),
                               Len,
                               DataMem,
-                              0x00);
+                              RevFlag::F_NONE));
       }else{
         // write the memory using the internal RevMem model
         for( unsigned i=0; i<Len; i++ ){
@@ -811,7 +820,7 @@ bool RevMem::ReadMem( uint64_t Addr, size_t Len, void *Data ){
 }
 
 bool RevMem::ReadMem(unsigned Hart, uint64_t Addr, size_t Len, void *Target,
-                     const MemReq& req, StandardMem::Request::flags_t flags){
+                     const MemReq& req, RevFlag flags){
 #ifdef _REV_DEBUG_
   std::cout << "NEW READMEM: Reading " << Len << " Bytes Starting at 0x" << std::hex << Addr << std::dec << std::endl;
 #endif
