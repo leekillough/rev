@@ -585,6 +585,10 @@ private:
   EcallStatus ECALL_pthread_join(RevInst& inst);           // 1001, rev_pthread_join(pthread_t thread, void **retval);
   EcallStatus ECALL_pthread_exit(RevInst& inst);           // 1002, rev_pthread_exit(void* retval);
 
+  /// FORZA
+  EcallStatus ECALL_forza_scratchpad_alloc(RevInst& inst); // 4000, forza_scratchpad_alloc(size_t size);
+  EcallStatus ECALL_forza_scratchpad_free(RevInst& inst);  // 4001, forza_scratchpad_free(size_t size);
+
   /// RevProc: Table of ecall codes w/ corresponding function pointer implementations
   std::unordered_map<uint32_t, std::function<EcallStatus(RevProc*, RevInst&)>> Ecalls;
 

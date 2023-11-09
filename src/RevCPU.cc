@@ -31,8 +31,11 @@ const char splash_msg[] = "\
 ";
 
 RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params )
-  : SST::Component(id), testStage(0), PrivTag(0), address(-1), EnableMemH(false),
-    DisableCoprocClock(false), Nic(nullptr), Ctrl(nullptr), ClockHandler(nullptr) {
+  : SST::Component(id), testStage(0), PrivTag(0), address(-1), EnableNIC(false),
+    EnableMemH(false), EnableCoProc(false),
+    EnableRZA(false), EnableZopNIC(false), DisableCoprocClock(false),
+    Precinct(0), Zone(0),
+    Nic(nullptr), Ctrl(nullptr), zNic(nullptr), ClockHandler(nullptr) {
 
   const int Verbosity = params.find<int>("verbose", 0);
 
@@ -45,8 +48,12 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params )
   timeConverter = registerClock(cpuClock, ClockHandler);
 
   // Inform SST to wait until we authorize it to exit
-  registerAsPrimaryComponent();
-  primaryComponentDoNotEndSim();
+  EnableRZA    = params.find<bool>("enableRZA", 0);
+  if( !EnableRZA ){
+    // RZA's do not call these are they are effectively peripheral components
+    registerAsPrimaryComponent();
+    primaryComponentDoNotEndSim();
+  }
 
   // Derive the simulation parameters
   // We must always derive the number of cores before initializing the options
@@ -160,6 +167,79 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params )
       output.verbose(CALL_INFO, 1, 0, "Warning: memory faults cannot be enabled with memHierarchy support\n");
   }
 
+  // FORZA: initialize scratchpad
+  Mem->InitScratchpad(id, _SCRATCHPAD_SIZE_, _CHUNK_SIZE_);
+
+  // FORZA: initialize the network
+  // setup the FORZA NoC NIC endpoint for the Zone
+  // Note that this must occur AFTER memory initialization
+  EnableZopNIC = params.find<bool>("enableZoneNIC", 0);
+  if( EnableZopNIC ){
+    output.verbose(CALL_INFO, 4, 0, "[FORZA] Enabling zone NIC on device=%s\n",
+                     getName().c_str());
+    Precinct = params.find<unsigned>("precinctId", 0);
+    Zone = params.find<unsigned>("zoneId", 0);
+    zNic = loadUserSubComponent<Forza::zopAPI>("zone_nic");
+    if( !zNic ){
+      output.fatal(CALL_INFO, -1, "Error: no ZONE NIC object loaded into RevCPU\n" );
+    }
+    Mem->setZNic(zNic);
+    zNic->setNumHarts(numHarts);
+    zNic->setPrecinctID(Precinct);
+    zNic->setZoneID(Zone);
+
+    // set the message handler for the NoC interface
+    zNic->setMsgHandler(new Event::Handler<RevCPU>(this, &RevCPU::handleZOPMessage));
+
+    // now that the NIC has been loaded, we need to ensure that the NIC knows
+    // what type of endpoint it is
+    if( EnableRZA ){
+      // This Rev instance is an RZA
+      zNic->setEndpointType(Forza::zopCompID::Z_RZA);
+      output.verbose(CALL_INFO, 4, 0, "[FORZA] device=%s initialized as RZA device\n",
+                     getName().c_str());
+      // ensure the memory controller knows that it is an RZA device
+      Mem->setRZA();
+    }else{
+      // This Rev instance is a ZAP
+      unsigned zap = params.find<unsigned>("zapId", 0);
+      Forza::zopCompID zapId;
+      switch( zap ){
+      case 0:
+        zapId = Forza::zopCompID::Z_ZAP0;
+        break;
+      case 1:
+        zapId = Forza::zopCompID::Z_ZAP1;
+        break;
+      case 2:
+        zapId = Forza::zopCompID::Z_ZAP2;
+        break;
+      case 3:
+        zapId = Forza::zopCompID::Z_ZAP3;
+        break;
+      case 4:
+        zapId = Forza::zopCompID::Z_ZAP4;
+        break;
+      case 5:
+        zapId = Forza::zopCompID::Z_ZAP5;
+        break;
+      case 6:
+        zapId = Forza::zopCompID::Z_ZAP6;
+        break;
+      case 7:
+        zapId = Forza::zopCompID::Z_ZAP7;
+        break;
+      default:
+        output.fatal(CALL_INFO, -1,
+                     "Error: zapId is out of range [0-7]\n");
+        break;
+      }
+      zNic->setEndpointType(zapId);
+      output.verbose(CALL_INFO, 4, 0, "[FORZA] device=%s initialized as ZAP device: ZAP%d\n",
+                     getName().c_str(), zap);
+    }
+  }
+
   // Set TLB Size
   const uint64_t tlbSize = params.find<unsigned long>("tlbSize", 512);
   Mem->SetTLBSize(tlbSize);
@@ -194,6 +274,30 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params )
       CoProcs.push_back(CoProc);
       Procs[i]->SetCoProc(CoProc);
     }
+  }else if(EnableRZA){
+    // retrieve each of the RZA pipeline models
+    if( numCores != 2 ){
+      output.fatal(CALL_INFO, -1,
+                   "Error : FORZA RZA devices require at least 2 cores\n" );
+    }
+
+    Procs.reserve(Procs.size() + numCores);
+    for( unsigned i=0; i<numCores; i++ ){
+      Procs.push_back( new RevProc( i, Opts, numHarts, Mem, Loader, this->GetNewTID(), &output ) );
+    }
+
+    RevCoProc *LSProc = loadUserSubComponent<RevCoProc>("rza_ls", SST::ComponentInfo::SHARE_NONE, Procs[0]);
+    if( !LSProc ){
+      output.fatal(CALL_INFO, -1, "Error : failed to initialize the RZA LS pipeline\n" );
+    }
+    RevCoProc *AMOProc = loadUserSubComponent<RevCoProc>("rza_amo", SST::ComponentInfo::SHARE_NONE, Procs[1]);
+    if( !AMOProc ){
+      output.fatal(CALL_INFO, -1, "Error : failed to initialize the RZA AMO pipeline\n" );
+    }
+    CoProcs.push_back(LSProc);
+    CoProcs.push_back(AMOProc);
+    Procs[0]->SetCoProc(LSProc);
+    Procs[1]->SetCoProc(AMOProc);
   }else{
     // Create the processor objects
     Procs.reserve(Procs.size() + numCores);
@@ -446,6 +550,9 @@ void RevCPU::setup(){
   if( EnableMemH ){
     Ctrl->setup();
   }
+  if( EnableZopNIC ){
+    zNic->setup();
+  }
 }
 
 void RevCPU::finish(){
@@ -456,6 +563,30 @@ void RevCPU::init( unsigned int phase ){
     Nic->init(phase);
   if( EnableMemH )
     Ctrl->init(phase);
+  if( EnableZopNIC )
+    zNic->init(phase);
+}
+
+void RevCPU::handleZOPMessageRZA(Forza::zopEvent *zev){
+  output.verbose(CALL_INFO, 1, 0, "[FORZA][RZA] Handling ZOP Message\n");
+}
+
+void RevCPU::handleZOPMessageZAP(Forza::zopEvent *zev){
+  output.verbose(CALL_INFO, 1, 0, "[FORZA][ZAP] Handling ZOP Message\n");
+}
+
+void RevCPU::handleZOPMessage(Event *ev){
+  Forza::zopEvent *zev = static_cast<Forza::zopEvent*>(ev);
+  zev->decodeEvent();
+
+  // handle a FORZA ZOP Message
+  if( EnableRZA ){
+    handleZOPMessageRZA(zev);
+  }else{
+    // I am a ZAP device, handle the message accordingly
+    handleZOPMessageZAP(zev);
+  }
+  delete zev;
 }
 
 void RevCPU::handleMessage(Event *ev){

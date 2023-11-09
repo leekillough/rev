@@ -41,6 +41,10 @@
 #include "RevRand.h"
 #include "../common/include/RevCommon.h"
 
+// -- FORZA Headers
+#include "RevScratchpad.h"
+#include "ZOPNET.h"
+
 #ifndef _REVMEM_BASE_
 #define _REVMEM_BASE_ 0x00000000
 #endif
@@ -68,7 +72,7 @@ public:
     MemSegment(uint64_t baseAddr, uint64_t size)
       : BaseAddr(baseAddr), Size(size) {
       TopAddr = baseAddr + size;
-    } // Permissions(permissions) {}
+    }
 
     uint64_t getTopAddr() const { return BaseAddr + Size; }
     uint64_t getBaseAddr() const { return BaseAddr; }
@@ -326,6 +330,37 @@ public:
 
   RevMemStats memStats = {};
 
+  // ----------------------------------------------------
+  // ---- FORZA Interfaces
+  // ----------------------------------------------------
+  /// FORZA: Checks if address is in scratchpad (ie. bits 56 & 57 are set)
+  inline bool IsAddrInScratchpad(const uint64_t& Addr);
+
+  /// FORZA: Init Scratchpad
+  void InitScratchpad(const unsigned ZapNum, const size_t Size, const size_t ChunkSize);
+
+  /// FORZA: Interface for allocating in the Scratchpad
+  uint64_t ScratchpadAlloc(size_t numBytes);
+
+  /// FORZA: Interface for freeing from Scratchpad
+  void ScratchpadFree(uint64_t Addr, size_t size);
+
+  /// FORZA: set the ZOP NIC object
+  void setZNic( Forza::zopAPI *Z ) { zNic = Z; }
+
+  /// FORZA: set the RZA flag for this instance of RevMem
+  void setRZA() { isRZA = true; }
+
+private:
+  /// FORZA: convert a standard RISC-V opcode to a ZOP opcode
+  Forza::zopOpc flagToZOP(uint32_t flags, size_t Len);
+
+  /// FORZA: send an AMO request
+  bool ZOP_AMOMem(unsigned Hart, uint64_t Addr, size_t Len,
+                  void *Data, void *Target,
+                  const MemReq& req,
+                  StandardMem::Request::flags_t flags);
+
 protected:
   char *physMem = nullptr;                 ///< RevMem: memory container
 
@@ -338,6 +373,10 @@ private:
   RevOpts *opts;                ///< RevMem: options object
   RevMemCtrl *ctrl;             ///< RevMem: memory controller object
   SST::Output *output;          ///< RevMem: output handler
+
+  std::shared_ptr<RevScratchpad> scratchpad; ///< FORZA: Scratchpad
+  Forza::zopAPI *zNic;          ///< RevMem: FORZA ZOP NIC
+  bool isRZA;                   ///< RevMem: FORZA RZA flag; true if this device is an RZA
 
 
   std::vector<std::shared_ptr<MemSegment>> MemSegs;       // Currently Allocated MemSegs
@@ -374,6 +413,13 @@ private:
 #define LRSC_VAL  3
   std::vector<std::tuple<unsigned, uint64_t,
                          unsigned, uint64_t*>> LRSC;   ///< RevMem: load reserve/store conditional vector
+
+  #define _ZOUT_HART 0
+  #define _ZOUT_ID   1
+  #define _ZOUT_REQ  2
+  std::vector<std::tuple<unsigned,
+                         uint8_t,
+                         const MemReq &>> outstanding;  ///< RevMem: outstanding ZOP requests
 
 }; // class RevMem
 

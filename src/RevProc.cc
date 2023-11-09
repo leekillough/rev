@@ -2288,6 +2288,10 @@ void RevProc::InitEcallTable(){
     { 501, &RevProc::ECALL_perf_stats},             //  rev_cpuinfo(struct rev_perf_stats *stats)
     { 1000, &RevProc::ECALL_pthread_create},        //
     { 1001, &RevProc::ECALL_pthread_join},          //
+
+    // FORZA
+    { 4000, &RevProc::ECALL_forza_scratchpad_alloc },
+    { 4001, &RevProc::ECALL_forza_scratchpad_free },
   };
 }
 
