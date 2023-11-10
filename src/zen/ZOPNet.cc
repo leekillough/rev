@@ -247,7 +247,12 @@ void zopNIC::send(zopEvent *ev, uint32_t dest ){
   Packet[1] = dest;
   Packet[2] = (uint32_t)(getAddress());
   ev->setPacket(Packet);
-  req->dest = dest;
+  if (ev->getType() == SST::Forza::zopMsgT::Z_MSG && ev->getOpcode() == SST::Forza::zopOpc::Z_SEND) {
+    // FIXME: Hijack and send to ZEN
+    req->dest = 1;
+  } else {
+    req->dest = dest;
+  }
   req->src = getAddress();
   req->givePayload(ev);
   sendQ.push(req);

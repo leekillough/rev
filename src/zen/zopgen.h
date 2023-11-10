@@ -1,59 +1,58 @@
 //
-// _zen_h_
+// _zopgen_h_
 //
 
 
-#ifndef _ZEN_H_
-#define _ZEN_H_
+#ifndef _ZOPGen_H_
+#define _ZOPGen_H_
 
 #include "zen_sst.h"
 #include "ZOPNet.h"
 #include <string>
 
 namespace SST::Forza{
-  class ZENEntry {
+  class ZOPGenEntry {
   public:
     SST::Forza::zopEvent *msg;
     uint64_t status;
-    uint64_t tail;
-    ZENEntry(SST::Forza::zopEvent *m, uint64_t s) {
+    ZOPGenEntry(SST::Forza::zopEvent *m, uint64_t s) {
       msg = m;
       status = s;
-      tail = 0;
     }
   };
 
-  class ZENTableRow {
+  class ZOPGenTableRow {
   public:
     uint64_t mem_head;
     uint64_t mem_tail;
     uint64_t mem_size;
     uint64_t mem_cur_head;
     uint64_t mem_cur_tail;
-    bool empty;
+    bool rev;
     uint64_t scratch_tail;
+    uint64_t scratch_cur_tail;
     uint64_t credits;
-    ZENTableRow(uint64_t mh, uint64_t mt, uint64_t ms, uint64_t st, uint64_t c) :
-      mem_head(mh), mem_tail(mt), mem_size(ms), empty(true), scratch_tail(st), credits(c) {
+    ZOPGenTableRow(uint64_t mh, uint64_t mt, uint64_t ms, bool rev, uint64_t st, uint64_t sh, uint64_t c) :
+      mem_head(mh), mem_tail(mt), mem_size(ms), rev(rev), scratch_tail(st), scratch_cur_tail(sh), credits(c) {
         mem_cur_head = mh;
         mem_cur_tail = mh;
       }
   };
-  class ZEN : public SST::Component{
+  class ZOPGen : public SST::Component{
   public:
     // register the component
     SST_ELI_REGISTER_COMPONENT(
-      ZEN,                                    // component class
+      ZOPGen,                                    // component class
       "Forza",                             // component libary
-      "ZEN",                                  // component name
+      "ZOPGen",                                  // component name
       SST_ELI_ELEMENT_VERSION(1,0,0),         // Version of the component
-      "ZEN: Forza ZEN component",             // description
+      "ZOPGen: Forza ZOPGen component",             // description
       COMPONENT_CATEGORY_PROCESSOR            // category
     )
 
     // describe the parameters
     SST_ELI_DOCUMENT_PARAMS(
-      { "clockFreq",  "ZEN core clock frequency", "1GHz" },
+      { "clockFreq",  "ZOPGen core clock frequency", "1GHz" },
       { "verbose",    "Sets the output verbsoity", 0 }
     )
 
@@ -71,11 +70,11 @@ namespace SST::Forza{
     )
 
     // public class members
-    /// ZEN: constructor
-    ZEN(SST::ComponentId_t id, SST::Params& params);
+    /// ZOPGen: constructor
+    ZOPGen(SST::ComponentId_t id, SST::Params& params);
 
-    /// ZEN: destructor
-    ~ZEN();
+    /// ZOPGen: destructor
+    ~ZOPGen();
     void init(unsigned int phase) override;
     void setup() override;
     void complete(unsigned int phase) override;
@@ -90,28 +89,24 @@ namespace SST::Forza{
     void sendACKToZAP(uint64_t hart_id);
     void processSetupMsgs();
     void processZAPCredits();
-    void sendMsgToZEN();
-    void sendSetupToZEN();
+    void sendMsgToZOPGen();
+    void sendSetupToZOPGen();
     uint64_t getRZATailQueue(uint64_t harts, uint64_t size);
-    void sendMZOPAckToZEN(SST::Forza::zopEvent *ev);
+    void sendMZOPAckToZOPGen(SST::Forza::zopEvent *ev);
 
   private:
     // private class members
 
-    /// ZEN: clock handler
+    /// ZOPGen: clock handler
     bool clock(SST::Cycle_t cycle);
 
     bool handleNetworkEvent(int i);
 
     // private data members
-    SST::Output output;             ///< ZEN: SST output handler
+    SST::Output output;             ///< ZOPGen: SST output handler
     SST::Interfaces::SimpleNetwork*     m_linkControl;
-    std::map<uint64_t, ZENTableRow*> hart_tables;
-    std::map<uint64_t, ZENTableRow*> zone_tables;
-    std::map<uint64_t, ZENTableRow*> precinct_tables;
-    std::map<uint64_t, std::vector<ZENEntry*> > zen_queue;
-    std::map<uint64_t, std::vector<ZENEntry*> > zone_queue;
-    std::map<uint64_t, std::vector<ZENEntry*> > precinct_queue;
+    std::map<uint64_t, ZOPGenTableRow*> hart_tables;
+    std::map<uint64_t, std::vector<ZOPGenEntry*> > zopgen_queue;
     std::vector<SST::Forza::zopEvent*> mem_acks;
     std::vector<SST::Forza::zopEvent*> setup_reqs;
     std::vector<SST::Forza::zopEvent*> zap_credits;
@@ -120,10 +115,10 @@ namespace SST::Forza{
     uint8_t msg_id;
     uint64_t m_num_harts;
     SST::Forza::zopAPI* m_zop_iface;
-    bool sent;
-  }; // class SST::ZEN
+    bool sent, setup_done;
+  }; // class SST::ZOPGen
 } // namespace SST::Forza
 
-#endif // _ZEN_H_
+#endif // _ZOPGen_H_
 
 // EOF
