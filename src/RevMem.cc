@@ -733,11 +733,17 @@ bool RevMem::WriteMem( unsigned Hart, uint64_t Addr, size_t Len, const void* Dat
         Cur++;
       }
     }
-  } else {
-    if( ctrl ) {
-      // write the memory using RevMemCtrl
-      ctrl->sendWRITERequest( Hart, Addr, (uint64_t) ( BaseMem ), Len, DataMem, RevFlag::F_NONE );
-    } else {
+  }else{
+      if( ctrl ){
+        // write the memory using RevMemCtrl
+        ctrl->sendWRITERequest(Hart, Addr,
+                              (uint64_t)(BaseMem),
+                              Len,
+                              DataMem,
+                              RevFlag::F_NONE);
+        } else if( zNic && !isRZA ) {
+        ZOP_WRITEMem( Hart, Addr, Len, DataMem, RevFlag::F_NONE );
+      } else {
       // write the memory using the internal RevMem model
       for( unsigned i = 0; i < Len; i++ ) {
         BaseMem[i] = DataMem[i];
@@ -1198,7 +1204,7 @@ SST::Forza::zopOpc RevMem::flagToZOP(uint32_t flags, size_t Len){
 bool RevMem::ZOP_AMOMem(unsigned Hart, uint64_t Addr, size_t Len,
                         void *Data, void *Target,
                         const MemReq& req,
-                        StandardMem::Request::flags_t flags){
+                        RevFlag flags){
 
   // create a new event
   SST::Forza::zopEvent *zev = new SST::Forza::zopEvent();
@@ -1208,7 +1214,7 @@ bool RevMem::ZOP_AMOMem(unsigned Hart, uint64_t Addr, size_t Len,
   zev->setNB(0);
   zev->setID(zNic->getMsgId(Hart));
   zev->setCredit(0);
-  zev->setOpc(flagToZOP(flags, Len));
+  zev->setOpc(flagToZOP((uint32_t)(flags), Len));
   zev->setAppID(0);
   zev->setDestHart(Z_HZOP_PIPE_HART);
   zev->setDestZCID((uint8_t)(SST::Forza::zopCompID::Z_RZA));
