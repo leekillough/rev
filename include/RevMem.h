@@ -359,7 +359,7 @@ private:
   bool ZOP_AMOMem(unsigned Hart, uint64_t Addr, size_t Len,
                   void *Data, void *Target,
                   const MemReq& req,
-                  StandardMem::Request::flags_t flags);
+                  RevFlag flags);
 
 protected:
   char *physMem = nullptr;                 ///< RevMem: memory container
