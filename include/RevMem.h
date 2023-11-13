@@ -407,14 +407,29 @@ public:
   void setRZA() { isRZA = true; }
 
 private:
-  /// FORZA: convert a standard RISC-V opcode to a ZOP opcode
+  /// FORZA: convert a standard RISC-V AMO opcode to a ZOP opcode
   Forza::zopOpc flagToZOP(uint32_t flags, size_t Len);
+
+  /// FORZA: convert a standard RISC-V memory request to a ZOP opcode
+  Forza::zopOpc memToZOP(uint32_t flags, size_t Len, bool Write);
 
   /// FORZA: send an AMO request
   bool ZOP_AMOMem(unsigned Hart, uint64_t Addr, size_t Len,
                   void *Data, void *Target,
                   const MemReq& req,
                   RevFlag flags);
+
+  /// FORZA: send a READ request
+  bool ZOP_READMem(unsigned Hart, uint64_t Addr, size_t Len,
+                   void *Target,
+                   const MemReq& req,
+                   RevFlag flags);
+
+  /// FORZA: send a WRITE request
+  bool ZOP_WRITEMem(unsigned Hart, uint64_t Addr, size_t Len,
+                    void *Data, void *Target,
+                    const MemReq& req,
+                    RevFlag flags);
 
 protected:
   char* physMem = nullptr;  ///< RevMem: memory container
