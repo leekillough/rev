@@ -1095,9 +1095,42 @@ SST::Forza::zopOpc RevMem::flagToZOP(uint32_t flags, size_t Len){
   };
 
   for (auto& flag : table){
-    if((flags & uint32_t(std::get<0>(flag))) &&
+    if((flags & (uint32_t)(std::get<0>(flag))) &&
         (Len == std::get<1>(flag))){
       return std::get<2>(flag);
+      break;
+    }
+  }
+
+  return SST::Forza::zopOpc::Z_NULL_OPC;
+}
+
+SST::Forza::zopOpc RevMem::memToZOP(uint32_t flags, size_t Len, bool Write){
+
+  static const std::tuple<RevCPU::RevFlag, size_t,
+                          bool, Forza::zopOpc> table[] = {
+    { RevFlag::F_ZEXT64, 1, false, SST::Forza::zopOpc::Z_MZOP_LB },
+    { RevFlag::F_ZEXT64, 2, false, SST::Forza::zopOpc::Z_MZOP_LH },
+    { RevFlag::F_ZEXT64, 4, false, SST::Forza::zopOpc::Z_MZOP_LW },
+    { RevFlag::F_ZEXT64, 8, false, SST::Forza::zopOpc::Z_MZOP_LD },
+    { RevFlag::F_SEXT64, 1, false, SST::Forza::zopOpc::Z_MZOP_LSB },
+    { RevFlag::F_SEXT64, 2, false, SST::Forza::zopOpc::Z_MZOP_LSH },
+    { RevFlag::F_SEXT64, 4, false, SST::Forza::zopOpc::Z_MZOP_LSW },
+
+    { RevFlag::F_ZEXT64, 1, true,  SST::Forza::zopOpc::Z_MZOP_SB },
+    { RevFlag::F_ZEXT64, 2, true,  SST::Forza::zopOpc::Z_MZOP_SH },
+    { RevFlag::F_ZEXT64, 4, true,  SST::Forza::zopOpc::Z_MZOP_SW },
+    { RevFlag::F_ZEXT64, 8, true,  SST::Forza::zopOpc::Z_MZOP_SD },
+    { RevFlag::F_SEXT64, 1, true,  SST::Forza::zopOpc::Z_MZOP_SSB },
+    { RevFlag::F_SEXT64, 2, true,  SST::Forza::zopOpc::Z_MZOP_SSH },
+    { RevFlag::F_SEXT64, 4, true,  SST::Forza::zopOpc::Z_MZOP_SSW },
+  };
+
+  for (auto& flag : table){
+    if( (flags & (uint32_t)(std::get<0>(flag))) &&
+        (Len == std::get<1>(flag)) &&
+        (Write == std::get<2>)(flag) ){
+      return std::get<3>(flag);
       break;
     }
   }
@@ -1109,6 +1142,11 @@ bool RevMem::ZOP_AMOMem(unsigned Hart, uint64_t Addr, size_t Len,
                         void *Data, void *Target,
                         const MemReq& req,
                         RevFlag flags){
+
+#ifdef _REV_DEBUG_
+  std::cout << "ZOP_AMO of " << Len << " Bytes Starting at 0x"
+            << std::hex << Addr << std::dec << std::endl;
+#endif
 
   // create a new event
   SST::Forza::zopEvent *zev = new SST::Forza::zopEvent();
@@ -1131,7 +1169,7 @@ bool RevMem::ZOP_AMOMem(unsigned Hart, uint64_t Addr, size_t Len,
 
   // set the payload
   std::vector<uint64_t> payload;
-  payload.push_back(0x00ull);   //  ACS
+  payload.push_back(0x00ull);   //  ACS: FIXME
   payload.push_back(Addr);      //  address
   payload.push_back(*(static_cast<uint64_t *>(Data)));
   zev->setPayload(payload);
@@ -1145,5 +1183,96 @@ bool RevMem::ZOP_AMOMem(unsigned Hart, uint64_t Addr, size_t Len,
 
   return true;
 }
+
+bool RevMem::ZOP_READMem(unsigned Hart, uint64_t Addr, size_t Len,
+                         void *Target,
+                         const MemReq& req,
+                         RevFlag flags){
+#ifdef _REV_DEBUG_
+  std::cout << "ZOP_READ of " << Len << " Bytes Starting at 0x"
+            << std::hex << Addr << std::dec << std::endl;
+#endif
+
+  // create a new event
+  SST::Forza::zopEvent *zev = new SST::Forza::zopEvent();
+
+  // set all the fields : FIXME
+  zev->setType(SST::Forza::zopMsgT::Z_MZOP);
+  zev->setNB(0);
+  zev->setID(zNic->getMsgId(Hart));
+  zev->setCredit(0);
+  zev->setOpc(memToZOP((uint32_t)(flags), Len, false));
+  zev->setAppID(0);
+  zev->setDestHart(Z_MZOP_PIPE_HART);
+  zev->setDestZCID((uint8_t)(SST::Forza::zopCompID::Z_RZA));
+  zev->setDestPCID((uint8_t)(zNic->getPCID(zNic->getZoneID())));
+  zev->setDestPrec((uint8_t)(zNic->getPrecinctID()));
+  zev->setSrcHart(Hart);
+  zev->setSrcZCID((uint8_t)(zNic->getEndpointType()));
+  zev->setSrcPCID((uint8_t)(zNic->getPCID(zNic->getZoneID())));
+  zev->setSrcPrec((uint8_t)(zNic->getPrecinctID()));
+
+  // set the payload
+  std::vector<uint64_t> payload;
+  payload.push_back(0x00ull);   //  ACS: FIXME
+  payload.push_back(Addr);      //  address
+  zev->setPayload(payload);
+
+  // record the outgoing packet
+  auto V = std::make_tuple(Hart, zev->getID(), req);
+  outstanding.push_back(V);
+
+  // inject the new packet
+  zNic->send(zev, SST::Forza::zopCompID::Z_RZA);
+
+  return true;
+}
+
+bool RevMem::ZOP_WRITEMem(unsigned Hart, uint64_t Addr, size_t Len,
+                          void *Data, void *Target,
+                          const MemReq& req,
+                          RevFlag flags){
+#ifdef _REV_DEBUG_
+  std::cout << "ZOP_WRITE of " << Len << " Bytes Starting at 0x"
+            << std::hex << Addr << std::dec << std::endl;
+#endif
+
+  // create a new event
+  SST::Forza::zopEvent *zev = new SST::Forza::zopEvent();
+
+  // set all the fields : FIXME
+  zev->setType(SST::Forza::zopMsgT::Z_MZOP);
+  zev->setNB(0);
+  zev->setID(zNic->getMsgId(Hart));
+  zev->setCredit(0);
+  zev->setOpc(memToZOP((uint32_t)(flags), Len, true));
+  zev->setAppID(0);
+  zev->setDestHart(Z_MZOP_PIPE_HART);
+  zev->setDestZCID((uint8_t)(SST::Forza::zopCompID::Z_RZA));
+  zev->setDestPCID((uint8_t)(zNic->getPCID(zNic->getZoneID())));
+  zev->setDestPrec((uint8_t)(zNic->getPrecinctID()));
+  zev->setSrcHart(Hart);
+  zev->setSrcZCID((uint8_t)(zNic->getEndpointType()));
+  zev->setSrcPCID((uint8_t)(zNic->getPCID(zNic->getZoneID())));
+  zev->setSrcPrec((uint8_t)(zNic->getPrecinctID()));
+
+  // set the payload
+  std::vector<uint64_t> payload;
+  payload.push_back(0x00ull);   //  ACS: FIXME
+  payload.push_back(Addr);      //  address
+  payload.push_back(*(static_cast<uint64_t *>(Data)));
+  zev->setPayload(payload);
+
+  // record the outgoing packet
+  auto V = std::make_tuple(Hart, zev->getID(), req);
+  outstanding.push_back(V);
+
+  // inject the new packet
+  zNic->send(zev, SST::Forza::zopCompID::Z_RZA);
+
+  return true;
+}
+
+
 
 // EOF

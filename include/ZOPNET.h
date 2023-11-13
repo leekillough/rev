@@ -94,7 +94,7 @@ enum class zopOpc : uint8_t {
   Z_MZOP_LSB    = 0b00000100,   /// zopOpc: MZOP Load signed byte
   Z_MZOP_LSH    = 0b00000101,   /// zopOpc: MZOP Load signed half
   Z_MZOP_LSW    = 0b00000110,   /// zopOpc: MZOP Load signed word
-  Z_MZOP_LSD    = 0b00000111,   /// zopOpc: MZOP Load double (dupe)
+  //Z_MZOP_LSD    = 0b00000111,   /// zopOpc: MZOP Load double (dupe)
   Z_MZOP_SB     = 0b00001000,   /// zopOpc: MZOP Store unsigned byte
   Z_MSOP_SH     = 0b00001001,   /// zopOpc: MZOP Store unsigned half
   Z_MSOP_SW     = 0b00001001,   /// zopOpc: MZOP Store unsigned word
@@ -102,7 +102,7 @@ enum class zopOpc : uint8_t {
   Z_MSOP_SSB    = 0b00001100,   /// zopOpc: MZOP Store signed byte
   Z_MSOP_SSH    = 0b00001101,   /// zopOpc: MZOP Store signed half
   Z_MSOP_SSW    = 0b00001110,   /// zopOpc: MZOP Store signed word
-  Z_MSOP_SSD    = 0b00001111,   /// zopOpc: MSOP Store doubleword (dupe)
+  //Z_MSOP_SSD    = 0b00001111,   /// zopOpc: MSOP Store doubleword (dupe)
 
   Z_MZOP_SCLB   = 0b11100000,   /// zopOpc: MZOP Load scratch unsigned byte
   Z_MZOP_SCLH   = 0b11100001,   /// zopOpc: MZOP Load scratch unsigned half
@@ -111,7 +111,7 @@ enum class zopOpc : uint8_t {
   Z_MZOP_SCLSB  = 0b11100100,   /// zopOpc: MZOP Load scratch signed byte
   Z_MZOP_SCLSH  = 0b11100101,   /// zopOpc: MZOP Load scratch signed half
   Z_MZOP_SCLSW  = 0b11100110,   /// zopOpc: MZOP Load scratch signed word
-  Z_MZOP_SCLSD  = 0b11100111,   /// zopOpc: MZOP Load scratch double (dupe)
+  //Z_MZOP_SCLSD  = 0b11100111,   /// zopOpc: MZOP Load scratch double (dupe)
   Z_MZOP_SCSB   = 0b11101000,   /// zopOpc: MZOP Store scratch unsigned byte
   Z_MSOP_SCSH   = 0b11101001,   /// zopOpc: MZOP Store scratch unsigned half
   Z_MSOP_SCSW   = 0b11101010,   /// zopOpc: MZOP Store scratch unsigned word
@@ -119,7 +119,7 @@ enum class zopOpc : uint8_t {
   Z_MSOP_SCSSB  = 0b11101100,   /// zopOpc: MZOP Store scratch signed byte
   Z_MSOP_SCSSH  = 0b11101101,   /// zopOpc: MZOP Store scratch signed half
   Z_MSOP_SCSSW  = 0b11101110,   /// zopOpc: MZOP Store scratch signed word
-  Z_MSOP_SCSSD  = 0b11101111,   /// zopOpc: MZOP Store scratch doubleword (dupe)
+  //Z_MSOP_SCSSD  = 0b11101111,   /// zopOpc: MZOP Store scratch doubleword (dupe)
 
 
   // -- HZOP ATOMIC/CUSTOM --
