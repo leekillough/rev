@@ -696,19 +696,43 @@ void RevCPU::init( unsigned int phase ) {
 }
 
 void RevCPU::handleZOPMessageRZA(Forza::zopEvent *zev){
-  output.verbose(CALL_INFO, 1, 0, "[FORZA][RZA] Handling ZOP Message\n");
+  output.verbose(CALL_INFO, 9, 0, "[FORZA][RZA] Handling ZOP Message\n");
+  switch( zev->getType() ){
+  case Forza::zopMsgT::Z_MZOP:
+    break;
+  case Forza::zopMsgT::Z_HZOPAC:
+    break;
+  case Forza::zopMsgT::Z_HZOPV:
+    break;
+  default:
+    output.fatal(CALL_INFO, -1,
+                 "[FORZA][RZA] RZA's cannot handle ZOP messages of Type=%s\n",
+                 zNic->msgTToStr(zev->getType()).c_str() );
+    break;
+  }
 }
 
 void RevCPU::handleZOPMessageZAP(Forza::zopEvent *zev){
-  output.verbose(CALL_INFO, 1, 0, "[FORZA][ZAP] Handling ZOP Message\n");
+  output.verbose(CALL_INFO, 9, 0, "[FORZA][ZAP] Handling ZOP Message\n");
+  switch( zev->getType() ){
+  case Forza::zopMsgT::Z_RESP:
+    break;
+  case Forza::zopMsgT::Z_EXCP:
+    break;
+  default:
+    output.fatal(CALL_INFO, -1,
+                 "[FORZA][ZAP] ZAP's cannot handle ZOP messages of Type=%s\n",
+                 zNic->msgTToStr(zev->getType()).c_str() );
+    break;
+  }
 }
 
 void RevCPU::handleZOPMessage(Event *ev){
   Forza::zopEvent *zev = static_cast<Forza::zopEvent*>(ev);
   zev->decodeEvent();
 
-  // handle a FORZA ZOP Message
   if( EnableRZA ){
+    // handle a FORZA ZOP Message
     handleZOPMessageRZA(zev);
   }else{
     // I am a ZAP device, handle the message accordingly
