@@ -631,6 +631,11 @@ bool RevMem::WriteMem( unsigned Hart, uint64_t Addr, size_t Len, const void *Dat
                               Len,
                               DataMem,
                               flags);
+      }else if( zNic && !isRZA ){
+        ZOP_WRITEMem(Hart, Addr,
+                     Len,
+                     DataMem,
+                     flags);
       }else{
         for( unsigned i=0; i< (Len-span); i++ ){
           BaseMem[i] = DataMem[i];
@@ -645,6 +650,12 @@ bool RevMem::WriteMem( unsigned Hart, uint64_t Addr, size_t Len, const void *Dat
                               Len,
                               &(DataMem[Cur]),
                               flags);
+      }else if( zNic && !isRZA ){
+        unsigned Cur = (Len-span);
+        ZOP_WRITEMem(Hart, Addr,
+                     Len,
+                     &(DataMem[Cur]),
+                     flags);
       }else{
         // write the memory using the internal RevMem model
         unsigned Cur = (Len-span);
@@ -661,6 +672,11 @@ bool RevMem::WriteMem( unsigned Hart, uint64_t Addr, size_t Len, const void *Dat
                               Len,
                               DataMem,
                               flags);
+      }else if( zNic && !isRZA ){
+        ZOP_WRITEMem(Hart, Addr,
+                     Len,
+                     DataMem,
+                     flags);
       }else{
         // write the memory using the internal RevMem model
         for( unsigned i=0; i<Len; i++ ){
@@ -724,6 +740,11 @@ bool RevMem::WriteMem( unsigned Hart, uint64_t Addr, size_t Len, const void *Dat
                               Len,
                               DataMem,
                               RevFlag::F_NONE);
+      }else if( zNic && !isRZA ){
+        ZOP_WRITEMem(Hart, Addr,
+                     Len,
+                     DataMem,
+                     RevFlag::F_NONE);
       }else{
         for( unsigned i=0; i< (Len-span); i++ ){
           BaseMem[i] = DataMem[i];
@@ -738,6 +759,12 @@ bool RevMem::WriteMem( unsigned Hart, uint64_t Addr, size_t Len, const void *Dat
                               Len,
                               &(DataMem[Cur]),
                               RevFlag::F_NONE);
+      }else if( zNic && !isRZA ){
+        unsigned Cur = (Len-span);
+        ZOP_WRITEMem(Hart, Addr,
+                     Len,
+                     &(DataMem[Cur]),
+                     RevFlag::F_NONE);
       }else{
         // write the memory using the internal RevMem model
         unsigned Cur = (Len-span);
@@ -835,6 +862,8 @@ bool RevMem::ReadMem(unsigned Hart, uint64_t Addr, size_t Len, void *Target,
       adjPhysAddr = CalcPhysAddr(adjPageNum, ((Addr+Len)-span));
       if( ctrl ){
         ctrl->sendREADRequest(Hart, Addr, (uint64_t)(BaseMem), Len, Target, req, flags);
+      }else if( zNic && !isRZA ){
+        ZOP_READMem(Hart, Addr, Len, Target, req, flags);
       }else{
         for( unsigned i=0; i< (Len-span); i++ ){
           DataMem[i] = BaseMem[i];
@@ -844,6 +873,9 @@ bool RevMem::ReadMem(unsigned Hart, uint64_t Addr, size_t Len, void *Target,
       if( ctrl ){
         unsigned Cur = (Len-span);
         ctrl->sendREADRequest(Hart, Addr, (uint64_t)(BaseMem), Len, ((char*)Target)+Cur, req, flags);
+      }else if( zNic && !isRZA ){
+        unsigned Cur = (Len-span);
+        ZOP_READMem(Hart, Addr, Len, (void *)(((char*)Target)+Cur), req, flags);
       }else{
         unsigned Cur = (Len-span);
         for( unsigned i=0; i< span; i++ ){
@@ -861,6 +893,8 @@ bool RevMem::ReadMem(unsigned Hart, uint64_t Addr, size_t Len, void *Target,
     }else{
       if( ctrl ){
         ctrl->sendREADRequest(Hart, Addr, (uint64_t)(BaseMem), Len, Target, req, flags);
+      }else if( zNic && !isRZA ){
+        ZOP_READMem(Hart, Addr, Len, Target, req, flags);
       }else{
         for( unsigned i=0; i<Len; i++ ){
           DataMem[i] = BaseMem[i];
@@ -1175,7 +1209,7 @@ bool RevMem::ZOP_AMOMem(unsigned Hart, uint64_t Addr, size_t Len,
   zev->setPayload(payload);
 
   // record the outgoing packet
-  auto V = std::make_tuple(Hart, zev->getID(), req);
+  auto V = std::make_tuple(Hart, zev->getID(), false, req);
   outstanding.push_back(V);
 
   // inject the new packet
@@ -1219,7 +1253,7 @@ bool RevMem::ZOP_READMem(unsigned Hart, uint64_t Addr, size_t Len,
   zev->setPayload(payload);
 
   // record the outgoing packet
-  auto V = std::make_tuple(Hart, zev->getID(), req);
+  auto V = std::make_tuple(Hart, zev->getID(), false, req);
   outstanding.push_back(V);
 
   // inject the new packet
@@ -1229,8 +1263,7 @@ bool RevMem::ZOP_READMem(unsigned Hart, uint64_t Addr, size_t Len,
 }
 
 bool RevMem::ZOP_WRITEMem(unsigned Hart, uint64_t Addr, size_t Len,
-                          void *Data, void *Target,
-                          const MemReq& req,
+                          void *Data,
                           RevFlag flags){
 #ifdef _REV_DEBUG_
   std::cout << "ZOP_WRITE of " << Len << " Bytes Starting at 0x"
@@ -1239,6 +1272,9 @@ bool RevMem::ZOP_WRITEMem(unsigned Hart, uint64_t Addr, size_t Len,
 
   // create a new event
   SST::Forza::zopEvent *zev = new SST::Forza::zopEvent();
+
+  // create a dummy MemReq
+  MemReq req{};
 
   // set all the fields : FIXME
   zev->setType(SST::Forza::zopMsgT::Z_MZOP);
@@ -1264,7 +1300,7 @@ bool RevMem::ZOP_WRITEMem(unsigned Hart, uint64_t Addr, size_t Len,
   zev->setPayload(payload);
 
   // record the outgoing packet
-  auto V = std::make_tuple(Hart, zev->getID(), req);
+  auto V = std::make_tuple(Hart, zev->getID(), true, req);
   outstanding.push_back(V);
 
   // inject the new packet

@@ -372,8 +372,7 @@ private:
 
   /// FORZA: send a WRITE request
   bool ZOP_WRITEMem(unsigned Hart, uint64_t Addr, size_t Len,
-                    void *Data, void *Target,
-                    const MemReq& req,
+                    void *Data,
                     RevFlag flags);
 
 protected:
@@ -431,9 +430,11 @@ private:
 
   #define _ZOUT_HART 0
   #define _ZOUT_ID   1
-  #define _ZOUT_REQ  2
+  #define _ZOUT_WR   2
+  #define _ZOUT_REQ  3
   std::vector<std::tuple<unsigned,
                          uint8_t,
+                         bool,
                          const MemReq &>> outstanding;  ///< RevMem: outstanding ZOP requests
 
 }; // class RevMem
