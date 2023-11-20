@@ -352,6 +352,9 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params )
     }
   }else if(EnableRZA){
     // retrieve each of the RZA pipeline models
+    // NOTE:
+    // We currently disable the RZOP pipeline as the opcodes
+    // are not defined in version 3.3.0 of the spec
     if( numCores != 2 ){
       output.fatal(CALL_INFO, -1,
                    "Error : FORZA RZA devices require at least 2 cores\n" );
@@ -359,21 +362,30 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params )
 
     Procs.reserve(Procs.size() + numCores);
     for( unsigned i=0; i<numCores; i++ ){
-      Procs.push_back( new RevProc( i, Opts, numHarts, Mem, Loader, this->GetNewTID(), &output ) );
+      Procs.push_back( new RevProc( i, Opts, numHarts, Mem,
+                                    Loader, this->GetNewTID(), &output ) );
     }
 
-    RevCoProc *LSProc = loadUserSubComponent<RevCoProc>("rza_ls", SST::ComponentInfo::SHARE_NONE, Procs[0]);
+    RevCoProc *LSProc = loadUserSubComponent<RevCoProc>("rza_ls",
+                                                        SST::ComponentInfo::SHARE_NONE,
+                                                        Procs[Z_MZOP_PIPE_HART]);
     if( !LSProc ){
-      output.fatal(CALL_INFO, -1, "Error : failed to initialize the RZA LS pipeline\n" );
+      output.fatal(CALL_INFO, -1,
+                   "Error : failed to initialize the RZA LS pipeline\n" );
     }
-    RevCoProc *AMOProc = loadUserSubComponent<RevCoProc>("rza_amo", SST::ComponentInfo::SHARE_NONE, Procs[1]);
+
+    RevCoProc *AMOProc = loadUserSubComponent<RevCoProc>("rza_amo",
+                                                         SST::ComponentInfo::SHARE_NONE,
+                                                         Procs[Z_HZOP_PIPE_HART]);
     if( !AMOProc ){
-      output.fatal(CALL_INFO, -1, "Error : failed to initialize the RZA AMO pipeline\n" );
+      output.fatal(CALL_INFO, -1,
+                   "Error : failed to initialize the RZA AMO pipeline\n" );
     }
+
     CoProcs.push_back(LSProc);
     CoProcs.push_back(AMOProc);
-    Procs[0]->SetCoProc(LSProc);
-    Procs[1]->SetCoProc(AMOProc);
+    Procs[Z_MZOP_PIPE_HART]->SetCoProc(LSProc);
+    Procs[Z_HZOP_PIPE_HART]->SetCoProc(AMOProc);
   }else{
     // Create the processor objects
     Procs.reserve(Procs.size() + numCores);
@@ -699,10 +711,13 @@ void RevCPU::handleZOPMessageRZA(Forza::zopEvent *zev){
   output.verbose(CALL_INFO, 9, 0, "[FORZA][RZA] Handling ZOP Message\n");
   switch( zev->getType() ){
   case Forza::zopMsgT::Z_MZOP:
+    // send to the MZOP pipeline
     break;
   case Forza::zopMsgT::Z_HZOPAC:
+    // send to the HZOP pipeline
     break;
   case Forza::zopMsgT::Z_HZOPV:
+    // send to the HZOP pipeline
     break;
   default:
     output.fatal(CALL_INFO, -1,
@@ -718,11 +733,15 @@ void RevCPU::handleZOPMessageZAP(Forza::zopEvent *zev){
   case Forza::zopMsgT::Z_RESP:
     break;
   case Forza::zopMsgT::Z_EXCP:
+    output.fatal(CALL_INFO, -1,
+                 "[FORZA][ZAP] Received exception code=%s from message id=%d\n",
+                 zNic->msgTToStr(zev->getType()).c_str(),
+                 (uint32_t)(zev->getID()));
     break;
   default:
     output.fatal(CALL_INFO, -1,
                  "[FORZA][ZAP] ZAP's cannot handle ZOP messages of Type=%s\n",
-                 zNic->msgTToStr(zev->getType()).c_str() );
+                 zNic->msgTToStr(zev->getType()).c_str());
     break;
   }
 }
