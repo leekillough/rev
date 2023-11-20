@@ -351,6 +351,9 @@ public:
   /// FORZA: set the RZA flag for this instance of RevMem
   void setRZA() { isRZA = true; }
 
+  /// FORZA: handle message response
+  bool handleRZAResponse(Forza::zopEvent *zev);
+
 private:
   /// FORZA: convert a standard RISC-V AMO opcode to a ZOP opcode
   Forza::zopOpc flagToZOP(uint32_t flags, size_t Len);
@@ -428,14 +431,16 @@ private:
   std::vector<std::tuple<unsigned, uint64_t,
                          unsigned, uint64_t*>> LRSC;   ///< RevMem: load reserve/store conditional vector
 
-  #define _ZOUT_HART 0
-  #define _ZOUT_ID   1
-  #define _ZOUT_WR   2
-  #define _ZOUT_REQ  3
+#define _ZOUT_HART 0
+#define _ZOUT_ID   1
+#define _ZOUT_WR   2
+#define _ZOUT_RSP  3
+#define _ZOUT_REQ  4
   std::vector<std::tuple<unsigned,
                          uint8_t,
                          bool,
-                         const MemReq &>> outstanding;  ///< RevMem: outstanding ZOP requests
+                         uint64_t *,
+                         MemReq >> outstanding;  ///< RevMem: outstanding ZOP requests
 
 }; // class RevMem
 

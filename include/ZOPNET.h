@@ -437,6 +437,15 @@ public:
     SrcPrec = P;
   }
 
+  /// zopEvent: retrieve the data payload from the packet
+  std::vector<uint64_t> getPayload() {
+    std::vector<uint64_t> P;
+    for( unsigned i=2; i<Packet.size(); i++ ){
+      P.push_back(Packet[i]);
+    }
+    return P;
+  }
+
   /// zopEvent: get the destination Hart
   uint16_t getDestHart() { return DestHart; }
 

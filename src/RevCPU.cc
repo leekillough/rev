@@ -195,6 +195,10 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params )
     // what type of endpoint it is
     if( EnableRZA ){
       // This Rev instance is an RZA
+      if( !EnableMemH ){
+        output.fatal(CALL_INFO, -1,
+                     "Error : memHierarchy is required if the respective Rev instance is an RZA\n");
+      }
       zNic->setEndpointType(Forza::zopCompID::Z_RZA);
       output.verbose(CALL_INFO, 4, 0, "[FORZA] device=%s initialized as RZA device\n",
                      getName().c_str());
@@ -603,10 +607,15 @@ void RevCPU::handleZOPMessageZAP(Forza::zopEvent *zev){
   output.verbose(CALL_INFO, 9, 0, "[FORZA][ZAP] Handling ZOP Message\n");
   switch( zev->getType() ){
   case Forza::zopMsgT::Z_RESP:
+    if( !Mem->handleRZAResponse(zev) ){
+      output.fatal(CALL_INFO, -1,
+                   "[FORZA][ZAP] Could not handle response for message ID=%d\n",
+                   (uint32_t)(zev->getID()));
+    }
     break;
   case Forza::zopMsgT::Z_EXCP:
     output.fatal(CALL_INFO, -1,
-                 "[FORZA][ZAP] Received exception code=%s from message id=%d\n",
+                 "[FORZA][ZAP] Received exception code=%s from message ID=%d\n",
                  zNic->msgTToStr(zev->getType()).c_str(),
                  (uint32_t)(zev->getID()));
     break;

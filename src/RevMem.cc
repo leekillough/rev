@@ -1209,7 +1209,8 @@ bool RevMem::ZOP_AMOMem(unsigned Hart, uint64_t Addr, size_t Len,
   zev->setPayload(payload);
 
   // record the outgoing packet
-  auto V = std::make_tuple(Hart, zev->getID(), false, req);
+  auto V = std::make_tuple(Hart, zev->getID(), false,
+                           static_cast<uint64_t*>(Target), req);
   outstanding.push_back(V);
 
   // inject the new packet
@@ -1253,7 +1254,8 @@ bool RevMem::ZOP_READMem(unsigned Hart, uint64_t Addr, size_t Len,
   zev->setPayload(payload);
 
   // record the outgoing packet
-  auto V = std::make_tuple(Hart, zev->getID(), false, req);
+  auto V = std::make_tuple(Hart, zev->getID(), false,
+                           static_cast<uint64_t*>(Target), req);
   outstanding.push_back(V);
 
   // inject the new packet
@@ -1300,7 +1302,7 @@ bool RevMem::ZOP_WRITEMem(unsigned Hart, uint64_t Addr, size_t Len,
   zev->setPayload(payload);
 
   // record the outgoing packet
-  auto V = std::make_tuple(Hart, zev->getID(), true, req);
+  auto V = std::make_tuple(Hart, zev->getID(), true, nullptr, req);
   outstanding.push_back(V);
 
   // inject the new packet
@@ -1309,6 +1311,46 @@ bool RevMem::ZOP_WRITEMem(unsigned Hart, uint64_t Addr, size_t Len,
   return true;
 }
 
+// Handles an RZA response message
+// This specifically handles MZOP and HZOP responses
+bool RevMem::handleRZAResponse(Forza::zopEvent *zev){
+  output->verbose(CALL_INFO, 9, 0,
+                  "[FORZA][ZAP] Handling ZOP Response in RevMem; ID=%d\n",
+                  (uint32_t)(zev->getID()));
 
+  uint16_t evHart = zev->getDestHart();
+  uint8_t evID = zev->getID();
+  unsigned cur = 0;
+  std::vector<uint64_t> Payload;
+
+  for (auto const& [hart, id, write, target, req] : outstanding) {
+    if( (evHart == (uint16_t)(hart)) &&
+        (evID   == (uint8_t)(id)) ){
+      // found a valid request at `cur`
+      if( !write ){
+        // this was a read or AMO request, handle the response
+        Payload = zev->getPayload();
+        if( Payload.size() == 0 ){
+          output->fatal(CALL_INFO, -1,
+                        "[FORZA][ZAP] Error : READ or AMO payload with no data; HART=%d, ID=%d\n",
+                        hart, id);
+          return false;
+        }
+
+        // write the response
+        *target = Payload[0];
+        req.MarkLoadComplete(req);
+      }
+
+      // erase it
+      outstanding.erase(outstanding.begin() + cur);
+      return true;
+    }
+    cur++;
+  }
+
+  // we did not find a matching operation
+  return false;
+}
 
 // EOF
