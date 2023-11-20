@@ -1282,7 +1282,7 @@ SST::Forza::zopOpc RevMem::memToZOP(uint32_t flags, size_t Len, bool Write){
   for (auto& flag : table){
     if( (flags & (uint32_t)(std::get<0>(flag))) &&
         (Len == std::get<1>(flag)) &&
-        (Write == std::get<2>)(flag) ){
+        (Write == std::get<2>(flag)) ){
       return std::get<3>(flag);
       break;
     }
