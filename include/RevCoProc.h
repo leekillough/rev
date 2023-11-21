@@ -31,6 +31,7 @@
 #include "RevCorePasskey.h"
 #include "RevFeature.h"
 #include "RevInstTable.h"
+#include "ZOPNET.h"
 #include "RevMem.h"
 #include "RevOpts.h"
 
@@ -90,6 +91,12 @@ public:
   /// RevCoProc: Returns true when co-processor has completed execution
   ///            - used for proper exiting of associated RevCore
   virtual bool IsDone()                                                            = 0;
+
+  // --------------------
+  // FORZA virtual methods
+  // --------------------
+  /// RevCoProc: injects a zop packet into the coproc pipeline
+  virtual bool InjectZOP(Forza::zopEvent *zev){ return true; }
 
 protected:
   SST::Output*   output{};  ///< RevCoProc: sst output object
@@ -230,6 +237,9 @@ public:
   /// RZALSCoProc: determines whether the coproc is complete
   virtual bool IsDone();
 
+  /// RZALSCoProc: injects a packet into the HZOP AMO pipeline
+  virtual bool InjectZOP(Forza::zopEvent *zev) override;
+
 private:
 };  // RZALSCoProc
 
@@ -279,6 +289,9 @@ public:
 
   /// RZAAMOCoProc: determines whether the coproc is complete
   virtual bool IsDone();
+
+  /// RZAMOCoProc: injects a packet into the HZOP AMO pipeline
+  virtual bool InjectZOP(Forza::zopEvent *zev) override;
 
 private:
 };  // RZAAMOCoProc
