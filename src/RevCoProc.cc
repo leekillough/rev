@@ -116,6 +116,10 @@ bool RZALSCoProc::ClockTick(SST::Cycle_t cycle){
   return true;
 }
 
+bool RZALSCoProc::InjectZOP(Forza::zopEvent *zev){
+  return true;
+}
+
 // ---------------------------------------------------------------
 // RZAAMOCoproc
 // ---------------------------------------------------------------
@@ -147,6 +151,10 @@ bool RZAAMOCoProc::IsDone(){
 }
 
 bool RZAAMOCoProc::ClockTick(SST::Cycle_t cycle){
+  return true;
+}
+
+bool RZAAMOCoProc::InjectZOP(Forza::zopEvent *zev){
   return true;
 }
 

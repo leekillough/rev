@@ -588,9 +588,19 @@ void RevCPU::handleZOPMessageRZA(Forza::zopEvent *zev){
   switch( zev->getType() ){
   case Forza::zopMsgT::Z_MZOP:
     // send to the MZOP pipeline
+    if( !CoProcs[Z_MZOP_PIPE_HART]->InjectZOP(zev) ){
+      output.fatal(CALL_INFO, -1,
+                   "[FORZA][RZA] Failed to inject MZOP into pipeline; ID=%d\n",
+                   zev->getID());
+    }
     break;
   case Forza::zopMsgT::Z_HZOPAC:
     // send to the HZOP pipeline
+    if( !CoProcs[Z_HZOP_PIPE_HART]->InjectZOP(zev) ){
+      output.fatal(CALL_INFO, -1,
+                   "[FORZA][RZA] Failed to inject HZOP into pipeline; ID=%d\n",
+                   zev->getID());
+    }
     break;
   case Forza::zopMsgT::Z_HZOPV:
     // send to the HZOP pipeline

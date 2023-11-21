@@ -33,6 +33,7 @@
 #include "RevInstTable.h"
 #include "RevProcPasskey.h"
 #include "RevProc.h"
+#include "ZOPNET.h"
 
 namespace SST::RevCPU{
 class RevProc;
@@ -89,6 +90,11 @@ public:
   ///            - used for proper exiting of associated RevProc
   virtual bool IsDone() = 0;
 
+  // --------------------
+  // FORZA virtual methods
+  // --------------------
+  /// RevCoProc: injects a zop packet into the coproc pipeline
+  virtual bool InjectZOP(Forza::zopEvent *zev){ return true; }
 
 protected:
   SST::Output*   output;                                ///< RevCoProc: sst output object
@@ -226,6 +232,9 @@ public:
   /// RZALSCoProc: determines whether the coproc is complete
   virtual bool IsDone();
 
+  /// RZALSCoProc: injects a packet into the HZOP AMO pipeline
+  virtual bool InjectZOP(Forza::zopEvent *zev) override;
+
 private:
 };  // RZALSCoProc
 
@@ -275,6 +284,9 @@ public:
 
   /// RZAAMOCoProc: determines whether the coproc is complete
   virtual bool IsDone();
+
+  /// RZAMOCoProc: injects a packet into the HZOP AMO pipeline
+  virtual bool InjectZOP(Forza::zopEvent *zev) override;
 
 private:
 };  // RZAAMOCoProc
