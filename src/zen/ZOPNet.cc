@@ -15,7 +15,9 @@ using namespace Forza;
 
 zopNIC::zopNIC(ComponentId_t id, Params& params)
   : zopAPI(id, params), iFace(nullptr), msgHandler(nullptr),
-    initBroadcastSent(false), numDest(0), Type(zopEndP::Z_ZAP){
+    initBroadcastSent(false), numDest(0), numHarts(0),
+    Precinct(0), Zone(0),
+    Type(zopCompID::Z_ZAP0), msgId(nullptr){
 
   // read the parameters
   int verbosity = params.find<int>("verbose", 0);
@@ -57,6 +59,32 @@ zopNIC::zopNIC(ComponentId_t id, Params& params)
 }
 
 zopNIC::~zopNIC(){
+  if( msgId )
+    delete[] msgId;
+}
+
+void zopNIC::setNumHarts(unsigned H){
+  numHarts = H;
+  msgId = new uint8_t [numHarts];
+  for( unsigned i=0; i<numHarts; i++ ){
+    msgId[i] = 0;
+  }
+}
+
+uint8_t zopNIC::getMsgId(unsigned H){
+  if( H > (numHarts-1) )
+    output.fatal(CALL_INFO, -1,
+                 "Error: error generating message id: unknown Hart=%d\n",
+                 H );
+
+  uint8_t id = msgId[H];
+  if( msgId[H] == Z_MASK_MSGID ){
+    msgId[H] = 0;
+  }else{
+    msgId[H]++;
+  }
+
+  return id;
 }
 
 void zopNIC::registerStats(){
@@ -92,9 +120,8 @@ zopNIC::zopStats zopNIC::getStatFromPacket(zopEvent *ev){
                  "Error: recording stat for a null packet\n" );
   }
 
-  uint32_t Header = Packet[0];
-  Header = ((Header >> Z_MSG_TYPE) & 0b1111);
-  switch( (zopMsgT)(Header) ){
+  zopMsgT Type = ev->getType();
+  switch( (zopMsgT)(Type) ){
   case zopMsgT::Z_MZOP:
     return zopStats::MZOPSent;
     break;
@@ -127,7 +154,7 @@ zopNIC::zopStats zopNIC::getStatFromPacket(zopEvent *ev){
     break;
   default :
     output.fatal(CALL_INFO, -1,
-                 "Error: unknown packet type=%d\n", Header );
+                 "Error: unknown packet type=%d\n", (unsigned)(Type) );
     break;
   }
 
@@ -167,7 +194,8 @@ void zopNIC::init(unsigned int phase){
       initBroadcastSent = true;
       zopEvent *ev = new zopEvent(iFace->getEndpointID(),
                                   getEndpointType());
-      SST::Interfaces::SimpleNetwork::Request * req = new SST::Interfaces::SimpleNetwork::Request();
+      SST::Interfaces::SimpleNetwork::Request * req =
+        new SST::Interfaces::SimpleNetwork::Request();
       req->dest = SST::Interfaces::SimpleNetwork::INIT_BROADCAST_ADDR;
       req->src = iFace->getEndpointID();
       req->givePayload(ev);
@@ -184,8 +212,8 @@ void zopNIC::init(unsigned int phase){
     zopEvent *ev = static_cast<zopEvent*>(req->takePayload());
     numDest++;
     SST::Interfaces::SimpleNetwork::nid_t srcID = req->src;
-    std::vector<uint32_t> Pkt = ev->getPacket();
-    hostMap[srcID] = static_cast<zopEndP>(Pkt[0]);
+    std::vector<uint64_t> Pkt = ev->getPacket();
+    hostMap[srcID] = static_cast<zopCompID>(Pkt[0] & Z_MASK_TYPE);
     output.verbose(CALL_INFO, 7, 0,
                    "%s received init broadcast messages from %d of type %s\n",
                    getName().c_str(), (uint32_t)(srcID),
@@ -213,69 +241,39 @@ void zopNIC::init(unsigned int phase){
   // --- end print out the host mapping table
 }
 
-void zopNIC::send(zopEvent *ev, zopEndP dest ){
+void zopNIC::send(zopEvent *ev, zopCompID dest){
   SST::Interfaces::SimpleNetwork::Request *req =
     new SST::Interfaces::SimpleNetwork::Request();
   output.verbose(CALL_INFO, 9, 0,
-                 "Sending message from %s @ id=%d to endpoint=%s\n",
+                 "Sending message from %s @ id=%d to endpoint[hart:zone:prec:Type]=[%d:%d:%d:%s\n",
                  getName().c_str(), (uint32_t)(getAddress()),
+                 ev->getDestHart(), ev->getDestZCID(), ev->getDestPCID(),
                  endPToStr(dest).c_str() );
-  uint32_t realDest = 0;
-  for(auto const& [key, val] : hostMap){
-    if( val == dest ){
-      realDest = key;
+  auto realDest = 0;
+  for( auto i : hostMap ){
+    if( i.second == dest ){
+      realDest = i.first;
     }
   }
-  auto Packet = ev->getPacket();
-  Packet[1] = realDest;
-  Packet[2] = (uint32_t)(getAddress());
-  ev->setPacket(Packet);
-  req->dest = realDest;
+  ev->encodeEvent();
+  req->dest = realDest;   // FIXME
   req->src = getAddress();
   req->givePayload(ev);
   sendQ.push(req);
 }
-
-void zopNIC::send(zopEvent *ev, uint32_t dest ){
-  SST::Interfaces::SimpleNetwork::Request *req =
-    new SST::Interfaces::SimpleNetwork::Request();
-  output.verbose(CALL_INFO, 9, 0,
-                 "Sending message from %s @ id=%d to endpoint=%d\n",
-                 getName().c_str(), (uint32_t)(getAddress()),
-                 dest);
-  auto Packet = ev->getPacket();
-  Packet[1] = dest;
-  Packet[2] = (uint32_t)(getAddress());
-  ev->setPacket(Packet);
-  if (ev->getType() == SST::Forza::zopMsgT::Z_MSG && ev->getOpcode() == SST::Forza::zopOpc::Z_SEND) {
-    // FIXME: Hijack and send to ZEN
-    req->dest = 1;
-  } else {
-    req->dest = dest;
-  }
-  req->src = getAddress();
-  req->givePayload(ev);
-  sendQ.push(req);
-}
-
 
 bool zopNIC::msgNotify(int vn){
   SST::Interfaces::SimpleNetwork::Request* req = iFace->recv(0);
   if( req != nullptr ){
-    Event *evbase = req->takePayload();
-    if (!evbase) {
-      output.verbose(CALL_INFO, 9, 0,
-                    "%s received zop message\n",
-                    getName().c_str());
-    }
-    zopEvent *ev = static_cast<zopEvent*>(evbase);
+    zopEvent *ev = static_cast<zopEvent*>(req->takePayload());
     if( !ev ){
       output.fatal(CALL_INFO, -1, "%s, Error: zopEvent on zopNIC is null\n",
                    getName().c_str());
     }
+    ev->decodeEvent();
     output.verbose(CALL_INFO, 9, 0,
-                   "%s received zop message\n",
-                   getName().c_str());
+                   "%s received zop message of type %s\n",
+                   getName().c_str(), this->msgTToStr(ev->getType()).c_str());
     (*msgHandler)(ev);
     delete req;
   }
@@ -294,14 +292,14 @@ bool zopNIC::clockTick(SST::Cycle_t cycle){
   unsigned thisCycle = 0;
   while( (!sendQ.empty()) && (thisCycle < ReqPerCycle) ){
     SST::Interfaces::SimpleNetwork::Request *R = sendQ.front();
-    zopEvent *ev = static_cast<zopEvent*>(R->inspectPayload());
+    zopEvent *ev = static_cast<zopEvent*>(R->takePayload());
     auto P = ev->getPacket();
     if( iFace->spaceToSend(0, P.size()*32) &&
         iFace->send(sendQ.front(), 0) ){
       recordStat( getStatFromPacket(ev), 1 );
       sendQ.pop();
       thisCycle++;
-    } else{
+    }else{
       break;
     }
   }

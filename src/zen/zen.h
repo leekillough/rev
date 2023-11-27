@@ -81,7 +81,7 @@ namespace SST::Forza{
     void complete(unsigned int phase) override;
     void finish() override;
     void sendMsgToRZA(uint64_t addr, uint8_t msg_id);
-    void sendMsgToScratchpad(uint64_t dest, uint64_t addr);
+    void sendMsgToScratchpad(uint64_t dest, uint64_t scratch_addr, uint64_t addr);
     void processEgressQueue();
     void notifyHARTScratchpad();
     void handleIncomingRZAMsg();
