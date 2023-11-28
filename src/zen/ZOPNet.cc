@@ -292,7 +292,7 @@ bool zopNIC::clockTick(SST::Cycle_t cycle){
   unsigned thisCycle = 0;
   while( (!sendQ.empty()) && (thisCycle < ReqPerCycle) ){
     SST::Interfaces::SimpleNetwork::Request *R = sendQ.front();
-    zopEvent *ev = static_cast<zopEvent*>(R->takePayload());
+    zopEvent *ev = static_cast<zopEvent*>(R->inspectPayload());
     auto P = ev->getPacket();
     if( iFace->spaceToSend(0, P.size()*32) &&
         iFace->send(sendQ.front(), 0) ){
