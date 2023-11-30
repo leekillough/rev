@@ -65,26 +65,7 @@ zopNIC::~zopNIC(){
 
 void zopNIC::setNumHarts(unsigned H){
   numHarts = H;
-  msgId = new uint8_t [numHarts];
-  for( unsigned i=0; i<numHarts; i++ ){
-    msgId[i] = 0;
-  }
-}
-
-uint8_t zopNIC::getMsgId(unsigned H){
-  if( H > (numHarts-1) )
-    output.fatal(CALL_INFO, -1,
-                 "Error: error generating message id: unknown Hart=%d\n",
-                 H );
-
-  uint8_t id = msgId[H];
-  if( msgId[H] == Z_MASK_MSGID ){
-    msgId[H] = 0;
-  }else{
-    msgId[H]++;
-  }
-
-  return id;
+  msgId = new SST::Forza::zopMsgID [numHarts];
 }
 
 void zopNIC::registerStats(){
@@ -237,15 +218,35 @@ void zopNIC::init(unsigned int phase){
 
     output.verbose(CALL_INFO, 9, 0,
                   "------------------------------------------------------\n");
+    // we first walk the preInitQ to see if there are any pending requests
+    // these requests are queued before the network has been fully initialized
+    if( preInitQ.size() > 0 ){
+      output.verbose(CALL_INFO, 9, 0,
+                    "%s processing pre-init messages\n",
+                    getName().c_str());
+      for( auto &e : preInitQ ){
+        send(e.first, e.second);
+      }
+      preInitQ.clear();
+    }
   }
   // --- end print out the host mapping table
 }
 
 void zopNIC::send(zopEvent *ev, zopCompID dest){
+  if( !initBroadcastSent ){
+    output.verbose(CALL_INFO, 9, 0,
+                   "Buffering message from %s to endpoint [hart:zcid:pcid:type]=[%d:%d:%d:%s] before network boots\n",
+                   getName().c_str(),
+                   ev->getDestHart(), ev->getDestZCID(), ev->getDestPCID(),
+                   endPToStr(dest).c_str() );
+    preInitQ.push_back(std::make_pair(ev, dest));
+    return ;
+  }
   SST::Interfaces::SimpleNetwork::Request *req =
     new SST::Interfaces::SimpleNetwork::Request();
   output.verbose(CALL_INFO, 9, 0,
-                 "Sending message from %s @ id=%d to endpoint[hart:zone:prec:Type]=[%d:%d:%d:%s\n",
+                 "Sending message from %s @ phys_id=%d to endpoint[hart:zcid:pcid:type]=[%d:%d:%d:%s]\n",
                  getName().c_str(), (uint32_t)(getAddress()),
                  ev->getDestHart(), ev->getDestZCID(), ev->getDestPCID(),
                  endPToStr(dest).c_str() );
@@ -259,21 +260,23 @@ void zopNIC::send(zopEvent *ev, zopCompID dest){
   req->dest = realDest;   // FIXME
   req->src = getAddress();
   req->givePayload(ev);
-  sendQ.push(req);
+  sendQ.push_back(req);
 }
 
 bool zopNIC::msgNotify(int vn){
   SST::Interfaces::SimpleNetwork::Request* req = iFace->recv(0);
   if( req != nullptr ){
     zopEvent *ev = static_cast<zopEvent*>(req->takePayload());
-    if( !ev ){
+    if( ev == nullptr ){
       output.fatal(CALL_INFO, -1, "%s, Error: zopEvent on zopNIC is null\n",
                    getName().c_str());
     }
     ev->decodeEvent();
     output.verbose(CALL_INFO, 9, 0,
-                   "%s received zop message of type %s\n",
-                   getName().c_str(), this->msgTToStr(ev->getType()).c_str());
+                   "%s:%s received zop message of type %s\n",
+                   getName().c_str(),
+                   this->endPToStr(this->getEndpointType()).c_str(),
+                   this->msgTToStr(ev->getType()).c_str());
     (*msgHandler)(ev);
     delete req;
   }
@@ -290,20 +293,59 @@ SST::Interfaces::SimpleNetwork::nid_t zopNIC::getAddress(){
 
 bool zopNIC::clockTick(SST::Cycle_t cycle){
   unsigned thisCycle = 0;
-  while( (!sendQ.empty()) && (thisCycle < ReqPerCycle) ){
-    SST::Interfaces::SimpleNetwork::Request *R = sendQ.front();
-    zopEvent *ev = static_cast<zopEvent*>(R->takePayload());
-    auto P = ev->getPacket();
-    if( iFace->spaceToSend(0, P.size()*32) &&
-        iFace->send(sendQ.front(), 0) ){
-      recordStat( getStatFromPacket(ev), 1 );
-      sendQ.pop();
-      thisCycle++;
-    }else{
-      break;
-    }
+  unsigned Hart = 0;
+  unsigned Cur = 0;
+
+  // check if there are any outstanding requests
+  if( sendQ.empty() ){
+    return false;
   }
 
+  for( auto R : sendQ ){
+    if( thisCycle < ReqPerCycle ){
+      zopEvent *ev = static_cast<zopEvent*>(R->takePayload());
+      Hart = (unsigned)(ev->getSrcHart());
+      if( Type == SST::Forza::zopCompID::Z_RZA ){
+        // I am an RZA... I don't need to reserve any message IDs
+        auto P = ev->getPacket();
+        if( iFace->spaceToSend(0, P.size()*64) ){
+          // we have space to send
+          R->givePayload(ev);
+          recordStat( getStatFromPacket(ev), 1 );
+          thisCycle++;
+          iFace->send(R, 0);
+          sendQ.erase(sendQ.begin() + Cur);
+        }else{
+          // no space to send, reset the payload
+          R->givePayload(ev);
+        }
+      }else if( msgId[Hart].getNumFree() > 0 ){
+        // we have a free message Id for this hart
+        auto P = ev->getPacket();
+        if( iFace->spaceToSend(0, P.size()*64) ){
+          // we have space to send
+          ev->setID( msgId[Hart].getMsgId() );
+          std::cout << "sending message with id=" << (unsigned)(ev->getID()) << std::endl;
+          ev->encodeEvent();
+          R->givePayload(ev);
+          recordStat( getStatFromPacket(ev), 1 );
+          thisCycle++;
+          iFace->send(R, 0);
+          sendQ.erase(sendQ.begin() + Cur);
+        }else{
+          // no space to send, reset the payload
+          R->givePayload(ev);
+        }
+      }else{
+        // reset the payload
+        R->givePayload(ev);
+      }
+    }else{
+      // saturated the number of outstanding requests
+      return false;
+    }
+    Cur++;
+  }
   return false;
 }
 

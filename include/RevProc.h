@@ -193,6 +193,11 @@ public:
   ///  be created by a RevCoProc (or a class derived from RevCoProc) so this funciton may not be called from even within
   ///  RevProc
   void ExternalReleaseHart(RevProcPasskey<RevCoProc>, uint16_t HartID);
+
+  ///< RevProc: Allow a co-process to retrieve the register file object for the target HART
+  std::unique_ptr<RevRegFile> ExternalGetRegFile(RevProcPasskey<RevCoProc>, unsigned Hart){
+    return Harts.at(Hart)->PopRegFile();
+  }
   //------------- END External Interface -------------------------------
 
   ///< RevProc: Used for loading a software thread into a RevHart

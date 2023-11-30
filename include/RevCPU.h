@@ -310,6 +310,9 @@ private:
 
   SST::Clock::Handler<RevCPU>* ClockHandler;  ///< RevCPU: Clock Handler
 
+  std::vector<Forza::zopEvent *> ZIQ;             ///< RevCPU: ZOP Issue Queue
+  std::map<uint64_t,Forza::zopEvent *> ZRqst;     ///< RevCPU: outstanding ZOP requests
+
   std::queue<std::pair<uint32_t, char *>> ZeroRqst;  ///< RevCPU: tracks incoming zero address put requests; pair<Size, Data>
   std::list<std::pair<uint8_t, int>> TrackTags;      ///< RevCPU: tracks the outgoing messages; pair<Tag, Dest>
   std::vector<std::tuple<uint8_t,
@@ -435,6 +438,9 @@ private:
 
   /// RevCPU: updates sst statistics on a per core basis
   void UpdateCoreStatistics(unsigned coreNum);
+
+  /// RevCPU: processes the incoming ZOP queue
+  void processZOPQ();
 
 }; // class RevCPU
 

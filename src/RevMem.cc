@@ -691,7 +691,7 @@ bool RevMem::WriteMem( unsigned Hart, uint64_t Addr, size_t Len, const void *Dat
 
 
 bool RevMem::WriteMem( unsigned Hart, uint64_t Addr, size_t Len, const void *Data ){
-  #ifdef _REV_DEBUG_
+#ifdef _REV_DEBUG_
   std::cout << "Writing " << Len << " Bytes Starting at 0x" << std::hex << Addr << std::dec << std::endl;
 #endif
 
@@ -787,6 +787,11 @@ bool RevMem::WriteMem( unsigned Hart, uint64_t Addr, size_t Len, const void *Dat
                               Len,
                               DataMem,
                               RevFlag::F_NONE);
+      }else if( zNic && !isRZA ){
+        ZOP_WRITEMem(Hart, Addr,
+                     Len,
+                     DataMem,
+                     RevFlag::F_NONE);
       }else{
         // write the memory using the internal RevMem model
         for( unsigned i=0; i<Len; i++ ){
@@ -1072,7 +1077,11 @@ void RevMem::InitScratchpad(const unsigned ZapNum, size_t ScratchpadSize, size_t
 bool RevMem::IsAddrInScratchpad(const uint64_t& Addr){
   //// Mask with bits 56 and 57 set to 1
   uint64_t Mask = (1ULL << 56) | (1ULL << 57);
-  return (Addr & Mask) == Mask;
+  if( (Addr & Mask ) ){
+    std::cout << "THIS IS A SCRATCHPAD ADDRESS" << std::endl;
+  }
+  return (Addr & Mask);
+  //return (Addr & Mask) == Mask;
   //return scratchpad->Contains(Addr);
 }
 
@@ -1143,32 +1152,58 @@ SST::Forza::zopOpc RevMem::memToZOP(uint32_t flags, size_t Len, bool Write){
 
   static const std::tuple<RevCPU::RevFlag, size_t,
                           bool, Forza::zopOpc> table[] = {
+    { RevFlag::F_NONE,   1, false, SST::Forza::zopOpc::Z_MZOP_LB },
+    { RevFlag::F_NONE,   2, false, SST::Forza::zopOpc::Z_MZOP_LH },
+    { RevFlag::F_NONE,   4, false, SST::Forza::zopOpc::Z_MZOP_LW },
+    { RevFlag::F_NONE,   8, false, SST::Forza::zopOpc::Z_MZOP_LD },
+
     { RevFlag::F_ZEXT64, 1, false, SST::Forza::zopOpc::Z_MZOP_LB },
     { RevFlag::F_ZEXT64, 2, false, SST::Forza::zopOpc::Z_MZOP_LH },
     { RevFlag::F_ZEXT64, 4, false, SST::Forza::zopOpc::Z_MZOP_LW },
     { RevFlag::F_ZEXT64, 8, false, SST::Forza::zopOpc::Z_MZOP_LD },
+
     { RevFlag::F_SEXT64, 1, false, SST::Forza::zopOpc::Z_MZOP_LSB },
     { RevFlag::F_SEXT64, 2, false, SST::Forza::zopOpc::Z_MZOP_LSH },
     { RevFlag::F_SEXT64, 4, false, SST::Forza::zopOpc::Z_MZOP_LSW },
+
+    { RevFlag::F_NONE,   1, true,  SST::Forza::zopOpc::Z_MZOP_SB },
+    { RevFlag::F_NONE,   2, true,  SST::Forza::zopOpc::Z_MZOP_SH },
+    { RevFlag::F_NONE,   4, true,  SST::Forza::zopOpc::Z_MZOP_SW },
+    { RevFlag::F_NONE,   8, true,  SST::Forza::zopOpc::Z_MZOP_SD },
 
     { RevFlag::F_ZEXT64, 1, true,  SST::Forza::zopOpc::Z_MZOP_SB },
     { RevFlag::F_ZEXT64, 2, true,  SST::Forza::zopOpc::Z_MZOP_SH },
     { RevFlag::F_ZEXT64, 4, true,  SST::Forza::zopOpc::Z_MZOP_SW },
     { RevFlag::F_ZEXT64, 8, true,  SST::Forza::zopOpc::Z_MZOP_SD },
+
     { RevFlag::F_SEXT64, 1, true,  SST::Forza::zopOpc::Z_MZOP_SSB },
     { RevFlag::F_SEXT64, 2, true,  SST::Forza::zopOpc::Z_MZOP_SSH },
     { RevFlag::F_SEXT64, 4, true,  SST::Forza::zopOpc::Z_MZOP_SSW },
   };
 
   for (auto& flag : table){
-    if( (flags & (uint32_t)(std::get<0>(flag))) &&
-        (Len == std::get<1>(flag)) &&
-        (Write == std::get<2>(flag)) ){
-      return std::get<3>(flag);
-      break;
+    if( flags == 0 ){
+      // match on null flags
+      if( (std::get<0>(flag) == RevFlag::F_NONE) &&
+          (Len == std::get<1>(flag)) &&
+          (Write == std::get<2>(flag)) ){
+        return std::get<3>(flag);
+        break;
+      }
+    }else{
+      // match on non-null flags
+      if( (flags & (uint32_t)(std::get<0>(flag))) &&
+          (Len == std::get<1>(flag)) &&
+          (Write == std::get<2>(flag)) ){
+        return std::get<3>(flag);
+        break;
+      }
     }
   }
 
+  output->verbose(CALL_INFO, 4, 0,
+                  "WARNING: Failed to convert memory request to MZOP opcode; flags=%d, len=%lu, write=%d\n",
+                  flags, Len, Write);
   return SST::Forza::zopOpc::Z_NULL_OPC;
 }
 
@@ -1188,7 +1223,8 @@ bool RevMem::ZOP_AMOMem(unsigned Hart, uint64_t Addr, size_t Len,
   // set all the fields
   zev->setType(SST::Forza::zopMsgT::Z_HZOPAC);
   zev->setNB(0);
-  zev->setID(zNic->getMsgId(Hart));
+  //zev->setID(zNic->getMsgId(Hart));
+  zev->setID(Hart);   // -- we set this to the Hart temporarily.  The zNic will set the actual message ID
   zev->setCredit(0);
   zev->setOpc(flagToZOP((uint32_t)(flags), Len));
   zev->setAppID(0);
@@ -1234,7 +1270,8 @@ bool RevMem::ZOP_READMem(unsigned Hart, uint64_t Addr, size_t Len,
   // set all the fields : FIXME
   zev->setType(SST::Forza::zopMsgT::Z_MZOP);
   zev->setNB(0);
-  zev->setID(zNic->getMsgId(Hart));
+  //zev->setID(zNic->getMsgId(Hart));
+  zev->setID(Hart);   // -- we set this to the Hart temporarily.  The zNic will set the actual message ID
   zev->setCredit(0);
   zev->setOpc(memToZOP((uint32_t)(flags), Len, false));
   zev->setAppID(0);
@@ -1267,6 +1304,63 @@ bool RevMem::ZOP_READMem(unsigned Hart, uint64_t Addr, size_t Len,
 bool RevMem::ZOP_WRITEMem(unsigned Hart, uint64_t Addr, size_t Len,
                           void *Data,
                           RevFlag flags){
+  // check to see if this is a write request of <= 8 bytes
+  if( Len <= 8 ){
+    return __ZOP_WRITEMemRaw(Hart, Addr, Len, Data, flags);
+  }
+
+//#ifdef _REV_DEBUG_
+  std::cout << "ZOP_WRITE request of " << Len << " Bytes Starting at 0x"
+            << std::hex << Addr << std::dec
+            << " will be broken into ~" << (((unsigned)(Len)/8) + (Len%8>0))
+            << " individual ZOP requests"
+            << std::endl;
+//#endif
+
+  uint64_t CurAddr = Addr;
+  void *CurData = Data;
+  size_t CurLen = 8;
+  size_t BytesWritten = 0;
+  while( BytesWritten != Len ){
+    // dispatch the next write operation
+    if( !__ZOP_WRITEMemRaw(Hart, CurAddr, CurLen, CurData, flags ) ){
+      return false;
+    }
+
+    BytesWritten += CurLen;
+
+    // adjust the current address, length, etc
+    if( (Len-BytesWritten) >= 8 ){
+      CurLen = 8;
+    }else{
+      CurLen = Len-BytesWritten;
+      if( CurLen > 4 ){
+        CurLen = 4;
+      }else if( CurLen > 2 ){
+        CurLen = 2;
+      }else if( CurLen > 1 ){
+        CurLen = 1;
+      }
+    }
+    CurAddr += (uint64_t)(CurLen);
+    CurData = (static_cast<uint64_t *>(CurData) + (uint64_t)(CurLen));
+  }
+
+  // now handle the last request
+
+  return true;
+}
+
+//
+// NOTE: This method is the actual function that builds and dispatches
+//       ZOP Write requests into the network.  DO NOT USE THIS METHOD DIRECTLY.
+//       This method only supports writes up to 8bytes.  Other portions of Rev,
+//       such as the RevLoader, initiate cache line writes.  Since FORZA does
+//       not support cache line writes, the user-facing ZOP_WRITEMem method
+//       should be used to break cache lines into individual <= 8byte operations.
+bool RevMem::__ZOP_WRITEMemRaw(unsigned Hart, uint64_t Addr, size_t Len,
+                          void *Data,
+                          RevFlag flags){
 #ifdef _REV_DEBUG_
   std::cout << "ZOP_WRITE of " << Len << " Bytes Starting at 0x"
             << std::hex << Addr << std::dec << std::endl;
@@ -1281,7 +1375,8 @@ bool RevMem::ZOP_WRITEMem(unsigned Hart, uint64_t Addr, size_t Len,
   // set all the fields : FIXME
   zev->setType(SST::Forza::zopMsgT::Z_MZOP);
   zev->setNB(0);
-  zev->setID(zNic->getMsgId(Hart));
+  //zev->setID(zNic->getMsgId(Hart));
+  zev->setID(Hart);   // -- we set this to the Hart temporarily.  The zNic will set the actual message ID
   zev->setCredit(0);
   zev->setOpc(memToZOP((uint32_t)(flags), Len, true));
   zev->setAppID(0);
@@ -1314,7 +1409,7 @@ bool RevMem::ZOP_WRITEMem(unsigned Hart, uint64_t Addr, size_t Len,
 // Handles an RZA response message
 // This specifically handles MZOP and HZOP responses
 bool RevMem::handleRZAResponse(Forza::zopEvent *zev){
-  output->verbose(CALL_INFO, 9, 0,
+  output->verbose(CALL_INFO, 5, 0,
                   "[FORZA][ZAP] Handling ZOP Response in RevMem; ID=%d\n",
                   (uint32_t)(zev->getID()));
 
@@ -1322,6 +1417,8 @@ bool RevMem::handleRZAResponse(Forza::zopEvent *zev){
   uint8_t evID = zev->getID();
   unsigned cur = 0;
   std::vector<uint64_t> Payload;
+
+  zNic->clearMsgID((unsigned)(evHart), evID);
 
   for (auto const& [hart, id, write, target, req] : outstanding) {
     if( (evHart == (uint16_t)(hart)) &&

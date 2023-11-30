@@ -351,6 +351,9 @@ public:
   /// FORZA: set the RZA flag for this instance of RevMem
   void setRZA() { isRZA = true; }
 
+  /// FORZA: disable the RZA for this instance of RevMem
+  void unsetRZA() { isRZA = false; }
+
   /// FORZA: handle message response
   bool handleRZAResponse(Forza::zopEvent *zev);
 
@@ -377,6 +380,11 @@ private:
   bool ZOP_WRITEMem(unsigned Hart, uint64_t Addr, size_t Len,
                     void *Data,
                     RevFlag flags);
+
+  /// FORZA: send a raw WRITE request: DO NOT USE
+  bool __ZOP_WRITEMemRaw(unsigned Hart, uint64_t Addr, size_t Len,
+                         void *Data,
+                         RevFlag flags);
 
 protected:
   char *physMem = nullptr;                 ///< RevMem: memory container

@@ -22,6 +22,7 @@
 #include <random>
 #include <queue>
 #include <tuple>
+#include <mutex>
 
 // -- SST Headers
 #include "SST.h"
@@ -37,6 +38,132 @@
 
 namespace SST::RevCPU{
 class RevProc;
+// ----------------------------------------
+// RegAlloc
+// ----------------------------------------
+class RegAlloc{
+#define _H_CLEAR    0
+#define _H_READ     1
+#define _H_WRITE    2
+#define _H_DISABLE  3
+#define _UNDEF_REG  33
+public:
+  /// RegAlloc: constructor
+  RegAlloc(){
+    hazard[0] = _H_DISABLE;
+    for( unsigned i=1; i<32; i++ ){
+      hazard[i] = _H_CLEAR;
+    }
+  }
+
+  /// RegAlloc: destructor
+  ~RegAlloc(){}
+
+  /// RegAlloc: retrieve a two operand register set
+  bool getRegs(unsigned &rs1, unsigned &rs2){
+    unsigned t_rs1 = 33;
+    unsigned t_rs2 = 33;
+
+    // find three register slots
+    // -- Rs1
+    unsigned cur = 1;
+    while( t_rs1 == 33 ){
+      if( hazard[cur] == _H_CLEAR ){
+        hazard[cur] = _H_READ;
+        t_rs1 = cur;
+      }else{
+        cur++;
+        if( t_rs1 == 32 ){
+          return false;
+        }
+      }
+    }
+
+    // -- Rs2
+    cur = 1;
+    while( t_rs2 == 33 ){
+      if( hazard[cur] == _H_CLEAR ){
+        hazard[cur] = _H_READ;
+        t_rs2 = cur;
+      }else{
+        cur++;
+        if( t_rs2 == 32 ){
+          return false;
+        }
+      }
+    }
+
+    rs1 = t_rs1;
+    rs2 = t_rs2;
+    return true;
+  }
+
+  /// RegAlloc: retrieve a three operand register set
+  bool getRegs(unsigned &rd, unsigned &rs1, unsigned &rs2){
+    unsigned t_rd = 33;
+    unsigned t_rs1 = 33;
+    unsigned t_rs2 = 33;
+
+    // find three register slots
+    // -- Rd
+    unsigned cur = 1;
+    while( t_rd == 33 ){
+      if( hazard[cur] == _H_CLEAR ){
+        hazard[cur] = _H_WRITE;
+        t_rd = cur;
+      }else{
+        cur++;
+        if( t_rd == 32 ){
+          return false;
+        }
+      }
+    }
+
+    // -- Rs1
+    cur = 1;
+    while( t_rs1 == 33 ){
+      if( hazard[cur] == _H_CLEAR ){
+        hazard[cur] = _H_READ;
+        t_rs1 = cur;
+      }else{
+        cur++;
+        if( t_rs1 == 32 ){
+          return false;
+        }
+      }
+    }
+
+    // -- Rs2
+    cur = 1;
+    while( t_rs2 == 33 ){
+      if( hazard[cur] == _H_CLEAR ){
+        hazard[cur] = _H_READ;
+        t_rs2 = cur;
+      }else{
+        cur++;
+        if( t_rs2 == 32 ){
+          return false;
+        }
+      }
+    }
+
+    rd = t_rd;
+    rs1 = t_rs1;
+    rs2 = t_rs2;
+    return true;
+  }
+
+  /// RegAlloc: clear the hazard on the target register
+  void clearReg(unsigned reg){
+    if( reg != 0 ){
+      hazard[reg] = _H_CLEAR;
+    }
+  }
+
+private:
+  uint8_t hazard[32];
+};
+
 // ----------------------------------------
 // RevCoProc
 // ----------------------------------------
@@ -94,11 +221,31 @@ public:
   // FORZA virtual methods
   // --------------------
   /// RevCoProc: injects a zop packet into the coproc pipeline
-  virtual bool InjectZOP(Forza::zopEvent *zev){ return true; }
+  virtual bool InjectZOP(Forza::zopEvent *zev, bool &flag){ return true; }
+
+  /// RevCoProc: Set the memory handler
+  virtual void setMem(RevMem *M){}
+
+  /// RevCoProc: Set the ZOP NIC handler
+  virtual void setZNic(Forza::zopAPI *Z){}
+
+  // --------------------
+  // FORZA methods
+  // --------------------
+  /// RevCoProc: Sends a successful response ZOP
+  bool sendSuccessResp(Forza::zopAPI *zNic,
+                       Forza::zopEvent *zev,
+                       uint16_t Hart);
+
+  /// RevCoProc: Sends a successful LOAD data response ZOP
+  bool sendSuccessResp(Forza::zopAPI *zNic,
+                       Forza::zopEvent *zev,
+                       uint16_t Hart,
+                       uint64_t Data);
 
 protected:
   SST::Output*   output;                                ///< RevCoProc: sst output object
-  RevProc* const parent;                                  ///< RevCoProc: Pointer to RevProc this CoProc is attached to
+  RevProc* const parent;                                ///< RevCoProc: Pointer to RevProc this CoProc is attached to
 
   ///< RevCoProc: Create the passkey object - this allows access to otherwise private members within RevProc 
   RevProcPasskey<RevCoProc> CreatePasskey(){return RevProcPasskey<RevCoProc>();}
@@ -210,7 +357,6 @@ public:
   // Register statistics
   SST_ELI_DOCUMENT_STATISTICS()
 
-
   /// RZALSCoProc: default constructor
   RZALSCoProc(ComponentId_t id, Params& params, RevProc* parent);
 
@@ -233,9 +379,36 @@ public:
   virtual bool IsDone();
 
   /// RZALSCoProc: injects a packet into the HZOP AMO pipeline
-  virtual bool InjectZOP(Forza::zopEvent *zev) override;
+  virtual bool InjectZOP(Forza::zopEvent *zev, bool &flag) override;
+
+  /// RZALSCoProc: Set the memory handler
+  virtual void setMem(RevMem *M) override{
+    Mem = M;
+  }
+
+  /// RZALSCoProc: Set the ZOP NIC handler
+  virtual void setZNic(Forza::zopAPI *Z) override{
+    zNic = Z;
+  }
 
 private:
+  RevMem *Mem;          ///< RZALSCoProc: RevMem object
+  Forza::zopAPI *zNic;  ///< RZALSCoProc: ZOPNic object
+  RevFeature *Feature;  ///< RZALSCoProc: Feature object
+  RevRegFile *RegFile;  ///< RZALSCoProc: Regfile object
+  RegAlloc Alloc;       ///< RZALSCoProc: Register allocator object
+
+#define LOADQ_ZEV   0
+#define LOADQ_RS1   1
+#define LOADQ_RS2   2
+  std::vector<std::tuple<Forza::zopEvent *,unsigned, unsigned>> LoadQ; ///< RZALSCoProc: Outstanding load queue
+
+  std::shared_ptr<std::unordered_map<uint64_t, MemReq>> LSQueue; ///< RZALSCoProc: Load / Store queue used to track memory operations. Currently only tracks outstanding loads.
+
+  std::function<void(const MemReq&)> MarkLoadCompleteFunc;  ///< RZALSCoProc: Hazard function
+
+  /// RZALSCoProc: checks the load queues for completed operations and clears hazards
+  void CheckLSQueue();
 };  // RZALSCoProc
 
 // ----------------------------------------
@@ -263,7 +436,6 @@ public:
   // Register statistics
   SST_ELI_DOCUMENT_STATISTICS()
 
-
   /// RZAAMOCoProc: default constructor
   RZAAMOCoProc(ComponentId_t id, Params& params, RevProc* parent);
 
@@ -286,11 +458,34 @@ public:
   virtual bool IsDone();
 
   /// RZAMOCoProc: injects a packet into the HZOP AMO pipeline
-  virtual bool InjectZOP(Forza::zopEvent *zev) override;
+  virtual bool InjectZOP(Forza::zopEvent *zev, bool &flag) override;
+
+  /// RZAAMOCoProc: Set the memory handler
+  virtual void setMem(RevMem *M) override{
+    Mem = M;
+  }
+
+  /// RZAAMOCoProc: Set the ZOP NIC handler
+  virtual void setZNic(Forza::zopAPI *Z)override{
+    zNic = Z;
+  }
 
 private:
-};  // RZAAMOCoProc
+  RevMem *Mem;          ///< RZAAMOCoProc: RevMem object
+  Forza::zopAPI *zNic;  ///< RZAAMOCoProc: ZOPNic object
+  RevFeature *Feature;  ///< RZAAMOCoProc: Feature object
+  RevRegFile *RegFile;  ///< RZAAMOCoProc: Regfile object
+  RegAlloc Alloc;       ///< RZAAMOCoProc: Register allocator object
 
+#define AMOQ_ZEV   0
+#define AMOQ_RS1   1
+#define AMOQ_RS2   2
+  std::vector<std::tuple<Forza::zopEvent *,unsigned, unsigned>> AMOQ; ///< RZAAMOCoProc: Outstanding load queue
+
+  std::function<void(const MemReq&)> MarkLoadCompleteFunc;  ///< RZAAMOCoProc: Hazard function
+
+  std::shared_ptr<std::unordered_map<uint64_t, MemReq>> LSQueue; ///< RZAAMOCoProc: Load / Store queue used to track memory operations. Currently only tracks outstanding loads.
+};  // RZAAMOCoProc
 } //namespace SST::RevCPU
 
 #endif

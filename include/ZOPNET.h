@@ -61,6 +61,10 @@ namespace SST::Forza{
 #define Z_FLIT_DEST         0
 #define Z_FLIT_SRC          1
 
+#define Z_FLIT_ACS          2
+#define Z_FLIT_ADDR         3
+#define Z_FLIT_DATA         4
+
 #define Z_MZOP_PIPE_HART    0
 #define Z_HZOP_PIPE_HART    1
 #define Z_RZOP_PIPE_HART    2
@@ -94,15 +98,15 @@ enum class zopOpc : uint8_t {
   Z_MZOP_LSB    = 0b00000100,   /// zopOpc: MZOP Load signed byte
   Z_MZOP_LSH    = 0b00000101,   /// zopOpc: MZOP Load signed half
   Z_MZOP_LSW    = 0b00000110,   /// zopOpc: MZOP Load signed word
-  //Z_MZOP_LSD    = 0b00000111,   /// zopOpc: MZOP Load double (dupe)
+  Z_MZOP_LDMA   = 0b00000111,   /// zopOpc: MZOP Load DMA
   Z_MZOP_SB     = 0b00001000,   /// zopOpc: MZOP Store unsigned byte
   Z_MZOP_SH     = 0b00001001,   /// zopOpc: MZOP Store unsigned half
-  Z_MZOP_SW     = 0b00001001,   /// zopOpc: MZOP Store unsigned word
+  Z_MZOP_SW     = 0b00001010,   /// zopOpc: MZOP Store unsigned word
   Z_MZOP_SD     = 0b00001011,   /// zopOpc: MZOP Store doubleword
   Z_MZOP_SSB    = 0b00001100,   /// zopOpc: MZOP Store signed byte
   Z_MZOP_SSH    = 0b00001101,   /// zopOpc: MZOP Store signed half
   Z_MZOP_SSW    = 0b00001110,   /// zopOpc: MZOP Store signed word
-  //Z_MZOP_SSD    = 0b00001111,   /// zopOpc: MSOP Store doubleword (dupe)
+  Z_MZOP_SDMA   = 0b00001111,   /// zopOpc: MSOP Store DMA
 
   Z_MZOP_SCLB   = 0b11100000,   /// zopOpc: MZOP Load scratch unsigned byte
   Z_MZOP_SCLH   = 0b11100001,   /// zopOpc: MZOP Load scratch unsigned half
@@ -307,6 +311,48 @@ enum class zopPrecID : uint8_t {
 };
 
 // --------------------------------------------
+// zopMsgID
+// --------------------------------------------
+class zopMsgID{
+public:
+  // zopMsgID: constructor
+  zopMsgID()
+    : NumFree(64){
+    for( uint8_t i = 0; i<64; i++ ){
+      Mask[i] = false;
+    }
+  }
+
+  // zopMsgID: destructor
+  ~zopMsgID() = default;
+
+  // zopMsgID: get the number of free message slots
+  unsigned getNumFree() { return NumFree; }
+
+  /// zopMsgID: clear the message id
+  void clearMsgId(uint8_t I){
+    Mask[I] = false;
+    NumFree++;
+  }
+
+  // zopMsgID: retrieve a new message id
+  uint8_t getMsgId(){
+    for( uint8_t i=0; i<64; i++ ){
+      if( Mask[i] == false ){
+        NumFree--;
+        Mask[i] = true;
+        return i;
+      }
+    }
+    return 64;  // this is an erroneous id
+  }
+
+private:
+  unsigned NumFree;
+  bool Mask[64];
+};
+
+// --------------------------------------------
 // zopEvent
 // --------------------------------------------
 class zopEvent : public SST::Event{
@@ -491,6 +537,19 @@ public:
   /// zopEvent: get the application id
   uint32_t getAppID() { return AppID; }
 
+  /// zopEvent: retrieve the FLIT at the target location
+  bool getFLIT(unsigned flit, uint64_t *F){
+    if( flit > (Packet.size()-1) ){
+      return false;
+    }else if( F == nullptr ){
+      return false;
+    }
+
+    *F = Packet[flit];
+
+    return true;
+  }
+
   /// zopEvent: decode this event and set the appropriate internal structures
   void decodeEvent(){
     DestHart = (uint16_t)((Packet[Z_FLIT_DEST] >> Z_SHIFT_HARTID) & Z_MASK_HARTID);
@@ -622,8 +681,8 @@ public:
   /// zopAPI: get the zone ID
   virtual unsigned getZoneID() = 0;
 
-  /// zopAPI: retrieve the next message id for the target hart
-  virtual uint8_t getMsgId(unsigned Hart) = 0;
+  /// zopAPI: clear the message Id hazard
+  virtual void clearMsgID(unsigned Hart, uint8_t Id) = 0;
 
   /// zopAPI: convert the precinct ID to zopPrecID
   SST::Forza::zopPrecID getPCID(unsigned Z){
@@ -870,9 +929,6 @@ public:
   /// zopNIC: initialize the number of Harts
   virtual void setNumHarts(unsigned Hart);
 
-  /// zopNIC: retrieve the next message id for the target hart
-  virtual uint8_t getMsgId(unsigned Hart);
-
   /// zopNIC: set the precinct ID
   virtual void setPrecinctID(unsigned P){ Precinct = P; }
 
@@ -884,6 +940,11 @@ public:
 
   /// zopNIC: get the zone ID
   virtual unsigned getZoneID() { return Zone; }
+
+  /// zopAPI: clear the message Id hazard
+  virtual void clearMsgID(unsigned Hart, uint8_t Id){
+    msgId[Hart].clearMsgId(Id);
+  }
 
   /// zopNIC: clock tick function
   virtual bool clockTick(Cycle_t cycle);
@@ -909,9 +970,10 @@ private:
   unsigned Zone;                            ///< zopNIC: zone ID
   zopCompID Type;                           ///< zopNIC: endpoint type
 
-  uint8_t *msgId;                           ///< zopNIC: per hart message IDs
+  SST::Forza::zopMsgID *msgId;              ///< zopNIC: per hart message ID objects
 
-  std::queue<SST::Interfaces::SimpleNetwork::Request*> sendQ;       ///< zopNIC: buffered send queue
+  std::vector<std::pair<zopEvent *, zopCompID>> preInitQ;          ///< zopNIC: holds buffered requests before the network boots
+  std::vector<SST::Interfaces::SimpleNetwork::Request*> sendQ;        ///< zopNIC: buffered send queue
   std::map<SST::Interfaces::SimpleNetwork::nid_t,zopCompID> hostMap;  ///< zopNIC: network ID to endpoint type mapping
 
   std::vector<Statistic<uint64_t>*> stats;  ///< zopNIC: statistics vector
