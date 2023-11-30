@@ -233,7 +233,7 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params )
       // This Rev instance is a ZAP
       Mem->unsetRZA();
       unsigned zap = params.find<unsigned>("zapId", 0);
-      Forza::zopCompID zapId;
+      Forza::zopCompID zapId = Forza::zopCompID::Z_ZAP0;
       switch( zap ){
       case 0:
         zapId = Forza::zopCompID::Z_ZAP0;

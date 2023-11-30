@@ -1421,11 +1421,6 @@ bool RevMem::ZOP_READMem(unsigned Hart, uint64_t Addr, size_t Len,
 bool RevMem::ZOP_WRITEMem(unsigned Hart, uint64_t Addr, size_t Len,
                           void *Data,
                           RevFlag flags){
-  // check to see if this is a write request of <= 8 bytes
-  if( Len <= 8 ){
-    return __ZOP_WRITEMemRaw(Hart, Addr, Len, Data, flags);
-  }
-
 //#ifdef _REV_DEBUG_
   std::cout << "ZOP_WRITE request of " << Len << " Bytes Starting at 0x"
             << std::hex << Addr << std::dec
@@ -1433,6 +1428,11 @@ bool RevMem::ZOP_WRITEMem(unsigned Hart, uint64_t Addr, size_t Len,
             << " individual ZOP requests"
             << std::endl;
 //#endif
+
+  // check to see if this is a write request of <= 8 bytes
+  if( Len <= 8 ){
+    return __ZOP_WRITEMemRaw(Hart, Addr, Len, Data, flags);
+  }
 
   uint64_t CurAddr = Addr;
   void *CurData = Data;
