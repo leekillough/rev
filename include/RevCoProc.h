@@ -64,30 +64,30 @@ public:
     unsigned t_rs1 = 33;
     unsigned t_rs2 = 33;
 
-    // find three register slots
-    // -- Rs1
+    // find two register slots
     unsigned cur = 1;
-    while( t_rs1 == 33 ){
+    while( cur < 32 ){
       if( hazard[cur] == _H_CLEAR ){
         hazard[cur] = _H_READ;
         t_rs1 = cur;
+        break;
       }else{
         cur++;
-        if( t_rs1 == 32 ){
+        if( cur == 32 ){
           return false;
         }
       }
     }
 
-    // -- Rs2
     cur = 1;
-    while( t_rs2 == 33 ){
+    while( cur < 32 ){
       if( hazard[cur] == _H_CLEAR ){
         hazard[cur] = _H_READ;
         t_rs2 = cur;
+        break;
       }else{
         cur++;
-        if( t_rs2 == 32 ){
+        if( cur == 32 ){
           return false;
         }
       }
