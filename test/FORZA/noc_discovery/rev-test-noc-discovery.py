@@ -23,9 +23,9 @@ MEM_SIZE = 1024*1024*1024-1
 # --------------------------
 # SETUP THE ZAP
 # --------------------------
-zap_cpu1 = sst.Component("zap1", "revcpu.RevCPU")
+zap_cpu1 = sst.Component("zap0", "revcpu.RevCPU")
 zap_cpu1.addParams({
-        "verbose" : 4,                                # Verbosity
+        "verbose" : 5,                                # Verbosity
         "numCores" : 1,                               # Number of cores
         "clock" : "1.0GHz",                           # Clock
         "memSize" : 1024*1024*1024,                   # Memory size in bytes
@@ -46,36 +46,36 @@ zap_cpu1.addParams({
 # --------------------------
 rza = sst.Component("rza", "revcpu.RevCPU")
 rza.addParams({
-        "verbose" : 4,                                # Verbosity
+        "verbose" : 5,                                # Verbosity
         "numCores" : 2,                               # Number of cores
         "clock" : "1.0GHz",                           # Clock
         "memSize" : 1024*1024*1024,                   # Memory size in bytes
         "machine" : "[CORES:RV64G]",                  # Core:Config; RV64I for core 0
         "startAddr" : "[CORES:0x00000000]",           # Starting address for core 0
-        "program" : os.getenv("REV_EXE", "ex2.exe"),  # Target executable
+        "program" : os.getenv("REV_EXE", "fw.exe"),  # Target executable
         "enableZoneNIC" : 1,                          # [FORZA] Enable the zone NIC
         "enableRZA" : 1,                              # [FORZA] Enable RZA functionality
         "precinctId" : 0,                             # [FORZA] precinct ID
         "zoneId" : 0,                                 # [FORZA] zone ID
         "enable_memH" : 1,                            # Enable memHierarchy support
-        "splash" : 0                                  # Display the splash message
+        "splash" : 0,                                 # Display the splash message
 })
 
 rza_lspipe = rza.setSubComponent("rza_ls","revcpu.RZALSCoProc")
 rza_lspipe.addParams({
   "clock" : "1.0GHz",
-  "verbose" : 4,
+  "verbose" : 9,
 })
 
 rza_amopipe = rza.setSubComponent("rza_amo","revcpu.RZAAMOCoProc")
 rza_amopipe.addParams({
   "clock" : "1.0GHz",
-  "verbose" : 4,
+  "verbose" : 9,
 })
 
 rza_lsq = rza.setSubComponent("memory", "revcpu.RevBasicMemCtrl");
 rza_lsq.addParams({
-      "verbose"         : "5",
+      "verbose"         : "9",
       "clock"           : "2.0Ghz",
       "max_loads"       : 16,
       "max_stores"      : 16,

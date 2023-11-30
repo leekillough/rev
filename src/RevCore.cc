@@ -105,14 +105,11 @@ bool RevCore::SingleStepHart() {
 void RevCore::SetCoProc( RevCoProc* coproc ) {
   if( coProc == nullptr ) {
     coProc = coproc;
-  } else {
-    output->fatal(
-      CALL_INFO,
-      -1,
-      "CONFIG ERROR: Core %u : Attempting to assign a "
-      "co-processor when one is already present\n",
-      id
-    );
+    coProc->Reset();
+  }else{
+    output->fatal(CALL_INFO, -1,
+                  "CONFIG ERROR: Core %u : Attempting to assign a co-processor when one is already present\n",
+                  id);
   }
 }
 

@@ -82,6 +82,14 @@ public:
     // return the thread
     return std::move( Thread );
   }
+
+  ///< RevHart: Removed a RevRegFile from this Hart
+  std::unique_ptr<RevRegFile> PopRegFile(){
+    // return the register file to the thread
+    //Thread->UpdateVirtRegState(std::move(RegFile));
+    // return the thread
+    return std::move(RegFile);
+  }
 };  // class RevHart
 
 }  // namespace SST::RevCPU
