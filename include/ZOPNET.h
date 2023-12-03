@@ -20,6 +20,10 @@
 // -- SST Headers
 #include "SST.h"
 
+/// -- Rev Headers
+//#include "RevMem.h"
+#include "../common/include/RevCommon.h"
+
 namespace SST::Forza{
 
 // --------------------------------------------
@@ -68,6 +72,8 @@ namespace SST::Forza{
 #define Z_MZOP_PIPE_HART    0
 #define Z_HZOP_PIPE_HART    1
 #define Z_RZOP_PIPE_HART    2
+
+#define Z_MZOP_DMA_MAX      2040
 
 // --------------------------------------------
 // zopMsgT : ZOP Type
@@ -364,7 +370,7 @@ public:
   //  This constructor is ONLY utilized for initialization
   //  DO NOT use this constructor for normal packet construction
   explicit zopEvent(unsigned srcId, zopCompID Type )
-    : Event(){
+    : Event(), Read(false), Target(nullptr) {
     Packet.push_back((uint64_t)(Type));
     Packet.push_back((uint64_t)(srcId));
   }
@@ -392,6 +398,17 @@ public:
 
   /// zopEvent: retrieve the raw packet
   std::vector<uint64_t> const getPacket() { return Packet; }
+
+  /// zopEvent: set the memory request handler
+  void setMemReq( const SST::RevCPU::MemReq& r ){
+    req = r;
+    Read = true;
+  }
+
+  /// zopEvent: set the target address for the read
+  void setTarget( uint64_t *T ){
+    Target = T;
+  }
 
   /// zopEvent: set the packet payload.  NOTE: this is a destructive operation, but it does reset the size
   void setPacket(const std::vector<uint64_t> P){
@@ -491,6 +508,15 @@ public:
     }
     return P;
   }
+
+  /// zopEvent: get the memory request handler
+  const SST::RevCPU::MemReq& getMemReq() { return req; }
+
+  /// zopEvent: determines if the target request is a read or AMO request
+  bool isRead() { return Read; }
+
+  /// zopEvent: get the target for the read request
+  uint64_t *getTarget() { return Target; }
 
   /// zopEvent: get the destination Hart
   uint16_t getDestHart() { return DestHart; }
@@ -615,6 +641,10 @@ private:
   uint8_t Credit;               ///< zopEvent: credit piggyback
   zopOpc Opc;                   ///< zopEvent: opcode
   uint32_t AppID;               ///< zopEvent: application source
+
+  bool Read;                    ///< zopEvent: sets this request as a read request
+  uint64_t *Target;             ///< zopEvent: target for the read request
+  SST::RevCPU::MemReq req;      ///< zopEvent: read response handler
 
 public:
   // zopEvent: event serializer
@@ -972,9 +1002,15 @@ private:
 
   SST::Forza::zopMsgID *msgId;              ///< zopNIC: per hart message ID objects
 
-  std::vector<std::pair<zopEvent *, zopCompID>> preInitQ;          ///< zopNIC: holds buffered requests before the network boots
+  std::vector<std::pair<zopEvent *, zopCompID>> preInitQ;             ///< zopNIC: holds buffered requests before the network boots
   std::vector<SST::Interfaces::SimpleNetwork::Request*> sendQ;        ///< zopNIC: buffered send queue
   std::map<SST::Interfaces::SimpleNetwork::nid_t,zopCompID> hostMap;  ///< zopNIC: network ID to endpoint type mapping
+
+#define _ZNIC_OUT_HART  0
+#define _ZNIC_OUT_ID    1
+#define _ZNIC_OUT_READ  2
+#define _ZNIC_OUT_REQ   3
+  std::vector<std::tuple<uint16_t, uint8_t, bool, uint64_t *, SST::RevCPU::MemReq>> outstanding; ///< zopNIC: tracks outstanding requests
 
   std::vector<Statistic<uint64_t>*> stats;  ///< zopNIC: statistics vector
 };  // zopNIC
