@@ -1361,11 +1361,6 @@ bool RevMem::ZOP_AMOMem(unsigned Hart, uint64_t Addr, size_t Len,
   payload.push_back(*(static_cast<uint64_t *>(Data)));
   zev->setPayload(payload);
 
-  // record the outgoing packet
-  auto V = std::make_tuple(Hart, zev->getID(), false,
-                           static_cast<uint64_t*>(Target), req);
-  outstanding.push_back(V);
-
   // inject the new packet
   zNic->send(zev, SST::Forza::zopCompID::Z_RZA);
 
@@ -1387,7 +1382,6 @@ bool RevMem::ZOP_READMem(unsigned Hart, uint64_t Addr, size_t Len,
   // set all the fields : FIXME
   zev->setType(SST::Forza::zopMsgT::Z_MZOP);
   zev->setNB(0);
-  //zev->setID(zNic->getMsgId(Hart));
   zev->setID(Hart);   // -- we set this to the Hart temporarily.  The zNic will set the actual message ID
   zev->setCredit(0);
   zev->setOpc(memToZOP((uint32_t)(flags), Len, false));
@@ -1401,16 +1395,14 @@ bool RevMem::ZOP_READMem(unsigned Hart, uint64_t Addr, size_t Len,
   zev->setSrcPCID((uint8_t)(zNic->getPCID(zNic->getZoneID())));
   zev->setSrcPrec((uint8_t)(zNic->getPrecinctID()));
 
+  zev->setMemReq(req);
+  zev->setTarget(static_cast<uint64_t *>(Target));
+
   // set the payload
   std::vector<uint64_t> payload;
   payload.push_back(0x00ull);   //  ACS: FIXME
   payload.push_back(Addr);      //  address
   zev->setPayload(payload);
-
-  // record the outgoing packet
-  auto V = std::make_tuple(Hart, zev->getID(), false,
-                           static_cast<uint64_t*>(Target), req);
-  outstanding.push_back(V);
 
   // inject the new packet
   zNic->send(zev, SST::Forza::zopCompID::Z_RZA);
@@ -1431,8 +1423,50 @@ bool RevMem::ZOP_WRITEMem(unsigned Hart, uint64_t Addr, size_t Len,
 
   // check to see if this is a write request of <= 8 bytes
   if( Len <= 8 ){
-    return __ZOP_WRITEMemRaw(Hart, Addr, Len, Data, flags);
+    // request is <= 8 bytes; break it up into byte-aligned chunks
+    uint64_t CurAddr = Addr;
+    void *CurData = Data;
+    size_t CurLen = 8;
+    size_t BytesWritten = 0;
+
+    if( CurLen > 4 ){
+      CurLen = 4;
+    }else if( CurLen > 2 ){
+      CurLen = 2;
+    }else if( CurLen > 1 ){
+      CurLen = 1;
   }
+
+    while( BytesWritten != Len ){
+      // dispatch the next write operation
+      if( !__ZOP_WRITEMemBase(Hart, CurAddr, CurLen, CurData, flags,
+                              memToZOP((uint32_t)(flags), CurLen, true) ) ){
+        return false;
+      }
+
+      BytesWritten += CurLen;
+
+      // adjust the current address, length, etc
+      if( (Len-BytesWritten) >= 8 ){
+        CurLen = 8;
+      }else{
+        CurLen = Len-BytesWritten;
+        if( CurLen > 4 ){
+          CurLen = 4;
+        }else if( CurLen > 2 ){
+          CurLen = 2;
+        }else if( CurLen > 1 ){
+          CurLen = 1;
+        }
+      }
+      CurAddr += (uint64_t)(CurLen);
+      CurData = (static_cast<uint64_t *>(CurData) + (uint64_t)(CurLen));
+    }
+  }else{
+    return __ZOP_WRITEMemLarge(Hart, Addr, Len, Data, flags);
+  }
+#if 0
+  // this is old
 
   uint64_t CurAddr = Addr;
   void *CurData = Data;
@@ -1464,7 +1498,7 @@ bool RevMem::ZOP_WRITEMem(unsigned Hart, uint64_t Addr, size_t Len,
   }
 
   // now handle the last request
-
+#endif
   return true;
 }
 
@@ -1475,6 +1509,7 @@ bool RevMem::ZOP_WRITEMem(unsigned Hart, uint64_t Addr, size_t Len,
 //       such as the RevLoader, initiate cache line writes.  Since FORZA does
 //       not support cache line writes, the user-facing ZOP_WRITEMem method
 //       should be used to break cache lines into individual <= 8byte operations.
+#if 0
 bool RevMem::__ZOP_WRITEMemRaw(unsigned Hart, uint64_t Addr, size_t Len,
                           void *Data,
                           RevFlag flags){
@@ -1482,6 +1517,9 @@ bool RevMem::__ZOP_WRITEMemRaw(unsigned Hart, uint64_t Addr, size_t Len,
   std::cout << "ZOP_WRITE of " << Len << " Bytes Starting at 0x"
             << std::hex << Addr << std::dec << std::endl;
 #endif
+
+  return __ZOP_WRITEMemBase(Hart, Addr, Len, Data, flags,
+                            memToZOP((uint32_t)(flags), Len, true));
 
   // create a new event
   SST::Forza::zopEvent *zev = new SST::Forza::zopEvent();
@@ -1492,7 +1530,6 @@ bool RevMem::__ZOP_WRITEMemRaw(unsigned Hart, uint64_t Addr, size_t Len,
   // set all the fields : FIXME
   zev->setType(SST::Forza::zopMsgT::Z_MZOP);
   zev->setNB(0);
-  //zev->setID(zNic->getMsgId(Hart));
   zev->setID(Hart);   // -- we set this to the Hart temporarily.  The zNic will set the actual message ID
   zev->setCredit(0);
   zev->setOpc(memToZOP((uint32_t)(flags), Len, true));
@@ -1513,9 +1550,103 @@ bool RevMem::__ZOP_WRITEMemRaw(unsigned Hart, uint64_t Addr, size_t Len,
   payload.push_back(*(static_cast<uint64_t *>(Data)));
   zev->setPayload(payload);
 
-  // record the outgoing packet
-  auto V = std::make_tuple(Hart, zev->getID(), true, nullptr, req);
-  outstanding.push_back(V);
+  // inject the new packet
+  zNic->send(zev, SST::Forza::zopCompID::Z_RZA);
+
+  return true;
+}
+#endif
+
+bool RevMem::__ZOP_WRITEMemLarge(unsigned Hart, uint64_t Addr, size_t Len,
+                                    void *Data,
+                                    RevFlag flags){
+#ifdef _REV_DEBUG_
+  std::cout << "ZOP_WRITE of " << Len << " Bytes Starting at 0x"
+            << std::hex << Addr << std::dec << std::endl;
+#endif
+  if( Len < Z_MZOP_DMA_MAX ){
+    if( (Len%8) == 0 ){
+      // aligned to a FLIT
+      return __ZOP_WRITEMemBase(Hart, Addr, Len, Data, flags,
+                                SST::Forza::zopOpc::Z_MZOP_SDMA );
+    }else{
+      // not aligned to a FLIT, break it up
+      // split it into two requests aligned to an 8-byte FLIT
+      // first request will be the nearest FLIT-aligned value
+      size_t NewLen = ((Len/8)*8);
+      if( !__ZOP_WRITEMemBase(Hart, Addr, NewLen, Data, flags,
+                                SST::Forza::zopOpc::Z_MZOP_SDMA ) ){
+        return false;
+      }
+
+      // second "set" of requests will handle the tail
+      if( !ZOP_WRITEMem(Hart, Addr + (uint64_t)(NewLen), Len-NewLen,
+                        (void *)(reinterpret_cast<uint64_t>(Data) + (uint64_t)(NewLen)),
+                        flags) ){
+        return false;
+      }
+    }
+  }else{
+    // huge memory write of > Z_MZOP_DMA_MAX bytes
+    // break it up into a large DMA request, followed by a set of additional tail requests
+    if( !__ZOP_WRITEMemLarge(Hart, Addr, Z_MZOP_DMA_MAX, Data, flags) ){
+      return false;
+    }
+
+    // second "set" of requests will handle the tail
+    if( !ZOP_WRITEMem(Hart, Addr + (uint64_t)(Z_MZOP_DMA_MAX),
+                      Len-(size_t)(Z_MZOP_DMA_MAX),
+                      (void *)(reinterpret_cast<uint64_t>(Data) + (uint64_t)(Z_MZOP_DMA_MAX)),
+                      flags)){
+      return false;
+    }
+  }
+  return true;
+}
+
+//
+// NOTE: This method is the actual function that builds and dispatches
+//       ZOP Write requests into the network.  DO NOT USE THIS METHOD DIRECTLY.
+//       This method only supports writes up to 8bytes.  Other portions of Rev,
+//       such as the RevLoader, initiate cache line writes.  Since FORZA does
+//       not support cache line writes, the user-facing ZOP_WRITEMem method
+//       should be used to break cache lines into individual <= 8byte operations.
+bool RevMem::__ZOP_WRITEMemBase(unsigned Hart, uint64_t Addr, size_t Len,
+                                void *Data, RevFlag flags,
+                                SST::Forza::zopOpc opc ){
+#ifdef _REV_DEBUG_
+  std::cout << "ZOP_WRITE of " << Len << " Bytes Starting at 0x"
+            << std::hex << Addr << std::dec << std::endl;
+#endif
+
+  // create a new event
+  SST::Forza::zopEvent *zev = new SST::Forza::zopEvent();
+
+  // create a dummy MemReq
+  MemReq req{};
+
+  // set all the fields : FIXME
+  zev->setType(SST::Forza::zopMsgT::Z_MZOP);
+  zev->setNB(0);
+  zev->setID(Hart);   // -- we set this to the Hart temporarily.  The zNic will set the actual message ID
+  zev->setCredit(0);
+  zev->setOpc(opc);
+  zev->setAppID(0);
+  zev->setDestHart(Z_MZOP_PIPE_HART);
+  zev->setDestZCID((uint8_t)(SST::Forza::zopCompID::Z_RZA));
+  zev->setDestPCID((uint8_t)(zNic->getPCID(zNic->getZoneID())));
+  zev->setDestPrec((uint8_t)(zNic->getPrecinctID()));
+  zev->setSrcHart(Hart);
+  zev->setSrcZCID((uint8_t)(zNic->getEndpointType()));
+  zev->setSrcPCID((uint8_t)(zNic->getPCID(zNic->getZoneID())));
+  zev->setSrcPrec((uint8_t)(zNic->getPrecinctID()));
+
+  // set the payload
+  std::vector<uint64_t> payload;
+  payload.push_back(0x00ull);   //  ACS: FIXME
+  payload.push_back(Addr);      //  address
+  payload.push_back(*(static_cast<uint64_t *>(Data)));
+  zev->setPayload(payload);
 
   // inject the new packet
   zNic->send(zev, SST::Forza::zopCompID::Z_RZA);
@@ -1523,13 +1654,15 @@ bool RevMem::__ZOP_WRITEMemRaw(unsigned Hart, uint64_t Addr, size_t Len,
   return true;
 }
 
+
 // Handles an RZA response message
 // This specifically handles MZOP and HZOP responses
+// TODO: DEPRECATED
 bool RevMem::handleRZAResponse(Forza::zopEvent *zev){
   output->verbose(CALL_INFO, 5, 0,
                   "[FORZA][ZAP] Handling ZOP Response in RevMem; ID=%d\n",
                   (uint32_t)(zev->getID()));
-
+#if 0
   uint16_t evHart = zev->getDestHart();
   uint8_t evID = zev->getID();
   unsigned cur = 0;
@@ -1564,6 +1697,7 @@ bool RevMem::handleRZAResponse(Forza::zopEvent *zev){
   }
 
   // we did not find a matching operation
+#endif
   return false;
 }
 

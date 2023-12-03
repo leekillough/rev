@@ -326,6 +326,9 @@ bool zopNIC::clockTick(SST::Cycle_t cycle){
           // we have space to send
           ev->setID( msgId[Hart].getMsgId() );
           std::cout << "sending message with id=" << (unsigned)(ev->getID()) << std::endl;
+          auto V = std::make_tuple(Hart, ev->getID(), ev->isRead(),
+                                   ev->getTarget(), ev->getMemReq());
+          outstanding.push_back(V);
           ev->encodeEvent();
           R->givePayload(ev);
           recordStat( getStatFromPacket(ev), 1 );

@@ -437,9 +437,21 @@ private:
                     RevFlag flags);
 
   /// FORZA: send a raw WRITE request: DO NOT USE
+#if 0
   bool __ZOP_WRITEMemRaw(unsigned Hart, uint64_t Addr, size_t Len,
                          void *Data,
                          RevFlag flags);
+#endif
+
+  /// FORZA: send a large raw WRITE request: DO NOT USE
+  bool __ZOP_WRITEMemLarge(unsigned Hart, uint64_t Addr, size_t Len,
+                           void *Data,
+                           RevFlag flags);
+
+  /// FORZA: send a WRITE request using the target opcode: DO NOT USE
+  bool __ZOP_WRITEMemBase(unsigned Hart, uint64_t Addr, size_t Len,
+                          void *Data, RevFlag flags,
+                          SST::Forza::zopOpc opc );
 
 protected:
   char* physMem = nullptr;  ///< RevMem: memory container
@@ -495,17 +507,6 @@ private:
 #define LRSC_AQRL 2
 #define LRSC_VAL  3
   std::vector<std::tuple<unsigned, uint64_t, unsigned, uint64_t*>> LRSC{};  ///< RevMem: load reserve/store conditional vector
-
-#define _ZOUT_HART 0
-#define _ZOUT_ID   1
-#define _ZOUT_WR   2
-#define _ZOUT_RSP  3
-#define _ZOUT_REQ  4
-  std::vector<std::tuple<unsigned,
-                         uint8_t,
-                         bool,
-                         uint64_t *,
-                         MemReq >> outstanding;  ///< RevMem: outstanding ZOP requests
 
 };  // class RevMem
 
