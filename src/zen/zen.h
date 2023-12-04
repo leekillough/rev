@@ -25,6 +25,7 @@ namespace SST::Forza{
 
   class ZENTableRow {
   public:
+    uint64_t acs_pair;
     uint64_t mem_head;
     uint64_t mem_tail;
     uint64_t mem_size;
@@ -33,8 +34,8 @@ namespace SST::Forza{
     bool empty;
     uint64_t scratch_tail;
     uint64_t credits;
-    ZENTableRow(uint64_t mh, uint64_t mt, uint64_t ms, uint64_t st, uint64_t c) :
-      mem_head(mh), mem_tail(mt), mem_size(ms), empty(true), scratch_tail(st), credits(c) {
+    ZENTableRow(uint64_t acs, uint64_t mh, uint64_t mt, uint64_t ms, uint64_t st, uint64_t c) :
+      acs_pair(acs), mem_head(mh), mem_tail(mt), mem_size(ms), empty(true), scratch_tail(st), credits(c) {
         mem_cur_head = mh;
         mem_cur_tail = mh;
       }
@@ -80,8 +81,8 @@ namespace SST::Forza{
     void setup() override;
     void complete(unsigned int phase) override;
     void finish() override;
-    void sendMsgToRZA(uint64_t addr, uint8_t msg_id);
-    void sendMsgToScratchpad(uint64_t dest, uint64_t scratch_addr, uint64_t addr);
+    void sendMsgToRZA(uint64_t acs, uint64_t addr, std::vector<uint64_t> src_payload, uint8_t msg_id);
+    void sendMsgToScratchpad(uint64_t dest, uint64_t scratch_addr, uint64_t size, uint64_t addr);
     void processEgressQueue();
     void notifyHARTScratchpad();
     void handleIncomingRZAMsg();
@@ -94,6 +95,9 @@ namespace SST::Forza{
     void sendSetupToZEN();
     uint64_t getRZATailQueue(uint64_t harts, uint64_t size);
     void sendMZOPAckToZEN(SST::Forza::zopEvent *ev);
+    uint64_t  getReadACS(uint64_t);
+    uint64_t  getWriteACS(uint64_t);
+    void printZenQueue();
 
   private:
     // private class members

@@ -26,20 +26,22 @@ ZEN::ZEN(ComponentId_t id, Params& params)
                 getName().c_str(), cpuFreq.c_str());
 
   m_zop_iface = loadUserSubComponent<SST::Forza::zopAPI>( "m_zop_iface" );
-  //m_linkControl = loadUserSubComponent<SST::Interfaces::SimpleNetwork>( "rtrLink", ComponentInfo::SHARE_NONE, 1 );
+  m_zop_iface->setEndpointType(zopCompID::Z_ZEN);
   m_num_harts = params.find<uint64_t>("num_harts", 4);
-  //assert( m_linkControl );
   msg_id = 0;
   sent = false;
-  //mem_acks.push_back(0);
-  //mem_acks.push_back(1);
-  //mem_acks.push_back(2);
-  //m_linkControl->setNotifyOnReceive( new SST::Interfaces::SimpleNetwork::Handler<ZEN>(this,&ZEN::handleNetworkEvent) );
-  // register with SST
   registerAsPrimaryComponent();
 }
 
 ZEN::~ZEN(){
+}
+
+uint64_t ZEN::getWriteACS(uint64_t acs_pair) {
+  return acs_pair & 0xFFFFFFFF00000000ULL;
+}
+
+uint64_t ZEN::getReadACS(uint64_t acs_pair) {
+  return (acs_pair & 0xFFFFFFFFFFFFFFFFULL) >> 32;
 }
 
 void ZEN::init(unsigned int phase) {
@@ -62,10 +64,9 @@ void ZEN::finish() {
 }
 
 void ZEN::handleIncomingZOP(SST::Event *event) {
-  SST::Forza::zopEvent* ev = dynamic_cast<SST::Forza::zopEvent*>(event);
-  ev->decodeEvent();
-  output.verbose(CALL_INFO, 1, 0, "Msg type %d, opcode %ld, dest %d\n", ev->getType(),
-                 ev->getOpcode(), ev->getDestHart());
+  SST::Forza::zopEvent* ev = static_cast<SST::Forza::zopEvent*>(event);
+  output.verbose(CALL_INFO, 1, 0, "Msg type %lu, src %ld, dest %d src%lu\n", ev->getType(),
+                 ev->getPacket()[1], ev->getDestHart(), ev->getSrcHart());
   if (ev->getType() != SST::Forza::zopMsgT::Z_MSG && ev->getType() != SST::Forza::zopMsgT::Z_RESP) {
     output.verbose(CALL_INFO, 1, 0, "Invalid msg type %d, expected %d or %d\n", ev->getType(),
                    SST::Forza::zopMsgT::Z_MSG, SST::Forza::zopMsgT::Z_RESP);
@@ -84,7 +85,7 @@ void ZEN::handleIncomingZOP(SST::Event *event) {
   }
 }
 
-void ZEN::sendMsgToRZA(uint64_t addr, uint8_t msg_id) {
+void ZEN::sendMsgToRZA(uint64_t acs, uint64_t addr, std::vector<uint64_t> src_payload, uint8_t msg_id) {
   output.verbose(CALL_INFO, 1, 0, "Msg tgt %d, msg id %" PRIu8 "\n", addr, msg_id);
   std::vector<uint64_t> payload;
   // TODO: Update with RZA id
@@ -98,7 +99,10 @@ void ZEN::sendMsgToRZA(uint64_t addr, uint8_t msg_id) {
   rzaMsg->setSrcPrec(0);
   // TODO: Update with RZA id
   rzaMsg->setDestHart(3);
+  payload.push_back(acs);
   payload.push_back(addr);
+  payload.push_back(src_payload.size());
+  payload.insert(std::end(payload), std::begin(src_payload), std::end(src_payload));
   // payload.push_back(value);
   rzaMsg->setPayload(payload);
   rzaMsg->encodeEvent();
@@ -109,7 +113,8 @@ void ZEN::sendMsgToRZA(uint64_t addr, uint8_t msg_id) {
   // TODO: Update with RZA id
 }
 
-void ZEN::sendMsgToScratchpad(uint64_t dest, uint64_t scratch_addr, uint64_t addr) {
+void ZEN::sendMsgToScratchpad(uint64_t dest, uint64_t scratch_addr, uint64_t size, uint64_t addr) {
+  output.verbose(CALL_INFO, 1, 0, "hart %d, scratch a %d, size %d, addr %d\n", dest, scratch_addr, size, addr);
   std::vector<uint64_t> payload;
   SST::Forza::zopEvent *zapMsg = new SST::Forza::zopEvent(m_zop_iface->getAddress(), (zopCompID)dest);
   zapMsg->setType(SST::Forza::zopMsgT::Z_MZOP);
@@ -125,24 +130,28 @@ void ZEN::sendMsgToScratchpad(uint64_t dest, uint64_t scratch_addr, uint64_t add
   // TODO: Push back ACS
   payload.push_back(scratch_addr);
   payload.push_back(addr);
+  payload.push_back(size);
   zapMsg->setPayload(payload);
   zapMsg->encodeEvent();
   m_zop_iface->send(zapMsg, (zopCompID)dest);
 }
 
 void ZEN::notifyHARTScratchpad() {
+ // output.verbose(CALL_INFO, 1, 0, "Progress HART scratchpad\n");
   uint64_t cur_tail = 0;
   for (int hart = 0; hart < m_num_harts; ++hart) {
+    //output.verbose(CALL_INFO, 1, 0, "Progress HART scratchpad id %d\n", hart);
     for (int i = 0; i < zen_queue[hart].size(); ++i) {
+      std::vector<uint64_t> payload = zen_queue[hart][i]->msg->getPayload();
       if (zen_queue[hart][i]->status == 2) {
         cur_tail = zen_queue[hart][i]->tail;
         zen_queue[hart][i]->status = 6;
-      } else {
-        break;
+        if (!hart_tables[hart]) {
+          output.verbose(CALL_INFO, 1, 0, "Progress HART scratchpad id %d fail\n", hart);
+        } else {
+          sendMsgToScratchpad(hart, hart_tables[hart]->scratch_tail, payload.size(), zen_queue[hart][i]->tail);
+        }
       }
-    }
-    if (cur_tail != 0) {
-      sendMsgToScratchpad(hart, hart_tables[hart]->scratch_tail, cur_tail);
     }
     zen_queue[hart].erase(std::remove_if(
       zen_queue[hart].begin(), zen_queue[hart].end(),
@@ -153,6 +162,7 @@ void ZEN::notifyHARTScratchpad() {
 }
 
 void ZEN::handleIncomingRZAMsg() {
+  //output.verbose(CALL_INFO, 1, 0, "Progress RZA acks\n");
   // This is supposed to look at the RZA msgs and start progressing status of whatever
   // got an ACK
   for (int i = 0; i < mem_acks.size(); ++i) {
@@ -243,9 +253,18 @@ uint64_t ZEN::getRZATailQueue(uint64_t hart_id, uint64_t size) {
   }
 }
 
+
+void ZEN::printZenQueue() {
+  for (int harts = 0; harts < m_num_harts; ++harts) {
+    if (zen_queue[harts].size() > 0) output.verbose(CALL_INFO, 1, 0, "Hart: %d, size: %d\n", harts, zen_queue[harts].size());
+  }
+}
+
 void ZEN::processEgressQueue() {
+  //output.verbose(CALL_INFO, 1, 0, "Progress egress queue\n");
   for (int harts = 0; harts < m_num_harts; ++harts) {
     for (int i = 0; i < zen_queue[harts].size(); ++i) {
+      std::vector<uint64_t> payload = zen_queue[harts][i]->msg->getPayload();
       if (zen_queue[harts][i]->status == 0) {
         output.verbose(CALL_INFO, 1, 0, "progress status %lu\n", zen_queue[harts][i]->status);
         // issue memory request
@@ -256,7 +275,7 @@ void ZEN::processEgressQueue() {
           zen_queue[harts][i]->status = 5;
           return;
         }
-        sendMsgToRZA(rza_addr, msg_id);
+        sendMsgToRZA(getWriteACS(hart_tables[harts]->acs_pair), rza_addr, payload, msg_id);
         zen_queue[harts][i]->status = 1;
         zen_queue[harts][i]->tail = rza_addr;
         outstanding_mem_req[msg_id++] = std::make_pair(harts, i);
@@ -271,6 +290,7 @@ void ZEN::processEgressQueue() {
 }
 
 void ZEN::processZAPCredits() {
+  //output.verbose(CALL_INFO, 1, 0, "Progress credits\n");
   for (int i = 0; i < zap_credits.size(); ++i) {
     uint64_t hart_id = zap_credits[i]->getSrcHart();
     uint64_t credits = setup_reqs[i]->getCredit();
@@ -306,18 +326,21 @@ void ZEN::processZAPCredits() {
 }
 
 void ZEN::processSetupMsgs() {
+  //output.verbose(CALL_INFO, 1, 0, "Progress setup msg\n");
   for (int i = 0; i < setup_reqs.size(); ++i) {
+    std::vector<uint64_t> payload = setup_reqs[i]->getPayload();
     uint64_t hart_id = setup_reqs[i]->getSrcHart();
-    output.verbose(CALL_INFO, 1, 0, "setup pkt size for hart %lu\n", setup_reqs[i]->getPacket().size(), hart_id);
-    if (setup_reqs[i]->getPacket().size() < 8 || hart_tables.find(hart_id) != hart_tables.end()) {
+    output.verbose(CALL_INFO, 1, 0, "setup pkt size %lu for hart %lu\n", payload.size(), hart_id);
+    if (setup_reqs[i]->getPayload().size() < 4 || hart_tables.find(hart_id) != hart_tables.end()) {
       sendNACKToZAP(hart_id);
     }
     // TODO: Specify payload format
-    uint64_t mem_start_addr = setup_reqs[i]->getPacket()[4];
-    uint64_t mem_end_addr = setup_reqs[i]->getPacket()[5];
-    uint64_t size = setup_reqs[i]->getPacket()[6];
-    uint64_t scratch_tail = setup_reqs[i]->getPacket()[7];
-    hart_tables[hart_id] = new ZENTableRow(mem_start_addr, mem_end_addr, size, scratch_tail, 500);
+    uint64_t acs_pair = payload[0];
+    uint64_t mem_start_addr = payload[1];
+    uint64_t mem_end_addr = payload[2];
+    uint64_t size = payload[3];
+    uint64_t scratch_tail = payload[4];
+    hart_tables[hart_id] = new ZENTableRow(acs_pair, mem_start_addr, mem_end_addr, size, scratch_tail, 500);
     //sendACKToZAP(hart_id);
     output.verbose(CALL_INFO, 1, 0, "setup hart table %d\n", hart_id);
     delete setup_reqs[i];
@@ -336,6 +359,7 @@ bool ZEN::clock(Cycle_t cycle){
   handleIncomingRZAMsg();
   processEgressQueue();
   processSetupMsgs();
+  //printZenQueue();
   return false;
 }
 

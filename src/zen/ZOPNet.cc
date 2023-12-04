@@ -245,11 +245,21 @@ void zopNIC::send(zopEvent *ev, zopCompID dest){
   SST::Interfaces::SimpleNetwork::Request *req =
     new SST::Interfaces::SimpleNetwork::Request();
   output.verbose(CALL_INFO, 9, 0,
-                 "Sending message from %s @ id=%d to endpoint[hart:zone:prec:Type]=[%d:%d:%d:%s\n",
+                 "Sending message from %s @ id=%d to endpoint[hart:zone:prec:Type]=[%d:%d:%d:%s], flit 1 %lu\n",
                  getName().c_str(), (uint32_t)(getAddress()),
                  ev->getDestHart(), ev->getDestZCID(), ev->getDestPCID(),
-                 endPToStr(dest).c_str() );
+                 endPToStr(dest).c_str(),
+                 ev->getPacket()[1] );
   auto realDest = 0;
+  if (ev->getType() == SST::Forza::zopMsgT::Z_MSG && ev->getOpcode() == SST::Forza::zopOpc::Z_MSG_SENDP) {
+    dest = zopCompID::Z_ZEN;
+    output.verbose(CALL_INFO, 9, 0,
+                  "Hijacked msg, sending message from %s @ id=%d to endpoint[hart:zone:prec:Type]=[%d:%d:%d:%s], flit 1 %lu\n",
+                  getName().c_str(), (uint32_t)(getAddress()),
+                  ev->getDestHart(), ev->getDestZCID(), ev->getDestPCID(),
+                  endPToStr(dest).c_str(),
+                  ev->getPacket()[1] );
+  }
   for( auto i : hostMap ){
     if( i.second == dest ){
       realDest = i.first;
@@ -272,8 +282,8 @@ bool zopNIC::msgNotify(int vn){
     }
     ev->decodeEvent();
     output.verbose(CALL_INFO, 9, 0,
-                   "%s received zop message of type %s\n",
-                   getName().c_str(), this->msgTToStr(ev->getType()).c_str());
+                   "%s received zop message of type %s with flit 1 %lu\n",
+                   getName().c_str(), this->msgTToStr(ev->getType()).c_str(), ev->getPacket()[1]);
     (*msgHandler)(ev);
     delete req;
   }

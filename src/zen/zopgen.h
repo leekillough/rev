@@ -93,6 +93,11 @@ namespace SST::Forza{
     void sendSetupToZOPGen();
     uint64_t getRZATailQueue(uint64_t harts, uint64_t size);
     void sendMZOPAckToZOPGen(SST::Forza::zopEvent *ev);
+    void processMZOP(SST::Forza::zopEvent *ev);
+    void sendMZOPRespToZAP(SST::Forza::zopEvent *ev, std::vector<uint64_t> payload);
+    void sendMsgToRZA(uint64_t addr, uint64_t size);
+    void processLoad(SST::Forza::zopEvent *ev);
+    void sendLoadToRZA(uint64_t addr, uint64_t size) ;
 
   private:
     // private class members
@@ -115,6 +120,7 @@ namespace SST::Forza{
     uint8_t msg_id;
     uint64_t m_num_harts;
     SST::Forza::zopAPI* m_zop_iface;
+    std::unordered_map<uint64_t, uint64_t> mem_map;
     bool sent, setup_done;
   }; // class SST::ZOPGen
 } // namespace SST::Forza
