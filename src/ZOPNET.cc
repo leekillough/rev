@@ -264,6 +264,7 @@ void zopNIC::send(zopEvent *ev, zopCompID dest){
 }
 
 bool zopNIC::msgNotify(int vn){
+  // TODO: check the outstanding read queue for an outstanding request and clear it
   SST::Interfaces::SimpleNetwork::Request* req = iFace->recv(0);
   if( req != nullptr ){
     zopEvent *ev = static_cast<zopEvent*>(req->takePayload());
