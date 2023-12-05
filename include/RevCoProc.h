@@ -39,56 +39,76 @@
 namespace SST::RevCPU {
 class RevCore;
 
+#define _RA_NUM_REG 4096
+#define _UNDEF_REG  (((_RA_NUM_REG))+1)
+
 // ----------------------------------------
 // RegAlloc
 // ----------------------------------------
 class RegAlloc{
-#define _H_CLEAR    0
-#define _H_READ     1
-#define _H_WRITE    2
-#define _H_DISABLE  3
-#define _UNDEF_REG  33
 public:
   /// RegAlloc: constructor
   RegAlloc(){
-    hazard[0] = _H_DISABLE;
-    for( unsigned i=1; i<32; i++ ){
-      hazard[i] = _H_CLEAR;
+    for( unsigned i=0; i<_RA_NUM_REG; i++ ){
+      hazard[i] = false;
+      regs[i] = 0x00ull;
     }
   }
 
   /// RegAlloc: destructor
   ~RegAlloc(){}
 
-  /// RegAlloc: retrieve a two operand register set
-  bool getRegs(unsigned &rs1, unsigned &rs2){
-    unsigned t_rs1 = 33;
-    unsigned t_rs2 = 33;
+  /// RegAlloc: retrieve a single operand register
+  bool getRegs(unsigned &rs1){
+    unsigned t_rs1 = _RA_NUM_REG+1;
 
-    // find two register slots
-    unsigned cur = 1;
-    while( cur < 32 ){
-      if( hazard[cur] == _H_CLEAR ){
-        hazard[cur] = _H_READ;
+    unsigned cur = 0;
+    while( cur < _RA_NUM_REG ){
+      if( !hazard[cur] ){
+        hazard[cur] = true;
         t_rs1 = cur;
         break;
       }else{
         cur++;
-        if( cur == 32 ){
+        if( cur == _RA_NUM_REG ){
           return false;
         }
       }
     }
 
-    cur = 1;
-    while( cur < 32 ){
-      if( hazard[cur] == _H_CLEAR ){
-        hazard[cur] = _H_READ;
+    rs1 = t_rs1;
+    return true;
+  }
+
+  /// RegAlloc: retrieve a two operand register set
+  bool getRegs(unsigned &rs1, unsigned &rs2){
+    unsigned t_rs1 = _RA_NUM_REG+1;
+    unsigned t_rs2 = _RA_NUM_REG+1;
+
+    // find two register slots
+    unsigned cur = 0;
+    while( cur < _RA_NUM_REG ){
+      if( !hazard[cur] ){
+        hazard[cur] = true;
+        t_rs1 = cur;
+        break;
+      }else{
+        cur++;
+        if( cur == _RA_NUM_REG ){
+          return false;
+        }
+      }
+    }
+
+    cur = 0;
+    while( cur < _RA_NUM_REG ){
+      if( !hazard[cur] ){
+        hazard[cur] = true;
         t_rs2 = cur;
         break;
       }else{
         cur++;
-        if( cur == 32 ){
+        if( cur == _RA_NUM_REG ){
           return false;
         }
       }
@@ -101,48 +121,48 @@ public:
 
   /// RegAlloc: retrieve a three operand register set
   bool getRegs(unsigned &rd, unsigned &rs1, unsigned &rs2){
-    unsigned t_rd = 33;
-    unsigned t_rs1 = 33;
-    unsigned t_rs2 = 33;
+    unsigned t_rd = _RA_NUM_REG+1;
+    unsigned t_rs1 = _RA_NUM_REG+1;
+    unsigned t_rs2 = _RA_NUM_REG+1;
 
     // find three register slots
     // -- Rd
-    unsigned cur = 1;
-    while( t_rd == 33 ){
-      if( hazard[cur] == _H_CLEAR ){
-        hazard[cur] = _H_WRITE;
+    unsigned cur = 0;
+    while( cur < _RA_NUM_REG ){
+      if( !hazard[cur] ){
+        hazard[cur] = true;
         t_rd = cur;
       }else{
         cur++;
-        if( t_rd == 32 ){
+        if( cur == _RA_NUM_REG ){
           return false;
         }
       }
     }
 
     // -- Rs1
-    cur = 1;
-    while( t_rs1 == 33 ){
-      if( hazard[cur] == _H_CLEAR ){
-        hazard[cur] = _H_READ;
+    cur = 0;
+    while( cur < _RA_NUM_REG ){
+      if( !hazard[cur] ){
+        hazard[cur] = true;
         t_rs1 = cur;
       }else{
         cur++;
-        if( t_rs1 == 32 ){
+        if( cur == _RA_NUM_REG ){
           return false;
         }
       }
     }
 
     // -- Rs2
-    cur = 1;
-    while( t_rs2 == 33 ){
-      if( hazard[cur] == _H_CLEAR ){
-        hazard[cur] = _H_READ;
+    cur = 0;
+    while( cur < _RA_NUM_REG ){
+      if( !hazard[cur] ){
+        hazard[cur] = true;
         t_rs2 = cur;
       }else{
         cur++;
-        if( t_rs2 == 32 ){
+        if( cur == _RA_NUM_REG ){
           return false;
         }
       }
@@ -156,13 +176,29 @@ public:
 
   /// RegAlloc: clear the hazard on the target register
   void clearReg(unsigned reg){
-    if( reg != 0 ){
-      hazard[reg] = _H_CLEAR;
+    if( reg < _RA_NUM_REG ){
+      hazard[reg] = false;
+      regs[reg] = 0x00ull;
+    }
+  }
+
+  /// RegAlloc: set the target value
+  void SetX(unsigned Idx, uint64_t Val){
+    if( Idx < _RA_NUM_REG-1 ){
+      regs[Idx] = Val;
+    }
+  }
+
+  /// RegAlloc: get the target value
+  uint64_t GetX(unsigned Idx){
+    if( Idx < _RA_NUM_REG-1 ){
+      return regs[Idx];
     }
   }
 
 private:
-  uint8_t hazard[32];
+  bool hazard[_RA_NUM_REG];
+  uint64_t regs[_RA_NUM_REG];
 };
 
 // ----------------------------------------
@@ -402,6 +438,9 @@ private:
   RevFeature *Feature;  ///< RZALSCoProc: Feature object
   RevRegFile *RegFile;  ///< RZALSCoProc: Regfile object
   RegAlloc Alloc;       ///< RZALSCoProc: Register allocator object
+
+  /// Handle the incoming MZOP request
+  bool handleMZOP(Forza::zopEvent *zev, bool &flag);
 
 #define LOADQ_ZEV   0
 #define LOADQ_RS1   1
