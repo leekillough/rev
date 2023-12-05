@@ -194,11 +194,21 @@ public:
     if( Idx < _RA_NUM_REG-1 ){
       return regs[Idx];
     }
+    return 0x00ull;
   }
+
+  /// RegAlloc: get the address for the target reigster
+  uint64_t *getRegAddr(unsigned Idx){
+    if( Idx < _RA_NUM_REG-1 ){
+      return (&regs[Idx]);
+    }
+    return nullptr;
+  }
+
+  uint64_t regs[_RA_NUM_REG]; ///< RegAlloc: register array
 
 private:
   bool hazard[_RA_NUM_REG];
-  uint64_t regs[_RA_NUM_REG];
 };
 
 // ----------------------------------------
@@ -279,6 +289,10 @@ public:
                        Forza::zopEvent *zev,
                        uint16_t Hart,
                        uint64_t Data);
+
+  /// RevCoProc: Virtual mark load complete method
+  virtual void MarkLoadComplete(const MemReq& req){
+  }
 
 protected:
   SST::Output*   output;                                ///< RevCoProc: sst output object
@@ -401,22 +415,26 @@ public:
   virtual ~RZALSCoProc();
 
   /// RZALSCoProc: clock tick function
-  virtual bool ClockTick(SST::Cycle_t cycle);
+  virtual bool ClockTick(SST::Cycle_t cycle) override;
 
   /// RZALSCoProc: Enqueue a new instruction
-  virtual bool IssueInst(RevFeature *F, RevRegFile *R, RevMem *M, uint32_t Inst);
+  virtual bool IssueInst(RevFeature *F, RevRegFile *R,
+                         RevMem *M, uint32_t Inst) override;
 
   /// RZALSCoProc: reset the coproc
-  virtual bool Reset();
+  virtual bool Reset() override;
 
   /// RZALSCoProc: teardown function when the attached Proc is complete
-  virtual bool Teardown() { return Reset(); }
+  virtual bool Teardown() override { return Reset(); }
 
   /// RZALSCoProc: determines whether the coproc is complete
-  virtual bool IsDone();
+  virtual bool IsDone() override;
 
   /// RZALSCoProc: injects a packet into the HZOP AMO pipeline
   virtual bool InjectZOP(Forza::zopEvent *zev, bool &flag) override;
+
+  /// RZALSCoProc: marks a load as being complete
+  virtual void MarkLoadComplete(const MemReq& req) override;
 
   /// RZALSCoProc: Set the memory handler
   virtual void setMem(RevMem *M) override{
@@ -431,24 +449,20 @@ public:
 private:
   RevMem *Mem;          ///< RZALSCoProc: RevMem object
   Forza::zopAPI *zNic;  ///< RZALSCoProc: ZOPNic object
-  RevFeature *Feature;  ///< RZALSCoProc: Feature object
-  RevRegFile *RegFile;  ///< RZALSCoProc: Regfile object
   RegAlloc Alloc;       ///< RZALSCoProc: Register allocator object
 
   /// Handle the incoming MZOP request
   bool handleMZOP(Forza::zopEvent *zev, bool &flag);
 
 #define LOADQ_ZEV   0
-#define LOADQ_RS1   1
-#define LOADQ_RS2   2
-  std::vector<std::tuple<Forza::zopEvent *,unsigned, unsigned>> LoadQ; ///< RZALSCoProc: Outstanding load queue
-
-  std::shared_ptr<std::unordered_map<uint64_t, MemReq>> LSQueue; ///< RZALSCoProc: Load / Store queue used to track memory operations. Currently only tracks outstanding loads.
+#define LOADQ_RS2   1
+  std::vector<std::pair<Forza::zopEvent *,unsigned>> LoadQ; ///< RZALSCoProc: Outstanding load queue
 
   std::function<void(const MemReq&)> MarkLoadCompleteFunc;  ///< RZALSCoProc: Hazard function
 
   /// RZALSCoProc: checks the load queues for completed operations and clears hazards
   void CheckLSQueue();
+
 };  // RZALSCoProc
 
 // ----------------------------------------
@@ -483,22 +497,26 @@ public:
   virtual ~RZAAMOCoProc();
 
   /// RZAAMOCoProc: clock tick function
-  virtual bool ClockTick(SST::Cycle_t cycle);
+  virtual bool ClockTick(SST::Cycle_t cycle) override;
 
   /// RZAAMOCoProc: Enqueue a new instruction
-  virtual bool IssueInst(RevFeature *F, RevRegFile *R, RevMem *M, uint32_t Inst);
+  virtual bool IssueInst(RevFeature *F, RevRegFile *R,
+                         RevMem *M, uint32_t Inst) override;
 
   /// RZAAMOCoProc: reset the coproc
-  virtual bool Reset();
+  virtual bool Reset() override;
 
   /// RZAAMOCoProc: teardown function when the attached Proc is complete
-  virtual bool Teardown() { return Reset(); }
+  virtual bool Teardown() override { return Reset(); }
 
   /// RZAAMOCoProc: determines whether the coproc is complete
-  virtual bool IsDone();
+  virtual bool IsDone() override;
 
   /// RZAMOCoProc: injects a packet into the HZOP AMO pipeline
   virtual bool InjectZOP(Forza::zopEvent *zev, bool &flag) override;
+
+  /// RZAAMOCoProc: marks a load as being complete
+  virtual void MarkLoadComplete(const MemReq& req) override;
 
   /// RZAAMOCoProc: Set the memory handler
   virtual void setMem(RevMem *M) override{
@@ -513,8 +531,6 @@ public:
 private:
   RevMem *Mem;          ///< RZAAMOCoProc: RevMem object
   Forza::zopAPI *zNic;  ///< RZAAMOCoProc: ZOPNic object
-  RevFeature *Feature;  ///< RZAAMOCoProc: Feature object
-  RevRegFile *RegFile;  ///< RZAAMOCoProc: Regfile object
   RegAlloc Alloc;       ///< RZAAMOCoProc: Register allocator object
 
 #define AMOQ_ZEV   0
@@ -524,7 +540,6 @@ private:
 
   std::function<void(const MemReq&)> MarkLoadCompleteFunc;  ///< RZAAMOCoProc: Hazard function
 
-  std::shared_ptr<std::unordered_map<uint64_t, MemReq>> LSQueue; ///< RZAAMOCoProc: Load / Store queue used to track memory operations. Currently only tracks outstanding loads.
 };  // RZAAMOCoProc
 } //namespace SST::RevCPU
 
