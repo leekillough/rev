@@ -168,27 +168,14 @@ bool RevSimpleCoProc::ClockTick( SST::Cycle_t cycle ) {
 // RZALSCoproc
 // ---------------------------------------------------------------
 RZALSCoProc::RZALSCoProc(ComponentId_t id, Params& params, RevProc* parent)
-  : RevCoProc(id, params, parent), Mem(nullptr), zNic(nullptr),
-    Feature(nullptr), RegFile(nullptr){
+  : RevCoProc(id, params, parent), Mem(nullptr), zNic(nullptr){
+
   std::string ClockFreq = params.find<std::string>("clock", "1Ghz");
   registerClock( ClockFreq,
                  new Clock::Handler<RZALSCoProc>(this, &RZALSCoProc::ClockTick) );
   output->output("Registering RZALSCoProc with frequency=%s\n",
                  ClockFreq.c_str());
-
-  // setup the Feature object
-  Feature = new RevFeature("RV64IMAFD", output, 0, 1, Z_MZOP_PIPE_HART);
-
-  // setup the register file
-  MarkLoadCompleteFunc = [=](const MemReq& req){parent->MarkLoadComplete(req); };
-  RegFile = new RevRegFile(Feature);
-  RegFile->SetMarkLoadComplete(MarkLoadCompleteFunc);
-
-  // retrieve the LS queue from the parent
-  LSQueue = parent->GetLSQueue();
-
-  // set the load/store queue
-  RegFile->SetLSQueue(LSQueue);
+  MarkLoadCompleteFunc = [=](const MemReq& req){this->MarkLoadComplete(req); };
 }
 
 RZALSCoProc::~RZALSCoProc(){
@@ -197,8 +184,6 @@ RZALSCoProc::~RZALSCoProc(){
     delete z;
   }
   LoadQ.clear();
-  delete Feature;
-  delete RegFile;
 }
 
 bool RZALSCoProc::IssueInst(RevFeature *F,
@@ -223,6 +208,8 @@ void RZALSCoProc::CheckLSQueue(){
   // If a load has been cleared, then prepare a response
   // packet with the appropriate data
   //std::cout << "LoadQ.size() = 0x" << std::hex << LoadQ.size() << std::dec << std::endl;
+
+#if 0
   for( auto it = LoadQ.begin(); it != LoadQ.end(); ++it ){
     auto zev = std::get<LOADQ_ZEV>(*it);    // ZEV object
     auto rs1 = std::get<LOADQ_RS1>(*it);    // address for a load
@@ -252,6 +239,7 @@ void RZALSCoProc::CheckLSQueue(){
       LoadQ.erase(it);
     }
   }
+#endif
 }
 
 bool RZALSCoProc::ClockTick(SST::Cycle_t cycle){
@@ -259,11 +247,17 @@ bool RZALSCoProc::ClockTick(SST::Cycle_t cycle){
   return true;
 }
 
+void RZALSCoProc::MarkLoadComplete(const MemReq& req){
+}
+
 bool RZALSCoProc::handleMZOP(Forza::zopEvent *zev, bool &flag){
   unsigned Rs1  = _UNDEF_REG;
   unsigned Rs2  = _UNDEF_REG;
   uint64_t Addr = 0x00ull;    // -- FLIT 3
   uint64_t Data = 0x00ull;    // -- FLIT 4
+
+  // used only for load operations
+  MemReq req{};
 
   // this is the actual number of data flits
   // this does not include the ACS field (flit=0) and the address
@@ -294,24 +288,56 @@ bool RZALSCoProc::handleMZOP(Forza::zopEvent *zev, bool &flag){
     if( !Alloc.getRegs(Rs2) ){
       return false;
     }
+    Alloc.SetX(Rs2, 0x00ull);
+    req.Set(Addr, (uint16_t)(Rs2), RevRegClass::RegGPR, Z_MZOP_PIPE_HART,
+            MemOp::MemOpREAD, true, MarkLoadCompleteFunc);
+    Mem->ReadVal(Z_MZOP_PIPE_HART, Addr,
+                 reinterpret_cast<uint8_t *>(Alloc.getRegAddr(Rs2)),
+                 req, RevFlag::F_NONE);
+    zev->setMemReq(req);
+    LoadQ.push_back(std::make_pair(zev,Rs2));
     flag = false;
     break;
   case Forza::zopOpc::Z_MZOP_LH:
     if( !Alloc.getRegs(Rs2) ){
       return false;
     }
+    Alloc.SetX(Rs2, 0x00ull);
+    req.Set(Addr, (uint16_t)(Rs2), RevRegClass::RegGPR, Z_MZOP_PIPE_HART,
+            MemOp::MemOpREAD, true, MarkLoadCompleteFunc);
+    Mem->ReadVal(Z_MZOP_PIPE_HART, Addr,
+                 reinterpret_cast<uint16_t *>(Alloc.getRegAddr(Rs2)),
+                 req, RevFlag::F_NONE);
+    zev->setMemReq(req);
+    LoadQ.push_back(std::make_pair(zev,Rs2));
     flag = false;
     break;
   case Forza::zopOpc::Z_MZOP_LW:
     if( !Alloc.getRegs(Rs2) ){
       return false;
     }
+    Alloc.SetX(Rs2, 0x00ull);
+    req.Set(Addr, (uint16_t)(Rs2), RevRegClass::RegGPR, Z_MZOP_PIPE_HART,
+            MemOp::MemOpREAD, true, MarkLoadCompleteFunc);
+    Mem->ReadVal(Z_MZOP_PIPE_HART, Addr,
+                 reinterpret_cast<uint32_t *>(Alloc.getRegAddr(Rs2)),
+                 req, RevFlag::F_NONE);
+    zev->setMemReq(req);
+    LoadQ.push_back(std::make_pair(zev,Rs2));
     flag = false;
     break;
   case Forza::zopOpc::Z_MZOP_LD:
     if( !Alloc.getRegs(Rs2) ){
       return false;
     }
+    Alloc.SetX(Rs2, 0x00ull);
+    req.Set(Addr, (uint16_t)(Rs2), RevRegClass::RegGPR, Z_MZOP_PIPE_HART,
+            MemOp::MemOpREAD, true, MarkLoadCompleteFunc);
+    Mem->ReadVal(Z_MZOP_PIPE_HART, Addr,
+                 Alloc.getRegAddr(Rs2),
+                 req, RevFlag::F_NONE);
+    zev->setMemReq(req);
+    LoadQ.push_back(std::make_pair(zev,Rs2));
     flag = false;
     break;
   // signed loads
@@ -319,18 +345,42 @@ bool RZALSCoProc::handleMZOP(Forza::zopEvent *zev, bool &flag){
     if( !Alloc.getRegs(Rs2) ){
       return false;
     }
+    Alloc.SetX(Rs2, 0x00ull);
+    req.Set(Addr, (uint16_t)(Rs2), RevRegClass::RegGPR, Z_MZOP_PIPE_HART,
+            MemOp::MemOpREAD, true, MarkLoadCompleteFunc);
+    Mem->ReadVal(Z_MZOP_PIPE_HART, Addr,
+                 reinterpret_cast<int8_t *>(Alloc.getRegAddr(Rs2)),
+                 req, RevFlag::F_SEXT64);
+    zev->setMemReq(req);
+    LoadQ.push_back(std::make_pair(zev,Rs2));
     flag = false;
     break;
   case Forza::zopOpc::Z_MZOP_LSH:
     if( !Alloc.getRegs(Rs2) ){
       return false;
     }
+    Alloc.SetX(Rs2, 0x00ull);
+    req.Set(Addr, (uint16_t)(Rs2), RevRegClass::RegGPR, Z_MZOP_PIPE_HART,
+            MemOp::MemOpREAD, true, MarkLoadCompleteFunc);
+    Mem->ReadVal(Z_MZOP_PIPE_HART, Addr,
+                 reinterpret_cast<int16_t *>(Alloc.getRegAddr(Rs2)),
+                 req, RevFlag::F_SEXT64);
+    zev->setMemReq(req);
+    LoadQ.push_back(std::make_pair(zev,Rs2));
     flag = false;
     break;
   case Forza::zopOpc::Z_MZOP_LSW:
     if( !Alloc.getRegs(Rs2) ){
       return false;
     }
+    Alloc.SetX(Rs2, 0x00ull);
+    req.Set(Addr, (uint16_t)(Rs2), RevRegClass::RegGPR, Z_MZOP_PIPE_HART,
+            MemOp::MemOpREAD, true, MarkLoadCompleteFunc);
+    Mem->ReadVal(Z_MZOP_PIPE_HART, Addr,
+                 reinterpret_cast<int32_t *>(Alloc.getRegAddr(Rs2)),
+                 req, RevFlag::F_SEXT64);
+    zev->setMemReq(req);
+    LoadQ.push_back(std::make_pair(zev,Rs2));
     flag = false;
     break;
 
@@ -412,9 +462,9 @@ bool RZALSCoProc::handleMZOP(Forza::zopEvent *zev, bool &flag){
     Buf = new uint8_t(RealFlitLen*8);
     for( i=0; i<RealFlitLen; i++ ){
       Data = 0x00ull;
-      if( !zev->getFLIT((Z_FLIT_ADDR+1)+i, &Data) ){
+      if( !zev->getFLIT((Z_FLIT_DATA)+i, &Data) ){
         output->fatal(CALL_INFO, -1,
-                      "[FORZA][RZA][MZOP]: MZOP packet has no address FLIT: Type=%s, ID=%d\n",
+                      "[FORZA][RZA][MZOP]: MZOP packet has no DMA data FLIT: Type=%s, ID=%d\n",
                       zNic->msgTToStr(zev->getType()).c_str(),
                       zev->getID());
       }
@@ -445,9 +495,11 @@ bool RZALSCoProc::handleMZOP(Forza::zopEvent *zev, bool &flag){
                     "[FORZA][RZA][MZOP]: Failed to send success response for ZOP ID=%d\n",
                     zev->getID());
     }
-    Alloc.clearReg(Rs1);
     delete zev;
   }
+
+  // consider this clear the dep on RS1 for all requests
+  Alloc.clearReg(Rs1);
 
   return true;
 }
@@ -461,220 +513,22 @@ bool RZALSCoProc::InjectZOP(Forza::zopEvent *zev, bool &flag){
   }
 
   return handleMZOP(zev,flag);
-
-#if 0
-  // inject the request into the memory subsystem
-  RevInst Inst;
-  flag = false;
-  unsigned Rs1  = _UNDEF_REG;
-  unsigned Rs2  = _UNDEF_REG;
-  uint64_t Addr = 0x00ull;    // -- FLIT 3
-  uint64_t Data = 0x00ull;    // -- FLIT 4
-  bool (*func)(RevFeature *, RevRegFile *, RevMem *, RevInst);
-
-  // pre clear the immediate field
-  Inst.imm = 0x00ull;
-
-  if( !Alloc.getRegs(Rs1, Rs2) ){
-    std::cout << "<<<<<<<<<<<<<<<< RAN OUT OF REGISTERS" << std::endl;
-    return false;
-  }
-
-  // preload the address
-  if( !zev->getFLIT(Z_FLIT_ADDR, &Addr) ){
-    output->fatal(CALL_INFO, -1,
-                  "[FORZA][RZA][MZOP]: MZOP packet has no address FLIT: Type=%s, ID=%d\n",
-                  zNic->msgTToStr(zev->getType()).c_str(),
-                  zev->getID());
-  }
-
-  Inst.rs1 = Rs1;
-  RegFile->SetX(Inst.rs1, Addr);
-
-  switch( zev->getOpcode() ){
-  case Forza::zopOpc::Z_MZOP_LB:
-    Inst.rd = Rs2;
-    func = load<uint8_t>;
-    break;
-  case Forza::zopOpc::Z_MZOP_LH:
-    Inst.rd = Rs2;
-    func = load<uint16_t>;
-    break;
-  case Forza::zopOpc::Z_MZOP_LW:
-    Inst.rd = Rs2;
-    func = load<uint32_t>;
-    break;
-  case Forza::zopOpc::Z_MZOP_LD:
-    Inst.rd = Rs2;
-    func = load<uint64_t>;
-    break;
-  case Forza::zopOpc::Z_MZOP_LSB:
-    Inst.rd = Rs2;
-    func = load<int8_t>;
-    break;
-  case Forza::zopOpc::Z_MZOP_LSH:
-    Inst.rd = Rs2;
-    func = load<int16_t>;
-    break;
-  case Forza::zopOpc::Z_MZOP_LSW:
-    Inst.rd = Rs2;
-    func = load<int32_t>;
-    break;
-  case Forza::zopOpc::Z_MZOP_SB:
-    if( !zev->getFLIT(Z_FLIT_DATA, &Data) ){
-      output->fatal(CALL_INFO, -1,
-                    "[FORZA][RZA][MZOP]: MZOP packet has no data FLIT: Type=%s, ID=%d\n",
-                    zNic->msgTToStr(zev->getType()).c_str(),
-                    zev->getID());
-    }
-    Inst.rs2 = Rs2;
-    RegFile->SetX(Inst.rs2, Data);
-    func = store<uint8_t>;
-    flag = true;
-    break;
-  case Forza::zopOpc::Z_MZOP_SH:
-    if( !zev->getFLIT(Z_FLIT_DATA, &Data) ){
-      output->fatal(CALL_INFO, -1,
-                    "[FORZA][RZA][MZOP]: MZOP packet has no data FLIT: Type=%s, ID=%d\n",
-                    zNic->msgTToStr(zev->getType()).c_str(),
-                    zev->getID());
-    }
-    Inst.rs2 = Rs2;
-    RegFile->SetX(Inst.rs2, Data);
-    func = store<uint16_t>;
-    flag = true;
-    break;
-  case Forza::zopOpc::Z_MZOP_SW:
-    if( !zev->getFLIT(4, &Data) ){
-      output->fatal(CALL_INFO, -1,
-                    "[FORZA][RZA][MZOP]: MZOP packet has no data FLIT: Type=%s, ID=%d\n",
-                    zNic->msgTToStr(zev->getType()).c_str(),
-                    zev->getID());
-    }
-    Inst.rs2 = Rs2;
-    RegFile->SetX(Inst.rs2, Data);
-    func = store<uint32_t>;
-    flag = true;
-    break;
-  case Forza::zopOpc::Z_MZOP_SD:
-    if( !zev->getFLIT(4, &Data) ){
-      output->fatal(CALL_INFO, -1,
-                    "[FORZA][RZA][MZOP]: MZOP packet has no data FLIT: Type=%s, ID=%d\n",
-                    zNic->msgTToStr(zev->getType()).c_str(),
-                    zev->getID());
-    }
-    Inst.rs2 = Rs2;
-    RegFile->SetX(Inst.rs2, Data);
-    func = store<uint64_t>;
-    flag = true;
-    break;
-  case Forza::zopOpc::Z_MZOP_SSB:
-    if( !zev->getFLIT(4, &Data) ){
-      output->fatal(CALL_INFO, -1,
-                    "[FORZA][RZA][MZOP]: MZOP packet has no data FLIT: Type=%s, ID=%d\n",
-                    zNic->msgTToStr(zev->getType()).c_str(),
-                    zev->getID());
-    }
-    Inst.rs2 = Rs2;
-    RegFile->SetX(Inst.rs2, Data);
-    func = store<int8_t>;
-    flag = true;
-    break;
-  case Forza::zopOpc::Z_MZOP_SSH:
-    if( !zev->getFLIT(4, &Data) ){
-      output->fatal(CALL_INFO, -1,
-                    "[FORZA][RZA][MZOP]: MZOP packet has no data FLIT: Type=%s, ID=%d\n",
-                    zNic->msgTToStr(zev->getType()).c_str(),
-                    zev->getID());
-    }
-    Inst.rs2 = Rs2;
-    RegFile->SetX(Inst.rs2, Data);
-    func = store<int16_t>;
-    flag = true;
-    break;
-  case Forza::zopOpc::Z_MZOP_SSW:
-    if( !zev->getFLIT(4, &Data) ){
-      output->fatal(CALL_INFO, -1,
-                    "[FORZA][RZA][MZOP]: MZOP packet has no data FLIT: Type=%s, ID=%d\n",
-                    zNic->msgTToStr(zev->getType()).c_str(),
-                    zev->getID());
-    }
-    Inst.rs2 = Rs2;
-    RegFile->SetX(Inst.rs2, Data);
-    func = store<int32_t>;
-    flag = true;
-    break;
-  default:
-    // not an MZOP
-    output->verbose(CALL_INFO, 9, 0,
-                    "[FORZA][RZA][MZOP]: Erroneous MZOP opcode=%d\n",
-                    (unsigned)(zev->getOpcode()));
-    return false;
-    break;
-  }
-
-  output->verbose(CALL_INFO, 9, 0,
-                  "[FORZA][RZA][MZOP]: Executing MZOP with opcode=%d\n",
-                  (unsigned)(zev->getOpcode()));
-
-  // execute the mzop
-  func(Feature, RegFile, Mem, Inst);
-
-  // if the request was a memory write, initiate a response
-  // and clear the hazards
-  if( flag ){
-    if( !sendSuccessResp(zNic, zev, Z_MZOP_PIPE_HART) ){
-      output->fatal(CALL_INFO, -1,
-                    "[FORZA][RZA][MZOP]: Failed to send success response for ZOP ID=%d\n",
-                    zev->getID());
-    }
-    Alloc.clearReg(Inst.rs1);
-    Alloc.clearReg(Inst.rs2);
-    delete zev;
-  }else{
-    // request was a read, save it off for response processing
-#if 0
-    LoadQ.push_back(std::tuple<Forza::zopEvent *,unsigned, unsigned>(zev,
-                                                                     Inst.rs1,
-                                                                     Inst.rd));
-#endif
-    parent->ExternalDepSet(CreatePasskey(), 0, Inst.rd, false);
-  }
-
-  return true;
-#endif
 }
 
 // ---------------------------------------------------------------
 // RZAAMOCoproc
 // ---------------------------------------------------------------
 RZAAMOCoProc::RZAAMOCoProc(ComponentId_t id, Params& params, RevProc* parent)
-  : RevCoProc(id, params, parent), Mem(nullptr), zNic(nullptr),
-    Feature(nullptr), RegFile(nullptr){
+  : RevCoProc(id, params, parent), Mem(nullptr), zNic(nullptr){
   std::string ClockFreq = params.find<std::string>("clock", "1Ghz");
   registerClock( ClockFreq,
                  new Clock::Handler<RZAAMOCoProc>(this, &RZAAMOCoProc::ClockTick) );
   output->output("Registering RZAAMOCoProc with frequency=%s\n",
                  ClockFreq.c_str());
-
-  // setup the Feature object
-  Feature = new RevFeature("RV64IMAFD", output, 0, 1, Z_HZOP_PIPE_HART);
-
-  // setup the register file
-  MarkLoadCompleteFunc = [=](const MemReq& req){parent->MarkLoadComplete(req); };
-  RegFile = new RevRegFile(Feature);
-  RegFile->SetMarkLoadComplete(MarkLoadCompleteFunc);
-
-  // retrieve the LS queue from the parent
-  LSQueue = parent->GetLSQueue();
-
-  // set the load/store queue
-  RegFile->SetLSQueue(LSQueue);
+  MarkLoadCompleteFunc = [=](const MemReq& req){this->MarkLoadComplete(req); };
 }
 
 RZAAMOCoProc::~RZAAMOCoProc(){
-  delete Feature;
-  delete RegFile;
 }
 
 bool RZAAMOCoProc::IssueInst(RevFeature *F,
@@ -708,6 +562,9 @@ bool RZAAMOCoProc::InjectZOP(Forza::zopEvent *zev, bool &flag){
   // this is not a pure MZOP Write
   flag = false;
   return true;
+}
+
+void RZAAMOCoProc::MarkLoadComplete(const MemReq& req){
 }
 
 }  // namespace SST::RevCPU
