@@ -208,6 +208,21 @@ public:
     return nullptr;
   }
 
+  /// RegAlloc: get the hazard state
+  uint8_t getState( unsigned Idx ){
+    if( Idx < _RA_NUM_REG-1 ){
+      return hazard[Idx];
+    }
+    return _H_DIRTY;
+  }
+
+  /// RegAlloc: set the target register as dirty
+  void setDirty( unsigned Idx ){
+    if( Idx < _RA_NUM_REG-1 ){
+      hazard[Idx] = _H_DIRTY;
+    }
+  }
+
   uint64_t regs[_RA_NUM_REG]; ///< RegAlloc: register array
 
 private:
@@ -295,8 +310,7 @@ public:
                        uint64_t Data);
 
   /// RevCoProc: Virtual mark load complete method
-  virtual void MarkLoadComplete(const MemReq& req){
-  }
+  virtual void MarkLoadComplete(const MemReq& req){}
 
 protected:
   SST::Output*   output{};  ///< RevCoProc: sst output object
