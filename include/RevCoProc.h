@@ -45,12 +45,15 @@ class RevCore;
 // ----------------------------------------
 // RegAlloc
 // ----------------------------------------
+#define _H_CLEAR  0
+#define _H_SET    1
+#define _H_DIRTY  2
 class RegAlloc{
 public:
   /// RegAlloc: constructor
   RegAlloc(){
     for( unsigned i=0; i<_RA_NUM_REG; i++ ){
-      hazard[i] = false;
+      hazard[i] = _H_CLEAR;
       regs[i] = 0x00ull;
     }
   }
@@ -64,8 +67,8 @@ public:
 
     unsigned cur = 0;
     while( cur < _RA_NUM_REG ){
-      if( !hazard[cur] ){
-        hazard[cur] = true;
+      if( hazard[cur] == _H_CLEAR){
+        hazard[cur] = _H_SET;
         t_rs1 = cur;
         break;
       }else{
@@ -88,8 +91,8 @@ public:
     // find two register slots
     unsigned cur = 0;
     while( cur < _RA_NUM_REG ){
-      if( !hazard[cur] ){
-        hazard[cur] = true;
+      if( hazard[cur] == _H_CLEAR ){
+        hazard[cur] = _H_SET;
         t_rs1 = cur;
         break;
       }else{
@@ -102,8 +105,8 @@ public:
 
     cur = 0;
     while( cur < _RA_NUM_REG ){
-      if( !hazard[cur] ){
-        hazard[cur] = true;
+      if( hazard[cur] == _H_CLEAR ){
+        hazard[cur] = _H_SET;
         t_rs2 = cur;
         break;
       }else{
@@ -129,8 +132,8 @@ public:
     // -- Rd
     unsigned cur = 0;
     while( cur < _RA_NUM_REG ){
-      if( !hazard[cur] ){
-        hazard[cur] = true;
+      if( hazard[cur] == _H_CLEAR ){
+        hazard[cur] = _H_SET;
         t_rd = cur;
       }else{
         cur++;
@@ -143,8 +146,8 @@ public:
     // -- Rs1
     cur = 0;
     while( cur < _RA_NUM_REG ){
-      if( !hazard[cur] ){
-        hazard[cur] = true;
+      if( hazard[cur] == _H_CLEAR ){
+        hazard[cur] = _H_SET;
         t_rs1 = cur;
       }else{
         cur++;
@@ -157,8 +160,8 @@ public:
     // -- Rs2
     cur = 0;
     while( cur < _RA_NUM_REG ){
-      if( !hazard[cur] ){
-        hazard[cur] = true;
+      if( hazard[cur] == _H_CLEAR ){
+        hazard[cur] = _H_SET;
         t_rs2 = cur;
       }else{
         cur++;
@@ -177,7 +180,7 @@ public:
   /// RegAlloc: clear the hazard on the target register
   void clearReg(unsigned reg){
     if( reg < _RA_NUM_REG ){
-      hazard[reg] = false;
+      hazard[reg] = _H_CLEAR;
       regs[reg] = 0x00ull;
     }
   }
@@ -208,7 +211,7 @@ public:
   uint64_t regs[_RA_NUM_REG]; ///< RegAlloc: register array
 
 private:
-  bool hazard[_RA_NUM_REG];
+  uint8_t hazard[_RA_NUM_REG];
 };
 
 // ----------------------------------------
