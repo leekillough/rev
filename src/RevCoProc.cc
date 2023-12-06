@@ -215,37 +215,25 @@ void RZALSCoProc::CheckLSQueue(){
   // packet with the appropriate data
   //std::cout << "LoadQ.size() = 0x" << std::hex << LoadQ.size() << std::dec << std::endl;
 
-#if 0
   for( auto it = LoadQ.begin(); it != LoadQ.end(); ++it ){
-    auto zev = std::get<LOADQ_ZEV>(*it);    // ZEV object
-    auto rs1 = std::get<LOADQ_RS1>(*it);    // address for a load
-    auto rs2 = std::get<LOADQ_RS2>(*it);    // target for a load
+    auto zev = it->first;
+    auto rs2 = it->second;
 
-    std::cout << "CheckLSQueue: rs1 = " << rs1 << std::endl;
-    std::cout << "CheckLSQueue: rs2 = " << rs2 << std::endl;
-
-    if( !parent->ExternalDepCheck(CreatePasskey(), 0, rs2, false) ){
-      // dependency has been cleared, the load is complete
-      // time to issue a response
+    if( Alloc.getState(rs2) == _H_DIRTY ){
+      // load to register has occurred, time to build a response
       if( !sendSuccessResp(zNic,
                            zev,
                            Z_MZOP_PIPE_HART,
-                           RegFile->GetX<uint64_t>(rs2))){
-        output->fatal(CALL_INFO, -1,
+                           Alloc.GetX(rs2)) ){
+        output->fatal(CALL_INFO, 01,
                       "[FORZA][RZA][MZOP]: Failed to send success response for ZOP ID=%d\n",
                       zev->getID());
-
       }
-      Alloc.clearReg(rs1);
       Alloc.clearReg(rs2);
       delete zev;
-
-      // erase the entry
-      std::cout << "erasing an entry" << std::endl;
       LoadQ.erase(it);
     }
   }
-#endif
 }
 
 bool RZALSCoProc::ClockTick(SST::Cycle_t cycle){
@@ -254,6 +242,7 @@ bool RZALSCoProc::ClockTick(SST::Cycle_t cycle){
 }
 
 void RZALSCoProc::MarkLoadComplete(const MemReq& req){
+  Alloc.setDirty((unsigned)(req.DestReg));
 }
 
 bool RZALSCoProc::handleMZOP(Forza::zopEvent *zev, bool &flag){
