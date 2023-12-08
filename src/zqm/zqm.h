@@ -10,8 +10,6 @@
 #include "ZOPNet.h" // TODO: replace with version from forzarev
 #include <string>
 
-static const unsigned int MAX_NUM_AIDS 4
-
 namespace SST::Forza{
 #if 0
     // TJD: Figure out what this class is used for; looks like it may
@@ -28,9 +26,6 @@ namespace SST::Forza{
     }
   };
 #endif
-
-    // The below class is for tracking HART occupancy status
-    class ZqmHartTrackingTable{};
 
     class ZqmAidStateTableRow {
         // Will need functionality for updating read/write pointers
@@ -58,8 +53,8 @@ namespace SST::Forza{
     public:
         // register the component
         SST_ELI_REGISTER_COMPONENT(
-                ZQM,                                    // component class
-        "Forza",                             // component libary
+        ZQM,                                    // component class
+        "Forza",                                // component libary
         "ZQM",                                  // component name
         SST_ELI_ELEMENT_VERSION(0,0,1),         // Version of the component
         "ZQM: Forza ZQM component",             // description
@@ -87,6 +82,11 @@ namespace SST::Forza{
 
         // public class members
         /// ZQM: constructor
+        /**
+         * This needs some info on construction - number of ZAPs, number of HARTs
+         * @param id
+         * @param params
+         */
         ZQM(SST::ComponentId_t id, SST::Params& params);
 
         /// ZQM: destructor
@@ -101,7 +101,7 @@ namespace SST::Forza{
          * @param ev
          *
          * Ok, this is the top level zop handler, there are separate functions
-         * for handling each subtype
+         * for handling each subtype (they are named as "process..."
          */
         void handleIncomingZOP(SST::Event *ev);
 
@@ -110,8 +110,21 @@ namespace SST::Forza{
          * @param addr
          * @param msg_id
          */
-        void sendMsgToRZA(uint64_t addr, uint8_t msg_id);
+        void sendMsgToRZA(uint64_t addr, uint8_t msg_id); //invoked by clock handler
 
+
+
+        /**
+         * Do what the function says - prep and send a thread to a ZAP
+         */
+        void sendThreadToZap(SST::Forza::zopEvent *ev);
+
+
+    private:
+        /// ZQM: clock handler
+        bool clock(SST::Cycle_t cycle);
+
+        bool handleNetworkEvent(int i);
 
         /**
          * This should be reading from the setup_reqs vector and
@@ -120,22 +133,19 @@ namespace SST::Forza{
         void processSetupMsgs(); // invoked by clock handler
 
 
-        /** This should be reading from the rza_zops vector and processing
+        /**
+         * This should be reading from the rza_zops vector and processing
          * them
          */
         void processRzaMsgs();  // invoked by clock handler
 
-        void sendNACKToZAP(uint64_t hart_id);
-        void sendACKToZAP(uint64_t hart_id);
-        void sendMsgToZQM();
-        void sendSetupToZQM();
-        void sendMZOPAckToZQM(SST::Forza::zopEvent *ev);
+        /**
+         * Read and process messages from the incoming_threads_vec
+         *
+         */
+        void processIncomingThreadsMsgs(); //invoked by clock handler
 
-    private:
-        /// ZQM: clock handler
-        bool clock(SST::Cycle_t cycle);
 
-        bool handleNetworkEvent(int i);
 
         // private data members
         SST::Output output;             ///< ZQM: SST output handler
@@ -147,18 +157,19 @@ namespace SST::Forza{
 
         // MZop ACKs and tracking table for in-flight mem ops...will
         // have to do both reads and writes to memory...
-        std::vector<SST::Forza::zopEvent*> rza_reqs;
+        std::vector<SST::Forza::zopEvent*> rza_responses;
         std::map<uint8_t, std::pair<uint64_t, uint64_t> > outstanding_rza_reqs;
 
         // Incoming threads
-        std::vector<SST::Forza::zopEvent*> incoming_threqds_vec;
+        std::vector<SST::Forza::zopEvent*> incoming_threads_vec;
 
         // Shouldn't need these fields
         //std::map<uint64_t, std::vector<ZQMEntry*> > zqm_queue;
         //std::map<uint64_t, std::vector<ZQMEntry*> > zone_queue;
         //std::map<uint64_t, std::vector<ZQMEntry*> > precinct_queue;
 
-        // TODO: Add structure for holding HART status
+        // [num_zaps][num_harts]
+        std::vector<std::vector<bool>> zap_hart_status;
 
         uint64_t int_id; //
         uint8_t msg_id;

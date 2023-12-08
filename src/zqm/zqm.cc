@@ -28,6 +28,17 @@ ZQM::ZQM(ComponentId_t id, Params& params)
     m_zop_iface = loadUserSubComponent<SST::Forza::zopAPI>( "m_zop_iface" );
     //m_linkControl = loadUserSubComponent<SST::Interfaces::SimpleNetwork>( "rtrLink", ComponentInfo::SHARE_NONE, 1 );
     m_num_harts = params.find<uint64_t>("num_harts", 4);
+    //TODO: get number of ZAPs from parameter - currently assume 1
+    uint32_t num_zaps = 1;
+
+    // Create and init matrix of HART status
+    zap_hart_status.resize(num_zaps);
+    for (auto &hart_vec: zap_hart_status) {
+        hart_vec.resize(m_num_harts);
+        for (auto &j : hart_vec)
+            j = false;
+    }
+
     //assert( m_linkControl );
     msg_id = 0;
     sent = false;
@@ -78,18 +89,21 @@ void ZQM::handleIncomingZOP(SST::Event *event) {
      * - Thread Migration
      */
     if (ev->getType() == SST::Forza::zopMsgT::Z_RESP) {
-        rza_reqs.push_back(ev);
+        rza_responses.push_back(ev);
     } else if (ev->getType() == SST::Forza::zopMsgT::Z_MSG && ev->getOpcode() == SST::Forza::zopOpc::Z_MSG_ZQMSET) {
+        // TODO: Put all messaging types into setup_reqs and let processSetupMsgs handle the invalid zopOpc case
         setup_reqs.push_back(ev);
     } else if (ev->getType() == SST::Forza::zopMsgT::Z_TMIG){
-        incoming_threqds_vec.push_back(ev);
+        incoming_threads_vec.push_back(ev);
     } else{
         output.verbose(CALL_INFO, 1, 0, "Invalid msg type %d\n", ev->getType());
         // TODO: Is there a generic ZOP Dump/print function for debugging?  If so, use it
+        // TODO: Fatal or non-fatal (probably best to be latter)
         return;
     }
 }
 
+// TODO: UPDATE THIS!
 void ZQM::sendMsgToRZA(uint64_t addr, uint8_t msg_id) {
     output.verbose(CALL_INFO, 1, 0, "Msg tgt %d, msg id %" PRIu8 "\n", addr, msg_id);
     std::vector<uint64_t> payload;
@@ -115,65 +129,72 @@ void ZQM::sendMsgToRZA(uint64_t addr, uint8_t msg_id) {
     // TODO: Update with RZA id
 }
 
-void ZQM::processRzaMsgs()
-{
-    // This is supposed to look at the RZA msgs and start progressing status of whatever
-    // got an ACK
-    for (int i = 0; i < mem_acks.size(); ++i) {
-        output.verbose(CALL_INFO, 1, 0, "progress status msg_id %lu\n", mem_acks[i]->getID());
-        if (outstanding_mem_req.count(mem_acks[i]->getID())) {
-            uint64_t hart_id = outstanding_mem_req[mem_acks[i]->getID()].first;
-            uint64_t queue_loc = outstanding_mem_req[mem_acks[i]->getID()].second;
-            zqm_queue[hart_id][queue_loc]->status = 2;
-            sendACKToZAP(hart_id);
-            delete mem_acks[i];
-            mem_acks[i] = NULL;
+void ZQM::processRzaMsgs() {
+    /**
+     * Assume that the Zop.Type field has already been checked via handleIncomingZop()
+     */
+    for (auto &resp: rza_responses) {
+        // Should have 4 valid types
+        switch (resp->getOpcode()) {
+            case zopOpc::Z_RESP_LR: { // valid data (should be a load dma response)
+                sendThreadToZap(resp);
+                auto it = outstanding_rza_reqs.find(resp->getID());
+                if (it != outstanding_rza_reqs.end()) {
+                    output.verbose(CALL_INFO, 1, 0, "Found msgId=%u (load response) in outstanding_rza_reqs map\n",
+                                   (uint32_t) resp->getID());
+                    outstanding_rza_reqs.erase(it);
+                } else {
+                    output.fatal(CALL_INFO, 1, "Received RZA load response with an invalid ID; id=%u\n",
+                                 (uint32_t) resp->getID());
+                }
+                break;
+            }
+            case zopOpc::Z_RESP_LEXCP: // load exception
+                output.verbose(CALL_INFO, 1, 0, "[ZQM ERROR] Received a RZA load exception\n");
+                break;
+            case zopOpc::Z_RESP_SACK: { // store ack (should be a store dma ack)
+                auto it = outstanding_rza_reqs.find(resp->getID());
+                if (it != outstanding_rza_reqs.end()) {
+                    output.verbose(CALL_INFO, 1, 0, "Found msgId=%u (store ack) in outstanding_rza_reqs map\n",
+                                   (uint32_t) resp->getID());
+                    outstanding_rza_reqs.erase(it);
+                } else {
+                    output.fatal(CALL_INFO, 1, "Received RZA ack with an invalid ID; id=%u\n",
+                                 (uint32_t) resp->getID());
+                }
+                break;
+            }
+            case zopOpc::Z_RESP_SEXCP: // store exception
+                output.verbose(CALL_INFO, 1, 0, "[ZQM ERROR]Received a RZA load exception\n");
+                break;
+            default:
+                output.fatal(CALL_INFO, 1, "Received an invalid RZA response type; type=%u\n",
+                             (uint32_t) resp->getOpcode());
         }
+        delete resp;
     }
-    mem_acks.erase(std::remove_if(
-            mem_acks.begin(), mem_acks.end(),
-            [](auto x) {
-                return !x;
-            }), mem_acks.end());
 }
 
-void ZQM::sendNACKToZAP(uint64_t dest) {
-    std::vector<uint32_t> payload;
-    // TODO: Update with ZAP id
-    SST::Forza::zopEvent *nackMsg = new SST::Forza::zopEvent(m_zop_iface->getAddress(), (zopCompID)dest);
-    nackMsg->setType(SST::Forza::zopMsgT::Z_MSG);
-    nackMsg->setOpc(SST::Forza::zopOpc::Z_MSG_EXCP);
-    nackMsg->setSrcHart(m_zop_iface->getAddress());
-    nackMsg->setSrcZCID(0);
-    nackMsg->setSrcPCID(0);
-    nackMsg->setSrcPrec(0);
-    nackMsg->setDestHart(dest);
-    nackMsg->setDestZCID(0);
-    nackMsg->setDestPCID(0);
-    nackMsg->setDestPrec(0);
-    nackMsg->encodeEvent();
-    m_zop_iface->send(nackMsg, (zopCompID)dest);
-}
+void ZQM::sendThreadToZap(SST::Forza::zopEvent *ev)
+{
+    SST::Forza::zopEvent *thread = new SST::Forza::zopEvent(zopMsgT::Z_TMIG, zopOpc Z_TMIG_FIXED);
+    // Copy the packet
+    thread->setPacket(ev->getPacket()); // TODO: Use {set,get}Payload instead?
+    // TODO: Set the Destination HART info
+    // TODO: Set the Source HART info
+    thread->encodeEvent();
 
-void ZQM::sendACKToZAP(uint64_t dest) {
-    std::vector<uint32_t> payload;
-    // TODO: Update with ZAP id
-    SST::Forza::zopEvent *ackMsg = new SST::Forza::zopEvent(m_zop_iface->getAddress(), (zopCompID)dest);
-    ackMsg->setType(SST::Forza::zopMsgT::Z_MSG);
-    ackMsg->setOpc(SST::Forza::zopOpc::Z_MSG_ACK);
-    ackMsg->setSrcHart(m_zop_iface->getAddress());
-    ackMsg->setSrcZCID(0);
-    ackMsg->setSrcPCID(0);
-    ackMsg->setSrcPrec(0);
-    ackMsg->setDestHart(dest);
-    ackMsg->setDestZCID(0);
-    ackMsg->setDestPCID(0);
-    ackMsg->setDestPrec(0);
-    ackMsg->encodeEvent();
-    m_zop_iface->send(ackMsg, (zopCompID)dest);
+    // TODO: Update zap_hart_status
+    zopCompID dest_zap = zopCompID::Z_ZAP0;
+    m_zop_iface->send(thread, dest_zap);
 }
 
 void ZQM::processSetupMsgs() {
+    // TODO: Redo this function to handle both of the following cases
+    //ev->getOpcode() == SST::Forza::zopOpc::Z_MSG_ZQMSET
+    //ev->getOpcode() == SST::Forza::zopOpc::Z_MSG_ZQMHARTDONE
+
+
     for (auto &event : setup_reqs) {
         output.verbose(CALL_INFO, 1, 0, "setup pkt size for zqm\n");
 
@@ -195,8 +216,7 @@ void ZQM::processSetupMsgs() {
 
         auto it = aid_state_table.find(app_id);
         if (it != aid_state_table.end()) {
-            // TODO: Do standard failure type...
-            assert(false);
+            output.fatal(CALL_INFO, 1, "Received a second setup packet for aid=%u\n", app_id);
         }
         aid_state_table.insert(std::pair<uint32_t, ZqmAidStateTableRow>(app_id,
                                                                         {min_zap_hart,
@@ -208,8 +228,25 @@ void ZQM::processSetupMsgs() {
     }
 }
 
-bool ZQM::clock(Cycle_t cycle){
-    handleIncomingRZAMsg();
+
+void ZQM::processIncomingThreadsMsgs()
+{
+    for (auto &thread : incoming_threads_vec){
+        // Two possible arrival types - with an assigned HART and with a selectable HART
+        // Need to figure out *final* packet format for migrating threads
+
+        // Two possible destinations - ZAP, memory for storage
+        // Destination requires knowing HART status
+
+        delete thread;
+    }
+}
+
+
+bool ZQM::clock(Cycle_t cycle)
+{
+    processIncomingThreadsMsgs();
+    processRzaMsgs();
     processSetupMsgs();
     return false;
 }
