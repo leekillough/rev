@@ -1662,6 +1662,9 @@ bool RevMem::handleRZAResponse(Forza::zopEvent *zev){
   output->verbose(CALL_INFO, 5, 0,
                   "[FORZA][ZAP] Handling ZOP Response in RevMem; ID=%d\n",
                   (uint32_t)(zev->getID()));
+  auto req = zev->getMemReq();
+  req.MarkLoadComplete(req);
+  return true;
 #if 0
   uint16_t evHart = zev->getDestHart();
   uint8_t evID = zev->getID();

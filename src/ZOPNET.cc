@@ -264,23 +264,62 @@ void zopNIC::send(zopEvent *ev, zopCompID dest){
 }
 
 bool zopNIC::msgNotify(int vn){
-  // TODO: check the outstanding read queue for an outstanding request and clear it
   SST::Interfaces::SimpleNetwork::Request* req = iFace->recv(0);
-  if( req != nullptr ){
-    zopEvent *ev = static_cast<zopEvent*>(req->takePayload());
-    if( ev == nullptr ){
-      output.fatal(CALL_INFO, -1, "%s, Error: zopEvent on zopNIC is null\n",
-                   getName().c_str());
-    }
-    ev->decodeEvent();
-    output.verbose(CALL_INFO, 9, 0,
-                   "%s:%s received zop message of type %s\n",
-                   getName().c_str(),
-                   this->endPToStr(this->getEndpointType()).c_str(),
-                   this->msgTToStr(ev->getType()).c_str());
-    (*msgHandler)(ev);
-    delete req;
+  if( req == nullptr ){
+    return false;
   }
+
+  zopEvent *ev = static_cast<zopEvent*>(req->takePayload());
+  if( ev == nullptr ){
+    output.fatal(CALL_INFO, -1, "%s, Error: zopEvent on zopNIC is null\n",
+                 getName().c_str());
+  }
+
+  // decode the event
+  ev->decodeEvent();
+  output.verbose(CALL_INFO, 9, 0,
+                 "%s:%s received zop message of type %s\n",
+                 getName().c_str(),
+                 this->endPToStr(this->getEndpointType()).c_str(),
+                 this->msgTToStr(ev->getType()).c_str());
+
+  if( Type == Forza::zopCompID::Z_RZA ){
+    // this is an RZA device, marshall it through to the ZIQ
+    (*msgHandler)(ev);
+    return true;
+  }
+
+  // iterate across the outstanding messages
+  unsigned Cur = 0;
+  for( auto const& [DestHart, ID, isRead, Target, Req] : outstanding ){
+    auto SrcHart = ev->getSrcHart();
+    auto EVID = ev->getID();
+    if( (DestHart == SrcHart) && (ID == EVID) ){
+      // found a match
+      // if this is a read request, marshall to the RevCPU to handle the hazarding
+      if( isRead ){
+        if( !ev->getFLIT(Z_FLIT_DATA_RESP, Target) ){
+          output.fatal(CALL_INFO, -1, "%s, Error: zopEvent on zopNIC failed to read response FLIT; ID=%d\n",
+                       getName().c_str(), ID );
+        }
+        ev->setMemReq(Req);
+        ev->setTarget(Target);
+        (*msgHandler)(ev);
+        delete ev;
+      }
+
+      // clear the request from the outstanding request list
+      outstanding.erase(outstanding.begin() + Cur);
+
+      // clear the message Id
+      msgId[DestHart].clearMsgId(EVID);
+
+      // we are clear to return
+      return true;
+    }
+    Cur++;
+  }
+
   return true;
 }
 
@@ -309,6 +348,7 @@ bool zopNIC::clockTick(SST::Cycle_t cycle){
       if( Type == SST::Forza::zopCompID::Z_RZA ){
         // I am an RZA... I don't need to reserve any message IDs
         auto P = ev->getPacket();
+        ev->encodeEvent();
         if( iFace->spaceToSend(0, P.size()*64) ){
           // we have space to send
           R->givePayload(ev);
@@ -326,7 +366,7 @@ bool zopNIC::clockTick(SST::Cycle_t cycle){
         if( iFace->spaceToSend(0, P.size()*64) ){
           // we have space to send
           ev->setID( msgId[Hart].getMsgId() );
-          std::cout << "sending message with id=" << (unsigned)(ev->getID()) << std::endl;
+          std::cout << "Sending message with id=" << (unsigned)(ev->getID()) << std::endl;
           auto V = std::make_tuple(Hart, ev->getID(), ev->isRead(),
                                    ev->getTarget(), ev->getMemReq());
           outstanding.push_back(V);

@@ -819,9 +819,6 @@ void RevCPU::handleZOPMessageZAP(Forza::zopEvent *zev){
                  zNic->msgTToStr(zev->getType()).c_str());
     break;
   }
-
-  // ZAPs delete the ZEV object; RZA's delete when a response is issued
-  delete zev;
 }
 
 void RevCPU::handleZOPMessage(Event *ev){
@@ -960,7 +957,13 @@ bool RevCPU::clockTick( SST::Cycle_t currentCycle ) {
   output.verbose( CALL_INFO, 8, 0, "Cycle: %" PRIu64 "\n", currentCycle );
 
   // Process the ZOPQ
+  if( EnableRZA ){
   processZOPQ();
+    for( unsigned i=0; i<CoProcs.size(); i++){
+      CoProcs[i]->ClockTick(currentCycle);
+    }
+    return false;
+  }
 
   // Execute each enabled core
   for( size_t i = 0; i < Procs.size(); i++ ) {
