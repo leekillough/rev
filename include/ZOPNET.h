@@ -377,13 +377,13 @@ public:
 
   /// zopEvent: raw event constructor
   explicit zopEvent()
-    : Event(){
+    : Event(), Read(false), Target(nullptr){
     Packet.push_back(0x00ull);
     Packet.push_back(0x00ull);
   }
 
   explicit zopEvent(zopMsgT T, zopOpc O)
-    : Event(){
+    : Event(), Read(false), Target(nullptr){
     Packet.push_back(0x00ul);
     Packet.push_back(0x00ul);
     Type = T;
@@ -558,7 +558,7 @@ public:
   uint8_t getCredit() { return Credit; }
 
   /// zopEvent: get the opcode
-  zopOpc getOpcode() { return Opc; }
+  zopOpc getOpc() { return Opc; }
 
   /// zopEvent: get the application id
   uint32_t getAppID() { return AppID; }
