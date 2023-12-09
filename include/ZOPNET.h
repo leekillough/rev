@@ -21,7 +21,6 @@
 #include "SST.h"
 
 /// -- Rev Headers
-//#include "RevMem.h"
 #include "../common/include/RevCommon.h"
 
 namespace SST::Forza{
@@ -68,6 +67,7 @@ namespace SST::Forza{
 #define Z_FLIT_ACS          2
 #define Z_FLIT_ADDR         3
 #define Z_FLIT_DATA         4
+#define Z_FLIT_DATA_RESP    3
 
 #define Z_MZOP_PIPE_HART    0
 #define Z_HZOP_PIPE_HART    1

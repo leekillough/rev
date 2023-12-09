@@ -43,7 +43,7 @@ bool RevCoProc::sendSuccessResp(Forza::zopAPI *zNic,
     return false;
 
   output->verbose(CALL_INFO, 9, 0,
-                  "[FORZA][RZA][MZOP]: Building MZOP success response\n");
+                  "[FORZA][RZA][MZOP]: Building MZOP success response for WRITE\n");
 
   // create a new event
   SST::Forza::zopEvent *rsp_zev = new SST::Forza::zopEvent();
@@ -79,10 +79,12 @@ bool RevCoProc::sendSuccessResp(Forza::zopAPI *zNic,
                                 Forza::zopEvent *zev,
                                 uint16_t SrcHart,
                                 uint64_t Data){
-  if( !zNic )
+  if( zNic == nullptr )
     return false;
-  if( !zev )
+  if( zev == nullptr )
     return false;
+
+  std::cout << "sendSuccessResp SrcHart = " << (unsigned)(zev->getSrcHart()) << std::endl;
 
   // create a new event
   SST::Forza::zopEvent *rsp_zev = new SST::Forza::zopEvent();
@@ -213,7 +215,6 @@ void RZALSCoProc::CheckLSQueue(){
   //
   // If a load has been cleared, then prepare a response
   // packet with the appropriate data
-  //std::cout << "LoadQ.size() = 0x" << std::hex << LoadQ.size() << std::dec << std::endl;
 
   for( auto it = LoadQ.begin(); it != LoadQ.end(); ++it ){
     auto zev = it->first;
@@ -221,17 +222,20 @@ void RZALSCoProc::CheckLSQueue(){
 
     if( Alloc.getState(rs2) == _H_DIRTY ){
       // load to register has occurred, time to build a response
+      std::cout << "CheckLSQueue: Sending response for ID="
+                << (unsigned)(zev->getID()) << std::endl;
       if( !sendSuccessResp(zNic,
                            zev,
                            Z_MZOP_PIPE_HART,
                            Alloc.GetX(rs2)) ){
-        output->fatal(CALL_INFO, 01,
+        output->fatal(CALL_INFO, -1,
                       "[FORZA][RZA][MZOP]: Failed to send success response for ZOP ID=%d\n",
                       zev->getID());
       }
       Alloc.clearReg(rs2);
       delete zev;
       LoadQ.erase(it);
+      return ;    // this forces us to respond with one response per cycle
     }
   }
 }
@@ -262,7 +266,6 @@ bool RZALSCoProc::handleMZOP(Forza::zopEvent *zev, bool &flag){
   unsigned i,j,cur = 0;
 
   if( !Alloc.getRegs(Rs1) ){
-    std::cout << "<<<<<<<<<<<<<<<< RAN OUT OF REGISTERS" << std::endl;
     return false;
   }
 
@@ -491,6 +494,8 @@ bool RZALSCoProc::handleMZOP(Forza::zopEvent *zev, bool &flag){
                     zev->getID());
     }
     delete zev;
+  }else{
+    std::cout << "??????????????????????? THIS WAS A LOAD ???????????????????????" << std::endl;
   }
 
   // consider this clear the dep on RS1 for all requests
