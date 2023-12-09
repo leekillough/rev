@@ -1465,97 +1465,8 @@ bool RevMem::ZOP_WRITEMem(unsigned Hart, uint64_t Addr, size_t Len,
   }else{
     return __ZOP_WRITEMemLarge(Hart, Addr, Len, Data, flags);
   }
-#if 0
-  // this is old
-
-  uint64_t CurAddr = Addr;
-  void *CurData = Data;
-  size_t CurLen = 8;
-  size_t BytesWritten = 0;
-  while( BytesWritten != Len ){
-    // dispatch the next write operation
-    if( !__ZOP_WRITEMemRaw(Hart, CurAddr, CurLen, CurData, flags ) ){
-      return false;
-    }
-
-    BytesWritten += CurLen;
-
-    // adjust the current address, length, etc
-    if( (Len-BytesWritten) >= 8 ){
-      CurLen = 8;
-    }else{
-      CurLen = Len-BytesWritten;
-      if( CurLen > 4 ){
-        CurLen = 4;
-      }else if( CurLen > 2 ){
-        CurLen = 2;
-      }else if( CurLen > 1 ){
-        CurLen = 1;
-      }
-    }
-    CurAddr += (uint64_t)(CurLen);
-    CurData = (static_cast<uint64_t *>(CurData) + (uint64_t)(CurLen));
-  }
-
-  // now handle the last request
-#endif
   return true;
 }
-
-//
-// NOTE: This method is the actual function that builds and dispatches
-//       ZOP Write requests into the network.  DO NOT USE THIS METHOD DIRECTLY.
-//       This method only supports writes up to 8bytes.  Other portions of Rev,
-//       such as the RevLoader, initiate cache line writes.  Since FORZA does
-//       not support cache line writes, the user-facing ZOP_WRITEMem method
-//       should be used to break cache lines into individual <= 8byte operations.
-#if 0
-bool RevMem::__ZOP_WRITEMemRaw(unsigned Hart, uint64_t Addr, size_t Len,
-                          void *Data,
-                          RevFlag flags){
-#ifdef _REV_DEBUG_
-  std::cout << "ZOP_WRITE of " << Len << " Bytes Starting at 0x"
-            << std::hex << Addr << std::dec << std::endl;
-#endif
-
-  return __ZOP_WRITEMemBase(Hart, Addr, Len, Data, flags,
-                            memToZOP((uint32_t)(flags), Len, true));
-
-  // create a new event
-  SST::Forza::zopEvent *zev = new SST::Forza::zopEvent();
-
-  // create a dummy MemReq
-  MemReq req{};
-
-  // set all the fields : FIXME
-  zev->setType(SST::Forza::zopMsgT::Z_MZOP);
-  zev->setNB(0);
-  zev->setID(Hart);   // -- we set this to the Hart temporarily.  The zNic will set the actual message ID
-  zev->setCredit(0);
-  zev->setOpc(memToZOP((uint32_t)(flags), Len, true));
-  zev->setAppID(0);
-  zev->setDestHart(Z_MZOP_PIPE_HART);
-  zev->setDestZCID((uint8_t)(SST::Forza::zopCompID::Z_RZA));
-  zev->setDestPCID((uint8_t)(zNic->getPCID(zNic->getZoneID())));
-  zev->setDestPrec((uint8_t)(zNic->getPrecinctID()));
-  zev->setSrcHart(Hart);
-  zev->setSrcZCID((uint8_t)(zNic->getEndpointType()));
-  zev->setSrcPCID((uint8_t)(zNic->getPCID(zNic->getZoneID())));
-  zev->setSrcPrec((uint8_t)(zNic->getPrecinctID()));
-
-  // set the payload
-  std::vector<uint64_t> payload;
-  payload.push_back(0x00ull);   //  ACS: FIXME
-  payload.push_back(Addr);      //  address
-  payload.push_back(*(static_cast<uint64_t *>(Data)));
-  zev->setPayload(payload);
-
-  // inject the new packet
-  zNic->send(zev, SST::Forza::zopCompID::Z_RZA);
-
-  return true;
-}
-#endif
 
 bool RevMem::__ZOP_WRITEMemLarge(unsigned Hart, uint64_t Addr, size_t Len,
                                     void *Data,
@@ -1657,7 +1568,6 @@ bool RevMem::__ZOP_WRITEMemBase(unsigned Hart, uint64_t Addr, size_t Len,
 
 // Handles an RZA response message
 // This specifically handles MZOP and HZOP responses
-// TODO: DEPRECATED
 bool RevMem::handleRZAResponse(Forza::zopEvent *zev){
   output->verbose(CALL_INFO, 5, 0,
                   "[FORZA][ZAP] Handling ZOP Response in RevMem; ID=%d\n",
@@ -1665,43 +1575,6 @@ bool RevMem::handleRZAResponse(Forza::zopEvent *zev){
   auto req = zev->getMemReq();
   req.MarkLoadComplete(req);
   return true;
-#if 0
-  uint16_t evHart = zev->getDestHart();
-  uint8_t evID = zev->getID();
-  unsigned cur = 0;
-  std::vector<uint64_t> Payload;
-
-  zNic->clearMsgID((unsigned)(evHart), evID);
-
-  for (auto const& [hart, id, write, target, req] : outstanding) {
-    if( (evHart == (uint16_t)(hart)) &&
-        (evID   == (uint8_t)(id)) ){
-      // found a valid request at `cur`
-      if( !write ){
-        // this was a read or AMO request, handle the response
-        Payload = zev->getPayload();
-        if( Payload.size() == 0 ){
-          output->fatal(CALL_INFO, -1,
-                        "[FORZA][ZAP] Error : READ or AMO payload with no data; HART=%d, ID=%d\n",
-                        hart, id);
-          return false;
-        }
-
-        // write the response
-        *target = Payload[0];
-        req.MarkLoadComplete(req);
-      }
-
-      // erase it
-      outstanding.erase(outstanding.begin() + cur);
-      return true;
-    }
-    cur++;
-  }
-
-  // we did not find a matching operation
-#endif
-  return false;
 }
 
 }  // namespace SST::RevCPU

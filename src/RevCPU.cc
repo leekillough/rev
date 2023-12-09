@@ -730,8 +730,14 @@ void RevCPU::processZOPQ(){
   bool flag = false;
   unsigned cur = 0;
   uint64_t Addr = 0x00ull;
+  std::cout << "ZIQ.size() = " << ZIQ.size() << std::endl;
   while( !done ){
     // retrieve the address from the ZOP packet
+    auto zev = ZIQ[cur];
+    if( zev == nullptr ){
+      output.fatal(CALL_INFO, -1,
+                   "[FORZA][RZA]: zopEvent is null\n");
+    }
     if( !ZIQ[cur]->getFLIT(Z_FLIT_ADDR,&Addr) ){
       output.fatal(CALL_INFO, -1, "[FORZA][RZA] Erroneous packet contents for ZOP\n");
     }
@@ -826,6 +832,11 @@ void RevCPU::handleZOPMessage(Event *ev){
                  getName().c_str());
   std::cout << "[FORZA][" << getName() << "] Received ZOP Message" << std::endl;
   Forza::zopEvent *zev = static_cast<Forza::zopEvent*>(ev);
+
+  if( zev == nullptr ){
+    output.fatal(CALL_INFO, -1,
+                 "[FORZA][handleZOPMessage] : zopEvent is null\n");
+  }
 
   if( EnableRZA ){
     // handle a FORZA ZOP Message

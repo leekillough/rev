@@ -42,7 +42,8 @@ bool RevCoProc::sendSuccessResp(Forza::zopAPI *zNic,
     return false;
 
   output->verbose(CALL_INFO, 9, 0,
-                  "[FORZA][RZA][MZOP]: Building MZOP success response for WRITE\n");
+                  "[FORZA][RZA][MZOP]: Building MZOP success response for WRITE @ ID=%d\n",
+                  (unsigned)(zev->getID()));
 
   // create a new event
   SST::Forza::zopEvent *rsp_zev = new SST::Forza::zopEvent();
@@ -82,8 +83,6 @@ bool RevCoProc::sendSuccessResp(Forza::zopAPI *zNic,
     return false;
   if( zev == nullptr )
     return false;
-
-  std::cout << "sendSuccessResp SrcHart = " << (unsigned)(zev->getSrcHart()) << std::endl;
 
   // create a new event
   SST::Forza::zopEvent *rsp_zev = new SST::Forza::zopEvent();
@@ -274,7 +273,7 @@ bool RZALSCoProc::handleMZOP(Forza::zopEvent *zev, bool &flag){
   // set the address
   Alloc.SetX(Rs1, Addr);
 
-  switch( zev->getOpcode() ){
+  switch( zev->getOpc() ){
   // unsigned loads
   case Forza::zopOpc::Z_MZOP_LB:
     if( !Alloc.getRegs(Rs2) ){
@@ -475,7 +474,7 @@ bool RZALSCoProc::handleMZOP(Forza::zopEvent *zev, bool &flag){
     // not an MZOP
     output->verbose(CALL_INFO, 9, 0,
                     "[FORZA][RZA][MZOP]: Erroneous MZOP opcode=%d\n",
-                    (unsigned)(zev->getOpcode()));
+                    (unsigned)(zev->getOpc()));
     return false;
     break;
   }
@@ -488,8 +487,6 @@ bool RZALSCoProc::handleMZOP(Forza::zopEvent *zev, bool &flag){
                     zev->getID());
     }
     delete zev;
-  }else{
-    std::cout << "??????????????????????? THIS WAS A LOAD ???????????????????????" << std::endl;
   }
 
   // consider this clear the dep on RS1 for all requests

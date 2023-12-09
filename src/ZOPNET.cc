@@ -283,12 +283,13 @@ bool zopNIC::msgNotify(int vn){
                  this->endPToStr(this->getEndpointType()).c_str(),
                  this->msgTToStr(ev->getType()).c_str());
 
+  // if this is an RZA device, marshall it through to the ZIQ
   if( Type == Forza::zopCompID::Z_RZA ){
-    // this is an RZA device, marshall it through to the ZIQ
     (*msgHandler)(ev);
     return true;
   }
 
+  // this is likely a ZAP device,
   // iterate across the outstanding messages
   unsigned Cur = 0;
   for( auto const& [DestHart, ID, isRead, Target, Req] : outstanding ){
@@ -299,8 +300,10 @@ bool zopNIC::msgNotify(int vn){
       // if this is a read request, marshall to the RevCPU to handle the hazarding
       if( isRead ){
         if( !ev->getFLIT(Z_FLIT_DATA_RESP, Target) ){
-          output.fatal(CALL_INFO, -1, "%s, Error: zopEvent on zopNIC failed to read response FLIT; ID=%d\n",
-                       getName().c_str(), ID );
+          output.fatal(CALL_INFO, -1,
+                       "%s, Error: zopEvent on zopNIC failed to read response FLIT; OPC=%d, LENGTH=%d, ID=%d\n",
+                       getName().c_str(), (unsigned)(ev->getOpc()),
+                       (unsigned)(ev->getLength()), ID );
         }
         ev->setMemReq(Req);
         ev->setTarget(Target);
@@ -351,6 +354,7 @@ bool zopNIC::clockTick(SST::Cycle_t cycle){
         ev->encodeEvent();
         if( iFace->spaceToSend(0, P.size()*64) ){
           // we have space to send
+          std::cout << "RZA: Sending message with id=" << (unsigned)(ev->getID()) << std::endl;
           R->givePayload(ev);
           recordStat( getStatFromPacket(ev), 1 );
           thisCycle++;
@@ -366,7 +370,7 @@ bool zopNIC::clockTick(SST::Cycle_t cycle){
         if( iFace->spaceToSend(0, P.size()*64) ){
           // we have space to send
           ev->setID( msgId[Hart].getMsgId() );
-          std::cout << "Sending message with id=" << (unsigned)(ev->getID()) << std::endl;
+          std::cout << "ZAP: Sending message with id=" << (unsigned)(ev->getID()) << std::endl;
           auto V = std::make_tuple(Hart, ev->getID(), ev->isRead(),
                                    ev->getTarget(), ev->getMemReq());
           outstanding.push_back(V);
