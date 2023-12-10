@@ -308,7 +308,6 @@ bool zopNIC::msgNotify(int vn){
         ev->setMemReq(Req);
         ev->setTarget(Target);
         (*msgHandler)(ev);
-        delete ev;
       }
 
       // clear the request from the outstanding request list
@@ -318,6 +317,7 @@ bool zopNIC::msgNotify(int vn){
       msgId[DestHart].clearMsgId(EVID);
 
       // we are clear to return
+      delete ev;
       return true;
     }
     Cur++;

@@ -724,6 +724,65 @@ void RevCPU::processZOPQ(){
     return ;
   }
 
+  bool flag = false;
+  uint64_t Addr = 0x00ull;
+
+  for( unsigned i=0; i<ZIQ.size(); i++ ){
+    auto zev = ZIQ[i];
+    if( !zev->getFLIT(Z_FLIT_ADDR,&Addr) ){
+      output.fatal(CALL_INFO, -1, "[FORZA][RZA] Erroneous packet contents for ZOP\n");
+    }
+
+    if( ZRqst.find(Addr) == ZRqst.end() ){
+      // did not find an outstanding memory request with the same address
+      // process this request
+      switch( zev->getType() ){
+      case Forza::zopMsgT::Z_MZOP:
+        // send to the MZOP pipeline
+        if( !CoProcs[Z_MZOP_PIPE_HART]->InjectZOP(zev, flag) ){
+          output.fatal(CALL_INFO, -1,
+                      "[FORZA][RZA] Failed to inject MZOP into pipeline; ID=%d\n",
+                      zev->getID());
+        }
+        break;
+      case Forza::zopMsgT::Z_HZOPAC:
+        // send to the HZOP pipeline
+        if( !CoProcs[Z_HZOP_PIPE_HART]->InjectZOP(zev, flag) ){
+          output.fatal(CALL_INFO, -1,
+                      "[FORZA][RZA] Failed to inject HZOP into pipeline; ID=%d\n",
+                      zev->getID());
+        }
+        break;
+      case Forza::zopMsgT::Z_HZOPV:
+        // send to the HZOP pipeline
+        output.fatal(CALL_INFO, -1,
+                    "[FORZA][RZA] RZA's disable handling of ZOP messages of Type=%s\n",
+                    zNic->msgTToStr(zev->getType()).c_str() );
+        break;
+      default:
+        output.fatal(CALL_INFO, -1,
+                    "[FORZA][RZA] RZA's cannot handle ZOP messages of Type=%s\n",
+                    zNic->msgTToStr(zev->getType()).c_str() );
+        break;
+      }
+
+      // If the request was NOT flagged as a store (mem write),
+      // add the request to the outstanding address map
+      // When the load hazard is cleared, we also need to clear this value
+      if( !flag ){
+        ZRqst[Addr] = zev;
+      }
+
+      // eject the request from the ZIQ
+      ZIQ.erase(ZIQ.begin() + i);
+
+      // signal completion for this cycle
+      return ;
+    }
+  }
+
+  // -- OLD
+#if 0
   // entries are active in the ZIQ; attempt to process
   // a request
   bool done = false;
@@ -735,6 +794,7 @@ void RevCPU::processZOPQ(){
     // retrieve the address from the ZOP packet
     auto zev = ZIQ[cur];
     if( zev == nullptr ){
+      std::cout << "cur = " << cur << std::endl;
       output.fatal(CALL_INFO, -1,
                    "[FORZA][RZA]: zopEvent is null\n");
     }
@@ -795,11 +855,16 @@ void RevCPU::processZOPQ(){
       done = true;
     }
   }
+#endif
 }
 
 void RevCPU::handleZOPMessageRZA(Forza::zopEvent *zev){
-  std::cout << "[FORZA][RZA] Injecting ZOP Message into ZIQ" << std::endl;
   output.verbose(CALL_INFO, 9, 0, "[FORZA][RZA] Injecting ZOP Message into ZIQ\n");
+  if( zev == nullptr ){
+    output.fatal(CALL_INFO, -1,
+                 "[FORZA][RZA]: Cannot inject null ZOP packet into ZIQ\n");
+  }
+
   ZIQ.push_back(zev);
 }
 

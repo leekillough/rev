@@ -13,13 +13,6 @@
 namespace SST::RevCPU {
 
 // ---------------------------------------------------------------
-// NOTES:
-// - when a memory response comes back from a load, we need to
-//   clear the address queue slot on the RevCPU for the ZIQ.
-//   This will probably require a callback
-// ---------------------------------------------------------------
-
-// ---------------------------------------------------------------
 // RevCoProc
 // ---------------------------------------------------------------
 RevCoProc::RevCoProc( ComponentId_t id, Params& params, RevCore* parent )
@@ -226,6 +219,8 @@ void RZALSCoProc::CheckLSQueue(){
                       zev->getID());
       }
       Alloc.clearReg(rs2);
+      // TODO: notify the ZIQ that the value can be removed (or, move ZRQST into the ZOPNET)
+      // TODO: or add some sort of access to it from the coproc?
       delete zev;
       LoadQ.erase(it);
       return ;    // this forces us to respond with one response per cycle
