@@ -216,6 +216,6 @@ add_subdirectory(amo)
 add_subdirectory(benchmarks)
 add_subdirectory(syscalls)
 add_subdirectory(threading)
-add_subdirectory(forza)
+add_subdirectory(FORZA)
 
 # EOF
