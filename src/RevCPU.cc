@@ -727,13 +727,16 @@ void RevCPU::processZOPQ(){
   bool flag = false;
   uint64_t Addr = 0x00ull;
 
+  /// put the ZRqst structure in RevMem
+
   for( unsigned i=0; i<ZIQ.size(); i++ ){
     auto zev = ZIQ[i];
     if( !zev->getFLIT(Z_FLIT_ADDR,&Addr) ){
       output.fatal(CALL_INFO, -1, "[FORZA][RZA] Erroneous packet contents for ZOP\n");
     }
 
-    if( ZRqst.find(Addr) == ZRqst.end() ){
+    //if( ZRqst.find(Addr) == ZRqst.end() ){
+    if( !Mem->isZRqst(Addr) ){
       // did not find an outstanding memory request with the same address
       // process this request
       switch( zev->getType() ){
@@ -770,7 +773,8 @@ void RevCPU::processZOPQ(){
       // add the request to the outstanding address map
       // When the load hazard is cleared, we also need to clear this value
       if( !flag ){
-        ZRqst[Addr] = zev;
+        //ZRqst[Addr] = zev;
+        Mem->insertZRqst(Addr, zev);
       }
 
       // eject the request from the ZIQ

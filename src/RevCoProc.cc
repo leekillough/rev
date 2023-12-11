@@ -219,8 +219,14 @@ void RZALSCoProc::CheckLSQueue(){
                       zev->getID());
       }
       Alloc.clearReg(rs2);
-      // TODO: notify the ZIQ that the value can be removed (or, move ZRQST into the ZOPNET)
-      // TODO: or add some sort of access to it from the coproc?
+
+      // clear the request from the ZRqst map
+      uint64_t Addr;
+      if( !zev->getFLIT(Z_FLIT_ADDR,&Addr) ){
+        output->fatal(CALL_INFO, -1,
+                      "[FORZA][RZA] Erroneous packet contents for ZOP in CheckLSQueue\n");
+      }
+      Mem->clearZRqst(Addr);
       delete zev;
       LoadQ.erase(it);
       return ;    // this forces us to respond with one response per cycle
