@@ -63,6 +63,7 @@ zopNIC::~zopNIC(){
     delete[] msgId;
 }
 
+
 void zopNIC::setNumHarts(unsigned H){
   numHarts = H;
   msgId = new uint8_t [numHarts];

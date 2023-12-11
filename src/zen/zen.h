@@ -9,14 +9,27 @@
 #include "zen_sst.h"
 #include "ZOPNet.h"
 #include <string>
+#include <bitset>
 
 namespace SST::Forza{
+
+  enum ZENStatus : uint64_t {
+    UNPROCESSED,
+    RZA_ADDR_ASSIGNED,
+    MZOP_SENT,
+    MZOP_ACK_PROCESSED,
+    DONE,
+    RZA_ADDR_ERROR
+  };
+
   class ZENEntry {
   public:
     SST::Forza::zopEvent *msg;
-    uint64_t status;
+    ZENStatus status;
     uint64_t tail;
-    ZENEntry(SST::Forza::zopEvent *m, uint64_t s) {
+    std::vector<uint8_t> msg_ids;
+    uint64_t rza_start_addr;
+    ZENEntry(SST::Forza::zopEvent *m, ZENStatus s) {
       msg = m;
       status = s;
       tail = 0;
@@ -38,6 +51,7 @@ namespace SST::Forza{
       acs_pair(acs), mem_head(mh), mem_tail(mt), mem_size(ms), empty(true), scratch_tail(st), credits(c) {
         mem_cur_head = mh;
         mem_cur_tail = mh;
+        empty = true;
       }
   };
   class ZEN : public SST::Component{
@@ -81,7 +95,8 @@ namespace SST::Forza{
     void setup() override;
     void complete(unsigned int phase) override;
     void finish() override;
-    void sendMsgToRZA(uint64_t acs, uint64_t addr, std::vector<uint64_t> src_payload, uint8_t msg_id);
+    void sendMsgToRZA(uint64_t acs, uint64_t addr, std::vector<uint64_t> src_payload, uint8_t msg_id, uint64_t hart_id, uint64_t queue_loc);
+    void sendMsgToRZANonDMA(uint64_t acs, uint64_t addr, uint64_t src_payload, uint8_t cur_msg_id, uint64_t hart_id, uint64_t queue_loc);
     void sendMsgToScratchpad(uint64_t dest, uint64_t scratch_addr, uint64_t size, uint64_t addr);
     void processEgressQueue();
     void notifyHARTScratchpad();
@@ -93,11 +108,13 @@ namespace SST::Forza{
     void processZAPCredits();
     void sendMsgToZEN();
     void sendSetupToZEN();
-    uint64_t getRZATailQueue(uint64_t harts, uint64_t size);
+    int getRZATailQueue(uint64_t harts, uint64_t size);
     void sendMZOPAckToZEN(SST::Forza::zopEvent *ev);
     uint64_t  getReadACS(uint64_t);
     uint64_t  getWriteACS(uint64_t);
     void printZenQueue();
+    uint64_t findFirstUnsetBit(const std::bitset<256>& bv);
+    void prepSendRZAMsg();
 
   private:
     // private class members
@@ -121,10 +138,13 @@ namespace SST::Forza{
     std::vector<SST::Forza::zopEvent*> zap_credits;
     std::map<uint8_t, std::pair<uint64_t, uint64_t> > outstanding_mem_req;
     uint64_t int_id;
-    uint8_t msg_id;
+    std::bitset<256> msg_id;
     uint64_t m_num_harts;
     SST::Forza::zopAPI* m_zop_iface;
     bool sent;
+    bool dma_enabled;
+    uint64_t process_per_cycle;
+    uint64_t zen_queue_size_limit;
   }; // class SST::ZEN
 } // namespace SST::Forza
 

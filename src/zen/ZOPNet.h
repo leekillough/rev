@@ -102,6 +102,7 @@ enum class zopOpc : uint8_t {
   Z_MZOP_SSB    = 0b00001100,   /// zopOpc: MZOP Store signed byte
   Z_MZOP_SSH    = 0b00001101,   /// zopOpc: MZOP Store signed half
   Z_MZOP_SSW    = 0b00001110,   /// zopOpc: MZOP Store signed word
+  Z_MZOP_SDMA   = 0b00001111,
   //Z_MZOP_SSD    = 0b00001111,   /// zopOpc: MSOP Store doubleword (dupe)
 
   Z_MZOP_SCLB   = 0b11100000,   /// zopOpc: MZOP Load scratch unsigned byte
