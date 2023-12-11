@@ -16,7 +16,7 @@ EXAMPLE=ex2
 RZA_FIRMWARE=fw
 CC=${RVCC}
 #ARCH=rv64g
-ARCH=rv64imafdc
+ARCH=rv64gc
 
 all: $(EXAMPLE).exe $(RZA_FIRMWARE).exe
 $(RZA_FIRMWARE).exe: $(RZA_FIRMWARE).c
