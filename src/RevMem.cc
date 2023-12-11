@@ -1573,7 +1573,7 @@ bool RevMem::handleRZAResponse(Forza::zopEvent *zev){
                   "[FORZA][ZAP] Handling ZOP Response in RevMem; ID=%d\n",
                   (uint32_t)(zev->getID()));
   auto req = zev->getMemReq();
-  req.MarkLoadComplete(req);
+  req.MarkLoadComplete();
   return true;
 }
 

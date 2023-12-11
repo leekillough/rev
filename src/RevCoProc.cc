@@ -240,7 +240,7 @@ bool RZALSCoProc::ClockTick(SST::Cycle_t cycle){
 }
 
 void RZALSCoProc::MarkLoadComplete(const MemReq& req){
-  Alloc.setDirty((unsigned)(req.DestReg));
+  Alloc.setDirty((unsigned)(req.getDestReg()));
 }
 
 bool RZALSCoProc::handleMZOP(Forza::zopEvent *zev, bool &flag){
@@ -249,9 +249,6 @@ bool RZALSCoProc::handleMZOP(Forza::zopEvent *zev, bool &flag){
   uint64_t Addr = 0x00ull;    // -- FLIT 3
   uint64_t Data = 0x00ull;    // -- FLIT 4
 
-  // used only for load operations
-  MemReq req{};
-
   // this is the actual number of data flits
   // this does not include the ACS field (flit=0) and the address
   // these variables are only used for the DMA store operations
@@ -259,7 +256,7 @@ bool RZALSCoProc::handleMZOP(Forza::zopEvent *zev, bool &flag){
   uint8_t *Buf  = nullptr;
   unsigned i,j,cur = 0;
 
-  if( !Alloc.getRegs(Rs1) ){
+  if( !Alloc.getRegs(Rs1, Rs2) ){
     return false;
   }
 
@@ -271,18 +268,19 @@ bool RZALSCoProc::handleMZOP(Forza::zopEvent *zev, bool &flag){
                   zev->getID());
   }
 
+  // used only for load operations
+  MemReq req{Addr, (uint16_t)(Rs2), RevRegClass::RegGPR, Z_MZOP_PIPE_HART,
+             MemOp::MemOpREAD, true, MarkLoadCompleteFunc};
+
   // set the address
   Alloc.SetX(Rs1, Addr);
 
   switch( zev->getOpc() ){
   // unsigned loads
   case Forza::zopOpc::Z_MZOP_LB:
-    if( !Alloc.getRegs(Rs2) ){
-      return false;
-    }
     Alloc.SetX(Rs2, 0x00ull);
-    req.Set(Addr, (uint16_t)(Rs2), RevRegClass::RegGPR, Z_MZOP_PIPE_HART,
-            MemOp::MemOpREAD, true, MarkLoadCompleteFunc);
+    //req.Set(Addr, (uint16_t)(Rs2), RevRegClass::RegGPR, Z_MZOP_PIPE_HART,
+    //        MemOp::MemOpREAD, true, MarkLoadCompleteFunc);
     Mem->ReadVal(Z_MZOP_PIPE_HART, Addr,
                  reinterpret_cast<uint8_t *>(Alloc.getRegAddr(Rs2)),
                  req, RevFlag::F_NONE);
@@ -291,12 +289,9 @@ bool RZALSCoProc::handleMZOP(Forza::zopEvent *zev, bool &flag){
     flag = false;
     break;
   case Forza::zopOpc::Z_MZOP_LH:
-    if( !Alloc.getRegs(Rs2) ){
-      return false;
-    }
     Alloc.SetX(Rs2, 0x00ull);
-    req.Set(Addr, (uint16_t)(Rs2), RevRegClass::RegGPR, Z_MZOP_PIPE_HART,
-            MemOp::MemOpREAD, true, MarkLoadCompleteFunc);
+    //req.Set(Addr, (uint16_t)(Rs2), RevRegClass::RegGPR, Z_MZOP_PIPE_HART,
+    //        MemOp::MemOpREAD, true, MarkLoadCompleteFunc);
     Mem->ReadVal(Z_MZOP_PIPE_HART, Addr,
                  reinterpret_cast<uint16_t *>(Alloc.getRegAddr(Rs2)),
                  req, RevFlag::F_NONE);
@@ -305,12 +300,9 @@ bool RZALSCoProc::handleMZOP(Forza::zopEvent *zev, bool &flag){
     flag = false;
     break;
   case Forza::zopOpc::Z_MZOP_LW:
-    if( !Alloc.getRegs(Rs2) ){
-      return false;
-    }
     Alloc.SetX(Rs2, 0x00ull);
-    req.Set(Addr, (uint16_t)(Rs2), RevRegClass::RegGPR, Z_MZOP_PIPE_HART,
-            MemOp::MemOpREAD, true, MarkLoadCompleteFunc);
+    //req.Set(Addr, (uint16_t)(Rs2), RevRegClass::RegGPR, Z_MZOP_PIPE_HART,
+    //        MemOp::MemOpREAD, true, MarkLoadCompleteFunc);
     Mem->ReadVal(Z_MZOP_PIPE_HART, Addr,
                  reinterpret_cast<uint32_t *>(Alloc.getRegAddr(Rs2)),
                  req, RevFlag::F_NONE);
@@ -319,12 +311,9 @@ bool RZALSCoProc::handleMZOP(Forza::zopEvent *zev, bool &flag){
     flag = false;
     break;
   case Forza::zopOpc::Z_MZOP_LD:
-    if( !Alloc.getRegs(Rs2) ){
-      return false;
-    }
     Alloc.SetX(Rs2, 0x00ull);
-    req.Set(Addr, (uint16_t)(Rs2), RevRegClass::RegGPR, Z_MZOP_PIPE_HART,
-            MemOp::MemOpREAD, true, MarkLoadCompleteFunc);
+    //req.Set(Addr, (uint16_t)(Rs2), RevRegClass::RegGPR, Z_MZOP_PIPE_HART,
+    //        MemOp::MemOpREAD, true, MarkLoadCompleteFunc);
     Mem->ReadVal(Z_MZOP_PIPE_HART, Addr,
                  Alloc.getRegAddr(Rs2),
                  req, RevFlag::F_NONE);
@@ -334,12 +323,9 @@ bool RZALSCoProc::handleMZOP(Forza::zopEvent *zev, bool &flag){
     break;
   // signed loads
   case Forza::zopOpc::Z_MZOP_LSB:
-    if( !Alloc.getRegs(Rs2) ){
-      return false;
-    }
     Alloc.SetX(Rs2, 0x00ull);
-    req.Set(Addr, (uint16_t)(Rs2), RevRegClass::RegGPR, Z_MZOP_PIPE_HART,
-            MemOp::MemOpREAD, true, MarkLoadCompleteFunc);
+    //req.Set(Addr, (uint16_t)(Rs2), RevRegClass::RegGPR, Z_MZOP_PIPE_HART,
+    //        MemOp::MemOpREAD, true, MarkLoadCompleteFunc);
     Mem->ReadVal(Z_MZOP_PIPE_HART, Addr,
                  reinterpret_cast<int8_t *>(Alloc.getRegAddr(Rs2)),
                  req, RevFlag::F_SEXT64);
@@ -348,12 +334,9 @@ bool RZALSCoProc::handleMZOP(Forza::zopEvent *zev, bool &flag){
     flag = false;
     break;
   case Forza::zopOpc::Z_MZOP_LSH:
-    if( !Alloc.getRegs(Rs2) ){
-      return false;
-    }
     Alloc.SetX(Rs2, 0x00ull);
-    req.Set(Addr, (uint16_t)(Rs2), RevRegClass::RegGPR, Z_MZOP_PIPE_HART,
-            MemOp::MemOpREAD, true, MarkLoadCompleteFunc);
+    //req.Set(Addr, (uint16_t)(Rs2), RevRegClass::RegGPR, Z_MZOP_PIPE_HART,
+    //        MemOp::MemOpREAD, true, MarkLoadCompleteFunc);
     Mem->ReadVal(Z_MZOP_PIPE_HART, Addr,
                  reinterpret_cast<int16_t *>(Alloc.getRegAddr(Rs2)),
                  req, RevFlag::F_SEXT64);
@@ -362,12 +345,9 @@ bool RZALSCoProc::handleMZOP(Forza::zopEvent *zev, bool &flag){
     flag = false;
     break;
   case Forza::zopOpc::Z_MZOP_LSW:
-    if( !Alloc.getRegs(Rs2) ){
-      return false;
-    }
     Alloc.SetX(Rs2, 0x00ull);
-    req.Set(Addr, (uint16_t)(Rs2), RevRegClass::RegGPR, Z_MZOP_PIPE_HART,
-            MemOp::MemOpREAD, true, MarkLoadCompleteFunc);
+    //req.Set(Addr, (uint16_t)(Rs2), RevRegClass::RegGPR, Z_MZOP_PIPE_HART,
+    //        MemOp::MemOpREAD, true, MarkLoadCompleteFunc);
     Mem->ReadVal(Z_MZOP_PIPE_HART, Addr,
                  reinterpret_cast<int32_t *>(Alloc.getRegAddr(Rs2)),
                  req, RevFlag::F_SEXT64);
@@ -487,6 +467,8 @@ bool RZALSCoProc::handleMZOP(Forza::zopEvent *zev, bool &flag){
                     "[FORZA][RZA][MZOP]: Failed to send success response for ZOP ID=%d\n",
                     zev->getID());
     }
+    // go ahead and clear the RS2 as we dont need it for WRITE requests
+    Alloc.clearReg(Rs2);
     delete zev;
   }
 

@@ -29,7 +29,7 @@ zap_cpu1.addParams({
         "numCores" : 1,                               # Number of cores
         "clock" : "1.0GHz",                           # Clock
         "memSize" : 1024*1024*1024,                   # Memory size in bytes
-        "machine" : "[0:RV64G]",                      # Core:Config; RV64I for core 0
+        "machine" : "[0:RV64GC]",                      # Core:Config; RV64I for core 0
         "startAddr" : "[0:0x00000000]",               # Starting address for core 0
         "memCost" : "[0:1:10]",                       # Memory loads required 1-10 cycles
         "program" : os.getenv("REV_EXE", "ex2.exe"),  # Target executable

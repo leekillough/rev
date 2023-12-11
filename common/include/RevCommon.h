@@ -121,6 +121,9 @@ struct MemReq {
 
   auto LSQHashPair() const { return std::make_pair( LSQHash(), *this ); }
 
+  uint16_t getDestReg() const { return DestReg; }
+
+private:
   uint64_t    Addr                                          = _INVALID_ADDR_;
   uint16_t    DestReg                                       = 0;
   RevRegClass RegType                                       = RevRegClass::RegUNKNOWN;
