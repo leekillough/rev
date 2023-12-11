@@ -311,11 +311,6 @@ set_tests_properties(NOC_DISCOVERY
     LABELS "all;rv64;forza-required"
 )
 
-if(NOT CTEST_FORZA_TESTS)
-  set_tests_properties (NOC_DISCOVERY PROPERTIES DISABLED True)
-  message(NOTICE "   * Tests requiring FORZA are disabled (ie. -DCTEST_FORZA_REQUIRED_TESTS=OFF)
-    - If you'd like to still run these tests run: `ctest -L forza_required`")
-  message(VERBOSE "NOC_DISCOVERY - Disabled")
-endif()
+add_subdirectory(forza)
 
 # EOF
