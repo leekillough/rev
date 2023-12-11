@@ -9,7 +9,8 @@
 //
 
 #include "RevPrefetcher.h"
-using namespace SST::RevCPU;
+
+namespace SST::RevCPU{
 
 /*RevPrefetcher::~RevPrefetcher(){
 // delete all the existing streams
@@ -39,7 +40,7 @@ bool RevPrefetcher::IsAvail(uint64_t Addr){
 
       // we may be short of instruction width in our current stream
       // determine if an adjacent stream has the payload
-      if( lastAddr-Addr < 4 ){
+      if( (lastAddr-Addr < 4) || ( (Addr & 0x03) != 0) ){
 
         uint32_t TmpInst;
         bool Fetched = false;
@@ -154,12 +155,8 @@ bool RevPrefetcher::InstFetch(uint64_t Addr, bool &Fetched, uint32_t &Inst){
 
 void RevPrefetcher::Fill(uint64_t Addr){
 
-  // determine if the address is 32bit aligned
-  if((Addr%4)!=0){
-    // not 32bit aligned, adjust the base address by 2 bytes
-    Fill(Addr&0xFFFFFFFFFFFFFFFC);
-    return;
-  }
+  // If address is not 32bit aligned... then make it aligned
+  Addr &= 0xFFFFFFFFFFFFFFFC;
 
   // allocate a new stream buffer
   baseAddr.push_back(Addr);
@@ -173,12 +170,14 @@ void RevPrefetcher::Fill(uint64_t Addr){
 
   // now fill it
   for( size_t y=0; y<depth; y++ ){
-    MemReq req (Addr+(y*4), 0, RevRegClass::RegGPR, feature->GetHartToExecID(), MemOp::MemOpREAD, true, MarkLoadAsComplete);
-    LSQueue->insert({make_lsq_hash(0, RevRegClass::RegGPR, feature->GetHartToExecID()), req});
-    mem->ReadVal( feature->GetHartToExecID(), Addr+(y*4),
-                  &iStack[x][y],
-                  req,
-                  RevFlag::F_NONE );
+    MemReq req( Addr+(y*4), RevReg::zero, RevRegClass::RegGPR,
+                feature->GetHartToExecID(), MemOp::MemOpREAD, true,
+                MarkLoadAsComplete );
+    LSQueue->insert( req.LSQHashPair() );
+    mem->ReadVal<uint32_t>( feature->GetHartToExecID(), Addr+(y*4),
+                            &iStack[x][y],
+                            req,
+                            RevFlag::F_NONE );
   }
 }
 
@@ -190,4 +189,5 @@ void RevPrefetcher::DeleteStream(size_t i){
   }
 }
 
+} // namespace SST::RevCPU
 // EOF

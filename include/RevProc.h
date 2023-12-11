@@ -120,13 +120,29 @@ public:
     uint64_t cyclesIdle_Total;
     uint64_t cyclesStalled;
     uint64_t floatsExec;
-    float    percentEff;
-    RevMem::RevMemStats memStats;
     uint64_t cyclesIdle_Pipeline;
     uint64_t cyclesIdle_MemoryFetch;
+    uint64_t retired;
   };
 
-  RevProcStats GetStats() { Stats.memStats = mem->memStats; return Stats; }
+  auto GetAndClearStats() {
+    // Add each field from Stats into StatsTotal
+    for(auto stat : {
+        &RevProcStats::totalCycles,
+        &RevProcStats::cyclesBusy,
+        &RevProcStats::cyclesIdle_Total,
+        &RevProcStats::cyclesStalled,
+        &RevProcStats::floatsExec,
+        &RevProcStats::cyclesIdle_Pipeline,
+        &RevProcStats::retired}){
+      StatsTotal.*stat += Stats.*stat;
+    }
+
+    auto memStats = mem->GetAndClearStats();
+    auto ret = std::make_pair(Stats, memStats);
+    Stats = {};  // Zero out Stats
+    return ret;
+  }
 
   RevMem& GetMem() const { return *mem; }
 
@@ -238,8 +254,6 @@ private:
   std::bitset<_MAX_HARTS_> HartsClearToDecode; ///< RevProc: Thread is clear to start (proceed with decode)
   std::bitset<_MAX_HARTS_> HartsClearToExecute; ///< RevProc: Thread is clear to execute (no register dependencides)
 
-  uint64_t Retired;         ///< RevProc: number of retired instructions
-
   unsigned numHarts;        ///< RevProc: Number of Harts for this core
   RevOpts *opts;            ///< RevProc: options object
   RevMem *mem;              ///< RevProc: memory object
@@ -256,6 +270,7 @@ private:
   std::unique_ptr<RevFeature> featureUP; ///< RevProc: feature handler
   RevFeature* feature;
   RevProcStats Stats{};                  ///< RevProc: collection of performance stats
+  RevProcStats StatsTotal{};             ///< RevProc: collection of total performance stats
   std::unique_ptr<RevPrefetcher> sfetch; ///< RevProc: stream instruction prefetcher
 
   std::shared_ptr<std::unordered_map<uint64_t, MemReq>> LSQueue; ///< RevProc: Load / Store queue used to track memory operations. Currently only tracks outstanding loads.
@@ -755,7 +770,7 @@ private:
   bool LSQCheck(unsigned HartID, const RevRegFile* regFile,
                 uint16_t reg, RevRegClass regClass) const {
     return (reg != 0 || regClass != RevRegClass::RegGPR) &&
-      regFile->GetLSQueue()->count(make_lsq_hash(reg, regClass, HartID)) > 0;
+      regFile->GetLSQueue()->count(LSQHash(reg, regClass, HartID)) > 0;
   }
 
   /// RevProc: Check scoreboard for a source register dependency
@@ -789,20 +804,22 @@ private:
   }
 
   /// RevProc: Set or clear scoreboard based on register number and floating point.
-  void DependencySet(unsigned HartID, uint16_t RegNum,
+  template<typename T>
+  void DependencySet(unsigned HartID, T RegNum,
                      bool isFloat, bool value = true){
-    if( RegNum < _REV_NUM_REGS_ ){
+    if( size_t(RegNum) < _REV_NUM_REGS_ ){
       RevRegFile* regFile = GetRegFile(HartID);
       if(isFloat){
-        regFile->FP_Scoreboard[RegNum] = value;
-      }else if( RegNum != 0 ){
-        regFile->RV_Scoreboard[RegNum] = value;
+        regFile->FP_Scoreboard[size_t(RegNum)] = value;
+      }else if( size_t(RegNum) != 0 ){
+        regFile->RV_Scoreboard[size_t(RegNum)] = value;
       }
     }
   }
 
   /// RevProc: Clear scoreboard on instruction retirement
-  void DependencyClear(unsigned HartID, uint16_t RegNum, bool isFloat){
+  template<typename T>
+  void DependencyClear(unsigned HartID, T RegNum, bool isFloat){
     DependencySet(HartID, RegNum, isFloat, false);
   }
 

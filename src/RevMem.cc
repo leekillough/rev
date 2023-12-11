@@ -17,7 +17,8 @@
 #include <mutex>
 #include <functional>
 
-using namespace SST::RevCPU;
+namespace SST::RevCPU{
+
 using MemSegment = RevMem::MemSegment;
 
 RevMem::RevMem( uint64_t MemSize, RevOpts *Opts, RevMemCtrl *Ctrl, SST::Output *Output )
@@ -149,7 +150,7 @@ bool RevMem::LRBase(unsigned Hart, uint64_t Addr, size_t Len,
   }else{
     memcpy(DataMem, BaseMem, Len);
     // clear the hazard
-    req.MarkLoadComplete(req);
+    req.MarkLoadComplete();
   }
 
   return true;
@@ -587,7 +588,7 @@ bool RevMem::AMOMem(unsigned Hart, uint64_t Addr, size_t Len,
     }
 
     // clear the hazard
-    req.MarkLoadComplete(req);
+    req.MarkLoadComplete();
     delete[] TmpD;
     delete[] TmpT;
   }
@@ -909,7 +910,6 @@ bool RevMem::ReadMem(unsigned Hart, uint64_t Addr, size_t Len, void *Target,
           req.MarkLoadComplete(req);
         }
       }
-      TRACE_MEM_READ(Addr, Len, DataMem);
     }
   }
   memStats.bytesRead += Len;
@@ -1474,5 +1474,6 @@ bool RevMem::isZRqst(uint64_t Addr){
 void RevMem::clearZRqst(uint64_t Addr){
   ZRqst.erase(Addr);
 }
+} // namespace SST::RevCPU
 
 // EOF
