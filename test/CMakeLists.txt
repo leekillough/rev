@@ -210,17 +210,12 @@ add_rev_test(COPROC_EX coproc_ex 30 "all;memh;rv64;coproc" SCRIPT "run_coproc_ex
 # add_rev_test(BGE_BLE bge_ble 30 "all;rv64")
 
 
-if(NOT CTEST_FORZA_TESTS)
-  set_tests_properties (NOC_DISCOVERY PROPERTIES DISABLED True)
-  message(NOTICE "   * Tests requiring FORZA are disabled (ie. -DCTEST_FORZA_REQUIRED_TESTS=OFF)
-    - If you'd like to still run these tests run: `ctest -L forza_required`")
-  message(VERBOSE "NOC_DISCOVERY - Disabled")
-endif()
 
 add_subdirectory(isa)
 add_subdirectory(amo)
 add_subdirectory(benchmarks)
 add_subdirectory(syscalls)
 add_subdirectory(threading)
+add_subdirectory(forza)
 
 # EOF
