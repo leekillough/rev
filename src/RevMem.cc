@@ -1460,4 +1460,19 @@ bool RevMem::handleRZAResponse(Forza::zopEvent *zev){
   return true;
 }
 
+void RevMem::insertZRqst(uint64_t Addr, Forza::zopEvent* zev){
+  ZRqst[Addr] = zev;
+}
+
+bool RevMem::isZRqst(uint64_t Addr){
+  if( ZRqst.find(Addr) == ZRqst.end() ){
+    return false;
+  }
+  return true;
+}
+
+void RevMem::clearZRqst(uint64_t Addr){
+  ZRqst.erase(Addr);
+}
+
 // EOF

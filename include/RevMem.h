@@ -357,6 +357,15 @@ public:
   /// FORZA: handle message response
   bool handleRZAResponse(Forza::zopEvent *zev);
 
+  /// FORZA: insert a new ZOP address request
+  void insertZRqst(uint64_t Addr, Forza::zopEvent* zev);
+
+  /// FORZA: check to see if the target address is in the zop request hazard map
+  bool isZRqst(uint64_t Addr);
+
+  /// FORZA: clear the taret address from the zop request hazard map
+  void clearZRqst(uint64_t Addr);
+
 private:
   /// FORZA: convert a standard RISC-V AMO opcode to a ZOP opcode
   Forza::zopOpc flagToZOP(uint32_t flags, size_t Len);
@@ -380,13 +389,6 @@ private:
   bool ZOP_WRITEMem(unsigned Hart, uint64_t Addr, size_t Len,
                     void *Data,
                     RevFlag flags);
-
-  /// FORZA: send a raw WRITE request: DO NOT USE
-#if 0
-  bool __ZOP_WRITEMemRaw(unsigned Hart, uint64_t Addr, size_t Len,
-                         void *Data,
-                         RevFlag flags);
-#endif
 
   /// FORZA: send a large raw WRITE request: DO NOT USE
   bool __ZOP_WRITEMemLarge(unsigned Hart, uint64_t Addr, size_t Len,
@@ -450,6 +452,9 @@ private:
 #define LRSC_VAL  3
   std::vector<std::tuple<unsigned, uint64_t,
                          unsigned, uint64_t*>> LRSC;   ///< RevMem: load reserve/store conditional vector
+
+  // -- FORZA
+  std::map<uint64_t,Forza::zopEvent *> ZRqst; ///< RevMem: zop request address map
 
 }; // class RevMem
 
