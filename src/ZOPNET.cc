@@ -354,7 +354,6 @@ bool zopNIC::clockTick(SST::Cycle_t cycle){
         ev->encodeEvent();
         if( iFace->spaceToSend(0, P.size()*64) ){
           // we have space to send
-          std::cout << "RZA: Sending message with id=" << (unsigned)(ev->getID()) << std::endl;
           R->givePayload(ev);
           recordStat( getStatFromPacket(ev), 1 );
           thisCycle++;
@@ -370,7 +369,6 @@ bool zopNIC::clockTick(SST::Cycle_t cycle){
         if( iFace->spaceToSend(0, P.size()*64) ){
           // we have space to send
           ev->setID( msgId[Hart].getMsgId() );
-          std::cout << "ZAP: Sending message with id=" << (unsigned)(ev->getID()) << std::endl;
           auto V = std::make_tuple(Hart, ev->getID(), ev->isRead(),
                                    ev->getTarget(), ev->getMemReq());
           outstanding.push_back(V);

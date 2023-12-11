@@ -214,8 +214,6 @@ void RZALSCoProc::CheckLSQueue(){
 
     if( Alloc.getState(rs2) == _H_DIRTY ){
       // load to register has occurred, time to build a response
-      std::cout << "CheckLSQueue: Sending response for ID="
-                << (unsigned)(zev->getID()) << std::endl;
       if( !sendSuccessResp(zNic,
                            zev,
                            Z_MZOP_PIPE_HART,
@@ -285,8 +283,6 @@ bool RZALSCoProc::handleMZOP(Forza::zopEvent *zev, bool &flag){
   // unsigned loads
   case Forza::zopOpc::Z_MZOP_LB:
     Alloc.SetX(Rs2, 0x00ull);
-    //req.Set(Addr, (uint16_t)(Rs2), RevRegClass::RegGPR, Z_MZOP_PIPE_HART,
-    //        MemOp::MemOpREAD, true, MarkLoadCompleteFunc);
     Mem->ReadVal(Z_MZOP_PIPE_HART, Addr,
                  reinterpret_cast<uint8_t *>(Alloc.getRegAddr(Rs2)),
                  req, RevFlag::F_NONE);
@@ -296,8 +292,6 @@ bool RZALSCoProc::handleMZOP(Forza::zopEvent *zev, bool &flag){
     break;
   case Forza::zopOpc::Z_MZOP_LH:
     Alloc.SetX(Rs2, 0x00ull);
-    //req.Set(Addr, (uint16_t)(Rs2), RevRegClass::RegGPR, Z_MZOP_PIPE_HART,
-    //        MemOp::MemOpREAD, true, MarkLoadCompleteFunc);
     Mem->ReadVal(Z_MZOP_PIPE_HART, Addr,
                  reinterpret_cast<uint16_t *>(Alloc.getRegAddr(Rs2)),
                  req, RevFlag::F_NONE);
@@ -307,8 +301,6 @@ bool RZALSCoProc::handleMZOP(Forza::zopEvent *zev, bool &flag){
     break;
   case Forza::zopOpc::Z_MZOP_LW:
     Alloc.SetX(Rs2, 0x00ull);
-    //req.Set(Addr, (uint16_t)(Rs2), RevRegClass::RegGPR, Z_MZOP_PIPE_HART,
-    //        MemOp::MemOpREAD, true, MarkLoadCompleteFunc);
     Mem->ReadVal(Z_MZOP_PIPE_HART, Addr,
                  reinterpret_cast<uint32_t *>(Alloc.getRegAddr(Rs2)),
                  req, RevFlag::F_NONE);
@@ -318,8 +310,6 @@ bool RZALSCoProc::handleMZOP(Forza::zopEvent *zev, bool &flag){
     break;
   case Forza::zopOpc::Z_MZOP_LD:
     Alloc.SetX(Rs2, 0x00ull);
-    //req.Set(Addr, (uint16_t)(Rs2), RevRegClass::RegGPR, Z_MZOP_PIPE_HART,
-    //        MemOp::MemOpREAD, true, MarkLoadCompleteFunc);
     Mem->ReadVal(Z_MZOP_PIPE_HART, Addr,
                  Alloc.getRegAddr(Rs2),
                  req, RevFlag::F_NONE);
@@ -330,8 +320,6 @@ bool RZALSCoProc::handleMZOP(Forza::zopEvent *zev, bool &flag){
   // signed loads
   case Forza::zopOpc::Z_MZOP_LSB:
     Alloc.SetX(Rs2, 0x00ull);
-    //req.Set(Addr, (uint16_t)(Rs2), RevRegClass::RegGPR, Z_MZOP_PIPE_HART,
-    //        MemOp::MemOpREAD, true, MarkLoadCompleteFunc);
     Mem->ReadVal(Z_MZOP_PIPE_HART, Addr,
                  reinterpret_cast<int8_t *>(Alloc.getRegAddr(Rs2)),
                  req, RevFlag::F_SEXT64);
@@ -341,8 +329,6 @@ bool RZALSCoProc::handleMZOP(Forza::zopEvent *zev, bool &flag){
     break;
   case Forza::zopOpc::Z_MZOP_LSH:
     Alloc.SetX(Rs2, 0x00ull);
-    //req.Set(Addr, (uint16_t)(Rs2), RevRegClass::RegGPR, Z_MZOP_PIPE_HART,
-    //        MemOp::MemOpREAD, true, MarkLoadCompleteFunc);
     Mem->ReadVal(Z_MZOP_PIPE_HART, Addr,
                  reinterpret_cast<int16_t *>(Alloc.getRegAddr(Rs2)),
                  req, RevFlag::F_SEXT64);
@@ -352,8 +338,6 @@ bool RZALSCoProc::handleMZOP(Forza::zopEvent *zev, bool &flag){
     break;
   case Forza::zopOpc::Z_MZOP_LSW:
     Alloc.SetX(Rs2, 0x00ull);
-    //req.Set(Addr, (uint16_t)(Rs2), RevRegClass::RegGPR, Z_MZOP_PIPE_HART,
-    //        MemOp::MemOpREAD, true, MarkLoadCompleteFunc);
     Mem->ReadVal(Z_MZOP_PIPE_HART, Addr,
                  reinterpret_cast<int32_t *>(Alloc.getRegAddr(Rs2)),
                  req, RevFlag::F_SEXT64);
