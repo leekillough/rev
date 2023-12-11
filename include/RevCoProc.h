@@ -554,12 +554,18 @@ private:
   Forza::zopAPI *zNic;  ///< RZAAMOCoProc: ZOPNic object
   RegAlloc Alloc;       ///< RZAAMOCoProc: Register allocator object
 
+  /// Handle the incoming HZOP request
+  bool handleHZOP(Forza::zopEvent *zev, bool &flag);
+
 #define AMOQ_ZEV   0
 #define AMOQ_RS1   1
 #define AMOQ_RS2   2
   std::vector<std::tuple<Forza::zopEvent *,unsigned, unsigned>> AMOQ; ///< RZAAMOCoProc: Outstanding load queue
 
   std::function<void(const MemReq&)> MarkLoadCompleteFunc;  ///< RZAAMOCoProc: Hazard function
+
+  /// RZAAMOCoProc: checks the load queues for completed operations and clears hazards
+  void CheckLSQueue();
 
 };  // RZAAMOCoProc
 }  //namespace SST::RevCPU

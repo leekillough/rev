@@ -487,6 +487,11 @@ RZAAMOCoProc::RZAAMOCoProc(ComponentId_t id, Params& params, RevProc* parent)
 }
 
 RZAAMOCoProc::~RZAAMOCoProc(){
+  for( auto it = AMOQ.begin(); it != AMOQ.end(); ++it ){
+    auto z = std::get<AMOQ_ZEV>(*it);
+    delete z;
+  }
+  AMOQ.clear();
 }
 
 bool RZAAMOCoProc::IssueInst(RevFeature *F,
@@ -505,6 +510,160 @@ bool RZAAMOCoProc::IsDone(){
 }
 
 bool RZAAMOCoProc::ClockTick(SST::Cycle_t cycle){
+  CheckLSQueue();
+  return true;
+}
+
+bool RZAAMOCoProc::handleHZOP(Forza::zopEvent *zev, bool &flag){
+  flag = false; // these are handled as READ requests; eg they hazard
+  unsigned Rs1  = _UNDEF_REG;
+  unsigned Rs2  = _UNDEF_REG;
+  uint64_t Addr = 0x00ull;    // -- FLIT 3
+  uint64_t Data = 0x00ull;    // -- FLIT 4
+
+  // get some registers
+  if( !Alloc.getRegs(Rs1, Rs2) ){
+    return false;
+  }
+
+  // preload the address
+  if( !zev->getFLIT(Z_FLIT_ADDR, &Addr) ){
+    output->fatal(CALL_INFO, -1,
+                  "[FORZA][RZA][HZOP]: HZOP packet has no address FLIT: Type=%s, ID=%d\n",
+                  zNic->msgTToStr(zev->getType()).c_str(),
+                  zev->getID());
+  }
+
+  // preload the data
+  if( !zev->getFLIT(Z_FLIT_DATA, &Data) ){
+    output->fatal(CALL_INFO, -1,
+                  "[FORZA][RZA][HZOP]: HZOP packet has no data FLIT: Type=%s, ID=%d\n",
+                  zNic->msgTToStr(zev->getType()).c_str(),
+                  zev->getID());
+  }
+
+  // setup the MemReq
+  MemReq req{Addr, (uint16_t)(Rs2), RevRegClass::RegGPR, Z_MZOP_PIPE_HART,
+             MemOp::MemOpAMO, true, MarkLoadCompleteFunc};
+
+  // set the registers
+  Alloc.SetX(Rs1, Data);
+  Alloc.SetX(Rs2, 0x00ull);
+  zev->setMemReq(req);
+
+  switch( zev->getOpc() ){
+  // 32bit base
+  case Forza::zopOpc::Z_HAC_32_BASE_ADD:
+    Mem->AMOVal(Z_HZOP_PIPE_HART, Addr,
+                reinterpret_cast<uint32_t *>(Alloc.getRegAddr(Rs1)),
+                reinterpret_cast<uint32_t *>(Alloc.getRegAddr(Rs2)),
+                req, RevFlag::F_AMOADD);
+    break;
+  case Forza::zopOpc::Z_HAC_32_BASE_AND:
+    Mem->AMOVal(Z_HZOP_PIPE_HART, Addr,
+                reinterpret_cast<uint32_t *>(Alloc.getRegAddr(Rs1)),
+                reinterpret_cast<uint32_t *>(Alloc.getRegAddr(Rs2)),
+                req, RevFlag::F_AMOAND);
+    break;
+  case Forza::zopOpc::Z_HAC_32_BASE_OR:
+    Mem->AMOVal(Z_HZOP_PIPE_HART, Addr,
+                reinterpret_cast<uint32_t *>(Alloc.getRegAddr(Rs1)),
+                reinterpret_cast<uint32_t *>(Alloc.getRegAddr(Rs2)),
+                req, RevFlag::F_AMOOR);
+    break;
+  case Forza::zopOpc::Z_HAC_32_BASE_XOR:
+    Mem->AMOVal(Z_HZOP_PIPE_HART, Addr,
+                reinterpret_cast<uint32_t *>(Alloc.getRegAddr(Rs1)),
+                reinterpret_cast<uint32_t *>(Alloc.getRegAddr(Rs2)),
+                req, RevFlag::F_AMOXOR);
+    break;
+  case Forza::zopOpc::Z_HAC_32_BASE_SMAX:
+    Mem->AMOVal(Z_HZOP_PIPE_HART, Addr,
+                reinterpret_cast<uint32_t *>(Alloc.getRegAddr(Rs1)),
+                reinterpret_cast<uint32_t *>(Alloc.getRegAddr(Rs2)),
+                req, RevFlag::F_AMOMAX);
+    break;
+  case Forza::zopOpc::Z_HAC_32_BASE_MAX:
+    Mem->AMOVal(Z_HZOP_PIPE_HART, Addr,
+                reinterpret_cast<uint32_t *>(Alloc.getRegAddr(Rs1)),
+                reinterpret_cast<uint32_t *>(Alloc.getRegAddr(Rs2)),
+                req, RevFlag::F_AMOMAXU);
+    break;
+  case Forza::zopOpc::Z_HAC_32_BASE_SMIN:
+    Mem->AMOVal(Z_HZOP_PIPE_HART, Addr,
+                reinterpret_cast<uint32_t *>(Alloc.getRegAddr(Rs1)),
+                reinterpret_cast<uint32_t *>(Alloc.getRegAddr(Rs2)),
+                req, RevFlag::F_AMOMIN);
+    break;
+  case Forza::zopOpc::Z_HAC_32_BASE_MIN:
+    Mem->AMOVal(Z_HZOP_PIPE_HART, Addr,
+                reinterpret_cast<uint32_t *>(Alloc.getRegAddr(Rs1)),
+                reinterpret_cast<uint32_t *>(Alloc.getRegAddr(Rs2)),
+                req, RevFlag::F_AMOMINU);
+    break;
+  case Forza::zopOpc::Z_HAC_32_BASE_SWAP:
+    Mem->AMOVal(Z_HZOP_PIPE_HART, Addr,
+                reinterpret_cast<uint32_t *>(Alloc.getRegAddr(Rs1)),
+                reinterpret_cast<uint32_t *>(Alloc.getRegAddr(Rs2)),
+                req, RevFlag::F_AMOSWAP);
+    break;
+  // 64bit base
+  case Forza::zopOpc::Z_HAC_64_BASE_ADD:
+    Mem->AMOVal(Z_HZOP_PIPE_HART, Addr,
+                Alloc.getRegAddr(Rs1), Alloc.getRegAddr(Rs2),
+                req, RevFlag::F_AMOADD);
+    break;
+  case Forza::zopOpc::Z_HAC_64_BASE_AND:
+    Mem->AMOVal(Z_HZOP_PIPE_HART, Addr,
+                Alloc.getRegAddr(Rs1), Alloc.getRegAddr(Rs2),
+                req, RevFlag::F_AMOAND);
+    break;
+  case Forza::zopOpc::Z_HAC_64_BASE_OR:
+    Mem->AMOVal(Z_HZOP_PIPE_HART, Addr,
+                Alloc.getRegAddr(Rs1), Alloc.getRegAddr(Rs2),
+                req, RevFlag::F_AMOOR);
+    break;
+  case Forza::zopOpc::Z_HAC_64_BASE_XOR:
+    Mem->AMOVal(Z_HZOP_PIPE_HART, Addr,
+                Alloc.getRegAddr(Rs1), Alloc.getRegAddr(Rs2),
+                req, RevFlag::F_AMOXOR);
+    break;
+  case Forza::zopOpc::Z_HAC_64_BASE_SMAX:
+    Mem->AMOVal(Z_HZOP_PIPE_HART, Addr,
+                Alloc.getRegAddr(Rs1), Alloc.getRegAddr(Rs2),
+                req, RevFlag::F_AMOMAX);
+    break;
+  case Forza::zopOpc::Z_HAC_64_BASE_MAX:
+    Mem->AMOVal(Z_HZOP_PIPE_HART, Addr,
+                Alloc.getRegAddr(Rs1), Alloc.getRegAddr(Rs2),
+                req, RevFlag::F_AMOMAXU);
+    break;
+  case Forza::zopOpc::Z_HAC_64_BASE_SMIN:
+    Mem->AMOVal(Z_HZOP_PIPE_HART, Addr,
+                Alloc.getRegAddr(Rs1), Alloc.getRegAddr(Rs2),
+                req, RevFlag::F_AMOMIN);
+    break;
+  case Forza::zopOpc::Z_HAC_64_BASE_MIN:
+    Mem->AMOVal(Z_HZOP_PIPE_HART, Addr,
+                Alloc.getRegAddr(Rs1), Alloc.getRegAddr(Rs2),
+                req, RevFlag::F_AMOMINU);
+    break;
+  case Forza::zopOpc::Z_HAC_64_BASE_SWAP:
+    Mem->AMOVal(Z_HZOP_PIPE_HART, Addr,
+                Alloc.getRegAddr(Rs1), Alloc.getRegAddr(Rs2),
+                req, RevFlag::F_AMOSWAP);
+    break;
+  default:
+    output->verbose(CALL_INFO, 9, 0,
+                    "[FORZA][RZA][HZOP]: Erroneous HZOP opcode=%d\n",
+                    (unsigned)(zev->getOpc()));
+    return false;
+    break;
+  }
+
+  // add the request to the AMOQ
+  AMOQ.push_back(std::make_tuple(zev,Rs1,Rs2));
+
   return true;
 }
 
@@ -517,12 +676,52 @@ bool RZAAMOCoProc::InjectZOP(Forza::zopEvent *zev, bool &flag){
                   zNic->msgTToStr(zev->getType()).c_str());
   }
 
-  // this is not a pure MZOP Write
-  flag = false;
-  return true;
+  return handleHZOP(zev,flag);
+}
+
+void RZAAMOCoProc::CheckLSQueue(){
+  // Walk the AMOQ and look for hazards that have been
+  // cleared in the Proc's LSQueue
+  //
+  // If a load has been cleared, then prepare a response
+  // packet with the appropriate data
+
+  for( auto it = AMOQ.begin(); it != AMOQ.end(); ++it ){
+    auto zev = std::get<AMOQ_ZEV>(*it);
+    auto rs1 = std::get<AMOQ_RS1>(*it);
+    auto rs2 = std::get<AMOQ_RS2>(*it);
+
+    if( Alloc.getState(rs2) == _H_DIRTY ){
+      // load to register has occurred, time to build a response
+      if( !sendSuccessResp(zNic,
+                           zev,
+                           Z_HZOP_PIPE_HART,
+                           Alloc.GetX(rs2)) ){
+        output->fatal(CALL_INFO, -1,
+                      "[FORZA][RZA][HZOP]: Failed to send success response for ZOP ID=%d\n",
+                      zev->getID());
+      }
+
+      // clear the hazards
+      Alloc.clearReg(rs1);
+      Alloc.clearReg(rs2);
+
+      // clear the request from the ZRqst map
+      uint64_t Addr;
+      if( !zev->getFLIT(Z_FLIT_ADDR,&Addr) ){
+        output->fatal(CALL_INFO, -1,
+                      "[FORZA][RZA] Erroneous packet contents for ZOP in CheckLSQueue\n");
+      }
+      Mem->clearZRqst(Addr);
+      delete zev;
+      AMOQ.erase(it);
+      return ;
+    }
+  }
 }
 
 void RZAAMOCoProc::MarkLoadComplete(const MemReq& req){
+  Alloc.setDirty((unsigned)(req.getDestReg()));
 }
 
 }  // namespace SST::RevCPU
