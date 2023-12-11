@@ -890,7 +890,7 @@ bool RevMem::ReadMem(unsigned Hart, uint64_t Addr, size_t Len, void *Target,
         }
         // clear the hazard - if this was an AMO operation then we will clear outside of this function in AMOMem()
         if(MemOp::MemOpAMO != req.ReqType){
-          req.MarkLoadComplete(req);
+          req.MarkLoadComplete();
         }
       }
 #ifdef _REV_DEBUG_
@@ -907,7 +907,7 @@ bool RevMem::ReadMem(unsigned Hart, uint64_t Addr, size_t Len, void *Target,
         }
         // clear the hazard- if this was an AMO operation then we will clear outside of this function in AMOMem()
         if(MemOp::MemOpAMO != req.ReqType){
-          req.MarkLoadComplete(req);
+          req.MarkLoadComplete();
         }
       }
     }
@@ -1456,7 +1456,7 @@ bool RevMem::handleRZAResponse(Forza::zopEvent *zev){
                   "[FORZA][ZAP] Handling ZOP Response in RevMem; ID=%d\n",
                   (uint32_t)(zev->getID()));
   auto req = zev->getMemReq();
-  req.MarkLoadComplete(req);
+  req.MarkLoadComplete();
   return true;
 }
 
