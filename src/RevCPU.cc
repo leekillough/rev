@@ -784,82 +784,6 @@ void RevCPU::processZOPQ(){
       return ;
     }
   }
-
-  // -- OLD
-#if 0
-  // entries are active in the ZIQ; attempt to process
-  // a request
-  bool done = false;
-  bool flag = false;
-  unsigned cur = 0;
-  uint64_t Addr = 0x00ull;
-  std::cout << "ZIQ.size() = " << ZIQ.size() << std::endl;
-  while( !done ){
-    // retrieve the address from the ZOP packet
-    auto zev = ZIQ[cur];
-    if( zev == nullptr ){
-      std::cout << "cur = " << cur << std::endl;
-      output.fatal(CALL_INFO, -1,
-                   "[FORZA][RZA]: zopEvent is null\n");
-    }
-    if( !ZIQ[cur]->getFLIT(Z_FLIT_ADDR,&Addr) ){
-      output.fatal(CALL_INFO, -1, "[FORZA][RZA] Erroneous packet contents for ZOP\n");
-    }
-
-    if( ZRqst.find(Addr) == ZRqst.end() ){
-      // did not find an outstanding memory request with the same address
-      // process this request
-      switch( ZIQ[cur]->getType() ){
-  case Forza::zopMsgT::Z_MZOP:
-    // send to the MZOP pipeline
-        if( !CoProcs[Z_MZOP_PIPE_HART]->InjectZOP(ZIQ[cur], flag) ){
-      output.fatal(CALL_INFO, -1,
-                   "[FORZA][RZA] Failed to inject MZOP into pipeline; ID=%d\n",
-                      ZIQ[cur]->getID());
-    }
-    break;
-  case Forza::zopMsgT::Z_HZOPAC:
-    // send to the HZOP pipeline
-        if( !CoProcs[Z_HZOP_PIPE_HART]->InjectZOP(ZIQ[cur], flag) ){
-      output.fatal(CALL_INFO, -1,
-                   "[FORZA][RZA] Failed to inject HZOP into pipeline; ID=%d\n",
-                      ZIQ[cur]->getID());
-    }
-    break;
-  case Forza::zopMsgT::Z_HZOPV:
-    // send to the HZOP pipeline
-        output.fatal(CALL_INFO, -1,
-                    "[FORZA][RZA] RZA's disable handling of ZOP messages of Type=%s\n",
-                    zNic->msgTToStr(ZIQ[cur]->getType()).c_str() );
-    break;
-  default:
-    output.fatal(CALL_INFO, -1,
-                 "[FORZA][RZA] RZA's cannot handle ZOP messages of Type=%s\n",
-                    zNic->msgTToStr(ZIQ[cur]->getType()).c_str() );
-    break;
-  }
-
-      // If the request was NOT flagged as a store (mem write),
-      // add the request to the outstanding address map
-      if( !flag ){
-        ZRqst[Addr] = ZIQ[cur];
-      }
-
-      // eject the request from the ZIQ
-      ZIQ.erase(ZIQ.begin() + cur);
-
-      // signal completion for this cycle
-      done = true;
-    }
-
-    // could not process the current request
-    cur++;
-
-    if( cur == (ZIQ.size()-1) ){
-      done = true;
-    }
-  }
-#endif
 }
 
 void RevCPU::handleZOPMessageRZA(Forza::zopEvent *zev){
@@ -899,7 +823,6 @@ void RevCPU::handleZOPMessageZAP(Forza::zopEvent *zev){
 void RevCPU::handleZOPMessage(Event *ev){
   output.verbose(CALL_INFO, 9, 0, "[FORZA][%s] Received ZOP Message\n",
                  getName().c_str());
-  std::cout << "[FORZA][" << getName() << "] Received ZOP Message" << std::endl;
   Forza::zopEvent *zev = static_cast<Forza::zopEvent*>(ev);
 
   if( zev == nullptr ){
