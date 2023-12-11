@@ -209,6 +209,11 @@ public:
   ///  be created by a RevCoProc (or a class derived from RevCoProc) so this funciton may not be called from even within
   ///  RevProc
   void ExternalReleaseHart(RevProcPasskey<RevCoProc>, uint16_t HartID);
+
+  ///< RevProc: Allow a co-process to retrieve the register file object for the target HART
+  std::unique_ptr<RevRegFile> ExternalGetRegFile(RevProcPasskey<RevCoProc>, unsigned Hart){
+    return Harts.at(Hart)->PopRegFile();
+  }
   //------------- END External Interface -------------------------------
 
   ///< RevProc: Used for loading a software thread into a RevHart
@@ -607,6 +612,10 @@ private:
   EcallStatus ECALL_pthread_create(RevInst& inst);         // 1000, rev_pthread_create(pthread_t *thread, const pthread_attr_t  *attr, void  *(*start_routine)(void  *), void  *arg)
   EcallStatus ECALL_pthread_join(RevInst& inst);           // 1001, rev_pthread_join(pthread_t thread, void **retval);
   EcallStatus ECALL_pthread_exit(RevInst& inst);           // 1002, rev_pthread_exit(void* retval);
+
+  /// FORZA
+  EcallStatus ECALL_forza_scratchpad_alloc(RevInst& inst); // 4000, forza_scratchpad_alloc(size_t size);
+  EcallStatus ECALL_forza_scratchpad_free(RevInst& inst);  // 4001, forza_scratchpad_free(size_t size);
 
   /// RevProc: Table of ecall codes w/ corresponding function pointer implementations
   std::unordered_map<uint32_t, std::function<EcallStatus(RevProc*, RevInst&)>> Ecalls;
