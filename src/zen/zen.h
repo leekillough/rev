@@ -29,10 +29,12 @@ namespace SST::Forza{
     uint64_t tail;
     std::vector<uint8_t> msg_ids;
     uint64_t rza_start_addr;
-    ZENEntry(SST::Forza::zopEvent *m, ZENStatus s) {
+    bool from_zip;
+    ZENEntry(SST::Forza::zopEvent *m, ZENStatus s, bool src_zip) {
       msg = m;
       status = s;
       tail = 0;
+      from_zip = src_zip;
     }
   };
 
@@ -97,13 +99,15 @@ namespace SST::Forza{
     void finish() override;
     void sendMsgToRZA(uint64_t acs, uint64_t addr, std::vector<uint64_t> src_payload, uint8_t msg_id, uint64_t hart_id, uint64_t queue_loc);
     void sendMsgToRZANonDMA(uint64_t acs, uint64_t addr, uint64_t src_payload, uint8_t cur_msg_id, uint64_t hart_id, uint64_t queue_loc);
-    void sendMsgToScratchpad(uint64_t dest, uint64_t scratch_addr, uint64_t size, uint64_t addr);
+    void sendMsgToScratchpad(uint64_t dest, uint64_t zcid, uint64_t scratch_addr, uint64_t size, uint64_t addr);
     void processEgressQueue();
     void notifyHARTScratchpad();
     void handleIncomingRZAMsg();
     void handleIncomingZOP(SST::Event *ev);
-    void sendNACKToZAP(uint64_t hart_id);
-    void sendACKToZAP(uint64_t hart_id);
+    void sendNACKToZAP(uint64_t hart_id, uint64_t zcid);
+    void sendACKToZAP(uint64_t hart_id, uint64_t zcid);
+    void sendNACKToZIP(uint64_t hart_id, uint64_t zcid);
+    void sendACKToZIP(uint64_t hart_id, uint64_t zcid);
     void processSetupMsgs();
     void processZAPCredits();
     void sendMsgToZEN();
