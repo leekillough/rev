@@ -31,6 +31,8 @@ ZEN::ZEN(ComponentId_t id, Params& params)
   m_zop_iface = loadUserSubComponent<SST::Forza::zopAPI>( "m_zop_iface" );
   m_zop_iface->setEndpointType(zopCompID::Z_ZEN);
   m_num_harts = params.find<uint64_t>("num_harts", 4);
+  m_num_zones = params.find<uint64_t>("m_num_zones", 4);
+  m_num_precincts = params.find<uint64_t>("m_num_precincts", 4);
   msg_id = 0;
   sent = false;
   registerAsPrimaryComponent();
@@ -92,16 +94,36 @@ void ZEN::handleIncomingZOP(SST::Event *event) {
   }
   if (ev->getType() == SST::Forza::zopMsgT::Z_MSG &&
       (ev->getOpcode() == SST::Forza::zopOpc::Z_MSG_SENDP || ev->getOpcode() == SST::Forza::zopOpc::Z_MSG_SENDAS)) {
-    if (m_zop_iface->getPCID(ev->getSrcPCID()) == zopPrecID::Z_ZIP) {
-      from_zip = true;
-    }
-    if (zen_queue[ev->getDestHart()].size() < zen_queue_size_limit) {
-      zen_queue[ev->getDestHart()].push_back(new ZENEntry(ev, ZENStatus::UNPROCESSED, from_zip));
+    if (ev->getDestPCID() != m_zop_iface->getZoneID() && ev->getDestPrec() == m_zop_iface->getPrecinctID()) {
+      if (zone_queue[ev->getDestPCID()].size() < zen_queue_size_limit) {
+        zone_queue[ev->getDestPCID()].push_back(new ZENEntry(ev, ZENStatus::UNPROCESSED, false));
+      } else {
+        output.verbose(CALL_INFO, 1, 0, "Destination %d queue full\n", ev->getDestHart(),
+                      SST::Forza::zopMsgT::Z_MSG, SST::Forza::zopMsgT::Z_RESP);
+        sendNACKToZAP(ev->getSrcHart(), ev->getSrcZCID());
+        return;
+      }
+    } else if (ev->getDestPrec() != m_zop_iface->getPrecinctID()) {
+      if (precinct_queue[ev->getDestPCID()].size() < zen_queue_size_limit) {
+        precinct_queue[ev->getDestPCID()].push_back(new ZENEntry(ev, ZENStatus::UNPROCESSED, false));
+      } else {
+        output.verbose(CALL_INFO, 1, 0, "Destination %d queue full\n", ev->getDestHart(),
+                      SST::Forza::zopMsgT::Z_MSG, SST::Forza::zopMsgT::Z_RESP);
+        sendNACKToZAP(ev->getSrcHart(), ev->getSrcZCID());
+        return;
+      }
     } else {
-      output.verbose(CALL_INFO, 1, 0, "Destination %d queue full\n", ev->getDestHart(),
-                    SST::Forza::zopMsgT::Z_MSG, SST::Forza::zopMsgT::Z_RESP);
-      sendNACKToZAP(ev->getSrcHart(), ev->getSrcZCID());
-      return;
+      if (m_zop_iface->getPCID(ev->getSrcPCID()) == zopPrecID::Z_ZIP) {
+        from_zip = true;
+      }
+      if (zen_queue[ev->getDestHart()].size() < zen_queue_size_limit) {
+        zen_queue[ev->getDestHart()].push_back(new ZENEntry(ev, ZENStatus::UNPROCESSED, from_zip));
+      } else {
+        output.verbose(CALL_INFO, 1, 0, "Destination %d queue full\n", ev->getDestHart(),
+                      SST::Forza::zopMsgT::Z_MSG, SST::Forza::zopMsgT::Z_RESP);
+        sendNACKToZAP(ev->getSrcHart(), ev->getSrcZCID());
+        return;
+      }
     }
   } else if (ev->getType() == SST::Forza::zopMsgT::Z_RESP) {
     mem_acks.push_back(ev); // TODO: Add getMsgId() to ZOPNet
@@ -122,7 +144,7 @@ void ZEN::sendMsgToRZA(uint64_t acs, uint64_t addr, std::vector<uint64_t> src_pa
   rzaMsg->setSrcHart((uint16_t)zopCompID::Z_ZEN);
   rzaMsg->setSrcZCID((uint8_t)zopCompID::Z_ZEN);
   rzaMsg->setSrcPCID(m_zop_iface->getZoneID());
-  rzaMsg->setSrcPrec(m_zop_iface->getZoneID());
+  rzaMsg->setSrcPrec(m_zop_iface->getPrecinctID());
   // Likely to be used later for extended msg ids
   rzaMsg->setDestHart(3);
   payload.push_back(acs);
@@ -153,7 +175,7 @@ void ZEN::sendHZOPToRZA(uint64_t acs, uint64_t addr, uint64_t src_addr, uint64_t
   rzaMsg->setSrcHart((uint16_t)zopCompID::Z_ZEN);
   rzaMsg->setSrcZCID((uint8_t)zopCompID::Z_ZEN);
   rzaMsg->setSrcPCID(m_zop_iface->getZoneID());
-  rzaMsg->setSrcPrec(m_zop_iface->getZoneID());
+  rzaMsg->setSrcPrec(m_zop_iface->getPrecinctID());
   // Likely to be used later for extended msg ids
   rzaMsg->setDestHart(3);
   rzaMsg->setPayload(payload);
@@ -175,7 +197,7 @@ void ZEN::sendMsgToRZANonDMA(uint64_t acs, uint64_t addr, uint64_t src_payload, 
   rzaMsg->setOpc(SST::Forza::zopOpc::Z_MZOP_SD);
   rzaMsg->setSrcHart((uint16_t)zopCompID::Z_ZEN);
   rzaMsg->setSrcZCID((uint8_t)zopCompID::Z_ZEN);
-  rzaMsg->setSrcPCID(0);
+  rzaMsg->setSrcPCID(m_zop_iface->getZoneID());
   rzaMsg->setSrcPrec(m_zop_iface->getPrecinctID());
   // TODO: Update with RZA id
   rzaMsg->setDestHart(3);
@@ -206,6 +228,18 @@ void ZEN::sendMsgToScratchpad(uint64_t dest, uint64_t zcid, uint64_t scratch_add
   zapMsg->setPayload(payload);
   zapMsg->encodeEvent();
   m_zop_iface->send(zapMsg, (zopCompID)dest);
+}
+
+void ZEN::forwardPktToZIP(Forza::zopEvent *ev) {
+  ev->setSrcPCID(m_zop_iface->getZoneID());
+  ev->encodeEvent();
+  // m_zop_prec_iface->sendPrecinct(ackMsg, zopPrecID::Z_ZIP)
+}
+
+void ZEN::forwardPktToExtZEN(Forza::zopEvent *ev) {
+  ev->setSrcPCID(m_zop_iface->getZoneID());
+  ev->encodeEvent();
+  // m_zop_prec_iface->sendPrecinct(ackMsg, (uint8_t)ev->getPCID())
 }
 
 void ZEN::notifyHARTScratchpad() {
@@ -319,7 +353,7 @@ void ZEN::sendNACKToZIP(uint64_t hart_id, uint64_t zcid) {
   nackMsg->setDestPCID((uint8_t)zopPrecID::Z_ZIP);
   nackMsg->setDestPrec(m_zop_iface->getPrecinctID());
   nackMsg->encodeEvent();
-  //m_zop_iface->sendPrecinct(ackMsg, zopPrecID::Z_ZIP);
+  //m_zop_prec_iface->sendPrecinct(ackMsg, zopPrecID::Z_ZIP);
 }
 
 void ZEN::sendACKToZIP(uint64_t hart_id, uint64_t zcid) {
@@ -338,7 +372,7 @@ void ZEN::sendACKToZIP(uint64_t hart_id, uint64_t zcid) {
   ackMsg->setDestPrec(m_zop_iface->getPrecinctID());
   ackMsg->setDestPrec(0);
   ackMsg->encodeEvent();
-  //m_zop_iface->sendPrecinct(ackMsg, zopPrecID::Z_ZIP);
+  //m_zop_prec_iface->sendPrecinct(ackMsg, zopPrecID::Z_ZIP);
 }
 
 void ZEN::sendNACKToZAP(uint64_t hart_id, uint64_t zcid) {
@@ -425,11 +459,57 @@ void ZEN::printZenQueue() {
   }
 }
 
+void ZEN::processZoneEgressQueue() {
+  uint64_t cur_processed = 0;
+  for (int zones = 0; zones < m_num_zones; ++zones) {
+    for (int i = 0; i < zone_queue[zones].size(); ++i) {
+      if (zone_queue[zones][i]->status == ZENStatus::UNPROCESSED) {
+        // TODO: Credit check for dest zone
+        forwardPktToExtZEN(zone_queue[zones][i]->msg);
+        zone_queue[zones][i]->status = ZENStatus::DONE;
+      }
+      zone_queue[zones].erase(std::remove_if(
+        zone_queue[zones].begin(), zone_queue[zones].end(),
+        [](auto x) {
+            return x->status == ZENStatus::DONE;
+        }), zone_queue[zones].end());
+      }
+    cur_processed++;
+    if (cur_processed > process_per_cycle) {
+      break;
+    }
+  }
+}
+
+void ZEN::processPrecinctEgressQueue() {
+  uint64_t cur_processed = 0;
+  for (int precincts = 0; precincts < m_num_precincts; ++precincts) {
+    for (int i = 0; i < precinct_queue[precincts].size(); ++i) {
+      if (precinct_queue[precincts][i]->status == ZENStatus::UNPROCESSED) {
+        // TODO: Credit check for dest zone
+        forwardPktToZIP(precinct_queue[precincts][i]->msg);
+        precinct_queue[precincts][i]->status = ZENStatus::DONE;
+      }
+      precinct_queue[precincts].erase(std::remove_if(
+        precinct_queue[precincts].begin(), precinct_queue[precincts].end(),
+        [](auto x) {
+            return x->status == ZENStatus::DONE;
+        }), precinct_queue[precincts].end());
+      }
+    cur_processed++;
+    if (cur_processed > process_per_cycle) {
+      break;
+    }
+  }
+}
+
 void ZEN::processEgressQueue() {
   uint64_t cur_processed = 0;
   for (int harts = 0; harts < m_num_harts; ++harts) {
     for (int i = 0; i < zen_queue[harts].size(); ++i) {
       if (zen_queue[harts][i]->status == ZENStatus::UNPROCESSED) {
+        // TODO: Credits check. This will still be functional since entries beyond what the RZA queue
+        // is provisioned for will be NACKed.
         output.verbose(CALL_INFO, 1, 0, "progress status %lu\n", zen_queue[harts][i]->status);
         int rza_addr = getRZATailQueue(harts, (uint64_t)zen_queue[harts][i]->msg->getPayload().size());
         if (rza_addr < 0) {
@@ -636,6 +716,8 @@ bool ZEN::clock(Cycle_t cycle){
   prepSendRZAHZOP();
   prepSendRZAStore();
   processEgressQueue();
+  processZoneEgressQueue();
+  processPrecinctEgressQueue();
   processSetupMsgs();
   //printZenQueue();
   return false;

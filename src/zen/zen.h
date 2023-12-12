@@ -101,6 +101,8 @@ namespace SST::Forza{
     void sendMsgToRZANonDMA(uint64_t acs, uint64_t addr, uint64_t src_payload, uint8_t cur_msg_id, uint64_t hart_id, uint64_t queue_loc);
     void sendMsgToScratchpad(uint64_t dest, uint64_t zcid, uint64_t scratch_addr, uint64_t size, uint64_t addr);
     void processEgressQueue();
+    void processPrecinctEgressQueue();
+    void processZoneEgressQueue();
     void notifyHARTScratchpad();
     void handleIncomingRZAMsg();
     void handleIncomingZOP(SST::Event *ev);
@@ -121,6 +123,8 @@ namespace SST::Forza{
     void prepSendRZAHZOP();
     void prepSendRZAStore();
     void sendHZOPToRZA(uint64_t acs, uint64_t addr, uint64_t src_addr, uint64_t size, uint8_t cur_msg_id, uint64_t hart_id, uint64_t queue_loc);
+    void forwardPktToZIP(Forza::zopEvent *ev);
+    void forwardPktToExtZEN(Forza::zopEvent *ev);
 
   private:
     // private class members
@@ -146,6 +150,8 @@ namespace SST::Forza{
     uint64_t int_id;
     std::bitset<256> msg_id;
     uint64_t m_num_harts;
+    uint64_t m_num_zones;
+    uint64_t m_num_precincts;
     SST::Forza::zopAPI* m_zop_iface;
     bool sent;
     bool dma_enabled;
