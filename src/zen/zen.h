@@ -114,7 +114,9 @@ namespace SST::Forza{
     uint64_t  getWriteACS(uint64_t);
     void printZenQueue();
     uint64_t findFirstUnsetBit(const std::bitset<256>& bv);
-    void prepSendRZAMsg();
+    void prepSendRZAHZOP();
+    void prepSendRZAStore();
+    void sendHZOPToRZA(uint64_t acs, uint64_t addr, uint64_t src_addr, uint64_t size, uint8_t cur_msg_id, uint64_t hart_id, uint64_t queue_loc);
 
   private:
     // private class members
