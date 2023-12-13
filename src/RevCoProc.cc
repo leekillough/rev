@@ -429,6 +429,7 @@ bool RZALSCoProc::handleMZOP(Forza::zopEvent *zev, bool &flag){
     std::cout << "SDMA to 0x" << std::hex << Addr << std::dec << "; FlitLen = " << RealFlitLen << std::endl;
     for( i=0; i<RealFlitLen; i++ ){
       Data = 0x00ull;
+      std::cout << "SDMA: retrieve FLIT " << (Z_FLIT_DATA)+i << std::endl;
       if( !zev->getFLIT((Z_FLIT_DATA)+i, &Data) ){
         output->fatal(CALL_INFO, -1,
                       "[FORZA][RZA][MZOP]: MZOP packet has no DMA data FLIT: Type=%s, ID=%d\n",
