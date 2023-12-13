@@ -63,8 +63,12 @@ namespace SST::Forza{
 
         // describe the parameters
         SST_ELI_DOCUMENT_PARAMS(
+        { "verbose",    "Sets the output verbsoity", 0 },
         { "clockFreq",  "ZQM core clock frequency", "1GHz" },
-        { "verbose",    "Sets the output verbsoity", 0 }
+        {"numCores",        "Number of RISC-V cores to instantiate",        "1" },
+        {"numHarts",        "Number of harts (per core) to instantiate",    "1" },
+        {"precinctId",      "[FORZA] The precinct ID of the local device",  "0"},
+        {"zoneId",          "[FORZA] The zone ID of the local device",      "0"}
         )
 
         // describe the ports
@@ -131,6 +135,8 @@ namespace SST::Forza{
          * creating/deleting rows in the aid_state table
          */
         void processSetupMsgs(); // invoked by clock handler
+        void processSetupMsgSet(zopEvent *event);
+        void processSetupMsgHartDone(zopEvent *event);
 
 
         /**
@@ -173,9 +179,15 @@ namespace SST::Forza{
 
         uint64_t int_id; //
         uint8_t msg_id;
-        uint64_t m_num_harts;
         SST::Forza::zopAPI* m_zop_iface;
         bool sent;
+
+        // Parameters to maintain
+        unsigned num_zaps;
+        uint16_t num_harts;
+        unsigned precinct_id;
+        unsigned zone_id;
+
     }; // class SST::ZQM
 } // namespace SST::Forza
 

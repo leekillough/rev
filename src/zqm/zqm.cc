@@ -27,9 +27,11 @@ ZQM::ZQM(ComponentId_t id, Params& params)
 
     m_zop_iface = loadUserSubComponent<SST::Forza::zopAPI>( "m_zop_iface" );
     //m_linkControl = loadUserSubComponent<SST::Interfaces::SimpleNetwork>( "rtrLink", ComponentInfo::SHARE_NONE, 1 );
-    m_num_harts = params.find<uint64_t>("num_harts", 4);
-    //TODO: get number of ZAPs from parameter - currently assume 1
-    uint32_t num_zaps = 1;
+    // The parameter finds below are using the same names as RevCPU.h
+    num_zaps = params.find<unsigned>("numCores", 1);
+    num_harts = params.find<uint16_t>("numHarts", 4);
+    precinct_id = params.find<unsigned>("precinctId", 0);
+    zone_id = params.find<unsigned>("zoneId", 0);
 
     // Create and init matrix of HART status
     zap_hart_status.resize(num_zaps);
@@ -90,15 +92,14 @@ void ZQM::handleIncomingZOP(SST::Event *event) {
      */
     if (ev->getType() == SST::Forza::zopMsgT::Z_RESP) {
         rza_responses.push_back(ev);
-    } else if (ev->getType() == SST::Forza::zopMsgT::Z_MSG && ev->getOpcode() == SST::Forza::zopOpc::Z_MSG_ZQMSET) {
-        // TODO: Put all messaging types into setup_reqs and let processSetupMsgs handle the invalid zopOpc case
+    } else if (ev->getType() == SST::Forza::zopMsgT::Z_MSG) {
         setup_reqs.push_back(ev);
     } else if (ev->getType() == SST::Forza::zopMsgT::Z_TMIG){
         incoming_threads_vec.push_back(ev);
     } else{
-        output.verbose(CALL_INFO, 1, 0, "Invalid msg type %d\n", ev->getType());
+        output.fatal(CALL_INFO, 1, "Received unexpected msg type = %u\n",
+                     (uint32_t) ev->getType());
         // TODO: Is there a generic ZOP Dump/print function for debugging?  If so, use it
-        // TODO: Fatal or non-fatal (probably best to be latter)
         return;
     }
 }
@@ -189,45 +190,64 @@ void ZQM::sendThreadToZap(SST::Forza::zopEvent *ev)
     m_zop_iface->send(thread, dest_zap);
 }
 
-void ZQM::processSetupMsgs() {
-    // TODO: Redo this function to handle both of the following cases
-    //ev->getOpcode() == SST::Forza::zopOpc::Z_MSG_ZQMSET
-    //ev->getOpcode() == SST::Forza::zopOpc::Z_MSG_ZQMHARTDONE
-
-
+void ZQM::processSetupMsgs()
+{
     for (auto &event : setup_reqs) {
-        output.verbose(CALL_INFO, 1, 0, "setup pkt size for zqm\n");
-
-        // TODO: Do I need a setup message that "releases" an AID?  I suspect
-        //   the answer is yes.  Once done, then this needs to handle both the
-        //   insert and delete state table requests (or we just assume an always
-        //   incrementing AID for now and deal with it later)
-
-        // TODO: Specify payload format in ZOP spec
-        /**
-         * payload 0,1 are header
-         * payload 2-5 are data
-         */
-        uint32_t app_id = event->getAppID();
-        uint64_t min_zap_hart = event->getPayload()[2];
-        uint64_t max_zap_hart = event->getPayload()[3];
-        uint64_t mem_buffer_low = event->getPayload()[4];
-        uint64_t mem_buffer_high = event->getPayload()[5];
-
-        auto it = aid_state_table.find(app_id);
-        if (it != aid_state_table.end()) {
-            output.fatal(CALL_INFO, 1, "Received a second setup packet for aid=%u\n", app_id);
+        output.verbose(CALL_INFO, 1, 0, "setup pkt for zqm\n");
+        switch(event->getOpcode()){
+            case SST::Forza::zopOpc::Z_MSG_ZQMSET:
+                processSetupMsgSet(event); break;
+            case SST::Forza::zopOpc::Z_MSG_ZQMHARTDONE:
+                processSetupMsgHartDone(event); break;
+                // TODO: Add ZQM Free AID (or equivalent)
+                // TODO: Add ZQM Set HART (needed for initial program thread)
+            default:
+                output.fatal(CALL_INFO, 1, "Received an expected zqm msg opcode = %u\n",
+                             (uint32_t)event->getOpcode());
         }
-        aid_state_table.insert(std::pair<uint32_t, ZqmAidStateTableRow>(app_id,
-                                                                        {min_zap_hart,
-                                                                         max_zap_hart,
-                                                                         mem_buffer_low,
-                                                                         mem_buffer_high}));
-        output.verbose(CALL_INFO, 1, 0, "setup aid state table %u\n", app_id);
         delete event;
     }
 }
 
+void ZQM::processSetupMsgSet(zopEvent *event)
+{
+    // TODO: Specify payload format in ZOP spec
+    /**
+     * payload 0,1 are header
+     * payload 2-5 are data
+     */
+    uint32_t app_id = event->getAppID();
+    uint64_t min_zap_hart = event->getPayload()[2];
+    uint64_t max_zap_hart = event->getPayload()[3];
+    uint64_t mem_buffer_low = event->getPayload()[4];
+    uint64_t mem_buffer_high = event->getPayload()[5];
+
+    auto it = aid_state_table.find(app_id);
+    if (it != aid_state_table.end()) {
+        output.fatal(CALL_INFO, 1, "Received a second setup packet for aid=%u\n", app_id);
+    }
+    aid_state_table.insert(std::pair<uint32_t, ZqmAidStateTableRow>(app_id,
+                                                                    {min_zap_hart,
+                                                                     max_zap_hart,
+                                                                     mem_buffer_low,
+                                                                     mem_buffer_high}));
+    output.verbose(CALL_INFO, 1, 0, "setup aid state table %u\n", app_id);
+}
+
+void ZQM::processSetupMsgHartDone(zopEvent *event)
+{
+    // TODO: Specify payload format in ZOP spec
+    output.verbose(CALL_INFO, 1, 0, "process SetupMsgHartDone\n");
+    uint8_t src_zap = event->getSrcZCID(); // this will be the zap
+    uint16_t src_hart = event->getSrcHart();
+
+    if (zap_hart_status.at(src_zap).at(src_hart)) {
+        zap_hart_status.at(src_zap).at(src_hart) = false;
+    } else {
+        output.fatal(CALL_INFO, 1, "Received a HART done notification for an unused HART; ZAP=%u, HART=%u\n",
+                     (uint32_t) src_zap, (uint32_t) src_hart);
+    }
+}
 
 void ZQM::processIncomingThreadsMsgs()
 {
