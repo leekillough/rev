@@ -77,6 +77,10 @@ bool RevCoProc::sendSuccessResp(Forza::zopAPI *zNic,
   if( zev == nullptr )
     return false;
 
+  uint64_t Addr;
+  zev->getFLIT(Z_FLIT_ADDR,&Addr);
+  std::cout << "Sending response for Addr=0x" << std::hex
+            << Addr << "; Data=0x" << std::hex << Data << std::dec << std::endl;
   // create a new event
   SST::Forza::zopEvent *rsp_zev = new SST::Forza::zopEvent();
 
@@ -416,6 +420,7 @@ bool RZALSCoProc::handleMZOP(Forza::zopEvent *zev, bool &flag){
   case Forza::zopOpc::Z_MZOP_SDMA:
     // build a bulk write
     Buf = new uint8_t(RealFlitLen*8);
+    std::cout << "SDMA to 0x" << std::hex << Addr << std::dec << "; FlitLen = " << RealFlitLen << std::endl;
     for( i=0; i<RealFlitLen; i++ ){
       Data = 0x00ull;
       if( !zev->getFLIT((Z_FLIT_DATA)+i, &Data) ){
@@ -426,6 +431,7 @@ bool RZALSCoProc::handleMZOP(Forza::zopEvent *zev, bool &flag){
       }
       for( j=0; j<8; j++ ){
         Buf[cur] = ((Data >> (j*8)) & 0b11111111);
+        //std::cout << "Buf[" << cur << "] = 0x" << std::hex << (uint8_t)(Buf[cur]) << std::dec << std::endl;
         cur++;
       }
     }

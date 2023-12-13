@@ -88,7 +88,8 @@ enum class zopMsgT : uint8_t {
   Z_TMGT  = 0b0110,   /// FORZA THREAD MANAGEMENT
   Z_SYSC  = 0b0111,   /// FORZA SYSCALL
   Z_RESP  = 0b1000,   /// FORZA RESPONSE
-  // -- 0b1000 - 0b1110 UNASSIGNED
+  // -- 0b1001 - 0b1101 UNASSIGNED
+  Z_FENCE = 0b1110,   /// FORZE FENCE
   Z_EXCP  = 0b1111,   /// FORZA EXCEPTION
 };
 
@@ -270,6 +271,11 @@ enum class zopOpc : uint8_t {
   Z_RESP_RRESP  = 0b00000110,   /// zopOpc: RZA RESPONSE RZOP response
   Z_RESP_REXCP  = 0b00000111,   /// zopOpc: RZA RESPONSE RZOP exception
 
+  // -- FENCE --
+  Z_FENCE_HART  = 0b00000000,   /// zopOpc: HART Fence (only fences the calling HART)
+  Z_FENCE_ZAP   = 0b00000001,   /// zopOpc: ZAP Fence (fences all HARTs on a ZAP)
+  Z_FENCE_RZA   = 0b00000010,   /// zopOpc: RZA Fence (fences all requests on an RZA)
+
   // -- EXCEPTION --
   Z_EXCP_NONE   = 0b00000000,   /// zopOpc: Exception; no exception
   Z_EXCP_INVENDP= 0b00000001,   /// zopOpc: Exception; Invalid endpoint
@@ -370,20 +376,20 @@ public:
   //  This constructor is ONLY utilized for initialization
   //  DO NOT use this constructor for normal packet construction
   explicit zopEvent(unsigned srcId, zopCompID Type )
-    : Event(), Read(false), Target(nullptr) {
+    : Event(), Read(false), FenceEncountered(false), Target(nullptr){
     Packet.push_back((uint64_t)(Type));
     Packet.push_back((uint64_t)(srcId));
   }
 
   /// zopEvent: raw event constructor
   explicit zopEvent()
-    : Event(), Read(false), Target(nullptr){
+    : Event(), Read(false), FenceEncountered(false), Target(nullptr){
     Packet.push_back(0x00ull);
     Packet.push_back(0x00ull);
   }
 
   explicit zopEvent(zopMsgT T, zopOpc O)
-    : Event(), Read(false), Target(nullptr){
+    : Event(), Read(false), FenceEncountered(false), Target(nullptr){
     Packet.push_back(0x00ul);
     Packet.push_back(0x00ul);
     Type = T;
@@ -500,6 +506,9 @@ public:
     SrcPrec = P;
   }
 
+  /// zopEvent: set the fence encountered flag
+  void setFence() { FenceEncountered = true; }
+
   /// zopEvent: retrieve the data payload from the packet
   std::vector<uint64_t> getPayload() {
     std::vector<uint64_t> P;
@@ -562,6 +571,9 @@ public:
 
   /// zopEvent: get the application id
   uint32_t getAppID() { return AppID; }
+
+  /// zopEvent: determine whether the fence has been encountered
+  bool getFence() { return FenceEncountered; }
 
   /// zopEvent: retrieve the FLIT at the target location
   bool getFLIT(unsigned flit, uint64_t *F){
@@ -643,6 +655,7 @@ private:
   uint32_t AppID;               ///< zopEvent: application source
 
   bool Read;                    ///< zopEvent: sets this request as a read request
+  bool FenceEncountered;        ///< zopEvent: whether this ZOP's fence has been seen
   uint64_t *Target;             ///< zopEvent: target for the read request
   SST::RevCPU::MemReq req;      ///< zopEvent: read response handler
 
@@ -906,6 +919,7 @@ public:
     {"TMGTSent",        "Number of TMGTs sent",     "count",    1},
     {"SYSCSent",        "Number of Syscalls sent",  "count",    1},
     {"RESPSent",        "Number of RESPs sent",     "count",    1},
+    {"FENCESent",       "Number of Fences sent",    "count",    1},
     {"EXCPSent",        "Number of Exceptions sent","count",    1},
   )
 
@@ -920,7 +934,8 @@ public:
     TMGTSent      = 7,
     SYSCSent      = 8,
     RESPSent      = 9,
-    EXCPSent      = 10,
+    FENCESent     = 10,
+    EXCPSent      = 11,
   };
 
   /// zopNIC: constructor
@@ -989,6 +1004,9 @@ private:
   /// zopNIC: retrieve the zopStat entry from the target zopEvent
   zopNIC::zopStats getStatFromPacket(zopEvent *ev);
 
+  /// zopNIC: test the fence condition
+  bool handleFence(zopEvent *ev);
+
   SST::Output output;                       ///< zopNIC: SST output object
   SST::Interfaces::SimpleNetwork * iFace;   ///< zopNIC: SST network interface
   SST::Event::HandlerBase *msgHandler;      ///< zopNIC: SST message handler
@@ -1001,6 +1019,7 @@ private:
   zopCompID Type;                           ///< zopNIC: endpoint type
 
   SST::Forza::zopMsgID *msgId;              ///< zopNIC: per hart message ID objects
+  unsigned *HARTFence;                      ///< zopNIC: per hart fence counters
 
   std::vector<std::pair<zopEvent *, zopCompID>> preInitQ;             ///< zopNIC: holds buffered requests before the network boots
   std::vector<SST::Interfaces::SimpleNetwork::Request*> sendQ;        ///< zopNIC: buffered send queue
