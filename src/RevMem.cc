@@ -1445,21 +1445,22 @@ bool RevMem::__ZOP_WRITEMemBase(unsigned Hart, uint64_t Addr, size_t Len,
   if( Len == 1 ){
     // standard write
     uint8_t *Tmp = reinterpret_cast<uint8_t *>(Data);
-    payload.push_back((uint64_t)(Tmp[0]));
+    payload.push_back((uint64_t)(*Tmp));
   }else if( Len == 2 ){
     uint16_t *Tmp = reinterpret_cast<uint16_t *>(Data);
-    payload.push_back((uint64_t)(Tmp[0]));
+    payload.push_back((uint64_t)(*Tmp));
   }else if( Len == 4 ){
     uint32_t *Tmp = reinterpret_cast<uint32_t *>(Data);
-    payload.push_back((uint64_t)(Tmp[0]));
+    payload.push_back((uint64_t)(*Tmp));
   }else if( Len == 8 ){
     uint64_t *Tmp = reinterpret_cast<uint64_t *>(Data);
-    payload.push_back(Tmp[0]);
+    payload.push_back(*Tmp);
   }else{
     // large write
     uint64_t *Tmp = reinterpret_cast<uint64_t *>(Data);
     for( unsigned i=0; i<(Len/8); i++ ){
-      payload.push_back(Tmp[i]);
+      payload.push_back(*Tmp);
+      Tmp += 8;
     }
   }
 
