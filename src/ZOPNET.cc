@@ -290,13 +290,11 @@ bool zopNIC::msgNotify(int vn){
 
   // decode the event
   ev->decodeEvent();
-#if 0
   output.verbose(CALL_INFO, 9, 0,
                  "%s:%s received zop message of type %s\n",
                  getName().c_str(),
                  endPToStr(getEndpointType()).c_str(),
                  msgTToStr(ev->getType()).c_str());
-#endif
 
   // if this is an RZA device, marshall it through to the ZIQ
   if( Type == Forza::zopCompID::Z_RZA ){
@@ -314,6 +312,7 @@ bool zopNIC::msgNotify(int vn){
       // found a match
       // if this is a read request, marshall to the RevCPU to handle the hazarding
       if( isRead ){
+        // TODO: do we need to correctly handle this?
         if( !ev->getFLIT(Z_FLIT_DATA_RESP, Target) ){
           output.fatal(CALL_INFO, -1,
                        "%s, Error: zopEvent on zopNIC failed to read response FLIT; OPC=%d, LENGTH=%d, ID=%d\n",
