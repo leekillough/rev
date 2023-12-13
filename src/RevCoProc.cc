@@ -435,9 +435,12 @@ bool RZALSCoProc::handleMZOP(Forza::zopEvent *zev, bool &flag){
                       zNic->msgTToStr(zev->getType()).c_str(),
                       zev->getID());
       }
+      std::cout << "Data@FLIT[" << i << "] = 0x" << std::hex << Data << std::dec << std::endl;
       for( j=0; j<8; j++ ){
         Buf[cur] = ((Data >> (j*8)) & 0b11111111);
-        //std::cout << "Buf[" << cur << "] = 0x" << std::hex << (uint64_t)(Buf[cur]) << std::dec << std::endl;
+        std::cout << "Addr@ 0x" << std::hex << Addr + (uint64_t)(cur) << std::dec
+                  << " : Buf[" << cur << "] = 0x" << std::hex
+                  << (uint64_t)(Buf[cur]) << std::dec << std::endl;
         cur++;
       }
     }

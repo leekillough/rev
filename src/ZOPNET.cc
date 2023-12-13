@@ -319,6 +319,7 @@ bool zopNIC::msgNotify(int vn){
                        getName().c_str(), (unsigned)(ev->getOpc()),
                        (unsigned)(ev->getLength()), ID );
         }
+        std::cout << "LOAD RESPONSE : 0x" << std::hex << *Target << std::dec << std::endl;
         ev->setMemReq(Req);
         ev->setTarget(Target);
         (*msgHandler)(ev);
@@ -337,7 +338,8 @@ bool zopNIC::msgNotify(int vn){
     Cur++;
   }
 
-  return true;
+  // we didn't find a matching request, return false
+  return false;
 }
 
 bool zopNIC::handleFence(zopEvent *ev){
