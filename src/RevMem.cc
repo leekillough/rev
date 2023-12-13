@@ -1579,6 +1579,12 @@ bool RevMem::__ZOP_WRITEMemBase(unsigned Hart, uint64_t Addr, size_t Len,
       payload.push_back(*Tmp);
       Tmp += 8;
     }
+    std::cout << "Payload @ 0x" << std::hex << Addr << std::dec << std::endl;
+    for( unsigned i=0; i<payload.size(); i++ ){
+      std::cout << "Payload[" << i << "] = @Addr= 0x"
+                << std::hex << Addr + (i*8) << std::dec << " = "
+                << std::hex << payload[i] << std::dec << std::endl;
+    }
   }
 
   zev->setPayload(payload);
