@@ -17,7 +17,7 @@ zopNIC::zopNIC(ComponentId_t id, Params& params)
   : zopAPI(id, params), iFace(nullptr), msgHandler(nullptr),
     initBroadcastSent(false), numDest(0), numHarts(0),
     Precinct(0), Zone(0),
-    Type(zopCompID::Z_ZAP0), msgId(nullptr){
+    Type(zopCompID::Z_ZAP0), msgId(nullptr), HARTFence(nullptr){
 
   // read the parameters
   int verbosity = params.find<int>("verbose", 0);
@@ -61,11 +61,17 @@ zopNIC::zopNIC(ComponentId_t id, Params& params)
 zopNIC::~zopNIC(){
   if( msgId )
     delete[] msgId;
+  if( HARTFence )
+    delete[] HARTFence;
 }
 
 void zopNIC::setNumHarts(unsigned H){
   numHarts = H;
   msgId = new SST::Forza::zopMsgID [numHarts];
+  HARTFence = new unsigned [numHarts];
+  for( unsigned i=0; i<numHarts; i++ ){
+    HARTFence[i] = 0;
+  }
 }
 
 void zopNIC::registerStats(){
@@ -80,6 +86,7 @@ void zopNIC::registerStats(){
     "TMGTSent",
     "SYSCSent",
     "RESPSent",
+    "FENCESent",
     "EXCPSent",
   }){
     stats.push_back(registerStatistic<uint64_t>(stat));
@@ -124,11 +131,14 @@ zopNIC::zopStats zopNIC::getStatFromPacket(zopEvent *ev){
   case zopMsgT::Z_TMGT:
     return zopStats::TMGTSent;
     break;
+  case zopMsgT::Z_SYSC:
+    return zopStats::SYSCSent;
+    break;
   case zopMsgT::Z_RESP:
     return zopStats::RESPSent;
     break;
-  case zopMsgT::Z_SYSC:
-    return zopStats::SYSCSent;
+  case zopMsgT::Z_FENCE:
+    return zopStats::FENCESent;
     break;
   case zopMsgT::Z_EXCP:
     return zopStats::EXCPSent;
@@ -199,6 +209,7 @@ void zopNIC::init(unsigned int phase){
                    "%s received init broadcast messages from %d of type %s\n",
                    getName().c_str(), (uint32_t)(srcID),
                    endPToStr(hostMap[srcID]).c_str());
+    delete ev;
   }
 
   // --- begin print out the host mapping table
@@ -275,13 +286,17 @@ bool zopNIC::msgNotify(int vn){
                  getName().c_str());
   }
 
+  auto P = ev->getPacket();
+
   // decode the event
   ev->decodeEvent();
+#if 0
   output.verbose(CALL_INFO, 9, 0,
                  "%s:%s received zop message of type %s\n",
                  getName().c_str(),
-                 this->endPToStr(this->getEndpointType()).c_str(),
-                 this->msgTToStr(ev->getType()).c_str());
+                 endPToStr(getEndpointType()).c_str(),
+                 msgTToStr(ev->getType()).c_str());
+#endif
 
   // if this is an RZA device, marshall it through to the ZIQ
   if( Type == Forza::zopCompID::Z_RZA ){
@@ -326,6 +341,51 @@ bool zopNIC::msgNotify(int vn){
   return true;
 }
 
+bool zopNIC::handleFence(zopEvent *ev){
+  // first, determine if this fence has already been encountered
+  // if not, incrememnt the fence counter for this hart
+
+  // if this fence has been encountered, then check the oustanding
+  // operation vector to see if we have any outstanding requests
+  // if no outstanding requests exist, then clear the fence
+
+  // this function returns TRUE if the fence is ready to clear
+  // otherwise, this function returns false
+
+  unsigned ReqHart = (unsigned)(ev->getSrcHart());
+
+  if( ev->getFence() ){
+    // fence has been encountered, check to see if we need to clear
+    for( auto const& [Hart, ID, isRead, Target, Req] : outstanding ){
+      if( (unsigned)(Hart) == ReqHart ){
+        // this is an outstanding request for the same Hart, do not clear it
+        return false;
+      }
+    }
+
+    // no outstanding requests for this hart, clear it
+    HARTFence[ReqHart]--;
+    output.verbose(CALL_INFO, 9, 0,
+                   "Clearing FENCE from %s @ [hart:zcid:pcid:type]=[%d:%d:%d:%s]\n",
+                   getName().c_str(),
+                   ev->getSrcHart(), ev->getSrcZCID(), ev->getSrcPCID(),
+                   endPToStr(getEndpointType()).c_str() );
+    return true;
+  }else{
+    // fence has not been encountered, set it
+    ev->setFence();
+    HARTFence[ReqHart]++;
+    output.verbose(CALL_INFO, 9, 0,
+                   "Issuing FENCE from %s @ [hart:zcid:pcid:type]=[%d:%d:%d:%s]\n",
+                   getName().c_str(),
+                   ev->getSrcHart(), ev->getSrcZCID(), ev->getSrcPCID(),
+                   endPToStr(getEndpointType()).c_str() );
+    return false;
+  }
+
+  return false;   // not ready to clear
+}
+
 unsigned zopNIC::getNumDestinations(){
   return numDest;
 }
@@ -346,7 +406,7 @@ bool zopNIC::clockTick(SST::Cycle_t cycle){
 
   for( auto R : sendQ ){
     if( thisCycle < ReqPerCycle ){
-      zopEvent *ev = static_cast<zopEvent*>(R->takePayload());
+      zopEvent *ev = static_cast<zopEvent*>(R->inspectPayload());
       Hart = (unsigned)(ev->getSrcHart());
       if( Type == SST::Forza::zopCompID::Z_RZA ){
         // I am an RZA... I don't need to reserve any message IDs
@@ -354,16 +414,19 @@ bool zopNIC::clockTick(SST::Cycle_t cycle){
         ev->encodeEvent();
         if( iFace->spaceToSend(0, P.size()*64) ){
           // we have space to send
-          R->givePayload(ev);
           recordStat( getStatFromPacket(ev), 1 );
           thisCycle++;
           iFace->send(R, 0);
           sendQ.erase(sendQ.begin() + Cur);
-        }else{
-          // no space to send, reset the payload
-          R->givePayload(ev);
         }
-      }else if( msgId[Hart].getNumFree() > 0 ){
+      }else if( ev->getType() == SST::Forza::zopMsgT::Z_FENCE ){
+        // handle the fence operation
+        if( handleFence(ev) ){
+          // fence is ready to clear
+          sendQ.erase(sendQ.begin() + Cur);
+        }
+      }else if( (msgId[Hart].getNumFree() > 0) &&
+                (HARTFence[Hart] == 0) ){
         // we have a free message Id for this hart
         auto P = ev->getPacket();
         if( iFace->spaceToSend(0, P.size()*64) ){
@@ -373,18 +436,11 @@ bool zopNIC::clockTick(SST::Cycle_t cycle){
                                    ev->getTarget(), ev->getMemReq());
           outstanding.push_back(V);
           ev->encodeEvent();
-          R->givePayload(ev);
           recordStat( getStatFromPacket(ev), 1 );
           thisCycle++;
           iFace->send(R, 0);
           sendQ.erase(sendQ.begin() + Cur);
-        }else{
-          // no space to send, reset the payload
-          R->givePayload(ev);
         }
-      }else{
-        // reset the payload
-        R->givePayload(ev);
       }
     }else{
       // saturated the number of outstanding requests
