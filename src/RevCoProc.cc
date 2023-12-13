@@ -431,7 +431,7 @@ bool RZALSCoProc::handleMZOP(Forza::zopEvent *zev, bool &flag){
       }
       for( j=0; j<8; j++ ){
         Buf[cur] = ((Data >> (j*8)) & 0b11111111);
-        //std::cout << "Buf[" << cur << "] = 0x" << std::hex << (uint8_t)(Buf[cur]) << std::dec << std::endl;
+        //std::cout << "Buf[" << cur << "] = 0x" << std::hex << (uint64_t)(Buf[cur]) << std::dec << std::endl;
         cur++;
       }
     }
