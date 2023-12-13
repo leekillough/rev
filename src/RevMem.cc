@@ -1562,27 +1562,30 @@ bool RevMem::__ZOP_WRITEMemBase(unsigned Hart, uint64_t Addr, size_t Len,
   if( Len == 1 ){
     // standard write
     uint8_t *Tmp = reinterpret_cast<uint8_t *>(Data);
-    payload.push_back((uint64_t)(*Tmp));
+    payload.push_back((uint64_t)(Tmp[0]));
   }else if( Len == 2 ){
     uint16_t *Tmp = reinterpret_cast<uint16_t *>(Data);
-    payload.push_back((uint64_t)(*Tmp));
+    payload.push_back((uint64_t)(Tmp[0]));
   }else if( Len == 4 ){
     uint32_t *Tmp = reinterpret_cast<uint32_t *>(Data);
-    payload.push_back((uint64_t)(*Tmp));
+    payload.push_back((uint64_t)(Tmp[0]));
   }else if( Len == 8 ){
     uint64_t *Tmp = reinterpret_cast<uint64_t *>(Data);
-    payload.push_back(*Tmp);
+    payload.push_back(Tmp[0]);
   }else{
     // large write
     uint64_t *Tmp = reinterpret_cast<uint64_t *>(Data);
-    for( unsigned i=0; i<(Len/8); i++ ){
-      payload.push_back(*Tmp);
-      Tmp += 8;
-    }
     std::cout << "Payload @ 0x" << std::hex << Addr << std::dec << std::endl;
-    for( unsigned i=0; i<payload.size(); i++ ){
+    for( unsigned i=0; i<(Len/8); i++ ){
+      std::cout << "TmpPayload @ 0x " << std::hex << Tmp << std::dec
+                << " = 0x" << std::hex << Tmp[0] << std::endl;
+      payload.push_back(Tmp[0]);
+      Tmp += 1ull;
+    }
+    // print and igbore the ACS and Address
+    for( unsigned i=2; i<payload.size(); i++ ){
       std::cout << "Payload[" << i << "] = @Addr= 0x"
-                << std::hex << Addr + (i*8) << std::dec << " = "
+                << std::hex << Addr + ((i-2)*8) << std::dec << " = "
                 << std::hex << payload[i] << std::dec << std::endl;
     }
   }

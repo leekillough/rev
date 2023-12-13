@@ -320,6 +320,7 @@ bool zopNIC::msgNotify(int vn){
                        (unsigned)(ev->getLength()), ID );
         }
         std::cout << "LOAD RESPONSE : 0x" << std::hex << *Target << std::dec << std::endl;
+        std::cout << "LOAD RESPONSE : 0x" << std::hex << Target[0] << std::dec << std::endl;
         ev->setMemReq(Req);
         ev->setTarget(Target);
         (*msgHandler)(ev);
