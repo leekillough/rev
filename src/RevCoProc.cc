@@ -78,7 +78,7 @@ bool RevCoProc::sendSuccessResp(Forza::zopAPI *zNic,
   if( zev == nullptr )
     return false;
 
-  uint64_t Addr;
+  uint64_t Addr=0x00ull;
   zev->getFLIT(Z_FLIT_ADDR,&Addr);
   std::cout << "Sending response for Addr=0x" << std::hex
             << Addr << "; Data=0x" << std::hex << Data << std::dec << std::endl;
@@ -229,7 +229,7 @@ void RZALSCoProc::CheckLSQueue(){
       Alloc.clearReg(rs2);
 
       // clear the request from the ZRqst map
-      uint64_t Addr;
+      uint64_t Addr=0x00ull;
       if( !zev->getFLIT(Z_FLIT_ADDR,&Addr) ){
         output->fatal(CALL_INFO, -1,
                       "[FORZA][RZA] Erroneous packet contents for ZOP in CheckLSQueue\n");
@@ -425,7 +425,7 @@ bool RZALSCoProc::handleMZOP(Forza::zopEvent *zev, bool &flag){
   // dma stores
   case Forza::zopOpc::Z_MZOP_SDMA:
     // build a bulk write
-    Buf = new uint8_t(RealFlitLen*8);
+    Buf = new uint8_t[RealFlitLen*8];
     std::cout << "SDMA to 0x" << std::hex << Addr << std::dec << "; FlitLen = " << RealFlitLen << std::endl;
     for( i=0; i<RealFlitLen; i++ ){
       Data = 0x00ull;
@@ -719,7 +719,7 @@ void RZAAMOCoProc::CheckLSQueue(){
       Alloc.clearReg(rs2);
 
       // clear the request from the ZRqst map
-      uint64_t Addr;
+      uint64_t Addr=0x00ull;
       if( !zev->getFLIT(Z_FLIT_ADDR,&Addr) ){
         output->fatal(CALL_INFO, -1,
                       "[FORZA][RZA] Erroneous packet contents for ZOP in CheckLSQueue\n");
