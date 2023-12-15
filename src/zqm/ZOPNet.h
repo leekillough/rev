@@ -285,6 +285,7 @@ enum class zopOpc : uint8_t {
 // zopCompID: ZOP Component ID
 // --------------------------------------------
 enum class zopCompID : uint8_t {
+    /* Note: ZQM assumes the Zaps are always 0-(max-1) */
   Z_ZAP0        = 0b00000000,   /// zopCompID: ZAP0
   Z_ZAP1        = 0b00000001,   /// zopCompID: ZAP1
   Z_ZAP2        = 0b00000010,   /// zopCompID: ZAP2

@@ -6,6 +6,12 @@
 #include "zqm.h"
 #include "ZOPNet.h" // TODO: Replace with version from forzarev
 
+/**
+ * NOTE: There are numerous places where the code uses extra variables, etc.
+ * I don't care.  My goal is to make this easy to follow and ensure the spec matches since
+ * it's being developed alongside the code.
+ */
+
 using namespace SST::Forza;
 
 ZQM::ZQM(ComponentId_t id, Params& params)
@@ -176,21 +182,19 @@ void ZQM::processRzaMsgs() {
     }
 }
 
-void ZQM::sendThreadToZap(SST::Forza::zopEvent *ev)
+void ZQM::sendThreadToZap(SST::Forza::zopEvent *thread, uint8_t dest_zap, uint16_t dest_hart)
 {
-    SST::Forza::zopEvent *thread = new SST::Forza::zopEvent(zopMsgT::Z_TMIG, zopOpc Z_TMIG_FIXED);
-    // Copy the packet
-    thread->setPacket(ev->getPacket()); // TODO: Use {set,get}Payload instead?
-    // TODO: Set the Destination HART info
-    // TODO: Set the Source HART info
-    thread->encodeEvent();
+    if (zap_hart_status.at(dest_zap).at(dest_hart)){
+        output.fatal(CALL_INFO, 1, "TMIG Dest already occupied; ZAP=%u, HART=%u\n",
+                     (uint32_t) zap, (uint32_t) hart);
+    } else {
+        zap_hart_status.at(dest_zap).at(dest_hart) = true;
+    }
 
-    // TODO: Update zap_hart_status
-    zopCompID dest_zap = zopCompID::Z_ZAP0;
-    m_zop_iface->send(thread, dest_zap);
+    m_zop_iface->send(thread, getZCID(dest_zap, false));
 }
 
-void ZQM::processSetupMsgs()
+void ZQM::processMessagingMsgs()
 {
     for (auto &event : setup_reqs) {
         output.verbose(CALL_INFO, 1, 0, "setup pkt for zqm\n");
@@ -209,18 +213,14 @@ void ZQM::processSetupMsgs()
     }
 }
 
-void ZQM::processSetupMsgSet(zopEvent *event)
+void ZQM::processMessagingZqmSet(SST::Forza::zopEvent *event)
 {
-    // TODO: Specify payload format in ZOP spec
-    /**
-     * payload 0,1 are header
-     * payload 2-5 are data
-     */
     uint32_t app_id = event->getAppID();
-    uint64_t min_zap_hart = event->getPayload()[2];
-    uint64_t max_zap_hart = event->getPayload()[3];
-    uint64_t mem_buffer_low = event->getPayload()[4];
-    uint64_t mem_buffer_high = event->getPayload()[5];
+    std::vector<uint64_t> payload = event->getPayload(); // payload doesn't include the header
+    uint64_t min_zap_hart = payload[0];
+    uint64_t max_zap_hart = payload[1];
+    uint64_t mem_buffer_low = payload[2];
+    uint64_t mem_buffer_high = payload[3];
 
     auto it = aid_state_table.find(app_id);
     if (it != aid_state_table.end()) {
@@ -234,9 +234,9 @@ void ZQM::processSetupMsgSet(zopEvent *event)
     output.verbose(CALL_INFO, 1, 0, "setup aid state table %u\n", app_id);
 }
 
-void ZQM::processSetupMsgHartDone(zopEvent *event)
+void ZQM::processMessagingHartDone(SST::Forza::zopEvent *event)
 {
-    // TODO: Specify payload format in ZOP spec
+    // No payload required; source information is sufficient
     output.verbose(CALL_INFO, 1, 0, "process SetupMsgHartDone\n");
     uint8_t src_zap = event->getSrcZCID(); // this will be the zap
     uint16_t src_hart = event->getSrcHart();
@@ -252,22 +252,34 @@ void ZQM::processSetupMsgHartDone(zopEvent *event)
 void ZQM::processIncomingThreadsMsgs()
 {
     for (auto &thread : incoming_threads_vec){
-        // Two possible arrival types - with an assigned HART and with a selectable HART
-        // Need to figure out *final* packet format for migrating threads
-
-        // Two possible destinations - ZAP, memory for storage
-        // Destination requires knowing HART status
-
-        delete thread;
+        if (thread->getOpcode() == zopOpc::Z_TMIG_FIXED){
+            // Always assumed to have the hart available
+            sendThreadToZap(thread, thread->getDestZCID(), thread->getDestHart());
+        } else if (thread->getOpcode() == zopOpc::Z_TMIG_SELECT){
+            if (selectDestHart(thread)){
+                sendThreadToZap(thread);
+            } else {
+                //TODO: Send Thread to Memory
+            }
+        }
     }
+    incoming_threads_vec.clear();
 }
 
+bool ZQM::selectDestHart(SST::Forza::zopEvent *thread)
+{
+    // These should generally be migrating thread code...try to balance use of ZAPs...
+    // Want to keep the logic sane so we can actually do it in verilog
+
+    // TODO: Do I want any other values/structures to help track which ZAP should be
+    // filled next...probably not.
+}
 
 bool ZQM::clock(Cycle_t cycle)
 {
     processIncomingThreadsMsgs();
     processRzaMsgs();
-    processSetupMsgs();
+    processMessagingMsgs();
     return false;
 }
 

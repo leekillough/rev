@@ -120,8 +120,9 @@ namespace SST::Forza{
 
         /**
          * Do what the function says - prep and send a thread to a ZAP
+         * // TODO: I may want to discard this function
          */
-        void sendThreadToZap(SST::Forza::zopEvent *ev);
+        void sendThreadToZap(SST::Forza::zopEvent *thread, uint8_t dest_zap, uint16_t dest_hart);
 
 
     private:
@@ -134,9 +135,9 @@ namespace SST::Forza{
          * This should be reading from the setup_reqs vector and
          * creating/deleting rows in the aid_state table
          */
-        void processSetupMsgs(); // invoked by clock handler
-        void processSetupMsgSet(zopEvent *event);
-        void processSetupMsgHartDone(zopEvent *event);
+        void processMessagingMsgs(); // invoked by clock handler
+        void processMessagingZqmSet(zopEvent *event);
+        void processMessagingHartDone(zopEvent *event);
 
 
         /**
@@ -150,6 +151,12 @@ namespace SST::Forza{
          *
          */
         void processIncomingThreadsMsgs(); //invoked by clock handler
+
+        /**
+         * @param thread
+         * @return true if dest zap/hart filled, false otherwise
+         */
+        bool selectDestHart(zopEvent *thread);
 
 
 
