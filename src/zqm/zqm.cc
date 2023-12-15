@@ -110,7 +110,45 @@ void ZQM::handleIncomingZOP(SST::Event *event) {
     }
 }
 
+// TODO: Just do the find?  When inserting, want a null table (which
+// wouldn't return since it would throw the fatal error)
+ZqmAidStateTableRow* ZQM::getAidStateTableRow(SST::Forza::zopEvent *zop)
+{
+    auto iter = aid_state_table.find(zop->getAppID());
+    if (iter != aid_state_table.end())
+	return iter.second;
+    output.fatal(CALL_INFO, 1, "Received a zop with an unfound AID; AID=%u\n", aid);
+    return nullptr;
+}
+
 // TODO: UPDATE THIS!
+void ZQM::sendThreadToRza(SST::Forza::zopEvent *thread)
+{
+    /** Have to convert thread to a memory zop; basically want to convert the entire
+      * thread into the ZOP payload
+      */
+
+    // Let's start by getting the state buffer entry
+    ZqmAidStateTableRow *aid_state = getAidStateTableRow(thread);
+
+    // Going to need to get an address to write
+    // TODO: write a function to get these addresses
+    // TODO: Within that function, update the write pointer to account for packet length
+    // 
+
+    // Create a new Zop (Store DMA type)
+
+    // Fill in Zop src/dest info
+
+    // Copy ENTIRE thread (header and payload) into ZOP
+
+    // Send Zop
+
+    // Delete thread
+
+}
+
+#if 0 // function has been removed, but keep around as example for now
 void ZQM::sendMsgToRZA(uint64_t addr, uint8_t msg_id) {
     output.verbose(CALL_INFO, 1, 0, "Msg tgt %d, msg id %" PRIu8 "\n", addr, msg_id);
     std::vector<uint64_t> payload;
@@ -135,6 +173,7 @@ void ZQM::sendMsgToRZA(uint64_t addr, uint8_t msg_id) {
     output.verbose(CALL_INFO, 1, 0, "msg id  %" PRIu8 ", header %lu\n", rzaMsg->getID(), rzaMsg->getPacket()[0]);
     // TODO: Update with RZA id
 }
+#endif
 
 void ZQM::processRzaMsgs() {
     /**
@@ -182,8 +221,10 @@ void ZQM::processRzaMsgs() {
     }
 }
 
-void ZQM::sendThreadToZap(SST::Forza::zopEvent *thread, uint8_t dest_zap, uint16_t dest_hart)
+void ZQM::sendThreadToZap(SST::Forza::zopEvent *thread)
 {
+    uint8_t dest_zap = thread->getDestZCID();
+    uint16_t dest_hart = thread->getDestHart();
     if (zap_hart_status.at(dest_zap).at(dest_hart)){
         output.fatal(CALL_INFO, 1, "TMIG Dest already occupied; ZAP=%u, HART=%u\n",
                      (uint32_t) zap, (uint32_t) hart);
@@ -253,13 +294,13 @@ void ZQM::processIncomingThreadsMsgs()
 {
     for (auto &thread : incoming_threads_vec){
         if (thread->getOpcode() == zopOpc::Z_TMIG_FIXED){
-            // Always assumed to have the hart available
-            sendThreadToZap(thread, thread->getDestZCID(), thread->getDestHart());
+            // Always assumed to have the hart available, but the sendThreadToZap checks
+            sendThreadToZap(thread);
         } else if (thread->getOpcode() == zopOpc::Z_TMIG_SELECT){
             if (selectDestHart(thread)){
                 sendThreadToZap(thread);
             } else {
-                //TODO: Send Thread to Memory
+                sendThreadToRza(thread);
             }
         }
     }
@@ -269,10 +310,44 @@ void ZQM::processIncomingThreadsMsgs()
 bool ZQM::selectDestHart(SST::Forza::zopEvent *thread)
 {
     // These should generally be migrating thread code...try to balance use of ZAPs...
-    // Want to keep the logic sane so we can actually do it in verilog
+    // Want to keep the logic sane so we can actually do it in verilog...however, we'll do the
+    // optimal choice for now (for a given AID)
 
-    // TODO: Do I want any other values/structures to help track which ZAP should be
-    // filled next...probably not.
+    ZqmAidStateTableRow *aid_state = getAidStateTableRow(thread);
+    std::vector<uint32_t> num_free_harts(zap_hart_status.size(), 0);
+
+    // Number of free harts per zap for this AID
+    for (int i = 0; i < zap_hart_status.size(); i++){
+	for (int j = aid_state->min_zap_hart; j <= aid_state->max_zap_hart; j++)
+	    num_free_harts[i] += (zap_hart_status[i][j]) ? 0 : 1;
+    }
+
+    // Check if all zaps are fully occupied/find lowest occupancy
+    // There's probably a more c++-ish way of doing this
+    uint16_t max_free_harts = 0;
+    int max_zap = -1;
+    for (int i = 0; i < num_occupied_harts.size(); i++){
+	if (max_free_harts < num_free_harts[i]){
+	    max_free_harts = num_free_harts[i];
+	    max_zap = i;
+	}
+    }
+
+    // If nothing free, return false
+    if (max_zap == -1)
+	return false;
+
+    // Set destination HART to first available hart in zap we just found
+    for (int i = zap_hart_status[max_zap][aid_state->min_zap_hart];
+	 i <= zap_hart_status[max_zap][aid_state->max_zap_hart];
+	 i++){
+	if (!zap_hart_status[max_zap][i]){
+	    thread->setDestACID(max_zap);
+	    thread->setDestHart(i);
+	    thread->setOpc(zopOpc::Z_TMIG_FIXED);
+	}
+    }
+    return true;
 }
 
 bool ZQM::clock(Cycle_t cycle)

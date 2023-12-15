@@ -114,15 +114,18 @@ namespace SST::Forza{
          * @param addr
          * @param msg_id
          */
-        void sendMsgToRZA(uint64_t addr, uint8_t msg_id); //invoked by clock handler
+        void sendThreadToRza(SST::Forza::zopEvent *thread); // TODO: Invoke via clock handler?
 
-
+	/**
+	 *  TODO: WRITE ME!
+	 */
+	void getThreadFromRza();
 
         /**
          * Do what the function says - prep and send a thread to a ZAP
          * // TODO: I may want to discard this function
          */
-        void sendThreadToZap(SST::Forza::zopEvent *thread, uint8_t dest_zap, uint16_t dest_hart);
+        void sendThreadToZap(SST::Forza::zopEvent *thread);
 
 
     private:
@@ -156,9 +159,10 @@ namespace SST::Forza{
          * @param thread
          * @return true if dest zap/hart filled, false otherwise
          */
-        bool selectDestHart(zopEvent *thread);
+        bool selectDestHart(SST::Forza::zopEvent *thread);
 
-
+	ZqmAidStateTableRow* getAidStateTableRow(SST::Forza::zopEvent *zop);
+	
 
         // private data members
         SST::Output output;             ///< ZQM: SST output handler
@@ -166,7 +170,7 @@ namespace SST::Forza{
 
         // Setup reqs and table for them
         std::vector<SST::Forza::zopEvent*> setup_reqs;
-        std::map<uint32_t, ZqmAidStateTableRow> aid_state_table;
+        std::map<uint32_t, ZqmAidStateTableRow> aid_state_table; //TODO: Pointers to Rows?
 
         // MZop ACKs and tracking table for in-flight mem ops...will
         // have to do both reads and writes to memory...
@@ -175,11 +179,6 @@ namespace SST::Forza{
 
         // Incoming threads
         std::vector<SST::Forza::zopEvent*> incoming_threads_vec;
-
-        // Shouldn't need these fields
-        //std::map<uint64_t, std::vector<ZQMEntry*> > zqm_queue;
-        //std::map<uint64_t, std::vector<ZQMEntry*> > zone_queue;
-        //std::map<uint64_t, std::vector<ZQMEntry*> > precinct_queue;
 
         // [num_zaps][num_harts]
         std::vector<std::vector<bool>> zap_hart_status;
