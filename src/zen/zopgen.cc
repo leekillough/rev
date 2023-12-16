@@ -115,7 +115,7 @@ void ZOPGen::sendLoadToRZA(uint64_t addr, uint64_t size) {
   rzaMsg->setSrcPrec(0);
   // TODO: Update with RZA id
   rzaMsg->setDestHart(3);
-  payload.push_back(addr);
+  payload.push_back(addr-size+1);
   payload.push_back(size);
   rzaMsg->setPayload(payload);
   rzaMsg->encodeEvent();
@@ -218,7 +218,7 @@ void ZOPGen::sendSetupToZOPGen() {
   zopgenMsg->setDestHart(1);
   payload.push_back(100);
   payload.push_back(1000);
-  payload.push_back(2);
+  payload.push_back(20);
   payload.push_back(100);
   zopgenMsg->setPayload(payload);
   output.verbose(CALL_INFO, 1, 0, "Msg send src %d\n", zopgenMsg->getSrcHart());
@@ -245,7 +245,7 @@ void ZOPGen::sendMsgToZOPGen(int i) {
     zopgenMsg->setDestHart(1);
   else
     zopgenMsg->setDestHart(0);
-  payload.push_back(i);
+  payload.push_back(100+i);
   payload.push_back(10);
   zopgenMsg->setPayload(payload);
   zopgenMsg->encodeEvent();
@@ -268,7 +268,7 @@ bool ZOPGen::clock(Cycle_t cycle){
     setup_done = true;
   }
   if (!all_sent && int_id == 0 && sent) {
-    for (int i = 0; i < 2; ++i) {
+    for (int i = 0; i < 1; ++i) {
       output.verbose(CALL_INFO, 1, 0, "Msg send %d\n", cycle);
       sendMsgToZOPGen(i);
     }

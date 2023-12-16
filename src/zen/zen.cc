@@ -6,6 +6,8 @@
 #include "zen.h"
 #include "ZOPNet.h"
 
+#define DW_OFFSET 1
+
 using namespace SST::Forza;
 
 ZEN::ZEN(ComponentId_t id, Params& params)
@@ -134,13 +136,13 @@ void ZEN::handleIncomingZOP(SST::Event *event) {
   }
 }
 
-void ZEN::sendMsgToRZA(uint64_t acs, uint64_t addr, std::vector<uint64_t> src_payload, uint8_t msg_id, uint64_t hart_id, uint64_t queue_loc) {
+void ZEN::sendMsgToRZADMA(uint64_t acs, uint64_t addr, std::vector<uint64_t> src_payload, uint8_t msg_id, uint64_t hart_id, uint64_t queue_loc) {
   output.verbose(CALL_INFO, 1, 0, "Msg tgt %d, msg id %" PRIu8 "\n", addr, msg_id);
   std::vector<uint64_t> payload;
   SST::Forza::zopEvent *rzaMsg = new SST::Forza::zopEvent();
   rzaMsg->setType(SST::Forza::zopMsgT::Z_MZOP);
   rzaMsg->setID(msg_id);
-  rzaMsg->setOpc(SST::Forza::zopOpc::Z_MZOP_SD);
+  rzaMsg->setOpc(SST::Forza::zopOpc::Z_MZOP_SDMA);
   rzaMsg->setSrcHart((uint16_t)zopCompID::Z_ZEN);
   rzaMsg->setSrcZCID((uint8_t)zopCompID::Z_ZEN);
   rzaMsg->setSrcPCID(m_zop_iface->getZoneID());
@@ -154,9 +156,6 @@ void ZEN::sendMsgToRZA(uint64_t acs, uint64_t addr, std::vector<uint64_t> src_pa
   rzaMsg->setPayload(payload);
   rzaMsg->encodeEvent();
   m_zop_iface->send(rzaMsg, zopCompID::Z_RZA);
-  output.verbose(CALL_INFO, 1, 0, "msg id  %" PRIu8 ", header %lu\n", rzaMsg->getID(), rzaMsg->getPacket()[0]);
-  rzaMsg->decodeEvent();
-  output.verbose(CALL_INFO, 1, 0, "msg id  %" PRIu8 ", header %lu\n", rzaMsg->getID(), rzaMsg->getPacket()[0]);
 }
 
 void ZEN::sendHZOPToRZA(uint64_t acs, uint64_t addr, uint64_t src_addr, uint64_t size, uint8_t cur_msg_id, uint64_t hart_id, uint64_t queue_loc) {
@@ -169,8 +168,9 @@ void ZEN::sendHZOPToRZA(uint64_t acs, uint64_t addr, uint64_t src_addr, uint64_t
   payload.push_back(addr);
   payload.push_back(size);
   SST::Forza::zopEvent *rzaMsg = new SST::Forza::zopEvent();
-  rzaMsg->setType(SST::Forza::zopMsgT::Z_MZOP);
+  rzaMsg->setType(SST::Forza::zopMsgT::Z_HZOPV);
   rzaMsg->setID(cur_msg_id);
+  // TODO: Update with HZOP for memcpy
   rzaMsg->setOpc(SST::Forza::zopOpc::Z_MZOP_SD);
   rzaMsg->setSrcHart((uint16_t)zopCompID::Z_ZEN);
   rzaMsg->setSrcZCID((uint8_t)zopCompID::Z_ZEN);
@@ -199,7 +199,7 @@ void ZEN::sendMsgToRZANonDMA(uint64_t acs, uint64_t addr, uint64_t src_payload, 
   rzaMsg->setSrcZCID((uint8_t)zopCompID::Z_ZEN);
   rzaMsg->setSrcPCID(m_zop_iface->getZoneID());
   rzaMsg->setSrcPrec(m_zop_iface->getPrecinctID());
-  // TODO: Update with RZA id
+  // Likely to be used later for extended msg ids
   rzaMsg->setDestHart(3);
   rzaMsg->setPayload(payload);
   rzaMsg->encodeEvent();
@@ -294,7 +294,7 @@ void ZEN::handleIncomingRZAMsg() {
   uint64_t cur_processed = 0;
   for (int i = 0; i < mem_acks.size(); ++i) {
     uint8_t inc_msg_id = mem_acks[i]->getID();
-    output.verbose(CALL_INFO, 1, 0, "progress status msg_id %lu\n", inc_msg_id);
+    //output.verbose(CALL_INFO, 1, 0, "progress status msg_id %lu\n", inc_msg_id);
     if (outstanding_mem_req.count(inc_msg_id)) {
       uint64_t hart_id = outstanding_mem_req[inc_msg_id].first;
       uint64_t queue_loc = outstanding_mem_req[inc_msg_id].second;
@@ -306,7 +306,7 @@ void ZEN::handleIncomingRZAMsg() {
         zen_queue[hart_id][queue_loc]->msg_ids.erase(it);
         output.verbose(CALL_INFO, 1, 0, "progress status msg_id erased to size\n", zen_queue[hart_id][queue_loc]->msg_ids.size());
       } else {
-        output.verbose(CALL_INFO, 1, 0, "progress status msg_id %lu not found\n", inc_msg_id);
+        //output.verbose(CALL_INFO, 1, 0, "progress status msg_id %lu not found\n", inc_msg_id);
         continue;
       }
       msg_id[inc_msg_id] = false;
@@ -578,27 +578,25 @@ void ZEN::prepSendRZAStore() {
         bool success = true;
         uint64_t rza_addr = zen_queue[harts][i]->rza_start_addr;
         std::vector<uint64_t> payload = zen_queue[harts][i]->msg->getPayload();
-        if (dma_enabled == 1) {
-          // TODO: Fix msg id
-
+        if (dma_enabled) {
           uint64_t next_msg_id = findFirstUnsetBit(msg_id);
           if (next_msg_id > 256) {
             break;
           }
           msg_id[next_msg_id] = true;
-          sendMsgToRZA(getWriteACS(hart_tables[harts]->acs_pair), rza_addr, payload, next_msg_id, harts, i);
+          sendMsgToRZADMA(getWriteACS(hart_tables[harts]->acs_pair), rza_addr, payload, next_msg_id, harts, i);
           zen_queue[harts][i]->tail = rza_addr;
           outstanding_mem_req[next_msg_id] = std::make_pair(harts, i);
           zen_queue[harts][i]->msg_ids.push_back(next_msg_id);
           zen_queue[harts][i]->status = MZOP_SENT;
         } else {
           std::vector<uint8_t> avail_msg_id;
-          for (int i = 0; i < payload.size(); ++i) {
+          for (int j = 0; j < payload.size(); ++j) {
             uint64_t next_msg_id = findFirstUnsetBit(msg_id);
             output.verbose(CALL_INFO, 1, 0, "Free msg_id %lu\n", next_msg_id);
             if (next_msg_id > 256) {
-              for (int j = 0; j < avail_msg_id.size(); ++j) {
-                msg_id[avail_msg_id[j]] = false;
+              for (int k = 0; j < avail_msg_id.size(); ++k) {
+                msg_id[avail_msg_id[k]] = false;
               }
               success = false;
               break;
@@ -607,12 +605,12 @@ void ZEN::prepSendRZAStore() {
             avail_msg_id.push_back(static_cast<uint8_t>(next_msg_id));
           }
           if (success) {
-            for (int i = 0; i < payload.size(); ++i) {
-              sendMsgToRZANonDMA(getWriteACS(hart_tables[harts]->acs_pair), rza_addr, payload[i], avail_msg_id[i],  harts, i);
+            for (int j = 0; j < payload.size(); ++j) {
+              sendMsgToRZANonDMA(getWriteACS(hart_tables[harts]->acs_pair), rza_addr, payload[j], avail_msg_id[j],  harts, i);
               zen_queue[harts][i]->tail = rza_addr;
-              outstanding_mem_req[avail_msg_id[i]] = std::make_pair(harts, i);
-              zen_queue[harts][i]->msg_ids.push_back(avail_msg_id[i]);
-              rza_addr += 1; // This assumes address at 64 byte offsets, multiply by 64
+              outstanding_mem_req[avail_msg_id[j]] = std::make_pair(harts, i);
+              zen_queue[harts][i]->msg_ids.push_back(avail_msg_id[j]);
+              rza_addr += DW_OFFSET; // This assumes address at 64 byte offsets, multiply by 64
               if (rza_addr > hart_tables[harts]->mem_tail) {
                 rza_addr = hart_tables[harts]->mem_head;
               }

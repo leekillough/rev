@@ -97,7 +97,7 @@ namespace SST::Forza{
     void setup() override;
     void complete(unsigned int phase) override;
     void finish() override;
-    void sendMsgToRZA(uint64_t acs, uint64_t addr, std::vector<uint64_t> src_payload, uint8_t msg_id, uint64_t hart_id, uint64_t queue_loc);
+    void sendMsgToRZADMA(uint64_t acs, uint64_t addr, std::vector<uint64_t> src_payload, uint8_t msg_id, uint64_t hart_id, uint64_t queue_loc);
     void sendMsgToRZANonDMA(uint64_t acs, uint64_t addr, uint64_t src_payload, uint8_t cur_msg_id, uint64_t hart_id, uint64_t queue_loc);
     void sendMsgToScratchpad(uint64_t dest, uint64_t zcid, uint64_t scratch_addr, uint64_t size, uint64_t addr);
     void processEgressQueue();
