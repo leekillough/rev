@@ -39,10 +39,10 @@
 #include "RevMemCtrl.h"
 #include "RevTracer.h"
 #include "RevRand.h"
+#include "RevMemSegment.h"
 #include "../common/include/RevCommon.h"
 
 // -- FORZA Headers
-#include "RevScratchpad.h"
 #include "ZOPNET.h"
 
 #ifndef _REVMEM_BASE_
@@ -51,6 +51,7 @@
 
 #define _STACK_SIZE_ (size_t{1024*1024})
 
+// forward declare RevCPU
 namespace SST::RevCPU{
 
 class RevMem{
@@ -65,51 +66,6 @@ public:
   ~RevMem(){
     delete[] physMem;
   }
-
-  /* Virtual Memory Blocks  */
-  class MemSegment {
-  public:
-    MemSegment(uint64_t baseAddr, uint64_t size)
-      : BaseAddr(baseAddr), Size(size) {
-      TopAddr = baseAddr + size;
-    }
-
-    uint64_t getTopAddr() const { return BaseAddr + Size; }
-    uint64_t getBaseAddr() const { return BaseAddr; }
-    uint64_t getSize() const { return Size; }
-
-    void setBaseAddr(uint64_t baseAddr) {
-      BaseAddr = baseAddr;
-      if( Size ){
-        TopAddr = Size + BaseAddr;
-      }
-    }
-
-    void setSize(uint64_t size) { Size = size; TopAddr = BaseAddr + size; }
-
-    /// MemSegment: Check if vAddr is included in this segment
-    bool contains(const uint64_t& vAddr){
-      return (vAddr >= BaseAddr && vAddr < TopAddr);
-    };
-
-    // Check if a given range is inside a segment
-    bool contains(const uint64_t& vBaseAddr, const uint64_t& Size){
-      // exclusive top address
-      uint64_t vTopAddr = vBaseAddr + Size - 1;
-      return (this->contains(vBaseAddr) && this->contains(vTopAddr));
-    };
-
-
-    // Override for easy std::cout << *Seg << std::endl;
-    friend std::ostream& operator<<(std::ostream& os, const MemSegment& Seg) {
-      return os << " | BaseAddr:  0x" << std::hex << Seg.getBaseAddr() << " | TopAddr: 0x" << std::hex << Seg.getTopAddr() << " | Size: " << std::dec << Seg.getSize() << " Bytes";
-    }
-
-  private:
-    uint64_t BaseAddr;
-    uint64_t Size;
-    uint64_t TopAddr;
-  };
 
   /// RevMem: determine if there are any outstanding requests
   bool outstandingRqsts();
@@ -158,6 +114,9 @@ public:
   bool ReadMem( unsigned Hart, uint64_t Addr, size_t Len, void *Target,
                 const MemReq& req,
                 RevFlag flags);
+
+  /// RevMem: Add an instance of a predefined CustomMemSeg (See function def for more info)
+  void AddCustomMemSeg(std::string Name, RevCPU* CPU, uint64_t BaseAddr, size_t Size, SST::Output *Output);
 
   /// RevMem: DEPRECATED: read data from the target memory location
   [[deprecated("Simple RevMem interfaces have been deprecated")]]
@@ -279,6 +238,9 @@ public:
 
   ///< RevMem: Get FreeMemSegs vector
   std::vector<std::shared_ptr<MemSegment>>& GetFreeMemSegs(){ return FreeMemSegs; }
+
+  ///< RevMem: Get FreeMemSegs vector
+  std::vector<std::shared_ptr<RevCustomMemSegment>>& GetCustomMemSegs(){ return CustomMemSegs; }
 
   /// RevMem: Add new MemSegment (anywhere) --- Returns BaseAddr of segment
   uint64_t AddMemSeg(const uint64_t& SegSize);
@@ -436,14 +398,13 @@ private:
   RevMemCtrl *ctrl;             ///< RevMem: memory controller object
   SST::Output *output;          ///< RevMem: output handler
 
-  std::shared_ptr<RevScratchpad> scratchpad; ///< FORZA: Scratchpad
   Forza::zopAPI *zNic;          ///< RevMem: FORZA ZOP NIC
   bool isRZA;                   ///< RevMem: FORZA RZA flag; true if this device is an RZA
-
 
   std::vector<std::shared_ptr<MemSegment>> MemSegs;       // Currently Allocated MemSegs
   std::vector<std::shared_ptr<MemSegment>> FreeMemSegs;   // MemSegs that have been unallocated
   std::vector<std::shared_ptr<MemSegment>> ThreadMemSegs; // For each RevThread there is a corresponding MemSeg that contains TLS & Stack
+  std::vector<std::shared_ptr<RevCustomMemSegment>> CustomMemSegs; ///< RevMem: Memory Segments added via the python config file
 
   uint64_t TLSBaseAddr;                                   ///< RevMem: TLS Base Address
   uint64_t TLSSize = sizeof(uint32_t);                    ///< RevMem: TLS Size (minimum size is enough to write the TID)
@@ -478,6 +439,8 @@ private:
 
   // -- FORZA
   std::map<uint64_t,Forza::zopEvent *> ZRqst; ///< RevMem: zop request address map
+
+
 
 }; // class RevMem
 

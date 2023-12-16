@@ -16,8 +16,6 @@
 
 namespace SST::RevCPU{
 
-using MemSegment = RevMem::MemSegment;
-
 const char splash_msg[] = "\
 \n\
 *******                   \n\
@@ -169,7 +167,51 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params )
   }
 
   // FORZA: initialize scratchpad
-  Mem->InitScratchpad(id, _SCRATCHPAD_SIZE_, _CHUNK_SIZE_);
+  // Mem->InitScratchpad(id, _SCRATCHPAD_SIZE_, _CHUNK_SIZE_);
+
+  // See if there are any memory segments to create
+  std::vector<std::string> customMemSegs;
+  params.find_array("customMemSegs", customMemSegs);
+
+  // Only proceed with custom memory segments if the name is not empty
+  if( !customMemSegs.empty() ){
+    // Create the CustomMemSeg Object
+
+    for( const auto& segName: customMemSegs ){
+      // Build the scoped parameter names
+      std::string segSizeParamName = segName + ".size";
+      std::string segBaseAddrParamName = segName + ".baseAddr";
+      // Retrieve the scoped parameters
+      size_t segSize = params.find<uint64_t>(segSizeParamName, 0);
+      uint64_t segBaseAddr = params.find<size_t>(segBaseAddrParamName, 0);
+
+      // Make sure we found them
+      if( !segSize ){
+        // We couldn't find the size/baseAddr for segments, throw error
+        output.fatal(CALL_INFO, -1,
+                     "Custom memory segment '%s' was found with an invalid size "
+                     "or none at all: [%zu Bytes]. \n\nPlease specify the segment size "
+                     "as a scoped parameter prefixed by the name of the custom segment "
+                     "you previously specified (ex. \"%s.size\")\n\n",
+                     segName.c_str(), segSize, segName.c_str());
+      }
+      // Make sure we found them
+      if( !segBaseAddr ){
+        // We couldn't find the size/baseAddr for segments, throw error
+        output.fatal(CALL_INFO, -1,
+                    "Custom memory segment '%s' was found starting at an invalid "
+                    "base address or none at all: [0x%" PRIx64 "]. \n\nPlease specify "
+                    "the base address of the segment as a scoped parameter "
+                    "prefixed by the name of the corresponding segment (ex. \"%s.baseAddr\")\n\n",
+                    segName.c_str(), segBaseAddr, segName.c_str());
+      }
+      Mem->AddCustomMemSeg(segName, this, segBaseAddr, segSize, &output);
+    }
+  }
+  for( auto Seg : Mem->GetCustomMemSegs() ){
+    std::cout << "==> Segment: " << Seg << std::endl;
+  }
+
 
   // FORZA: initialize the network
   // setup the FORZA NoC NIC endpoint for the Zone

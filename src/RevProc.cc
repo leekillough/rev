@@ -13,7 +13,6 @@
 #include "sst/core/output.h"
 
 using namespace SST::RevCPU;
-using MemSegment = RevMem::MemSegment;
 
 RevProc::RevProc( unsigned Id,
                   RevOpts *Opts,

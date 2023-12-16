@@ -12,6 +12,7 @@
 #define _SST_REVCPU_REVSCRATCHPAD_H_
 
 
+#include "RevMemSegment.h"
 #include "SST.h"
 #include "../common/include/RevCommon.h"
 #include <bitset>
@@ -21,26 +22,77 @@
 #define _SCRATCHPAD_SIZE_ (_CHUNK_SIZE_*1024)
 #define _SCRATCHPAD_BASE_ 0x0300000000000000
 
-
 namespace SST::RevCPU{
 
-class RevScratchpad {
+class RevScratchpad : public RevCustomMemSegment {
 public:
-  RevScratchpad(const unsigned ZapNum, size_t Size, size_t ChunkSize, SST::Output *Output)
-  : ZapNum(ZapNum), Size(Size), ChunkSize(ChunkSize), output(Output) {
-    // Create the byte array
-    // TODO: Verify this is correct
-    BaseAddr += ZapNum * Size;
-    BackingMem  = new char [Size]{};
+  RevScratchpad(RevCPU* CPU, uint64_t baseAddr, size_t Size, SST::Output *Output)
+  : RevCustomMemSegment(CPU, baseAddr, Size, "scratchpad", Output),
+    BaseAddr(_SCRATCHPAD_BASE_ + ZapNum * Size), Size(Size), ChunkSize(ChunkSize), TopAddr(BaseAddr + Size - 1), ZapNum(ZapNum) {
     FreeList.set();
-    TopAddr = BaseAddr + Size - 1;
   }
 
-  uint64_t GetBaseAddr() const { return BaseAddr; }
-  uint64_t GetTopAddr() const { return TopAddr; }
-  size_t GetSize() const { return Size; }
+  // Implement the pure virtual functions from CustomMemSegment
+  virtual void ReadMem(unsigned Hart, uint64_t Addr, size_t Len, void* Target, const MemReq& req, RevFlag flags) override {
+      // Figure out what chunk we're in
+  size_t BaseChunkNum = (Addr - BaseAddr) / ChunkSize;
+  size_t TopChunkNum = (Addr + Len - BaseAddr) / ChunkSize;
 
-  uint64_t Alloc(size_t SizeRequested){
+  output->verbose(CALL_INFO, 8, 0, "Scratchpad Read: Addr = 0x%" PRIx64 ", Len = %zu, BaseChunkNum = %zu, TopChunkNum = %zu\n", Addr, Len, BaseChunkNum, TopChunkNum);
+
+  // Figure out the bounds of this read request... Need to make sure that all chunks involved in the read are allocated
+  // FIXME: Also test the chunks in between
+  if( FreeList.test(BaseChunkNum) || FreeList.test(TopChunkNum) ){
+    output->fatal(CALL_INFO, 11, "Error: Hart %" PRIu32 " is attempting to read from unallocated memory"
+                                 " in the scratchpad (Addr = 0x %" PRIx64 ", Len = %zu)\n", Hart, Addr, Len);
+  }
+
+  // Check if the read will go beyond end of scratchpad space
+  if( Addr + Len > TopAddr ){
+    output->fatal(CALL_INFO, 11, "Error: Hart %" PRIu32 " is attempting to read beyond the highest address "
+                                 "in the scratchpad (Addr = 0x %" PRIx64 ", Size = %zu)\n"
+                                 "While this scratchpad starts at 0x%" PRIx64 " and ends at 0x%" PRIx64 "\n",
+                                 Hart, Addr, Len, BaseAddr, TopAddr);
+  }
+
+  // Perform the read
+  std::memcpy(Target, &BackingMem[Addr - BaseAddr], Len);
+
+  // TODO: Add scratchpad stats --- memStats.bytesRead += Len;
+
+  // clear the hazard
+  req.MarkLoadComplete();
+    return;
+}
+
+
+  virtual void WriteMem(unsigned Hart, uint64_t Addr, size_t Len, const void *Data, RevFlag flags) override {
+    // Figure out what chunk(s) we're writing to
+    size_t BaseChunkNum = (Addr - BaseAddr) / ChunkSize;
+    size_t TopChunkNum = (Addr + Len - BaseAddr) / ChunkSize;
+
+    output->verbose(CALL_INFO, 8, 0, "Scratchpad Write: Addr = 0x%" PRIx64 ", Len = %zu, BaseChunkNum = %zu, TopChunkNum = %zu\n", Addr, Len, BaseChunkNum, TopChunkNum);
+
+    // Figure out the bounds of this read request... Need to make sure that all chunks involved in the read are allocated
+    for( size_t i=BaseChunkNum; i<=TopChunkNum; i++ ){
+      if( FreeList.test(i) ){
+        output->fatal(CALL_INFO, 11, "Error: Hart %" PRIu32 " is attempting to write to unallocated memory"
+                                    " in the scratchpad (Addr = 0x %" PRIx64 ", Len = %zu)\n", Hart, Addr, Len);
+      }
+    }
+
+    // write the memory to the BackingStore
+    std::memcpy(&BackingMem[Addr - BaseAddr], Data, Len);
+  }
+
+  // Override the Init function
+  virtual void Initialize() override {
+    // TODO: Implement initialization based on baseAddr, size
+
+  }
+
+  // Override the allocation logic
+  virtual uint64_t Alloc(const unsigned Hart, const size_t SizeRequested) override {
     // Make sure we have enough space
     if( SizeRequested > Size ){
       output->verbose(CALL_INFO, 11, 0, "Error: Requested allocation size %zu is larger than the scratchpad size %zu\n", SizeRequested, Size);
@@ -100,35 +152,21 @@ public:
   return FreeList.size(); // special value indicating "not found"
 }
 
-bool Contains(uint64_t Addr){
-    return (Addr >= BaseAddr && Addr < BaseAddr + Size);
-}
-
-/// RevScratchpad: Attempts to allocate numBytes in the scratchpad
-uint64_t ScratchpadAlloc(size_t numBytes);
-
-/// RevScratchpad: Attempts to allocate numBytes in the scratchpad
-bool ReadMem(unsigned Hart, uint64_t Addr, size_t Len, void *Target, const MemReq& req); //Interfaces::StandardMem::Request::flags_t flags);
-
-/// RevScratchpad: Attempts to allocate numBytes in the scratchpad
-bool WriteMem( unsigned Hart, uint64_t Addr, size_t Len, const void *Data); // Interfaces::StandardMem::Request::flags_t flags);
-
-~RevScratchpad(){
-  delete[] BackingMem;
-}
 
 private:
+  // TODO: Figure out how inheritance works (ie. if we need baseAddr, size)
+  uint64_t BaseAddr; ///< Base address of the scratchpad
+  size_t Size; ///< Size of the scratchpad
+  uint64_t ChunkSize; ///< Base address of the scratchpad
+  uint64_t TopAddr;  ///< Top address of the scratchpad
+// SST::Output *output; ///< Output stream
   unsigned ZapNum;
-  size_t Size;
-  size_t ChunkSize;
   std::bitset<_SCRATCHPAD_SIZE_/_CHUNK_SIZE_> FreeList;
   char *BackingMem = nullptr;                           ///< RevMem: Scratchpad memory container for FORZA
-  uint64_t BaseAddr = _SCRATCHPAD_BASE_;               ///< RevMem: Base address of the scratchpad
-  uint64_t TopAddr;               ///< RevScratchpad: Base address of the scratchpad
-  SST::Output *output; ///< RevScratchpad: Output stream
 };
-}
+
+};
 
 #endif
 
-// EOF
+
