@@ -543,6 +543,9 @@ uint64_t RevMem::AllocMemAt(const uint64_t& BaseAddr, const uint64_t& SegSize){
 bool RevMem::FenceMem(unsigned Hart){
   if( ctrl ){
     return ctrl->sendFENCE(Hart);
+  }else if( zNic && !isRZA ){
+    // generate a Fence packet
+    return __ZOP_FENCEHart(Hart);
   }
   return true;  // base RevMem support does nothing here
 }
@@ -1309,13 +1312,11 @@ bool RevMem::ZOP_READMem(unsigned Hart, uint64_t Addr, size_t Len,
 bool RevMem::ZOP_WRITEMem(unsigned Hart, uint64_t Addr, size_t Len,
                           void *Data,
                           RevFlag flags){
-#ifdef _REV_DEBUG_
+//#ifdef _REV_DEBUG_
   std::cout << "ZOP_WRITE request of " << Len << " Bytes Starting at 0x"
             << std::hex << Addr << std::dec
-            << " will be broken into ~" << (((unsigned)(Len)/8) + (Len%8>0))
-            << " individual ZOP requests"
             << std::endl;
-#endif
+//#endif
 
   // check to see if this is a write request of <= 8 bytes
   if( Len <= 8 ){
@@ -1367,10 +1368,10 @@ bool RevMem::ZOP_WRITEMem(unsigned Hart, uint64_t Addr, size_t Len,
 bool RevMem::__ZOP_WRITEMemLarge(unsigned Hart, uint64_t Addr, size_t Len,
                                     void *Data,
                                     RevFlag flags){
-#ifdef _REV_DEBUG_
-  std::cout << "ZOP_WRITE of " << Len << " Bytes Starting at 0x"
+//#ifdef _REV_DEBUG_
+  std::cout << "ZOP_WRITE_LARGE of " << Len << " Bytes Starting at 0x"
             << std::hex << Addr << std::dec << std::endl;
-#endif
+//#endif
   if( Len < Z_MZOP_DMA_MAX ){
     if( (Len%8) == 0 ){
       // aligned to a FLIT
@@ -1421,10 +1422,10 @@ bool RevMem::__ZOP_WRITEMemLarge(unsigned Hart, uint64_t Addr, size_t Len,
 bool RevMem::__ZOP_WRITEMemBase(unsigned Hart, uint64_t Addr, size_t Len,
                                 void *Data, RevFlag flags,
                                 SST::Forza::zopOpc opc ){
-#ifdef _REV_DEBUG_
+//#ifdef _REV_DEBUG_
   std::cout << "ZOP_WRITE of " << Len << " Bytes Starting at 0x"
             << std::hex << Addr << std::dec << std::endl;
-#endif
+//#endif
 
   // create a new event
   SST::Forza::zopEvent *zev = new SST::Forza::zopEvent();
@@ -1452,7 +1453,39 @@ bool RevMem::__ZOP_WRITEMemBase(unsigned Hart, uint64_t Addr, size_t Len,
   std::vector<uint64_t> payload;
   payload.push_back(0x00ull);   //  ACS: FIXME
   payload.push_back(Addr);      //  address
-  payload.push_back(*(static_cast<uint64_t *>(Data)));
+
+  // build the payload
+  if( Len == 1 ){
+    // standard write
+    uint8_t *Tmp = reinterpret_cast<uint8_t *>(Data);
+    payload.push_back((uint64_t)(Tmp[0]));
+  }else if( Len == 2 ){
+    uint16_t *Tmp = reinterpret_cast<uint16_t *>(Data);
+    payload.push_back((uint64_t)(Tmp[0]));
+  }else if( Len == 4 ){
+    uint32_t *Tmp = reinterpret_cast<uint32_t *>(Data);
+    payload.push_back((uint64_t)(Tmp[0]));
+  }else if( Len == 8 ){
+    uint64_t *Tmp = reinterpret_cast<uint64_t *>(Data);
+    payload.push_back(Tmp[0]);
+  }else{
+    // large write
+    uint64_t *Tmp = reinterpret_cast<uint64_t *>(Data);
+    std::cout << "Payload @ 0x" << std::hex << Addr << std::dec << std::endl;
+    for( unsigned i=0; i<(Len/8); i++ ){
+      std::cout << "TmpPayload @ 0x " << std::hex << Tmp << std::dec
+                << " = 0x" << std::hex << Tmp[0] << std::endl;
+      payload.push_back(Tmp[0]);
+      Tmp += 1ull;
+    }
+    // print and igbore the ACS and Address
+    for( unsigned i=2; i<payload.size(); i++ ){
+      std::cout << "Payload[" << i << "] = @Addr= 0x"
+                << std::hex << Addr + ((i-2)*8) << std::dec << " = "
+                << std::hex << payload[i] << std::dec << std::endl;
+    }
+  }
+
   zev->setPayload(payload);
 
   // inject the new packet
@@ -1461,6 +1494,38 @@ bool RevMem::__ZOP_WRITEMemBase(unsigned Hart, uint64_t Addr, size_t Len,
   return true;
 }
 
+bool RevMem::__ZOP_FENCEHart(unsigned Hart){
+#ifdef _REV_DEBUG_
+  std::cout << "ZOP_FENCE_HART" << std::endl;
+#endif
+
+  // create a new event
+  SST::Forza::zopEvent *zev = new SST::Forza::zopEvent();
+
+  // create a dummy MemReq
+  MemReq req{};
+
+  // set all the fields : FIXME
+  zev->setType(SST::Forza::zopMsgT::Z_FENCE);
+  zev->setNB(0);
+  zev->setID(Hart);   // -- we set this to the Hart temporarily.  The zNic will set the actual message ID
+  zev->setCredit(0);
+  zev->setOpc(SST::Forza::zopOpc::Z_FENCE_HART);
+  zev->setAppID(0);
+  zev->setDestHart(Z_MZOP_PIPE_HART);
+  zev->setDestZCID((uint8_t)(SST::Forza::zopCompID::Z_RZA));
+  zev->setDestPCID((uint8_t)(zNic->getPCID(zNic->getZoneID())));
+  zev->setDestPrec((uint8_t)(zNic->getPrecinctID()));
+  zev->setSrcHart(Hart);
+  zev->setSrcZCID((uint8_t)(zNic->getEndpointType()));
+  zev->setSrcPCID((uint8_t)(zNic->getPCID(zNic->getZoneID())));
+  zev->setSrcPrec((uint8_t)(zNic->getPrecinctID()));
+
+  // No Payload
+  zNic->send(zev, SST::Forza::zopCompID::Z_RZA);
+
+  return true;
+}
 
 // Handles an RZA response message
 // This specifically handles MZOP and HZOP responses

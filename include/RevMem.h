@@ -382,6 +382,9 @@ private:
                           void *Data, RevFlag flags,
                           SST::Forza::zopOpc opc );
 
+  /// FORZA: send a HART fence request
+  bool __ZOP_FENCEHart(unsigned Hart);
+
 protected:
   char *physMem = nullptr;                 ///< RevMem: memory container
 
