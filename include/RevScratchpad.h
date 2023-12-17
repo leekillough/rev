@@ -11,12 +11,12 @@
 #ifndef _SST_REVCPU_REVSCRATCHPAD_H_
 #define _SST_REVCPU_REVSCRATCHPAD_H_
 
-
+#include "RevCPU.h"
 #include "SST.h"
 #include "../common/include/RevCommon.h"
 #include <bitset>
 
-// FORZA: SCRATCHPAD
+// DEFAULT SCRATCHPAD INFO
 #define _CHUNK_SIZE_ 512
 #define _SCRATCHPAD_SIZE_ (_CHUNK_SIZE_*1024)
 #define _SCRATCHPAD_BASE_ 0x0300000000000000
@@ -58,13 +58,13 @@ public:
     } else {
       AllocedAt = BaseAddr + FirstChunk * ChunkSize;
       for (size_t i = FirstChunk; i < FirstChunk + numChunks; ++i) {
-        FreeList.set(i, false);
+        FreeList[i] = false;
       }
     }
     return AllocedAt;
   }
 
-  void Free(uint64_t Addr, size_t Size){
+  virtual void Dealloc(const unsigned Hart, const uint64_t Addr, const size_t Size) override {
     // Figure out what chunk we're starting at
     size_t BaseChunkNum = (Addr - BaseAddr) / ChunkSize;
     // Figure out how many chunks we need to free (round up)
@@ -78,16 +78,16 @@ public:
     // Free the chunks
     for (size_t i = BaseChunkNum; i < BaseChunkNum + numChunks; ++i){
       output->verbose(CALL_INFO, 4, 0, "Freeing chunk %zu which is at 0x%" PRIx64 "\n", i, BaseAddr + i * ChunkSize);
-      FreeList.set(i);
+      FreeList[i] = true;
     }
     return;
   }
 
   // Used to find N contiguous chunks that are free
-  size_t FindContiguousChunks(size_t numChunks){
+  size_t FindContiguousChunks(const size_t numChunks){
     size_t count = 0;
     for (size_t i = 0; i < FreeList.size(); ++i) {
-        if (FreeList.test(i)) {
+      if (FreeList[i]) {
         ++count;
         if (count == numChunks) {
           // return the index of the first bit of the n contiguous bits
@@ -127,6 +127,7 @@ private:
   uint64_t TopAddr;               ///< RevScratchpad: Base address of the scratchpad
   SST::Output *output; ///< RevScratchpad: Output stream
 };
+
 }
 
 #endif
