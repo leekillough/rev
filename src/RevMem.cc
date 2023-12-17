@@ -606,9 +606,10 @@ bool RevMem::WriteMem( unsigned Hart, uint64_t Addr, size_t Len, const void *Dat
   std::cout << "Writing " << Len << " Bytes Starting at 0x" << std::hex << Addr << std::dec << std::endl;
 #endif
 
-  for( const auto& CustomMemSeg : CustomMemSegs ){
-    if( CustomMemSeg->contains(Addr) ){
-      CustomMemSeg->WriteMem(Hart, Addr, Len, Data, flags);
+  for( const auto& [SegName, Seg] : CustomMemSegs ){
+    if( Seg->contains(Addr) ){
+      Seg->WriteMem(Hart, Addr, Len, Data, flags);
+      return true;
     }
   }
 
@@ -704,9 +705,10 @@ bool RevMem::WriteMem( unsigned Hart, uint64_t Addr, size_t Len, const void *Dat
   TRACE_MEM_WRITE(Addr, Len, Data);
 
 
-  for( const auto& CustomMemSeg : CustomMemSegs ){
-    if( CustomMemSeg->contains(Addr) ){
-      CustomMemSeg->WriteMem(Hart, Addr, Len, Data, RevFlag::F_NONE);
+  for( const auto& [SegName, Seg] : CustomMemSegs ){
+    if( Seg->contains(Addr) ){
+      Seg->WriteMem(Hart, Addr, Len, Data, RevFlag::F_NONE);
+      return true;
     }
   }
   if(Addr == 0xDEADBEEF){
@@ -855,9 +857,10 @@ bool RevMem::ReadMem(unsigned Hart, uint64_t Addr, size_t Len, void *Target,
 #ifdef _REV_DEBUG_
   std::cout << "NEW READMEM: Reading " << Len << " Bytes Starting at 0x" << std::hex << Addr << std::dec << std::endl;
 #endif
-  for( const auto& CustomMemSeg : CustomMemSegs ){
-    if( CustomMemSeg->contains(Addr) ){
-      CustomMemSeg->ReadMem(Hart, Addr, Len, Target, req, flags);
+  for( const auto& [Name, Seg] : CustomMemSegs ){
+    if( Seg->contains(Addr) ){
+      Seg->ReadMem(Hart, Addr, Len, Target, req, flags);
+      return true;
     }
   }
 
@@ -1486,20 +1489,31 @@ void RevMem::clearZRqst(uint64_t Addr){
 }
 
 // TODO: Comment
-void RevMem::AddCustomMemSeg(std::string Name, RevCPU* CPU, uint64_t BaseAddr, size_t Size, SST::Output *Output){
-  output->verbose(CALL_INFO, 1, 1, "Initializing a <%s> custom memory segment",  Name.c_str());
-  if( Name == "scratchpad" ){
-    // TODO: Add error handling if any of the args are BS
-    // TODO: Potentially call Initialize (or maybe call it in the constructor)
-    const auto& NewScratchpad = std::make_shared<RevScratchpad>(CPU, BaseAddr, Size, Output);
-    NewScratchpad->Initialize();
-    // Potentially do any other initialization you need first
-    CustomMemSegs.emplace_back(NewScratchpad);
-  } else if ( Name == "RZAMem" ){
-    // TODO: Remove
+void RevMem::AddCustomMemSeg(std::string Name, RevCPU* CPU, SST::Params& Params, SST::Output *Output){
+  // Find the type of the memory segment (mandatory parameter)
+  // - Formatted in the python config as "segName.type": "segType")
+  std::string Type = Params.find<std::string>("type", "unknown");
+
+  output->verbose(CALL_INFO, 1, 1, "Initializing a custom memory segment of type <%s> "
+                                   "with params:\n",  Type.c_str());
+  Params.print_all_params(*output);
+
+  // Make sure there isn't a CustomMemSeg with the same name already defined
+  if( CustomMemSegs.find(Name) != CustomMemSegs.end() ){
+    output->fatal(CALL_INFO, 1, "A custom memory segment with name <%s> already exists."
+                                "Please choose a different name.\n", Name.c_str());
+  }
+
+  // Adding handling to this if block is the equivalent of registering your
+  // custom memory segment type with Rev
+  if( Type == "scratchpad" ){
+    CustomMemSegs[Name] = std::make_shared<RevScratchpad>(Name, CPU, Params, Output);
+  } else if ( Type == "RZAMem" ){
     std::cout << "Found request for RZAMem (but nothing's defined so)" << std::endl;
   } else {
-    output->fatal(CALL_INFO, 1, "A request was made to add a custom memory segment with name: %s, however there is no custom memory type defined in RevMem::AddCustomMemSeg with that name", Name.c_str());
+    output->fatal(CALL_INFO, 1, "A request was made to add a custom memory segment of type <%s>,"
+                                "however there was no handling for that type of segment added in "
+                                "RevMem::AddCustomMemSeg with that type\n", Type.c_str());
   }
 }
 

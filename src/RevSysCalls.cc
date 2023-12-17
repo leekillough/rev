@@ -3204,16 +3204,16 @@ EcallStatus RevProc::ECALL_pthread_join(RevInst& inst){
 // 4000, forza_scratchpad_alloc(size_t size);
 EcallStatus RevProc::ECALL_forza_scratchpad_alloc(RevInst& inst){
   output->verbose(CALL_INFO, 2, 0, "ECALL: forza_scratchpad_alloc called by thread %" PRIu32 " on hart %" PRIu32 "\n", GetActiveThreadID(), HartToExecID);
-  uint64_t size = RegFile->GetX<uint64_t>(RevReg::a0);
+  uint64_t numBytes = RegFile->GetX<uint64_t>(RevReg::a0);
 
-  output->verbose(CALL_INFO, 4, 0, "ECALL: forza_scratchpad_alloc attempting to allocate %" PRIu64 " bytes\n", size);
-  uint64_t Addr = mem->ScratchpadAlloc(size);
+  output->verbose(CALL_INFO, 4, 0, "ECALL: forza_scratchpad_alloc attempting to allocate %" PRIu64 " bytes\n", numBytes);
+  uint64_t Addr = mem->GetCustomMemSegs().find("scratchpad")->second->Alloc(HartToExecID, numBytes);
 
   if( Addr == _INVALID_ADDR_ ){
-    output->verbose(CALL_INFO, 2, 0, "ECALL: forza_scratchpad_alloc failed to allocate %" PRIu64 " bytes\n", size);
+    output->verbose(CALL_INFO, 2, 0, "ECALL: forza_scratchpad_alloc failed to allocate %" PRIu64 " bytes\n", numBytes);
     RegFile->SetX(RevReg::a0, (uint64_t)nullptr);
   } else {
-    output->verbose(CALL_INFO, 2, 0, "ECALL: forza_scratchpad_alloc allocated %" PRIu64 " bytes at address %" PRIx64 "\n", size, Addr);
+    output->verbose(CALL_INFO, 2, 0, "ECALL: forza_scratchpad_alloc allocated %" PRIu64 " bytes at address %" PRIx64 "\n", numBytes, Addr);
     RegFile->SetX(RevReg::a0, Addr);
   }
 
@@ -3225,8 +3225,7 @@ EcallStatus RevProc::ECALL_forza_scratchpad_free(RevInst& inst){
   output->verbose(CALL_INFO, 2, 0, "ECALL: forza_scratchpad_free called by thread %" PRIu32 " on hart %" PRIu32 "\n", GetActiveThreadID(), HartToExecID);
   uint64_t addr = RegFile->GetX<uint64_t>(RevReg::a0);
   uint64_t size = RegFile->GetX<uint64_t>(RevReg::a1);
-  mem->ScratchpadFree(addr, size);
-
+  mem->GetCustomMemSegs().find("scratchpad")->second->Dealloc(HartToExecID, addr, size);
   return EcallStatus::SUCCESS;
 }
 } // namespace SST::RevCPU

@@ -116,7 +116,7 @@ public:
                 RevFlag flags);
 
   /// RevMem: Add an instance of a predefined CustomMemSeg (See function def for more info)
-  void AddCustomMemSeg(std::string Name, RevCPU* CPU, uint64_t BaseAddr, size_t Size, SST::Output *Output);
+  void AddCustomMemSeg(std::string Name, RevCPU* CPU, SST::Params& Params, SST::Output *Output);
 
   /// RevMem: DEPRECATED: read data from the target memory location
   [[deprecated("Simple RevMem interfaces have been deprecated")]]
@@ -240,7 +240,7 @@ public:
   std::vector<std::shared_ptr<MemSegment>>& GetFreeMemSegs(){ return FreeMemSegs; }
 
   ///< RevMem: Get FreeMemSegs vector
-  std::vector<std::shared_ptr<RevCustomMemSegment>>& GetCustomMemSegs(){ return CustomMemSegs; }
+  std::unordered_map<std::string, std::shared_ptr<RevCustomMemSegment>>& GetCustomMemSegs(){ return CustomMemSegs; }
 
   /// RevMem: Add new MemSegment (anywhere) --- Returns BaseAddr of segment
   uint64_t AddMemSeg(const uint64_t& SegSize);
@@ -404,7 +404,7 @@ private:
   std::vector<std::shared_ptr<MemSegment>> MemSegs;       // Currently Allocated MemSegs
   std::vector<std::shared_ptr<MemSegment>> FreeMemSegs;   // MemSegs that have been unallocated
   std::vector<std::shared_ptr<MemSegment>> ThreadMemSegs; // For each RevThread there is a corresponding MemSeg that contains TLS & Stack
-  std::vector<std::shared_ptr<RevCustomMemSegment>> CustomMemSegs; ///< RevMem: Memory Segments added via the python config file
+  std::unordered_map<std::string, std::shared_ptr<RevCustomMemSegment>> CustomMemSegs; ///< RevMem: Memory Segments added via the python config file
 
   uint64_t TLSBaseAddr;                                   ///< RevMem: TLS Base Address
   uint64_t TLSSize = sizeof(uint32_t);                    ///< RevMem: TLS Size (minimum size is enough to write the TID)
@@ -439,8 +439,6 @@ private:
 
   // -- FORZA
   std::map<uint64_t,Forza::zopEvent *> ZRqst; ///< RevMem: zop request address map
-
-
 
 }; // class RevMem
 
