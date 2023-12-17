@@ -35,18 +35,15 @@ public:
 
     TopAddr = BaseAddr + Size - 1;
 
-    std::cout << "===> Scratchpad:" <<std::endl;
-    std::cout << "Size: " << Size << std::endl;
-    std::cout << "ChunkSize: " << ChunkSize << std::endl;
-    std::cout << "BaseAddr: 0x" << std::hex << BaseAddr << std::endl;
-    std::cout << "TopAddr: 0x" << std::hex << TopAddr << std::endl;
-    std::cout << "ZapNum: " << ZapNum << std::endl;
-
     // Allocate the BackingStore
     BackingMem = new char [Size]{};
 
     // Set size of FreeList & set each chunk to free (ie. true)
     FreeList.resize(Size/ChunkSize, true);
+  }
+
+  ~RevScratchpad(){
+    delete [] BackingMem;
   }
 
   // Override parsing of params
