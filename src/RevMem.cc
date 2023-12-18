@@ -261,8 +261,9 @@ uint64_t RevMem::CalcPhysAddr( uint64_t pageNum, uint64_t vAddr ) {
   /* If not in TLB, physAddr will equal _INVALID_ADDR_ */
   if( physAddr == _INVALID_ADDR_ ) {
     /* Check if vAddr is a valid address before translating to physAddr */
-    if( isValidVirtAddr( vAddr ) ) {
-      if( pageMap.count( pageNum ) == 0 ) {
+    if( !isRZA ){
+      if( isValidVirtAddr(vAddr) ){
+        if(pageMap.count(pageNum) == 0){
         // First touch of this page, mark it as in use
         pageMap[pageNum] = std::pair<uint32_t, bool>( nextPage, true );
         physAddr         = ( nextPage << addrShift ) + ( ( pageSize - 1 ) & vAddr );
@@ -281,8 +282,8 @@ uint64_t RevMem::CalcPhysAddr( uint64_t pageNum, uint64_t vAddr ) {
       } else {
         output->fatal( CALL_INFO, -1, "Error: Page allocated multiple times\n" );
       }
-      AddToTLB( vAddr, physAddr );
-    } else {
+      }
+      else {
       /* vAddr not a valid address */
 
       // #ifdef _REV_DEBUG_
@@ -303,6 +304,8 @@ uint64_t RevMem::CalcPhysAddr( uint64_t pageNum, uint64_t vAddr ) {
       );
     }
   }
+  }
+  AddToTLB(vAddr, physAddr);
   return physAddr;
 }
 
