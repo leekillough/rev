@@ -6,3 +6,4 @@
 #   message(VERBOSE "NOC_DISCOVERY - Disabled")
 # endif()
 add_rev_test(noc_discovery noc_discovery 30 "all;memh;rv64;loader;forza" SCRIPT "run_noc_discovery.sh")
+add_subdirectory(scratchpad)
