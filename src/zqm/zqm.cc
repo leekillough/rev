@@ -14,6 +14,36 @@
 
 using namespace SST::Forza;
 
+uint64_t ZqmAidStateTableRow::getMemAddr(bool do_read, bool update_ptr)
+{
+    uint64_t addr_ptr = (do_read) ? mem_read_ptr : mem_write_ptr;
+    if (!update_ptr)
+        return addr_ptr;
+
+    // Below here, we do an update
+    // First, determine the updated ptr
+    uint64_t next_ptr = addr_ptr + ThreadLengthBytes;
+    if (next_ptr == mem_buffer_high)
+        next_ptr = mem_buffer_low;
+
+    // Verify that we can do *something*
+    if (do_read){
+        if (mem_read_ptr == mem_write_ptr)
+            return 0; // empty buffer
+    } else {
+        if (next_ptr == mem_read_ptr)
+            return 0; // no room to write
+    }
+
+    // Update proper ptr
+    if (do_read)
+        mem_read_ptr = next_ptr;
+    else
+        mem_write_ptr = next_ptr;
+
+    return addr_ptr;
+}
+
 ZQM::ZQM(ComponentId_t id, Params& params)
         : Component(id)
 {
@@ -105,7 +135,7 @@ void ZQM::handleIncomingZOP(SST::Event *event) {
     } else{
         output.fatal(CALL_INFO, 1, "Received unexpected msg type = %u\n",
                      (uint32_t) ev->getType());
-        // TODO: Is there a generic ZOP Dump/print function for debugging?  If so, use it
+        //TODO: Is there a generic ZOP Dump/print function for debugging?  If so, use it
         return;
     }
 }
@@ -116,64 +146,108 @@ ZqmAidStateTableRow* ZQM::getAidStateTableRow(SST::Forza::zopEvent *zop)
 {
     auto iter = aid_state_table.find(zop->getAppID());
     if (iter != aid_state_table.end())
-	return iter.second;
+        return iter.second;
     output.fatal(CALL_INFO, 1, "Received a zop with an unfound AID; AID=%u\n", aid);
     return nullptr;
 }
 
-// TODO: UPDATE THIS!
+ZqmAidStateTableRow* ZQM::getAidStateTableRow(uint32_t aid)
+{
+    auto iter = aid_state_table.find(aid));
+    if (iter != aid_state_table.end())
+        return iter.second;
+    output.fatal(CALL_INFO, 1, "Received a zop with an unfound AID; AID=%u\n", aid);
+    return nullptr;
+}
+
 void ZQM::sendThreadToRza(SST::Forza::zopEvent *thread)
 {
-    /** Have to convert thread to a memory zop; basically want to convert the entire
-      * thread into the ZOP payload
-      */
-
-    // Let's start by getting the state buffer entry
+    // Let's start by getting the state buffer entry for this AID
     ZqmAidStateTableRow *aid_state = getAidStateTableRow(thread);
 
     // Going to need to get an address to write
-    // TODO: write a function to get these addresses
-    // TODO: Within that function, update the write pointer to account for packet length
-    // 
+    uint64_t addr_ptr = aid_state->getMemAddr(false, true);
+    if (addr_ptr == 0){
+        //TODO: What's the workaround here?  Basically have to be able to
+        // backpressure somewhere
+        output.fatal(CALL_INFO, 1, "Can't write thread to RZA\n");
+    }
 
     // Create a new Zop (Store DMA type)
+    SST::Forza::zopEvent *store_thread_zop = new SST::Forza::zopEvent(zopMsgT::Z_MZOP, zopOpc::Z_MZOP_SDMA);
 
     // Fill in Zop src/dest info
+    store_thread_zop->setSrcZCID(zopCompID::Z_ZQM);
+    store_thread_zop->setSrcPrec(precinct_id);
+    store_thread_zop->setSrcPCID(zone_id);
+    store_thread_zop->setDestZCID(zopCompID::Z_RZA);
+    store_thread_zop->setDestPrec(precinct_id);
+    store_thread_zop->setDestPCID(zone_id);
+    store_thread_zop->setAppID(thread->getAppID());
+    store_thread_zop->setID(msg_id++);
 
-    // Copy ENTIRE thread (header and payload) into ZOP
+    // Create payload; Copy ENTIRE thread (header and payload) into ZOP
+    std::vector<uint64_t> thread_packet = thread->getPacket();
+    std::vector<uint64_t> zop_payload;
+    zop_payload.push_back(0); // TODO: Fill in ACS
+    zop_payload.push_back(addr_ptr);
+    for (auto i : thread_packet)
+        zop_payload.push_back(i);
+
+    store_thread_zop->setPayload(zop_payload);
 
     // Send Zop
+    output.verbose(CALL_INFO, 1, 0, "Sending SDMA Zop to RZA; msg_id=%u\n", (uint32_t)store_thread_zop->getID());
+    m_zop_iface->send(store_thread_zop, zopCompID::Z_RZA);
+    auto iter = outstanding_rza_reqs.find(store_thread_zop->getID());
+    if (iter == outstanding_rza_reqs.end())
+        outstanding_rza_reqs.insert(store_thread_zop->getID(), std::pair<uint64_t, uint64_t>(0,0)); // TODO: Fix pair
+    else
+        output.fatal(CALL_INFO, 1, "Duplicate msg_id going out to RZA\n");
 
     // Delete thread
-
+    delete thread;
 }
 
-#if 0 // function has been removed, but keep around as example for now
-void ZQM::sendMsgToRZA(uint64_t addr, uint8_t msg_id) {
-    output.verbose(CALL_INFO, 1, 0, "Msg tgt %d, msg id %" PRIu8 "\n", addr, msg_id);
+void ZQM::getThreadFromRza(uint32_t app_id)
+{
+    // Let's start by getting the state buffer entry for this AID
+    ZqmAidStateTableRow *aid_state = getAidStateTableRow(app_id);
+
+    // Going to need to get an address to write
+    uint64_t addr_ptr = aid_state->getMemAddr(true, true);
+    if (addr_ptr == 0){
+        output.verbose(CALL_INFO, 1, 0, "No threads to read from RZA\n",);
+        return;
+    }
+
+    // Create a new Zop (Load DMA type)
+    SST::Forza::zopEvent *load_thread_zop = new SST::Forza::zopEvent(zopMsgT::Z_MZOP, zopOpc::Z_MZOP_LDMA);
+
+    // Fill in Zop src/dest info
+    load_thread_zop->setSrcZCID(zopCompID::Z_ZQM);
+    load_thread_zop->setSrcPrec(precinct_id);
+    load_thread_zop->setSrcPCID(zone_id);
+    load_thread_zop->setDestZCID(zopCompID::Z_RZA);
+    load_thread_zop->setDestPrec(precinct_id);
+    load_thread_zop->setDestPCID(zone_id);
+    load_thread_zop->setAppID(app_id);
+    load_thread_zop->setID(msg_id++);
+
+    // TODO: How do I decide on how many words to get back???  Where does that live?
     std::vector<uint64_t> payload;
-    // TODO: Update with RZA id
-    SST::Forza::zopEvent *rzaMsg = new SST::Forza::zopEvent();
-    rzaMsg->setType(SST::Forza::zopMsgT::Z_MZOP);
-    rzaMsg->setID(msg_id);
-    rzaMsg->setOpc(SST::Forza::zopOpc::Z_MZOP_SD);
-    rzaMsg->setSrcHart(m_zop_iface->getAddress());
-    rzaMsg->setSrcZCID(0);
-    rzaMsg->setSrcPCID(0);
-    rzaMsg->setSrcPrec(0);
-    // TODO: Update with RZA id
-    rzaMsg->setDestHart(3);
-    payload.push_back(addr);
-    // payload.push_back(value);
-    rzaMsg->setPayload(payload);
-    rzaMsg->encodeEvent();
-    m_zop_iface->send(rzaMsg, zopCompID::Z_RZA);
-    output.verbose(CALL_INFO, 1, 0, "msg id  %" PRIu8 ", header %lu\n", rzaMsg->getID(), rzaMsg->getPacket()[0]);
-    rzaMsg->decodeEvent();
-    output.verbose(CALL_INFO, 1, 0, "msg id  %" PRIu8 ", header %lu\n", rzaMsg->getID(), rzaMsg->getPacket()[0]);
-    // TODO: Update with RZA id
+    payload.push_back(addr_ptr);
+    load_thread_zop->setPayload(payload);
+
+    // Send Zop
+    output.verbose(CALL_INFO, 1, 0, "Sending LDMA Zop to RZA; msg_id=%u\n", (uint32_t)load_thread_zop->getID());
+    m_zop_iface->send(load_thread_zop, zopCompID::Z_RZA);
+    auto iter = outstanding_rza_reqs.find(load_thread_zop->getID());
+    if (iter == outstanding_rza_reqs.end())
+        outstanding_rza_reqs.insert(load_thread_zop->getID(), std::pair<uint64_t, uint64_t>(0,0)); // TODO: Fix pair
+    else
+        output.fatal(CALL_INFO, 1, "Duplicate msg_id going out to RZA\n");
 }
-#endif
 
 void ZQM::processRzaMsgs() {
     /**

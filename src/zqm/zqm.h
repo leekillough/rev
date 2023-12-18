@@ -29,6 +29,12 @@ namespace SST::Forza{
 
     class ZqmAidStateTableRow {
         // Will need functionality for updating read/write pointers
+        /**
+         * NOTE: This will NOT fill the circular buffer
+         * if (mem_read_ptr == mem_write_ptr), buffer is empty
+         * if ( (mem_write_ptr + thread_length_bytes) == mem_read_ptr), buffer has space for one thread
+         *   but then the pointers would match (and thus be "empty"), so no write allowed
+         */
     public:
         // Note: No valid data element - assuming that if the row exists, it's valid
         uint64_t min_zap_hart;
@@ -45,7 +51,24 @@ namespace SST::Forza{
                 mem_write_ptr(mem_buffer_low_),
                 mem_buffer_low(mem_buffer_low_),
                 mem_buffer_high(mem_buffer_high_)
-        { /* empty constructor */ }
+        { /* empty constructor */
+            /** TODO: Add Sanity check - memory buffer size should be an even multiple
+             * of ThreadLengthBytes
+             */
+        }
+
+        /**
+         * If doing an update, then we verify that there is something to read
+         * or space to write
+         * @param do_read -- true on read, false on write
+         * @param update_ptr -- true updates ptr, false otherwise
+         * @return - desired ptr or 0 on validation fail
+         */
+        uint64_t getMemAddr(bool do_read, bool update_ptr);
+
+    private:
+        const uint64_t ThreadLengthDblWords = 34;
+        const uint64_t ThreadLengthBytes = (ThreadLengthDblWords * 8);
     }; // end class ZqmAidStateTableRow
 
 
@@ -116,10 +139,10 @@ namespace SST::Forza{
          */
         void sendThreadToRza(SST::Forza::zopEvent *thread); // TODO: Invoke via clock handler?
 
-	/**
-	 *  TODO: WRITE ME!
-	 */
-	void getThreadFromRza();
+        /**
+         * How to actually *execute* this function (simulation wise)
+         */
+        void getThreadFromRza(uint32_t app_id);
 
         /**
          * Do what the function says - prep and send a thread to a ZAP
@@ -161,7 +184,8 @@ namespace SST::Forza{
          */
         bool selectDestHart(SST::Forza::zopEvent *thread);
 
-	ZqmAidStateTableRow* getAidStateTableRow(SST::Forza::zopEvent *zop);
+        ZqmAidStateTableRow* getAidStateTableRow(SST::Forza::zopEvent *zop);
+        ZqmAidStateTableRow* getAidStateTableRow(uint32_t aid);
 	
 
         // private data members
@@ -175,7 +199,7 @@ namespace SST::Forza{
         // MZop ACKs and tracking table for in-flight mem ops...will
         // have to do both reads and writes to memory...
         std::vector<SST::Forza::zopEvent*> rza_responses;
-        std::map<uint8_t, std::pair<uint64_t, uint64_t> > outstanding_rza_reqs;
+        std::map<uint8_t, std::pair<uint64_t, uint64_t> > outstanding_rza_reqs; // TODO: WTH is the pair?
 
         // Incoming threads
         std::vector<SST::Forza::zopEvent*> incoming_threads_vec;

@@ -295,6 +295,7 @@ enum class zopCompID : uint8_t {
   Z_ZAP6        = 0b00000110,   /// zopCompID: ZAP6
   Z_ZAP7        = 0b00000111,   /// zopCompID: ZAP7
   Z_RZA         = 0b00001000,   /// zopCompID: RZA
+  Z_ZQM         = 0b00001010,   /// zopCompID: ZQM // TODO: Add to forzarev
   Z_ZEN         = 0b00001100,   /// zopCompID: ZEN
 };
 
