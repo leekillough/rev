@@ -3242,7 +3242,11 @@ EcallStatus RevProc::ECALL_forza_scratchpad_alloc(RevInst& inst){
   uint64_t numBytes = RegFile->GetX<uint64_t>(RevReg::a0);
 
   output->verbose(CALL_INFO, 4, 0, "ECALL: forza_scratchpad_alloc attempting to allocate %" PRIu64 " bytes\n", numBytes);
-  uint64_t Addr = mem->GetCustomMemSegs().find("scratchpad")->second->Alloc(HartToExecID, numBytes);
+  const auto& scratchpadSeg = mem->GetCustomMemSegs().find("scratchpad");
+  if( scratchpadSeg == mem->GetCustomMemSegs().end() ){
+    output->fatal(CALL_INFO, -1, "A call was made to a scratchpad related function, but there were no scratchpad segments found. Please specify one in the python config\n");
+  }
+  uint64_t Addr = scratchpadSeg->second->Alloc(HartToExecID, numBytes);
 
   if( Addr == _INVALID_ADDR_ ){
     output->verbose(CALL_INFO, 2, 0, "ECALL: forza_scratchpad_alloc failed to allocate %" PRIu64 " bytes\n", numBytes);
@@ -3259,7 +3263,11 @@ EcallStatus RevProc::ECALL_forza_scratchpad_free(RevInst& inst){
   output->verbose(CALL_INFO, 2, 0, "ECALL: forza_scratchpad_free called by thread %" PRIu32 " on hart %" PRIu32 "\n", GetActiveThreadID(), HartToExecID);
   uint64_t addr = RegFile->GetX<uint64_t>(RevReg::a0);
   uint64_t size = RegFile->GetX<uint64_t>(RevReg::a1);
-  mem->GetCustomMemSegs().find("scratchpad")->second->Dealloc(HartToExecID, addr, size);
+  const auto& scratchpadSeg = mem->GetCustomMemSegs().find("scratchpad");
+  if( scratchpadSeg == mem->GetCustomMemSegs().end() ){
+    output->fatal(CALL_INFO, -1, "A call was made to a scratchpad related function, but there were no scratchpad segments found. Please specify one in the python config\n");
+  }
+  scratchpadSeg->second->Dealloc(HartToExecID, addr, size);
   return EcallStatus::SUCCESS;
 }
 
