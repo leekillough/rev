@@ -16,8 +16,6 @@
 
 namespace SST::RevCPU{
 
-using MemSegment = RevMem::MemSegment;
-
 const char splash_msg[] = "\
 \n\
 *******                   \n\
@@ -168,8 +166,23 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params )
       output.verbose(CALL_INFO, 1, 0, "Warning: memory faults cannot be enabled with memHierarchy support\n");
   }
 
-  // FORZA: initialize scratchpad
-  Mem->InitScratchpad(id, _SCRATCHPAD_SIZE_, _CHUNK_SIZE_);
+  // See if there are any memory segments to create
+  std::vector<std::string> customMemSegs;
+  params.find_array("customMemSegs", customMemSegs);
+
+  // Only proceed with custom memory segments if the name is not empty
+  if( !customMemSegs.empty() ){
+    // Create the CustomMemSeg Object
+    for( const auto& segName : customMemSegs ){
+      // Get all the sub-params for this custom memory segment
+      Params customSegParams = params.get_scoped_params(segName);
+      // Every custom memory segment NEEDS a size and baseAddr so ensure those are present
+      Mem->AddCustomMemSeg(segName, this, customSegParams, &output);
+    }
+  }
+  for( auto Seg : Mem->GetCustomMemSegs() ){
+    std::cout << "==> Segment: " << Seg.second << std::endl;
+  }
 
   // FORZA: initialize the network
   // setup the FORZA NoC NIC endpoint for the Zone

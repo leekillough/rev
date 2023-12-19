@@ -216,6 +216,9 @@ public:
     return std::function<uint32_t()>([this]() { return GetNewThreadID(); });
   }
 
+  // Make CustomMemSeg a friend class so it can access the private variables
+  friend class RevCustomMemSeg;
+
 private:
   unsigned numCores;                  ///< RevCPU: number of RISC-V cores
   unsigned numHarts;                  ///< RevCPU: number of RISC-V cores

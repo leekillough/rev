@@ -15,10 +15,12 @@ comp_cpu.addParams({
     "numHarts" : 4,                               # Number of cores
         "clock" : "2.0GHz",                           # Clock
     "memSize" : MEM_SIZE,                         # Memory size in bytes
-    "machine" : "[CORES:RV64G]",                      # Core:Config; RV64I for core 0
+    "machine" : "[CORES:RV64GC]",                      # Core:Config; RV64I for core 0
     "startAddr" : "[0:0x00000000]",               # Starting address for core 0
     "memCost" : "[0:1:10]",                       # Memory loads required 1-10 cycles
-    "program" : "scratchpad-basic.exe",              # Target executable
+    "program" : "scratchpad_basic.exe",              # Target executable
+    "customMemSegs": "scratchpad",                # Custom memory segments
+    "scratchpad.type": "scratchpad",              # Scratchpad name
     "enable_memH" : 1,                            # Enable memHierarchy support
     "splash" : 1                                  # Display the splash message
 })

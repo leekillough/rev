@@ -13,7 +13,6 @@
 #include "sst/core/output.h"
 
 using namespace SST::RevCPU;
-using MemSegment = RevMem::MemSegment;
 
 RevProc::RevProc( unsigned Id,
                   RevOpts *Opts,
@@ -1974,8 +1973,6 @@ void RevProc::CreateThread(uint32_t NewTID, uint64_t firstPC, void* arg){
   // Create the new thread's memory
   std::shared_ptr<MemSegment> NewThreadMem = mem->AddThreadMem();
 
-  // TODO: Copy TLS into new memory
-
   // Create new register file
   std::unique_ptr<RevRegFile> NewThreadRegFile = std::make_unique<RevRegFile>(feature);
 
@@ -1983,7 +1980,6 @@ void RevProc::CreateThread(uint32_t NewTID, uint64_t firstPC, void* arg){
   NewThreadRegFile->SetX(RevReg::a0, reinterpret_cast<uintptr_t>(arg));
 
   // Set the global pointer
-  // TODO: Cleanup
   NewThreadRegFile->SetX(RevReg::tp, NewThreadMem->getTopAddr());
   NewThreadRegFile->SetX(RevReg::sp, NewThreadMem->getTopAddr()-mem->GetTLSSize());
   NewThreadRegFile->SetX(RevReg::gp, loader->GetSymbolAddr("__global_pointer$"));
