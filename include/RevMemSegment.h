@@ -35,15 +35,22 @@ class RevCPU;
 // Virtual Memory Blocks
 class MemSegment {
 public:
+  ///< MemSegment: Constructor for a memory segment
   MemSegment(uint64_t baseAddr, uint64_t size)
     : BaseAddr(baseAddr), Size(size) {
     TopAddr = baseAddr + size;
   }
 
-  uint64_t getTopAddr() const { return BaseAddr + Size; }
+  ///< MemSegment: Gets the top address of the segment
+  uint64_t getTopAddr() const { return BaseAddr + Size - 1; }
+
+  ///< MemSegment: Gets the base address of the segment
   uint64_t getBaseAddr() const { return BaseAddr; }
+
+  ///< MemSegment: Gets the size of the segment
   uint64_t getSize() const { return Size; }
 
+  ///< MemSegment: Sets the base address of the segment and updates the top address
   void setBaseAddr(uint64_t baseAddr) {
     BaseAddr = baseAddr;
     if( Size ){
@@ -51,14 +58,15 @@ public:
     }
   }
 
+  ///< MemSegment: Sets the size of the segment and updates the top address
   void setSize(uint64_t size) { Size = size; TopAddr = BaseAddr + size - 1; }
 
-  /// MemSegment: Check if vAddr is included in this segment
+  ///< MemSegment: Check if vAddr is included in this segment
   bool contains(const uint64_t& vAddr){
     return (vAddr >= BaseAddr && vAddr < TopAddr);
   };
 
-  // Check if a given range is inside a segment
+  ///< MemSegment: Check if a given range is inside a segment
   bool contains(const uint64_t& vBaseAddr, const uint64_t& Size){
     // exclusive top address
     uint64_t vTopAddr = vBaseAddr + Size - 1;
@@ -78,23 +86,21 @@ public:
   }
 
 private:
-  uint64_t BaseAddr;
-  uint64_t Size;
-  uint64_t TopAddr;
+  uint64_t BaseAddr; ///< MemSegment: Base address of the segment
+  uint64_t Size;     ///< MemSegment: Size of the segment
+  uint64_t TopAddr;  ///< MemSegment: Top address of the segment (BaseAddr + Size - 1)
 };
 
 class RevCustomMemSegment : public MemSegment {
 public:
+  ///< RevCustomMemSegment: Constructor for a custom memory segment
    RevCustomMemSegment(const std::string& Type, const std::string& Name,
                        RevCPU* CPU, SST::Params& Params, SST::Output *output)
         : MemSegment(0,0), Type(Type), Name(Name), CPU(CPU), output(output), Params(Params) {
-
-    // Setup whatever needs to be setup (default, un-overriden behavior includes setting size, baseAddr, and name)
-    // ParseAdditionalParams();
+    Initialize();
   }
 
-  // Virtual function that can be overridden allowing for custom attributes to be passed
-  // from the python file and handled during the creation of the this custom memory segment
+  ///< RevCustomMemSegment: Function that allows for the user to specify additional arbitrary parameters
   virtual void ParseAdditionalParams(){
     // The default behavior is to look for the size and baseAddr of the segment
     // TODO: Figure out if we want to require everything to have a baseAddr & size or not
@@ -123,52 +129,41 @@ public:
                     "prefixed by the name of the corresponding segment (ex. \"%s.baseAddr\")\n\n",
                     Name.c_str(), segBaseAddr, Name.c_str());
       }
-
-    // Make sure we found them
-    if( !segBaseAddr ){
-      // We couldn't find the size/baseAddr for segments, throw error
-      output->fatal(CALL_INFO, -1,
-                    "Custom memory segment '%s' was found starting at an invalid "
-                    "base address or none at all: [0x%" PRIx64 "]. \n\nPlease specify "
-                    "the base address of the segment as a scoped parameter "
-                    "prefixed by the name of the corresponding segment (ex. \"%s.baseAddr\")\n\n",
-                    Name.c_str(), segBaseAddr, Name.c_str());
-    }
     setBaseAddr(segBaseAddr);
     setSize(segSize);
   };
 
-  // All custom memory segments must override the read & write functions
+  ///< RevCustomMemSegment: (Required) ReadVal function that needs to be overridden for every memory segment
   virtual void ReadMem(unsigned Hart, uint64_t Addr, size_t Len, void* Target, const MemReq& req, RevFlag flags) = 0;
+
+  ///< RevCustomMemSegment: (Required) WriteMem function that needs to be overridden for every memory segment
   virtual void WriteMem(unsigned Hart, uint64_t Addr, size_t Len, const void *Data, RevFlag flags) = 0;
 
-  // Optional virtual method for implementing some sort of virtual addressing scheme
-  // exclusive to this address space
-  virtual uint64_t CalcPhysAddr(const uint64_t Addr){
-    return Addr;
-  }
+  ///< RevCustomMemSegment: (Optional) virtual method for implementing some sort of virtual addressing scheme exclusive to this address space
+  virtual uint64_t CalcPhysAddr(const uint64_t Addr){ return Addr; }
 
-  // Optional virtual methods for overriding allocation / deallocation behavior within a custom segment
-  // this allows for things like mmap to work by default with these custom segments
+  ///< RevCustomMemSegment: (Optional) virtual methods for overriding allocation / deallocation behavior within a custom segment
+  ///                       this allows for things like mmap to work by default with these custom segments
   virtual uint64_t Alloc(const unsigned Hart, const size_t Bytes){
     output->fatal(CALL_INFO, 11, "Attempted to perform an allocation inside a custom memory segment <%s> "
-                                  "however this type of segment does not have an implementation for "
-                                  "Alloc defined.\n", Name.c_str());
+                                 "however this type of segment does not have an implementation for "
+                                 "Alloc defined.\n", Name.c_str());
     return 0;
   }
 
-  // Override for allocating at a specific address
+  ///< RevCustomMemSegment: (Optional) Override for allocating at a specific address
   virtual uint64_t AllocAt(const unsigned Hart, const size_t Bytes, const uint64_t BaseAddr){
     output->fatal(CALL_INFO, 11, "Attempted to perform an allocation inside a custom memory segment <%s> "
-                                  "however this type of segment does not have an implementation for "
-                                  "AllocAt defined.\n", Name.c_str());
+                                 "however this type of segment does not have an implementation for "
+                                 "AllocAt defined.\n", Name.c_str());
     return 0;
   }
 
+  ///< RevCustomMemSegment: (Optional) Override for deallocating memory in a custom memory segment
   virtual void Dealloc(const unsigned Hart, const uint64_t Addr, const size_t Size){
     output->fatal(CALL_INFO, 11, "Attempted to perform a deallocation inside a custom memory segment <%s> "
-                                  "however this type of segment does not have an implementation for "
-                                  "Dealloc defined.\n", Name.c_str());
+                                 "however this type of segment does not have an implementation for "
+                                 "Dealloc defined.\n", Name.c_str());
     return;
   }
 
@@ -178,6 +173,7 @@ public:
     InitFunc = std::bind(std::forward<Func>(func), std::forward<Args>(args)...);
   }
 
+  ///< RevCustomMemSegment: Initialization function for the custom memory segment
   virtual void Initialize() {
     output->verbose(CALL_INFO, 2, 1, "Initializing a custom memory segment <%s>\n", Name.c_str());
     if (InitFunc) {
@@ -185,8 +181,7 @@ public:
     }
   }
 
-  // Override for ostream operator
-  // TODO: Make pretty
+  ///< RevCustomMemSegment: Overload the ostream operator
   friend std::ostream& operator<<(std::ostream& os, const RevCustomMemSegment& seg) {
     os << static_cast<const MemSegment&>(seg);
     os << " | Name: " << seg.Name << "\n";
@@ -202,15 +197,14 @@ public:
   }
 
 protected:
-  std::string Type;
-  std::string Name;
-  RevCPU* CPU;
-  SST::Output* output;
-  SST::Params& Params;
+  std::string Type;     ///< RevCustomMemSegment: Type of custom memory segment (Type needs to be handled in RevMem::AddCustomMemSegment)
+  std::string Name;     ///< RevCustomMemSegment: Name of the instantiation of the custom mem segment
+  RevCPU* CPU;          ///< RevCustomMemSegment: Instance of RevCPU that this segment has the ability to trigger events in
+  SST::Output* output;  ///< RevCustomMemSegment: Output object
+  SST::Params& Params;  ///< RevCustomMemSegment: All of the "SCOPED" params for this segment based solely on the "Name" (ie. Name.size, Name.baseAddr, Name.type, Name.yourCustomParam, etc.)
 
 private:
-  // TODO: Probably delete
-  std::function<void()> InitFunc;
+  std::function<void()> InitFunc; ///< RevCustomMemSegment: (Optional) Initialization function for the custom memory segment
 };
 } // namespace SST::RevCPU
 

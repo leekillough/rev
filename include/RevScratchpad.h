@@ -213,7 +213,6 @@ public:
   return FreeList.size(); // special value indicating "not found"
 }
 
-
 private:
   uint64_t BaseAddr;          ///< RevScratchpad: Base address of the scratchpad
   size_t Size;                ///< RevScratchpad: Size of the scratchpad
