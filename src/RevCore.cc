@@ -1902,6 +1902,8 @@ void RevCore::CreateThread( uint32_t NewTID, uint64_t firstPC, void* arg ) {
   // Create the new thread's memory
   std::shared_ptr<MemSegment> NewThreadMem = mem->AddThreadMem();
 
+  // TODO: Copy TLS into new memory
+
   // Create new register file
   auto NewThreadRegFile                    = std::make_unique<RevRegFile>( this );
 

@@ -19,6 +19,8 @@ namespace SST::RevCPU {
 
 using MemSegment        = RevMem::MemSegment;
 
+using MemSegment = RevMem::MemSegment;
+
 const char splash_msg[] = "\
 \n\
 *******                   \n\

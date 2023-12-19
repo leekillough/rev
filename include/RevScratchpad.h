@@ -16,7 +16,7 @@
 #include "../common/include/RevCommon.h"
 #include <bitset>
 
-// DEFAULT SCRATCHPAD INFO
+// FORZA: SCRATCHPAD
 #define _CHUNK_SIZE_ 512
 #define _SCRATCHPAD_SIZE_ (_CHUNK_SIZE_*1024)
 #define _SCRATCHPAD_BASE_ 0x0300000000000000
@@ -58,13 +58,13 @@ public:
     } else {
       AllocedAt = BaseAddr + FirstChunk * ChunkSize;
       for (size_t i = FirstChunk; i < FirstChunk + numChunks; ++i) {
-        FreeList[i] = false;
+        FreeList.set(i, false);
       }
     }
     return AllocedAt;
   }
 
-  virtual void Dealloc(const unsigned Hart, const uint64_t Addr, const size_t Size) override {
+  void Free(uint64_t Addr, size_t Size){
     // Figure out what chunk we're starting at
     size_t BaseChunkNum = (Addr - BaseAddr) / ChunkSize;
     // Figure out how many chunks we need to free (round up)
@@ -78,16 +78,16 @@ public:
     // Free the chunks
     for (size_t i = BaseChunkNum; i < BaseChunkNum + numChunks; ++i){
       output->verbose(CALL_INFO, 4, 0, "Freeing chunk %zu which is at 0x%" PRIx64 "\n", i, BaseAddr + i * ChunkSize);
-      FreeList[i] = true;
+      FreeList.set(i);
     }
     return;
   }
 
   // Used to find N contiguous chunks that are free
-  size_t FindContiguousChunks(const size_t numChunks){
+  size_t FindContiguousChunks(size_t numChunks){
     size_t count = 0;
     for (size_t i = 0; i < FreeList.size(); ++i) {
-      if (FreeList[i]) {
+        if (FreeList.test(i)) {
         ++count;
         if (count == numChunks) {
           // return the index of the first bit of the n contiguous bits

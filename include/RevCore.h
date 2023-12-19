@@ -37,6 +37,7 @@
 #include <vector>
 
 // -- RevCPU Headers
+#include "AllRevInstTables.h"
 #include "RevCoProc.h"
 #include "RevCorePasskey.h"
 #include "RevFeature.h"
@@ -49,11 +50,10 @@
 #include "RevRand.h"
 #include "RevThread.h"
 #include "RevTracer.h"
+
 #define SYSCALL_TYPES_ONLY
 #include "../common/include/RevCommon.h"
 #include "../common/syscalls/syscalls.h"
-
-#include "AllRevInstTables.h"
 
 namespace SST::RevCPU {
 class RevCoProc;

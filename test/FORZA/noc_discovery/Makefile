@@ -1,7 +1,7 @@
 #
 # Makefile
 #
-# makefile: noc_discovery
+# makefile: ex2
 #
 # Copyright (C) 2017-2023 Tactical Computing Laboratories, LLC
 # All Rights Reserved
@@ -12,7 +12,7 @@
 
 .PHONY: src
 
-EXAMPLE=noc_discovery
+EXAMPLE=ex2
 RZA_FIRMWARE=fw
 CC=${RVCC}
 #ARCH=rv64g

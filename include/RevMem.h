@@ -134,6 +134,51 @@ public:
     uint64_t TopAddr{};   ///< MemSegment: Top address of the memory segment
   };
 
+  /* Virtual Memory Blocks  */
+  class MemSegment {
+  public:
+    MemSegment(uint64_t baseAddr, uint64_t size)
+      : BaseAddr(baseAddr), Size(size) {
+      TopAddr = baseAddr + size;
+    }
+
+    uint64_t getTopAddr() const { return BaseAddr + Size; }
+    uint64_t getBaseAddr() const { return BaseAddr; }
+    uint64_t getSize() const { return Size; }
+
+    void setBaseAddr(uint64_t baseAddr) {
+      BaseAddr = baseAddr;
+      if( Size ){
+        TopAddr = Size + BaseAddr;
+      }
+    }
+
+    void setSize(uint64_t size) { Size = size; TopAddr = BaseAddr + size; }
+
+    /// MemSegment: Check if vAddr is included in this segment
+    bool contains(const uint64_t& vAddr){
+      return (vAddr >= BaseAddr && vAddr < TopAddr);
+    };
+
+    // Check if a given range is inside a segment
+    bool contains(const uint64_t& vBaseAddr, const uint64_t& Size){
+      // exclusive top address
+      uint64_t vTopAddr = vBaseAddr + Size - 1;
+      return (this->contains(vBaseAddr) && this->contains(vTopAddr));
+    };
+
+
+    // Override for easy std::cout << *Seg << std::endl;
+    friend std::ostream& operator<<(std::ostream& os, const MemSegment& Seg) {
+      return os << " | BaseAddr:  0x" << std::hex << Seg.getBaseAddr() << " | TopAddr: 0x" << std::hex << Seg.getTopAddr() << " | Size: " << std::dec << Seg.getSize() << " Bytes";
+    }
+
+  private:
+    uint64_t BaseAddr;
+    uint64_t Size;
+    uint64_t TopAddr;
+  };
+
   /// RevMem: determine if there are any outstanding requests
   bool outstandingRqsts();
 
@@ -473,6 +518,7 @@ private:
   RevOpts*            opts{};      ///< RevMem: options object
   RevMemCtrl*         ctrl{};      ///< RevMem: memory controller object
   SST::Output*        output{};    ///< RevMem: output handler
+
   std::shared_ptr<RevScratchpad> scratchpad; ///< FORZA: Scratchpad
   Forza::zopAPI *zNic;          ///< RevMem: FORZA ZOP NIC
   bool isRZA;                   ///< RevMem: FORZA RZA flag; true if this device is an RZA

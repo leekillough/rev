@@ -19,6 +19,8 @@ namespace SST::RevCPU {
 
 using MemSegment = RevMem::MemSegment;
 
+using MemSegment = RevMem::MemSegment;
+
 RevMem::RevMem( uint64_t MemSize, RevOpts *Opts, RevMemCtrl *Ctrl, SST::Output *Output )
   : memSize(MemSize), opts(Opts), ctrl(Ctrl), output(Output),
     zNic(nullptr), isRZA(false) {
@@ -303,6 +305,7 @@ uint64_t RevMem::CalcPhysAddr( uint64_t pageNum, uint64_t vAddr ) {
         physAddr
       );
     }
+  }
   }
   }
   AddToTLB(vAddr, physAddr);
@@ -614,7 +617,7 @@ bool RevMem::WriteMem( unsigned Hart, uint64_t Addr, size_t Len, const void* Dat
 
   if( IsAddrInScratchpad(Addr)){
     scratchpad->WriteMem(Hart, Addr, Len, Data); //, flags);
-  } else{
+  } else {
     if(Addr == 0xDEADBEEF){
       std::cout << "Found special write. Val = " << std::hex << *(int*)(Data) << std::dec << std::endl;
     }
