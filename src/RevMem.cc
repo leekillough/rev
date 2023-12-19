@@ -271,38 +271,38 @@ uint64_t RevMem::CalcPhysAddr(uint64_t pageNum, uint64_t vAddr){
   /* If not in TLB, physAddr will equal _INVALID_ADDR_ */
   if( physAddr == _INVALID_ADDR_ ){
     /* Check if vAddr is a valid address before translating to physAddr */
-    if( isValidVirtAddr(vAddr) ){
-      if(pageMap.count(pageNum) == 0){
-        // First touch of this page, mark it as in use
-        pageMap[pageNum] = std::pair<uint32_t, bool>(nextPage, true);
-        physAddr = (nextPage << addrShift) + ((pageSize - 1) & vAddr);
+    if( !isRZA ){
+      if( isValidVirtAddr(vAddr) ){
+        if(pageMap.count(pageNum) == 0){
+          // First touch of this page, mark it as in use
+          pageMap[pageNum] = std::pair<uint32_t, bool>(nextPage, true);
+          physAddr = (nextPage << addrShift) + ((pageSize - 1) & vAddr);
 #ifdef _REV_DEBUG_
-        std::cout << "First Touch for page:" << pageNum << " addrShift:" << addrShift << " vAddr: 0x" << std::hex << vAddr << " PhsyAddr: 0x" << physAddr << std::dec << " Next Page: " << nextPage << std::endl;
+          std::cout << "First Touch for page:" << pageNum << " addrShift:" << addrShift << " vAddr: 0x" << std::hex << vAddr << " PhsyAddr: 0x" << physAddr << std::dec << " Next Page: " << nextPage << std::endl;
 #endif
-        nextPage++;
-      }else if(pageMap.count(pageNum) == 1){
-        //We've accessed this page before, just get the physical address
-        physAddr = (pageMap[pageNum].first << addrShift) + ((pageSize - 1) & vAddr);
+          nextPage++;
+        }else if(pageMap.count(pageNum) == 1){
+          //We've accessed this page before, just get the physical address
+          physAddr = (pageMap[pageNum].first << addrShift) + ((pageSize - 1) & vAddr);
 #ifdef _REV_DEBUG_
-        std::cout << "Access for page:" << pageNum << " addrShift:" << addrShift << " vAddr: 0x" << std::hex << vAddr << " PhsyAddr: 0x" << physAddr << std::dec << " Next Page: " << nextPage << std::endl;
+          std::cout << "Access for page:" << pageNum << " addrShift:" << addrShift << " vAddr: 0x" << std::hex << vAddr << " PhsyAddr: 0x" << physAddr << std::dec << " Next Page: " << nextPage << std::endl;
 #endif
-      }else{
-        output->fatal(CALL_INFO, -1, "Error: Page allocated multiple times\n");
+        }else{
+          output->fatal(CALL_INFO, -1, "Error: Page allocated multiple times\n");
+        }
       }
-      AddToTLB(vAddr, physAddr);
-    }
-    else {
-      /* vAddr not a valid address */
+      else {
+        /* vAddr not a valid address */
 
 
-      // #ifdef _REV_DEBUG_
-      for( auto Seg : MemSegs ){
-        std::cout << *Seg << std::endl;
-      }
+        // #ifdef _REV_DEBUG_
+        for( auto Seg : MemSegs ){
+          std::cout << *Seg << std::endl;
+        }
 
-      for( auto Seg : ThreadMemSegs ){
-        std::cout << *Seg << std::endl;
-      }
+        for( auto Seg : ThreadMemSegs ){
+          std::cout << *Seg << std::endl;
+        }
 
       // for( auto Seg : CustomMemSegs ){
       // std::cout << *Seg << std::endl;
@@ -313,6 +313,7 @@ uint64_t RevMem::CalcPhysAddr(uint64_t pageNum, uint64_t vAddr){
                     vAddr, physAddr);
     }
   }
+  AddToTLB(vAddr, physAddr);
   return physAddr;
 }
 
@@ -930,6 +931,39 @@ bool RevMem::ReadMem(unsigned Hart, uint64_t Addr, size_t Len, void *Target,
   return true;
 }
 
+bool RevMem::FlushLine( unsigned Hart, uint64_t Addr ){
+  uint64_t pageNum = Addr >> addrShift;
+  uint64_t physAddr = CalcPhysAddr(pageNum, Addr);
+  if( ctrl ){
+    ctrl->sendFLUSHRequest(Hart, Addr, physAddr, getLineSize(),
+                           false, RevFlag::F_NONE);
+  }
+  // else, this is effectively a nop
+  return true;
+}
+
+bool RevMem::InvLine( unsigned Hart, uint64_t Addr ){
+  uint64_t pageNum = Addr >> addrShift;
+  uint64_t physAddr = CalcPhysAddr(pageNum, Addr);
+  if( ctrl ){
+    ctrl->sendFLUSHRequest(Hart, Addr, physAddr, getLineSize(),
+                           true, RevFlag::F_NONE);
+  }
+  // else, this is effectively a nop
+  return true;
+}
+
+bool RevMem::CleanLine( unsigned Hart, uint64_t Addr ){
+  uint64_t pageNum = Addr >> addrShift;
+  uint64_t physAddr = CalcPhysAddr(pageNum, Addr);
+  if( ctrl ){
+    ctrl->sendFENCE(Hart);
+    ctrl->sendFLUSHRequest(Hart, Addr, physAddr, getLineSize(),
+                           false, RevFlag::F_NONE);
+  }
+  // else, this is effectively a nop
+  return true;
+}
 
 
 // This function is used to remove/shrink a memory segment
