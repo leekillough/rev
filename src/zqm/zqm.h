@@ -34,27 +34,37 @@ namespace SST::Forza{
          * if (mem_read_ptr == mem_write_ptr), buffer is empty
          * if ( (mem_write_ptr + thread_length_bytes) == mem_read_ptr), buffer has space for one thread
          *   but then the pointers would match (and thus be "empty"), so no write allowed
+         *
+         *   run_queue_depth is {in,de}cremented when the memory {write,read} is issued
          */
     public:
-        // Note: No valid data element - assuming that if the row exists, it's valid
-        uint64_t min_zap_hart;
-        uint64_t max_zap_hart; // TODO: Replace with count?
+        uint32_t min_zap_hart;
+        uint32_t max_zap_hart; // TODO: Replace with count?
         uint64_t mem_read_ptr;
         uint64_t mem_write_ptr;
         uint64_t mem_buffer_low;
         uint64_t mem_buffer_high;
-        ZqmAidStateTableRow(uint64_t min_zap_hart_, uint64_t max_zap_hart_,
-                            uint64_t mem_buffer_low_, uint64_t mem_buffer_high_) :
+        int32_t harts_available;
+        int32_t run_queue_depth;
+        int32_t outstanding_fills;
+
+        // Note: No valid data element - assuming that if the row exists, it's valid
+        ZqmAidStateTableRow(uint32_t min_zap_hart_, uint32_t max_zap_hart_,
+                            uint64_t mem_buffer_low_, uint64_t mem_buffer_high_,
+                            uint16_t num_zaps_) :
                 min_zap_hart(min_zap_hart_),
                 max_zap_hart(max_zap_hart_),
                 mem_read_ptr(mem_buffer_low_),
                 mem_write_ptr(mem_buffer_low_),
                 mem_buffer_low(mem_buffer_low_),
-                mem_buffer_high(mem_buffer_high_)
-        { /* empty constructor */
+                mem_buffer_high(mem_buffer_high_),
+                run_queue_depth(0),
+                outstanding_fills(0)
+        {
             /** TODO: Add Sanity check - memory buffer size should be an even multiple
              * of ThreadLengthBytes
              */
+             harts_available = (max_zap_hart - min_zap_hart + 1) * num_zaps_;
         }
 
         /**
@@ -162,8 +172,8 @@ namespace SST::Forza{
          * creating/deleting rows in the aid_state table
          */
         void processMessagingMsgs(); // invoked by clock handler
-        void processMessagingZqmSet(zopEvent *event);
-        void processMessagingHartDone(zopEvent *event);
+        void processMessagingZqmSet(SST::Forza::zopEvent *event);
+        void processMessagingHartDone(SST::Forza::zopEvent *event);
 
 
         /**
@@ -171,6 +181,7 @@ namespace SST::Forza{
          * them
          */
         void processRzaMsgs();  // invoked by clock handler
+        void processRzaThreadDataReturn(SST::Forza::zopEvent *ev);
 
         /**
          * Read and process messages from the incoming_threads_vec
@@ -184,9 +195,18 @@ namespace SST::Forza{
          */
         bool selectDestHart(SST::Forza::zopEvent *thread);
 
-        ZqmAidStateTableRow* getAidStateTableRow(SST::Forza::zopEvent *zop);
+        /**
+         * Get the pointer to the state table for the given AID
+         * @param aid - application ID
+         * @return pointer to state table row; nullptr if not found (also a fatal error)
+         */
         ZqmAidStateTableRow* getAidStateTableRow(uint32_t aid);
-	
+
+
+        /**
+         * If a hart is empty, try to fill it (mostly for migrating thread applications)
+         */
+        void fillEmptyHart();
 
         // private data members
         SST::Output output;             ///< ZQM: SST output handler
@@ -194,6 +214,7 @@ namespace SST::Forza{
 
         // Setup reqs and table for them
         std::vector<SST::Forza::zopEvent*> setup_reqs;
+        // the uint32_t is the aid for the row
         std::map<uint32_t, ZqmAidStateTableRow> aid_state_table; //TODO: Pointers to Rows?
 
         // MZop ACKs and tracking table for in-flight mem ops...will
