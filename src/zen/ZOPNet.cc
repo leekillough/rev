@@ -24,6 +24,7 @@ zopNIC::zopNIC(ComponentId_t id, Params& params)
   output.init("zopNIC[" + getName() + ":@p:@t]: ",
               verbosity, 0, SST::Output::STDOUT);
   ReqPerCycle = params.find<unsigned>("req_per_cycle", 1);
+  isPrec = params.find<bool>("is_prec", false);
 
   // register the stats
   registerStats();
@@ -193,8 +194,14 @@ void zopNIC::init(unsigned int phase){
   if( iFace->isNetworkInitialized() ){
     if( !initBroadcastSent ){
       initBroadcastSent = true;
-      zopEvent *ev = new zopEvent(iFace->getEndpointID(),
-                                  getEndpointType());
+      zopEvent *ev;
+      if (!isPrec) {
+        ev = new zopEvent(iFace->getEndpointID(),
+                                    getEndpointType());
+      } else {
+        ev = new zopEvent(iFace->getEndpointID(),
+                                    getEndpointTypePrec());
+      }
       SST::Interfaces::SimpleNetwork::Request * req =
         new SST::Interfaces::SimpleNetwork::Request();
       req->dest = SST::Interfaces::SimpleNetwork::INIT_BROADCAST_ADDR;
@@ -203,7 +210,11 @@ void zopNIC::init(unsigned int phase){
       iFace->sendUntimedData(req);
 
       // add myself to the local endpoint table
-      hostMap[iFace->getEndpointID()] = getEndpointType();
+      if (!isPrec) {
+        hostMap[iFace->getEndpointID()] = getEndpointType();
+      } else {
+        hostMapPrec[iFace->getEndpointID()] = getEndpointTypePrec();
+      }
     }
   }
 
@@ -214,11 +225,20 @@ void zopNIC::init(unsigned int phase){
     numDest++;
     SST::Interfaces::SimpleNetwork::nid_t srcID = req->src;
     std::vector<uint64_t> Pkt = ev->getPacket();
-    hostMap[srcID] = static_cast<zopCompID>(Pkt[0] & Z_MASK_TYPE);
-    output.verbose(CALL_INFO, 7, 0,
-                   "%s received init broadcast messages from %d of type %s\n",
-                   getName().c_str(), (uint32_t)(srcID),
-                   endPToStr(hostMap[srcID]).c_str());
+    if (!isPrec) {
+      hostMap[srcID] = static_cast<zopCompID>(Pkt[0] & Z_MASK_TYPE);
+      output.verbose(CALL_INFO, 7, 0,
+                    "%s received init broadcast messages from %d of type %s\n",
+                    getName().c_str(), (uint32_t)(srcID),
+                    endPToStr(hostMap[srcID]).c_str());
+    } else {
+      hostMapPrec[srcID] = static_cast<zopPrecID>(Pkt[0] & Z_MASK_TYPE);
+      output.verbose(CALL_INFO, 7, 0,
+                    "%s received init broadcast messages from %d of type %s\n",
+                    getName().c_str(), (uint32_t)(srcID),
+                    precIDToStr(hostMapPrec[srcID]).c_str());
+
+    }
   }
 
   // --- begin print out the host mapping table
@@ -230,16 +250,46 @@ void zopNIC::init(unsigned int phase){
     output.verbose(CALL_INFO, 9, 0,
                   "------------------------------------------------------\n");
 
-    for(auto const& [key, val] : hostMap){
-      output.verbose(CALL_INFO, 9, 0,
-                    "Endpoint ID=%d is of Type=%s\n",
-                    (uint32_t)(key), endPToStr(val).c_str());
+    if (!isPrec) {
+      for(auto const& [key, val] : hostMap){
+          output.verbose(CALL_INFO, 9, 0,
+                        "Endpoint ID=%d is of Type=%s\n",
+                        (uint32_t)(key), endPToStr(val).c_str());
+      }
+    } else {
+      for(auto const& [key, val] : hostMapPrec){
+          output.verbose(CALL_INFO, 9, 0,
+                        "Endpoint ID=%d is of Type=%s\n",
+                        (uint32_t)(key), precIDToStr(val).c_str());
+      }
     }
 
     output.verbose(CALL_INFO, 9, 0,
                   "------------------------------------------------------\n");
   }
   // --- end print out the host mapping table
+}
+
+void zopNIC::send(zopEvent *ev, zopPrecID dest){
+  SST::Interfaces::SimpleNetwork::Request *req =
+    new SST::Interfaces::SimpleNetwork::Request();
+  output.verbose(CALL_INFO, 9, 0,
+                 "Sending message from %s @ id=%d to endpoint[hart:zone:prec:Type]=[%d:%d:%d:%s], flit 1 %lu\n",
+                 getName().c_str(), (uint32_t)(getAddress()),
+                 ev->getDestHart(), ev->getDestZCID(), ev->getDestPCID(),
+                 precIDToStr(dest).c_str(),
+                 ev->getPacket()[1] );
+  auto realDest = 0;
+  for( auto i : hostMapPrec ){
+    if( i.second == dest ){
+      realDest = i.first;
+    }
+  }
+  ev->encodeEvent();
+  req->dest = realDest;   // FIXME
+  req->src = getAddress();
+  req->givePayload(ev);
+  sendQ.push(req);
 }
 
 void zopNIC::send(zopEvent *ev, zopCompID dest){

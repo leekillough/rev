@@ -324,6 +324,15 @@ public:
     Packet.push_back((uint64_t)(srcId));
   }
 
+  /// zopEvent: init broadcast constructor
+  //  This constructor is ONLY utilized for initialization
+  //  DO NOT use this constructor for normal packet construction
+  explicit zopEvent(unsigned srcId, zopPrecID Type )
+    : Event(){
+    Packet.push_back((uint64_t)(Type));
+    Packet.push_back((uint64_t)(srcId));
+  }
+
   /// zopEvent: raw event constructor
   explicit zopEvent()
     : Event(){
@@ -596,6 +605,9 @@ public:
   /// zopAPI : send a message on the network
   virtual void send(zopEvent *ev, zopCompID dest) = 0;
 
+  /// zopAPI : send a message on the network
+  virtual void send(zopEvent *ev, zopPrecID dest) = 0;
+
   /// zopAPI : retrieve the number of potential endpoints
   virtual unsigned getNumDestinations() = 0;
 
@@ -605,8 +617,14 @@ public:
   /// zopAPI: set the type of the endpoint
   virtual void setEndpointType(zopCompID type) = 0;
 
+  /// zopAPI: set the type of the endpoint
+  virtual void setEndpointType(zopPrecID type) = 0;
+
   /// zopAPI: get the type of the endpoint
   virtual zopCompID getEndpointType() = 0;
+
+  /// zopAPI: get the type of the endpoint
+  virtual zopPrecID getEndpointTypePrec() = 0;
 
   /// zopAPI: set the number of harts
   virtual void setNumHarts(unsigned Hart) = 0;
@@ -696,6 +714,45 @@ public:
     }
 
     return SST::Forza::zopCompID::Z_ZEN;
+  }
+
+  /// zopAPI: convert endpoint to string name
+  std::string const precIDToStr(zopPrecID T){
+    switch( T ){
+    case zopPrecID::Z_ZONE0:
+      return "ZONE0";
+      break;
+    case zopPrecID::Z_ZONE1:
+      return "ZONE1";
+      break;
+    case zopPrecID::Z_ZONE2:
+      return "ZONE2";
+      break;
+    case zopPrecID::Z_ZONE3:
+      return "ZONE3";
+      break;
+    case zopPrecID::Z_ZONE4:
+      return "ZONE4";
+      break;
+    case zopPrecID::Z_ZONE5:
+      return "ZONE5";
+      break;
+    case zopPrecID::Z_ZONE6:
+      return "ZONE6";
+      break;
+    case zopPrecID::Z_ZONE7:
+      return "ZONE7";
+      break;
+    case zopPrecID::Z_PMP:
+      return "PMP";
+      break;
+    case zopPrecID::Z_ZIP:
+      return "ZIP";
+      break;
+    default:
+      return "UNK";
+      break;
+    }
   }
 
   /// zopAPI: convert endpoint to string name
@@ -853,6 +910,9 @@ public:
   /// zopNIC: send an event
   virtual void send(zopEvent *ev, zopCompID dest);
 
+  /// zopNIC: send an event
+  virtual void send(zopEvent *ev, zopPrecID dest);
+
   /// zopNIC: get the number of destinations
   virtual unsigned getNumDestinations();
 
@@ -862,8 +922,14 @@ public:
   /// zopNIC: set the endpoint type
   virtual void setEndpointType(zopCompID type) { Type = type; }
 
+  /// zopNIC: set the endpoint type
+  virtual void setEndpointType(zopPrecID type) { TypePrec = type; }
+
   /// zopNic: get the endpoint type
   virtual zopCompID getEndpointType() { return Type; }
+
+  /// zopNic: get the endpoint type
+  virtual zopPrecID getEndpointTypePrec() { return TypePrec; }
 
   /// zopNIC: callback function for the SimpleNetwork interface
   bool msgNotify(int virtualNetwork);
@@ -909,11 +975,14 @@ private:
   unsigned Precinct;                        ///< zopNIC: precinct ID
   unsigned Zone;                            ///< zopNIC: zone ID
   zopCompID Type;                           ///< zopNIC: endpoint type
+  zopPrecID TypePrec;                       ///< zopNIC: endpoint type
+  bool isPrec;
 
   uint8_t *msgId;                           ///< zopNIC: per hart message IDs
 
   std::queue<SST::Interfaces::SimpleNetwork::Request*> sendQ;       ///< zopNIC: buffered send queue
   std::map<SST::Interfaces::SimpleNetwork::nid_t,zopCompID> hostMap;  ///< zopNIC: network ID to endpoint type mapping
+  std::map<SST::Interfaces::SimpleNetwork::nid_t,zopPrecID> hostMapPrec;  ///< zopNIC: network ID to endpoint type mapping
 
   std::vector<Statistic<uint64_t>*> stats;  ///< zopNIC: statistics vector
 };  // zopNIC

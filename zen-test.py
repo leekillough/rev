@@ -55,6 +55,14 @@ def main():
   topo = router.setSubComponent("topology", "merlin.singlerouter", 0)
   topo.addGlobalParamSet("topology_params")
 
+  prec_router = sst.Component("prec_router", "merlin.hr_router")
+  prec_router.addGlobalParamSet("router_params")
+  prec_router.addParams({"id": 1, "num_ports": 1})
+
+  prec_topo = prec_router.setSubComponent("topology", "merlin.singlerouter", 0)
+  prec_topo.addGlobalParamSet("topology_params")
+
+
   rza = sst.Component("rza", "Forza.ZOPGen")
   #zen0.addGlobalParamSet("zen_params")
   rza.addParams({"int_id" : 8})
@@ -113,11 +121,18 @@ def main():
   zen1_lc.addGlobalParamSet("networkLinkControl_params")
   zen1_zopapi_lc = zen1_lc.setSubComponent("iface", "merlin.linkcontrol", 0)
   zen1_zopapi_lc.addGlobalParamSet("networkLinkControl_params")
-  zen_link1 = sst.Link("zen1_link")
-  zen_link1.connect( (zen1_zopapi_lc, "rtr_port", "1us"), (router, "port1", "1us") )
+  zen1_link = sst.Link("zen1_link")
+  zen1_link.connect( (zen1_zopapi_lc, "rtr_port", "1us"), (router, "port1", "1us") )
   zen1_lc.addParams({"verbose": 10})
-
-
+'''
+  zen1_prec_lc = zen1.setSubComponent("m_zop_prec_iface", "Forza.zopNIC", 0)
+  zen1_prec_lc.addGlobalParamSet("networkLinkControl_params")
+  zen1_prec_zopapi_lc = zen1_prec_lc.setSubComponent("iface", "merlin.linkcontrol", 0)
+  zen1_prec_zopapi_lc.addGlobalParamSet("networkLinkControl_params")
+  zen1_prec_link = sst.Link("zen1_prec_link")
+  zen1_prec_link.connect( (zen1_prec_zopapi_lc, "rtr_port", "1us"), (prec_router, "port0", "1us") )
+  zen1_prec_lc.addParams({"verbose": 10})
+'''
   #zen1_rtrlink = sst.Link("link_zen1_rtr0")
   #router.addLink(zen1_rtrlink, "port1", "5 ns")
   #zen1_lc.addLink(zen1_rtrlink, "network", "5 ns")

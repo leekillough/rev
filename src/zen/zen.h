@@ -76,7 +76,6 @@ namespace SST::Forza{
 
     // describe the ports
     SST_ELI_DOCUMENT_PORTS(
-      {"rtrLink", "Links to Network.", {"merlin.linkcontrol"}},
     )
 
     // describe the statistics
@@ -85,6 +84,7 @@ namespace SST::Forza{
     // describe the subcomponent slots
     SST_ELI_DOCUMENT_SUBCOMPONENT_SLOTS(
       {"m_zop_iface","[FORZA] Zone NIC", "SST::Forza::zopNIC"},
+      //{"m_zop_prec_iface","[FORZA] Precinct NIC", "SST::Forza::zopNIC"},
     )
 
     // public class members
@@ -153,6 +153,7 @@ namespace SST::Forza{
     uint64_t m_num_zones;
     uint64_t m_num_precincts;
     SST::Forza::zopAPI* m_zop_iface;
+    //SST::Forza::zopAPI* m_zop_prec_iface;
     bool sent;
     bool dma_enabled;
     uint64_t process_per_cycle;

@@ -32,6 +32,8 @@ ZEN::ZEN(ComponentId_t id, Params& params)
 
   m_zop_iface = loadUserSubComponent<SST::Forza::zopAPI>( "m_zop_iface" );
   m_zop_iface->setEndpointType(zopCompID::Z_ZEN);
+  //m_zop_prec_iface = loadUserSubComponent<SST::Forza::zopAPI>( "m_zop_prec_iface" );
+  //m_zop_prec_iface->setEndpointType(zopPrecID::Z_ZONE0);
   m_num_harts = params.find<uint64_t>("num_harts", 4);
   m_num_zones = params.find<uint64_t>("m_num_zones", 4);
   m_num_precincts = params.find<uint64_t>("m_num_precincts", 4);
@@ -233,13 +235,13 @@ void ZEN::sendMsgToScratchpad(uint64_t dest, uint64_t zcid, uint64_t scratch_add
 void ZEN::forwardPktToZIP(Forza::zopEvent *ev) {
   ev->setSrcPCID(m_zop_iface->getZoneID());
   ev->encodeEvent();
-  // m_zop_prec_iface->sendPrecinct(ackMsg, zopPrecID::Z_ZIP)
+  //m_zop_prec_iface->send(ev, zopPrecID::Z_ZIP);
 }
 
 void ZEN::forwardPktToExtZEN(Forza::zopEvent *ev) {
   ev->setSrcPCID(m_zop_iface->getZoneID());
   ev->encodeEvent();
-  // m_zop_prec_iface->sendPrecinct(ackMsg, (uint8_t)ev->getPCID())
+  //m_zop_prec_iface->send(ev, (zopPrecID)ev->getDestPCID());
 }
 
 void ZEN::notifyHARTScratchpad() {
@@ -353,7 +355,7 @@ void ZEN::sendNACKToZIP(uint64_t hart_id, uint64_t zcid) {
   nackMsg->setDestPCID((uint8_t)zopPrecID::Z_ZIP);
   nackMsg->setDestPrec(m_zop_iface->getPrecinctID());
   nackMsg->encodeEvent();
-  //m_zop_prec_iface->sendPrecinct(ackMsg, zopPrecID::Z_ZIP);
+  //m_zop_prec_iface->send(nackMsg, zopPrecID::Z_ZIP);
 }
 
 void ZEN::sendACKToZIP(uint64_t hart_id, uint64_t zcid) {
@@ -372,7 +374,7 @@ void ZEN::sendACKToZIP(uint64_t hart_id, uint64_t zcid) {
   ackMsg->setDestPrec(m_zop_iface->getPrecinctID());
   ackMsg->setDestPrec(0);
   ackMsg->encodeEvent();
-  //m_zop_prec_iface->sendPrecinct(ackMsg, zopPrecID::Z_ZIP);
+  //m_zop_prec_iface->send(ackMsg, zopPrecID::Z_ZIP);
 }
 
 void ZEN::sendNACKToZAP(uint64_t hart_id, uint64_t zcid) {
