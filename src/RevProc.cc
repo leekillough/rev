@@ -232,11 +232,6 @@ bool RevProc::SeedInstTable(){
       EnableExt(new RV64F(feature, mem, output), false);
 
     }
-#if 0
-    if( feature->IsRV64() ){
-      EnableExt(new RV64D(feature, mem, output));
-    }
-#endif
   }
 
   // D-Extension
@@ -245,6 +240,11 @@ bool RevProc::SeedInstTable(){
     if( feature->IsRV64() ){
       EnableExt(new RV64D(feature, mem, output), false);
     }
+  }
+
+  // Zicbom-Extension
+  if( feature->IsModeEnabled(RV_ZICBOM) ){
+    EnableExt(new Zicbom(feature, mem, output), false);
   }
 
   return true;
