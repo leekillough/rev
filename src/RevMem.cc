@@ -309,8 +309,8 @@ uint64_t RevMem::CalcPhysAddr(uint64_t pageNum, uint64_t vAddr){
                       vAddr, physAddr);
       }
     }
+    AddToTLB(vAddr, physAddr);
   }
-  AddToTLB(vAddr, physAddr);
   return physAddr;
 }
 
