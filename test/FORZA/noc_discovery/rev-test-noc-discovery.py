@@ -32,7 +32,7 @@ zap_cpu1.addParams({
         "machine" : "[0:RV64GC]",                     # Core:Config; RV64I for core 0
         "startAddr" : "[0:0x00000000]",               # Starting address for core 0
         "memCost" : "[0:1:10]",                       # Memory loads required 1-10 cycles
-        "program" : os.getenv("REV_EXE", "noc_discovery.exe"),  # Target executable
+        "program" : os.getenv("REV_EXE", "ex2.exe"),  # Target executable
         "enableZoneNIC" : 1,                          # [FORZA] Enable the zone NIC
         "precinctId" : 0,                             # [FORZA] precinct ID
         "zoneId" : 0,                                 # [FORZA] zone ID

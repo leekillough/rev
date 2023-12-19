@@ -30,7 +30,7 @@ public:
 
   ///< RevThread: Constructor
   RevThread(uint32_t ID, uint32_t ParentID,
-            std::shared_ptr<MemSegment>& ThreadMem,
+            std::shared_ptr<RevMem::MemSegment>& ThreadMem,
             std::unique_ptr<RevVirtRegState> VirtRegState)
     : ID(ID), ParentID(ParentID),
       ThreadMem(ThreadMem), VirtRegState(std::move(VirtRegState)){}
@@ -117,7 +117,7 @@ private:
   uint32_t ParentID;                                   // Parent ID
   uint64_t StackPtr;                                   // Initial stack pointer
   uint64_t FirstPC;                                    // Initial PC
-  std::shared_ptr<MemSegment> ThreadMem;       // TLS and Stack memory
+  std::shared_ptr<RevMem::MemSegment> ThreadMem;       // TLS and Stack memory
   RevFeature* Feature;                                 // Feature set for this thread
   uint64_t ThreadPtr;                                  // Thread pointer
   ThreadState State = ThreadState::START;              // Thread state

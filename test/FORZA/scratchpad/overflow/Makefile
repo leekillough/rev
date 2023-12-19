@@ -1,7 +1,7 @@
 #
 # Makefile
 #
-# makefile: scratchpad_basic
+# makefile: pthread-basic
 #
 # Copyright (C) 2017-2023 Tactical Computing Laboratories, LLC
 # All Rights Reserved
@@ -11,12 +11,12 @@
 #
 
 .PHONY: src
-EXAMPLE=scratchpad_basic
+EXAMPLE=scratchpad-overflow
 
 #CC=riscv64-unknown-elf-gcc
 CC="${RVCC}"
 #ARCH=rv64g
-ARCH=rv64gc
+ARCH=rv64g
 
 all: $(EXAMPLE).exe
 $(EXAMPLE).exe: $(EXAMPLE).c

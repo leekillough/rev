@@ -39,7 +39,6 @@
 // -- RevCPU Headers
 #include "RevOpts.h"
 #include "RevMem.h"
-#include "RevMemSegment.h"
 #include "RevFeature.h"
 #include "RevLoader.h"
 #include "RevInstTable.h"

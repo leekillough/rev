@@ -13,6 +13,8 @@
 
 namespace SST::RevCPU{
 
+using MemSegment = RevMem::MemSegment;
+
 RevLoader::RevLoader( std::string Exe, std::string Args,
                       RevMem *Mem, SST::Output *Output )
   : exe(Exe), args(Args), mem(Mem), output(Output),
