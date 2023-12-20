@@ -32,14 +32,20 @@ namespace SST::Forza{
         /**
          * NOTE: This will NOT fill the circular buffer
          * if (mem_read_ptr == mem_write_ptr), buffer is empty
-         * if ( (mem_write_ptr + thread_length_bytes) == mem_read_ptr), buffer has space for one thread
+         * if ( (mem_write_ptr + thread_length_bytes) >= mem_read_ptr), buffer has space for one thread
          *   but then the pointers would match (and thus be "empty"), so no write allowed
          *
          *   run_queue_depth is {in,de}cremented when the memory {write,read} is issued
+         *
+         *   mem_buffer_high is assumed to be the last byte allowed in the buffer; this address+1
+         *   would be owned by something else
+         *     For example, if we want a buffer of 256 bytes per thread, then buffer_low should end in 0x00 and
+         *     buffer_high should end in 0xff.
+         *
          */
     public:
         uint32_t min_zap_hart;
-        uint32_t max_zap_hart; // TODO: Replace with count?
+        uint32_t max_zap_hart;
         uint64_t mem_read_ptr;
         uint64_t mem_write_ptr;
         uint64_t mem_buffer_low;
@@ -47,24 +53,24 @@ namespace SST::Forza{
         int32_t harts_available;
         int32_t run_queue_depth;
         int32_t outstanding_fills;
+        // TODO: Add read and write ACS; may need to add to ZOP spec/payload
 
         // Note: No valid data element - assuming that if the row exists, it's valid
         ZqmAidStateTableRow(uint32_t min_zap_hart_, uint32_t max_zap_hart_,
-                            uint64_t mem_buffer_low_, uint64_t mem_buffer_high_,
+                            uint64_t mem_buffer_low_addr_, uint64_t mem_buffer_high_addr_,
                             uint16_t num_zaps_) :
                 min_zap_hart(min_zap_hart_),
                 max_zap_hart(max_zap_hart_),
-                mem_read_ptr(mem_buffer_low_),
-                mem_write_ptr(mem_buffer_low_),
-                mem_buffer_low(mem_buffer_low_),
-                mem_buffer_high(mem_buffer_high_),
+                mem_read_ptr(mem_buffer_low_addr_),
+                mem_write_ptr(mem_buffer_low_addr_),
+                mem_buffer_low(mem_buffer_low_addr_),
+                mem_buffer_high(mem_buffer_high_addr_),
                 run_queue_depth(0),
                 outstanding_fills(0)
         {
-            /** TODO: Add Sanity check - memory buffer size should be an even multiple
-             * of ThreadLengthBytes
-             */
-             harts_available = (max_zap_hart - min_zap_hart + 1) * num_zaps_;
+            // Note: Validation of buffer size is a separate function (hacky, but can use
+            // regular SST output then)
+            harts_available = (max_zap_hart - min_zap_hart + 1) * num_zaps_;
         }
 
         /**
@@ -75,6 +81,14 @@ namespace SST::Forza{
          * @return - desired ptr or 0 on validation fail
          */
         uint64_t getMemAddr(bool do_read, bool update_ptr);
+
+        bool validateMemBuffSize()
+        {
+            uint64_t diff = (mem_buffer_high + 1) - (mem_buffer_low);
+            if ( (diff % ThreadLengthBytes) == 0)
+                return true;
+            return false;
+        }
 
     private:
         const uint64_t ThreadLengthDblWords = 34;
@@ -110,6 +124,7 @@ namespace SST::Forza{
         )
 
         // describe the statistics
+        // TODO: Add stats
         SST_ELI_DOCUMENT_STATISTICS()
 
         // describe the subcomponent slots
@@ -147,7 +162,7 @@ namespace SST::Forza{
          * @param addr
          * @param msg_id
          */
-        void sendThreadToRza(SST::Forza::zopEvent *thread); // TODO: Invoke via clock handler?
+        void sendThreadToRza(SST::Forza::zopEvent *thread);
 
         /**
          * How to actually *execute* this function (simulation wise)
@@ -156,7 +171,6 @@ namespace SST::Forza{
 
         /**
          * Do what the function says - prep and send a thread to a ZAP
-         * // TODO: I may want to discard this function
          */
         void sendThreadToZap(SST::Forza::zopEvent *thread);
 
@@ -215,7 +229,7 @@ namespace SST::Forza{
         // Setup reqs and table for them
         std::vector<SST::Forza::zopEvent*> setup_reqs;
         // the uint32_t is the aid for the row
-        std::map<uint32_t, ZqmAidStateTableRow> aid_state_table; //TODO: Pointers to Rows?
+        std::map<uint32_t, ZqmAidStateTableRow*> aid_state_table;
 
         // MZop ACKs and tracking table for in-flight mem ops...will
         // have to do both reads and writes to memory...

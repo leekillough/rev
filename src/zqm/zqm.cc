@@ -23,7 +23,7 @@ uint64_t ZqmAidStateTableRow::getMemAddr(bool do_read, bool update_ptr)
     // Below here, we do an update
     // First, determine the updated ptr
     uint64_t next_ptr = addr_ptr + ThreadLengthBytes;
-    if (next_ptr == mem_buffer_high)
+    if (next_ptr >= mem_buffer_high)
         next_ptr = mem_buffer_low;
 
     // Verify that we can do *something*
@@ -31,7 +31,7 @@ uint64_t ZqmAidStateTableRow::getMemAddr(bool do_read, bool update_ptr)
         if (mem_read_ptr == mem_write_ptr)
             return 0; // empty buffer
     } else {
-        if (next_ptr == mem_read_ptr)
+        if (next_ptr >= mem_read_ptr)
             return 0; // no room to write
     }
 
@@ -122,7 +122,8 @@ void ZQM::finish() {
  * * @param event
 */
 
-void ZQM::handleIncomingZOP(SST::Event *event) {
+void ZQM::handleIncomingZOP(SST::Event *event)
+{
     SST::Forza::zopEvent* ev = dynamic_cast<SST::Forza::zopEvent*>(event);
     ev->decodeEvent();
     output.verbose(CALL_INFO, 1, 0, "Msg type %d, opcode %ld\n",
@@ -231,9 +232,9 @@ void ZQM::getThreadFromRza(uint32_t app_id)
     load_thread_zop->setAppID(app_id);
     load_thread_zop->setID(msg_id++);
 
-    // TODO: How do I decide on how many words to get back???  Where does that live?
-    std::vector<uint64_t> payload;
-    payload.push_back(addr_ptr);
+    // Zop Payload
+    uint64_t load_acs = 0;
+    std::vector<uint64_t> payload (load_acs, addr_ptr, aid_state->ThreadLengthDblWords);
     load_thread_zop->setPayload(payload);
 
     // Send Zop
@@ -247,7 +248,6 @@ void ZQM::getThreadFromRza(uint32_t app_id)
 
     aid_state->run_queue_depth--;
     aid_state->outstanding_fills++;
-
 }
 
 void ZQM::processRzaMsgs() {
@@ -288,6 +288,7 @@ void ZQM::processRzaMsgs() {
         outstanding_rza_reqs.erase(iter);
         delete resp;
     }
+    rza_responses.clear();
 }
 
 void ZQM::processRzaThreadDataReturn(SST::Forza::zopEvent *ev)
@@ -341,6 +342,7 @@ void ZQM::processMessagingMsgs()
         }
         delete event;
     }
+    setup_reqs.clear();
 }
 
 void ZQM::processMessagingZqmSet(SST::Forza::zopEvent *event)
@@ -356,12 +358,16 @@ void ZQM::processMessagingZqmSet(SST::Forza::zopEvent *event)
     if (it != aid_state_table.end()) {
         output.fatal(CALL_INFO, 1, "Received a second setup packet for aid=%u\n", app_id);
     }
-    aid_state_table.insert(std::pair<uint32_t, ZqmAidStateTableRow>(app_id,
-                                                                    {min_zap_hart,
-                                                                     max_zap_hart,
-                                                                     mem_buffer_low,
-                                                                     mem_buffer_high,
-                                                                     num_zaps}));
+
+    ZqmAidStateTableRow *aid_state_row = new ZqmAidStateTableRow(min_zap_hart,
+                                                                 max_zap_hart,
+                                                                 mem_buffer_low,
+                                                                 mem_buffer_high,
+                                                                 num_zaps);
+    if (!aid_state_row->validateMemBuffSize())
+        output.fatal(CALL_INFO, 1, "Invalid memory buffer size for aid=%u, buff_low=%lu, buff_high=%lu\n",
+                     app_id, mem_buffer_low, mem_buffer_high);
+    aid_state_table.insert(std::pair<uint32_t, ZqmAidStateTableRow*>(app_id,aid_state_row));
     output.verbose(CALL_INFO, 1, 0, "setup aid state table %u\n", app_id);
 }
 
@@ -384,6 +390,10 @@ void ZQM::processMessagingHartDone(SST::Forza::zopEvent *event)
 
 void ZQM::processIncomingThreadsMsgs()
 {
+    // Sanity check
+    if (outstanding_rza_reqs.size() == UINT8_MAX)
+        return;
+
     for (auto &thread : incoming_threads_vec){
         if (thread->getOpcode() == zopOpc::Z_TMIG_FIXED){
             // Always assumed to have the hart available, but the sendThreadToZap checks
@@ -465,13 +475,17 @@ bool ZQM::selectDestHart(SST::Forza::zopEvent *thread)
 
 void ZQM::fillEmptyHart()
 {
+    // Sanity check
+    if (outstanding_rza_reqs.size() == UINT8_MAX)
+        return;
+
+    // TODO: Should this run less frequently? What are my rate limiters?
     // For all AIDs (or maybe just a simple round-robin?) see if there are any empty harts that can be filled
     for (auto &i : aid_state_table){
         ZqmAidStateTableRow row = i.second;
         if ( (row.harts_available != 0) && (row.run_queue_depth != 0) )
             getThreadFromRza(i.first);
     }
-    // TODO: Is this really all I need to do?
 }
 
 bool ZQM::clock(Cycle_t cycle)
