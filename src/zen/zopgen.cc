@@ -24,7 +24,7 @@ ZOPGen::ZOPGen(ComponentId_t id, Params& params)
   output.output("ZOPGen[%s] Registering clock with frequency=%s\n",
                 getName().c_str(), cpuFreq.c_str());
 
-  m_zop_iface = loadUserSubComponent<SST::Forza::zopAPI>( "m_zop_iface" );
+  m_zop_iface = loadUserSubComponent<SST::Forza::zenZopAPI>( "m_zop_iface" );
   if (int_id == 0) {
     m_zop_iface->setEndpointType(zopCompID::Z_ZAP0);
   } else if (int_id == 1) {
@@ -46,6 +46,7 @@ ZOPGen::ZOPGen(ComponentId_t id, Params& params)
   //m_linkControl->setNotifyOnReceive( new SST::Interfaces::SimpleNetwork::Handler<ZOPGen>(this,&ZOPGen::handleNetworkEvent) );
   // register with SST
   registerAsPrimaryComponent();
+  m_zop_iface->setNumHarts(3);
 }
 
 ZOPGen::~ZOPGen(){
@@ -70,7 +71,7 @@ void ZOPGen::finish() {
 }
 
 void ZOPGen::handleIncomingZOP(SST::Event *event) {
-  SST::Forza::zopEvent* ev = dynamic_cast<SST::Forza::zopEvent*>(event);
+  SST::Forza::zenZopEvent* ev = dynamic_cast<SST::Forza::zenZopEvent*>(event);
   ev->decodeEvent();
   output.verbose(CALL_INFO, 1, 0, "Msg type %d, opcode %ld, dest %d\n", ev->getType(),
                  ev->getOpcode(), ev->getDestHart());
@@ -91,7 +92,7 @@ void ZOPGen::handleIncomingZOP(SST::Event *event) {
   }
 }
 
-void ZOPGen::processLoad(SST::Forza::zopEvent *ev) {
+void ZOPGen::processLoad(SST::Forza::zenZopEvent *ev) {
   std::vector<uint64_t> resp;
   std::vector<uint64_t> payload = ev->getPayload();
   uint64_t addr = payload[0];
@@ -106,7 +107,7 @@ void ZOPGen::processLoad(SST::Forza::zopEvent *ev) {
 void ZOPGen::sendLoadToRZA(uint64_t addr, uint64_t size) {
   std::vector<uint64_t> payload;
   // TODO: Update with RZA id
-  SST::Forza::zopEvent *rzaMsg = new SST::Forza::zopEvent();
+  SST::Forza::zenZopEvent *rzaMsg = new SST::Forza::zenZopEvent();
   rzaMsg->setType(SST::Forza::zopMsgT::Z_MZOP);
   rzaMsg->setOpc(SST::Forza::zopOpc::Z_MZOP_LD);
   rzaMsg->setSrcHart(m_zop_iface->getAddress());
@@ -115,8 +116,10 @@ void ZOPGen::sendLoadToRZA(uint64_t addr, uint64_t size) {
   rzaMsg->setSrcPrec(0);
   // TODO: Update with RZA id
   rzaMsg->setDestHart(3);
+  // fake acs
+  payload.push_back(getReadACS(100));
   payload.push_back(addr-size+1);
-  payload.push_back(size);
+  //payload.push_back(size);
   rzaMsg->setPayload(payload);
   rzaMsg->encodeEvent();
   m_zop_iface->send(rzaMsg, zopCompID::Z_RZA);
@@ -127,7 +130,7 @@ void ZOPGen::sendMsgToRZA(uint64_t addr, uint64_t size) {
   output.verbose(CALL_INFO, 1, 0, "Msg tgt %d, msg id %" PRIu8 "\n", addr, msg_id);
   std::vector<uint64_t> payload;
   // TODO: Update with RZA id
-  SST::Forza::zopEvent *rzaMsg = new SST::Forza::zopEvent();
+  SST::Forza::zenZopEvent *rzaMsg = new SST::Forza::zenZopEvent();
   rzaMsg->setType(SST::Forza::zopMsgT::Z_MZOP);
   rzaMsg->setOpc(SST::Forza::zopOpc::Z_MZOP_SD);
   rzaMsg->setSrcHart(m_zop_iface->getAddress());
@@ -145,10 +148,10 @@ void ZOPGen::sendMsgToRZA(uint64_t addr, uint64_t size) {
   // TODO: Update with RZA id
 }
 
-void ZOPGen::sendMZOPRespToZAP(SST::Forza::zopEvent *ev, std::vector<uint64_t> payload) {
+void ZOPGen::sendMZOPRespToZAP(SST::Forza::zenZopEvent *ev, std::vector<uint64_t> payload) {
   uint8_t msg_id = ev->getID();
   output.verbose(CALL_INFO, 1, 0, "msg id %" PRIu8 " header %lu\n", msg_id, ev->getPacket()[0]);
-  SST::Forza::zopEvent *zopgenMsg = new SST::Forza::zopEvent(m_zop_iface->getAddress(), (zopCompID)1);
+  SST::Forza::zenZopEvent *zopgenMsg = new SST::Forza::zenZopEvent(m_zop_iface->getAddress(), (zopCompID)1);
   zopgenMsg->setType(SST::Forza::zopMsgT::Z_RESP);
   zopgenMsg->setID(msg_id);
   zopgenMsg->setOpc(SST::Forza::zopOpc::Z_RESP_LR);
@@ -162,7 +165,7 @@ void ZOPGen::sendMZOPRespToZAP(SST::Forza::zopEvent *ev, std::vector<uint64_t> p
 
 }
 
-void ZOPGen::processMZOPSDMA(SST::Forza::zopEvent *ev) {
+void ZOPGen::processMZOPSDMA(SST::Forza::zenZopEvent *ev) {
 
   std::vector<uint64_t> payload = ev->getPayload();
   for (int i = 0; i < payload.size(); ++i) {
@@ -178,7 +181,7 @@ void ZOPGen::processMZOPSDMA(SST::Forza::zopEvent *ev) {
   sendMZOPAckToZOPGen(ev);
 }
 
-void ZOPGen::processMZOP(SST::Forza::zopEvent *ev) {
+void ZOPGen::processMZOP(SST::Forza::zenZopEvent *ev) {
 
   std::vector<uint64_t> payload = ev->getPayload();
   for (int i = 0; i < payload.size(); ++i) {
@@ -190,10 +193,10 @@ void ZOPGen::processMZOP(SST::Forza::zopEvent *ev) {
   sendMZOPAckToZOPGen(ev);
 }
 
-void ZOPGen::sendMZOPAckToZOPGen(SST::Forza::zopEvent *ev) {
+void ZOPGen::sendMZOPAckToZOPGen(SST::Forza::zenZopEvent *ev) {
   uint8_t msg_id = ev->getID();
   output.verbose(CALL_INFO, 1, 0, "msg id %" PRIu8 " header %lu\n", msg_id, ev->getPacket()[0]);
-  SST::Forza::zopEvent *zopgenMsg = new SST::Forza::zopEvent(m_zop_iface->getAddress(), (zopCompID)1);
+  SST::Forza::zenZopEvent *zopgenMsg = new SST::Forza::zenZopEvent(m_zop_iface->getAddress(), (zopCompID)1);
   zopgenMsg->setType(SST::Forza::zopMsgT::Z_RESP);
   zopgenMsg->setID(msg_id);
   zopgenMsg->setOpc(SST::Forza::zopOpc::Z_MSG_SENDP);
@@ -205,10 +208,17 @@ void ZOPGen::sendMZOPAckToZOPGen(SST::Forza::zopEvent *ev) {
   m_zop_iface->send(zopgenMsg, zopCompID::Z_ZEN);
 
 }
+uint64_t ZOPGen::getWriteACS(uint64_t acs_pair) {
+  return acs_pair & 0xFFFFFFFF00000000ULL;
+}
+
+uint64_t ZOPGen::getReadACS(uint64_t acs_pair) {
+  return (acs_pair & 0xFFFFFFFFFFFFFFFFULL) >> 32;
+}
 
 void ZOPGen::sendSetupToZOPGen() {
   std::vector<uint64_t> payload;
-  SST::Forza::zopEvent *zopgenMsg = new SST::Forza::zopEvent();
+  SST::Forza::zenZopEvent *zopgenMsg = new SST::Forza::zenZopEvent();
   zopgenMsg->setType(SST::Forza::zopMsgT::Z_MSG);
   zopgenMsg->setID(msg_id);
   zopgenMsg->setOpc(SST::Forza::zopOpc::Z_MSG_ZENSET);
@@ -235,7 +245,7 @@ void ZOPGen::sendSetupToZOPGen() {
 
 void ZOPGen::sendMsgToZOPGen(int i) {
   std::vector<uint64_t> payload;
-  SST::Forza::zopEvent *zopgenMsg = new SST::Forza::zopEvent();
+  SST::Forza::zenZopEvent *zopgenMsg = new SST::Forza::zenZopEvent();
   zopgenMsg->setType(SST::Forza::zopMsgT::Z_MSG);
   zopgenMsg->setID(msg_id);
   zopgenMsg->setOpc(SST::Forza::zopOpc::Z_MSG_SENDP);
@@ -250,7 +260,7 @@ void ZOPGen::sendMsgToZOPGen(int i) {
   zopgenMsg->setPayload(payload);
   zopgenMsg->encodeEvent();
   // TODO: Update with RZA id
-  m_zop_iface->send(zopgenMsg, (zopCompID)2);
+  m_zop_iface->send(zopgenMsg, zopCompID::Z_ZAP1);
 }
 
 bool ZOPGen::clock(Cycle_t cycle){
@@ -258,7 +268,7 @@ bool ZOPGen::clock(Cycle_t cycle){
     setup_done = true;
   }
   if (setup_done && cycle > 300000 && !sent && int_id != 8) {
-    output.verbose(CALL_INFO, 1, 0, "Msg send %d\n", cycle);
+    output.verbose(CALL_INFO, 1, 0, "Msg send skip %d\n", cycle);
     //sendMsgToZOPGen();
     sent = true;
   }
@@ -269,7 +279,7 @@ bool ZOPGen::clock(Cycle_t cycle){
   }
   if (!all_sent && int_id == 0 && sent) {
     for (int i = 0; i < 1; ++i) {
-      output.verbose(CALL_INFO, 1, 0, "Msg send %d\n", cycle);
+      output.verbose(CALL_INFO, 1, 0, "Msg send to zen%d\n", cycle);
       sendMsgToZOPGen(i);
     }
     all_sent = true;

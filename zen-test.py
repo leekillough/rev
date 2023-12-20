@@ -67,7 +67,7 @@ def main():
   #zen0.addGlobalParamSet("zen_params")
   rza.addParams({"int_id" : 8})
 
-  rza_lc = rza.setSubComponent("m_zop_iface", "Forza.zopNIC", 0)
+  rza_lc = rza.setSubComponent("m_zop_iface", "Forza.zenZopNIC", 0)
   rza_lc.addGlobalParamSet("networkLinkControl_params")
   rza_zopapi_lc = rza_lc.setSubComponent("iface", "merlin.linkcontrol", 0)
   rza_zopapi_lc.addGlobalParamSet("networkLinkControl_params")
@@ -83,7 +83,7 @@ def main():
   #zen0.addGlobalParamSet("zen_params")
   zap0.addParams({"int_id" : 0})
 
-  zap0_lc = zap0.setSubComponent("m_zop_iface", "Forza.zopNIC", 0)
+  zap0_lc = zap0.setSubComponent("m_zop_iface", "Forza.zenZopNIC", 0)
   zap0_lc.addGlobalParamSet("networkLinkControl_params")
   zap0_zopapi_lc = zap0_lc.setSubComponent("iface", "merlin.linkcontrol", 0)
   zap0_zopapi_lc.addGlobalParamSet("networkLinkControl_params")
@@ -101,7 +101,7 @@ def main():
 
 
 
-  zap1_lc = zap1.setSubComponent("m_zop_iface", "Forza.zopNIC", 0)
+  zap1_lc = zap1.setSubComponent("m_zop_iface", "Forza.zenZopNIC", 0)
   zap1_lc.addGlobalParamSet("networkLinkControl_params")
   zap1_zopapi_lc = zap1_lc.setSubComponent("iface", "merlin.linkcontrol", 0)
   zap1_zopapi_lc.addGlobalParamSet("networkLinkControl_params")
@@ -117,7 +117,7 @@ def main():
   #zen0.addGlobalParamSet("zen_params")
   zen1.addParams({"int_id" : 1})
 
-  zen1_lc = zen1.setSubComponent("m_zop_iface", "Forza.zopNIC", 0)
+  zen1_lc = zen1.setSubComponent("m_zop_iface", "Forza.zenZopNIC", 0)
   zen1_lc.addGlobalParamSet("networkLinkControl_params")
   zen1_zopapi_lc = zen1_lc.setSubComponent("iface", "merlin.linkcontrol", 0)
   zen1_zopapi_lc.addGlobalParamSet("networkLinkControl_params")
@@ -125,7 +125,7 @@ def main():
   zen1_link.connect( (zen1_zopapi_lc, "rtr_port", "1us"), (router, "port1", "1us") )
   zen1_lc.addParams({"verbose": 10})
 '''
-  zen1_prec_lc = zen1.setSubComponent("m_zop_prec_iface", "Forza.zopNIC", 0)
+  zen1_prec_lc = zen1.setSubComponent("m_zop_prec_iface", "Forza.zenZopNIC", 0)
   zen1_prec_lc.addGlobalParamSet("networkLinkControl_params")
   zen1_prec_zopapi_lc = zen1_prec_lc.setSubComponent("iface", "merlin.linkcontrol", 0)
   zen1_prec_zopapi_lc.addGlobalParamSet("networkLinkControl_params")

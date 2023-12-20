@@ -13,15 +13,15 @@
 using namespace SST;
 using namespace Forza;
 
-zopNIC::zopNIC(ComponentId_t id, Params& params)
-  : zopAPI(id, params), iFace(nullptr), msgHandler(nullptr),
+zenZopNIC::zenZopNIC(ComponentId_t id, Params& params)
+  : zenZopAPI(id, params), iFace(nullptr), msgHandler(nullptr),
     initBroadcastSent(false), numDest(0), numHarts(0),
     Precinct(0), Zone(0),
-    Type(zopCompID::Z_ZAP0), msgId(nullptr){
+    Type(zopCompID::Z_ZAP0), msgId(nullptr), HARTFence(nullptr){
 
   // read the parameters
   int verbosity = params.find<int>("verbose", 0);
-  output.init("zopNIC[" + getName() + ":@p:@t]: ",
+  output.init("zenZopNIC[" + getName() + ":@p:@t]: ",
               verbosity, 0, SST::Output::STDOUT);
   ReqPerCycle = params.find<unsigned>("req_per_cycle", 1);
   isPrec = params.find<bool>("is_prec", false);
@@ -31,8 +31,8 @@ zopNIC::zopNIC(ComponentId_t id, Params& params)
 
   // register the clock handler
   const std::string cpuFreq = params.find<std::string>("clock", "1GHz");
-  registerClock(cpuFreq, new Clock::Handler<zopNIC>(this, &zopNIC::clockTick));
-  output.output("zopNIC[%s] Registering clock with frequency=%s\n",
+  registerClock(cpuFreq, new Clock::Handler<zenZopNIC>(this, &zenZopNIC::clockTick));
+  output.output("zenZopNIC[%s] Registering clock with frequency=%s\n",
                 getName().c_str(), cpuFreq.c_str());
 
   // load the SimpleNetwork interfaces
@@ -56,40 +56,26 @@ zopNIC::zopNIC(ComponentId_t id, Params& params)
 
   // setup the notification function
   iFace->setNotifyOnReceive(
-    new SST::Interfaces::SimpleNetwork::Handler<zopNIC>(this, &zopNIC::msgNotify));
+    new SST::Interfaces::SimpleNetwork::Handler<zenZopNIC>(this, &zenZopNIC::msgNotify));
 }
 
-zopNIC::~zopNIC(){
+zenZopNIC::~zenZopNIC(){
   if( msgId )
     delete[] msgId;
 }
 
 
-void zopNIC::setNumHarts(unsigned H){
+void zenZopNIC::setNumHarts(unsigned H){
   numHarts = H;
-  msgId = new uint8_t [numHarts];
+  msgId = new SST::Forza::zopMsgID [numHarts];
+  HARTFence = new unsigned [numHarts];
   for( unsigned i=0; i<numHarts; i++ ){
-    msgId[i] = 0;
+    HARTFence[i] = 0;
   }
 }
 
-uint8_t zopNIC::getMsgId(unsigned H){
-  if( H > (numHarts-1) )
-    output.fatal(CALL_INFO, -1,
-                 "Error: error generating message id: unknown Hart=%d\n",
-                 H );
 
-  uint8_t id = msgId[H];
-  if( msgId[H] == Z_MASK_MSGID ){
-    msgId[H] = 0;
-  }else{
-    msgId[H]++;
-  }
-
-  return id;
-}
-
-void zopNIC::registerStats(){
+void zenZopNIC::registerStats(){
   for( auto* stat : {
     "BytesSent",
     "MZOPSent",
@@ -107,15 +93,15 @@ void zopNIC::registerStats(){
   }
 }
 
-void zopNIC::recordStat(zopNIC::zopStats Stat, uint64_t Data){
-  if( Stat > zopNIC::zopStats::EXCPSent ){
+void zenZopNIC::recordStat(zenZopNIC::zopStats Stat, uint64_t Data){
+  if( Stat > zenZopNIC::zopStats::EXCPSent ){
     return ;
   }
 
   stats[Stat]->addData(Data);
 }
 
-zopNIC::zopStats zopNIC::getStatFromPacket(zopEvent *ev){
+zenZopNIC::zopStats zenZopNIC::getStatFromPacket(zenZopEvent *ev){
   auto Packet = ev->getPacket();
   if( Packet.size() == 0 ){
     output.fatal(CALL_INFO, -1,
@@ -145,11 +131,14 @@ zopNIC::zopStats zopNIC::getStatFromPacket(zopEvent *ev){
   case zopMsgT::Z_TMGT:
     return zopStats::TMGTSent;
     break;
+  case zopMsgT::Z_SYSC:
+    return zopStats::SYSCSent;
+    break;
   case zopMsgT::Z_RESP:
     return zopStats::RESPSent;
     break;
-  case zopMsgT::Z_SYSC:
-    return zopStats::SYSCSent;
+  case zopMsgT::Z_FENCE:
+    return zopStats::FENCESent;
     break;
   case zopMsgT::Z_EXCP:
     return zopStats::EXCPSent;
@@ -164,19 +153,19 @@ zopNIC::zopStats zopNIC::getStatFromPacket(zopEvent *ev){
   return zopStats::MZOPSent;
 }
 
-void zopNIC::setMsgHandler(Event::HandlerBase* handler){
+void zenZopNIC::setMsgHandler(Event::HandlerBase* handler){
   msgHandler = handler;
 }
 
-void zopNIC::setup(){
+void zenZopNIC::setup(){
   if( msgHandler == nullptr ){
     output.fatal(CALL_INFO, -1,
-                 "%s, Error: zopNIC implements a callback based notification and the parent has not registered a callback function\n",
+                 "%s, Error: zenZopNIC implements a callback based notification and the parent has not registered a callback function\n",
                  getName().c_str());
   }
 }
 
-void zopNIC::init(unsigned int phase){
+void zenZopNIC::init(unsigned int phase){
 
   output.verbose(CALL_INFO, 7, 0,
                  "%s initializing interface at phase %d\n",
@@ -194,12 +183,12 @@ void zopNIC::init(unsigned int phase){
   if( iFace->isNetworkInitialized() ){
     if( !initBroadcastSent ){
       initBroadcastSent = true;
-      zopEvent *ev;
+      zenZopEvent *ev;
       if (!isPrec) {
-        ev = new zopEvent(iFace->getEndpointID(),
+        ev = new zenZopEvent(iFace->getEndpointID(),
                                     getEndpointType());
       } else {
-        ev = new zopEvent(iFace->getEndpointID(),
+        ev = new zenZopEvent(iFace->getEndpointID(),
                                     getEndpointTypePrec());
       }
       SST::Interfaces::SimpleNetwork::Request * req =
@@ -221,7 +210,7 @@ void zopNIC::init(unsigned int phase){
   // receive all the broadcast messages
   while( SST::Interfaces::SimpleNetwork::Request * req =
          iFace->recvUntimedData() ) {
-    zopEvent *ev = static_cast<zopEvent*>(req->takePayload());
+    zenZopEvent *ev = static_cast<zenZopEvent*>(req->takePayload());
     numDest++;
     SST::Interfaces::SimpleNetwork::nid_t srcID = req->src;
     std::vector<uint64_t> Pkt = ev->getPacket();
@@ -270,7 +259,7 @@ void zopNIC::init(unsigned int phase){
   // --- end print out the host mapping table
 }
 
-void zopNIC::send(zopEvent *ev, zopPrecID dest){
+void zenZopNIC::send(zenZopEvent *ev, zopPrecID dest){
   SST::Interfaces::SimpleNetwork::Request *req =
     new SST::Interfaces::SimpleNetwork::Request();
   output.verbose(CALL_INFO, 9, 0,
@@ -289,10 +278,10 @@ void zopNIC::send(zopEvent *ev, zopPrecID dest){
   req->dest = realDest;   // FIXME
   req->src = getAddress();
   req->givePayload(ev);
-  sendQ.push(req);
+  sendQ.push_back(req);
 }
 
-void zopNIC::send(zopEvent *ev, zopCompID dest){
+void zenZopNIC::send(zenZopEvent *ev, zopCompID dest){
   SST::Interfaces::SimpleNetwork::Request *req =
     new SST::Interfaces::SimpleNetwork::Request();
   output.verbose(CALL_INFO, 9, 0,
@@ -320,50 +309,196 @@ void zopNIC::send(zopEvent *ev, zopCompID dest){
   req->dest = realDest;   // FIXME
   req->src = getAddress();
   req->givePayload(ev);
-  sendQ.push(req);
+  sendQ.push_back(req);
 }
 
-bool zopNIC::msgNotify(int vn){
+bool zenZopNIC::msgNotify(int vn){
   SST::Interfaces::SimpleNetwork::Request* req = iFace->recv(0);
-  if( req != nullptr ){
-    zopEvent *ev = static_cast<zopEvent*>(req->takePayload());
-    if( !ev ){
-      output.fatal(CALL_INFO, -1, "%s, Error: zopEvent on zopNIC is null\n",
-                   getName().c_str());
-    }
-    ev->decodeEvent();
-    output.verbose(CALL_INFO, 9, 0,
-                   "%s received zop message of type %s with flit 1 %lu\n",
-                   getName().c_str(), this->msgTToStr(ev->getType()).c_str(), ev->getPacket()[1]);
-    (*msgHandler)(ev);
-    delete req;
+  output.verbose(CALL_INFO, 4, 0, "recv msg on %s\n", getName().c_str());
+  if( req == nullptr ){
+    return false;
   }
-  return true;
+
+  zenZopEvent *ev = static_cast<zenZopEvent*>(req->takePayload());
+  if( ev == nullptr ){
+    output.fatal(CALL_INFO, -1, "%s, Error: zenZopEvent on zenZopNIC is null\n",
+                 getName().c_str());
+  }
+
+  auto P = ev->getPacket();
+
+  // decode the event
+  ev->decodeEvent();
+  output.verbose(CALL_INFO, 9, 0,
+                 "%s:%s received zop message of type %s\n",
+                 getName().c_str(),
+                 endPToStr(getEndpointType()).c_str(),
+                 msgTToStr(ev->getType()).c_str());
+
+  // if this is an RZA device, marshall it through to the ZIQ
+  if( Type == Forza::zopCompID::Z_RZA || Type == Forza::zopCompID::Z_ZEN || ev->getOpcode() == zopOpc::Z_MZOP_SCSD ){
+    (*msgHandler)(ev);
+    return true;
+  }
+
+  // this is likely a ZAP device,
+  // iterate across the outstanding messages
+  unsigned Cur = 0;
+  for( auto const& [DestHart, ID, isRead, Target, Req] : outstanding ){
+    auto SrcHart = ev->getSrcHart();
+    auto EVID = ev->getID();
+    if( (DestHart == SrcHart) && (ID == EVID) ){
+      // found a match
+      // if this is a read request, marshall to the RevCPU to handle the hazarding
+      if( isRead ){
+        // TODO: do we need to correctly handle this?
+        if( !ev->getFLIT(Z_FLIT_DATA_RESP, Target) ){
+          output.fatal(CALL_INFO, -1,
+                       "%s, Error: zenZopEvent on zenZopNIC failed to read response FLIT; OPC=%d, LENGTH=%d, ID=%d\n",
+                       getName().c_str(), (unsigned)(ev->getOpcode()),
+                       (unsigned)(ev->getLength()), ID );
+        }
+        std::cout << "LOAD RESPONSE : 0x" << std::hex << *Target << std::dec << std::endl;
+        std::cout << "LOAD RESPONSE : 0x" << std::hex << Target[0] << std::dec << std::endl;
+        ev->setMemReq(Req);
+        ev->setTarget(Target);
+        (*msgHandler)(ev);
+      }
+
+      // clear the request from the outstanding request list
+      outstanding.erase(outstanding.begin() + Cur);
+
+      // clear the message Id
+      msgId[DestHart].clearMsgId(EVID);
+
+      // we are clear to return
+      delete ev;
+      return true;
+    }
+    Cur++;
+  }
+
+  // we didn't find a matching request, return false
+  return false;
 }
 
-unsigned zopNIC::getNumDestinations(){
+bool zenZopNIC::handleFence(zenZopEvent *ev){
+  // first, determine if this fence has already been encountered
+  // if not, incrememnt the fence counter for this hart
+
+  // if this fence has been encountered, then check the oustanding
+  // operation vector to see if we have any outstanding requests
+  // if no outstanding requests exist, then clear the fence
+
+  // this function returns TRUE if the fence is ready to clear
+  // otherwise, this function returns false
+
+  unsigned ReqHart = (unsigned)(ev->getSrcHart());
+
+  if( ev->getFence() ){
+    // fence has been encountered, check to see if we need to clear
+    for( auto const& [Hart, ID, isRead, Target, Req] : outstanding ){
+      if( (unsigned)(Hart) == ReqHart ){
+        // this is an outstanding request for the same Hart, do not clear it
+        return false;
+      }
+    }
+
+    // no outstanding requests for this hart, clear it
+    HARTFence[ReqHart]--;
+    output.verbose(CALL_INFO, 9, 0,
+                   "Clearing FENCE from %s @ [hart:zcid:pcid:type]=[%d:%d:%d:%s]\n",
+                   getName().c_str(),
+                   ev->getSrcHart(), ev->getSrcZCID(), ev->getSrcPCID(),
+                   endPToStr(getEndpointType()).c_str() );
+    return true;
+  }else{
+    // fence has not been encountered, set it
+    ev->setFence();
+    HARTFence[ReqHart]++;
+    output.verbose(CALL_INFO, 9, 0,
+                   "Issuing FENCE from %s @ [hart:zcid:pcid:type]=[%d:%d:%d:%s]\n",
+                   getName().c_str(),
+                   ev->getSrcHart(), ev->getSrcZCID(), ev->getSrcPCID(),
+                   endPToStr(getEndpointType()).c_str() );
+    return false;
+  }
+
+  return false;   // not ready to clear
+}
+
+unsigned zenZopNIC::getNumDestinations(){
   return numDest;
 }
 
-SST::Interfaces::SimpleNetwork::nid_t zopNIC::getAddress(){
+SST::Interfaces::SimpleNetwork::nid_t zenZopNIC::getAddress(){
   return iFace->getEndpointID();
 }
 
-bool zopNIC::clockTick(SST::Cycle_t cycle){
+
+bool zenZopNIC::clockTick(SST::Cycle_t cycle){
   unsigned thisCycle = 0;
-  while( (!sendQ.empty()) && (thisCycle < ReqPerCycle) ){
-    SST::Interfaces::SimpleNetwork::Request *R = sendQ.front();
-    zopEvent *ev = static_cast<zopEvent*>(R->inspectPayload());
-    auto P = ev->getPacket();
-    if( iFace->spaceToSend(0, P.size()*32) &&
-        iFace->send(sendQ.front(), 0) ){
-      recordStat( getStatFromPacket(ev), 1 );
-      sendQ.pop();
-      thisCycle++;
-    }else{
-      break;
-    }
+  unsigned Hart = 0;
+  unsigned Cur = 0;
+
+  // check if there are any outstanding requests
+  if( sendQ.empty() ){
+    return false;
   }
 
+  for( auto R : sendQ ){
+    if( thisCycle < ReqPerCycle ){
+      zenZopEvent *ev = static_cast<zenZopEvent*>(R->inspectPayload());
+      Hart = (unsigned)(ev->getSrcHart());
+      if( Type == SST::Forza::zopCompID::Z_RZA || Type == SST::Forza::zopCompID::Z_ZEN || ev->getType() == SST::Forza::zopMsgT::Z_MSG ){
+        // I am an RZA... I don't need to reserve any message IDs
+        auto P = ev->getPacket();
+        ev->encodeEvent();
+        if( iFace->spaceToSend(0, P.size()*64) ){
+          // we have space to send
+          recordStat( getStatFromPacket(ev), 1 );
+          thisCycle++;
+          iFace->send(R, 0);
+          sendQ.erase(sendQ.begin() + Cur);
+        }
+      }else if( ev->getType() == SST::Forza::zopMsgT::Z_FENCE ){
+        // handle the fence operation
+        if( handleFence(ev) ){
+          // fence is ready to clear
+          sendQ.erase(sendQ.begin() + Cur);
+        }
+      }else if( (msgId[Hart].getNumFree() > 0) &&
+                (HARTFence[Hart] == 0) ){
+    output.verbose(CALL_INFO, 4, 0,
+                   "Issuing msg from %s @ [hart:zcid:pcid:type]=[%d:%d:%d:%s]\n",
+                   getName().c_str(),
+                   ev->getSrcHart(), ev->getSrcZCID(), ev->getSrcPCID(),
+                   endPToStr(getEndpointType()).c_str() );
+        // we have a free message Id for this hart
+        auto P = ev->getPacket();
+        if( iFace->spaceToSend(0, P.size()*64) ){
+    output.verbose(CALL_INFO, 4, 0,
+                   "Issuing msg from %s @ [hart:zcid:pcid:type]=[%d:%d:%d:%s]\n",
+                   getName().c_str(),
+                   ev->getSrcHart(), ev->getSrcZCID(), ev->getSrcPCID(),
+                   endPToStr(getEndpointType()).c_str() );
+          // we have space to send
+          ev->setID( msgId[Hart].getMsgId() );
+          auto V = std::make_tuple(Hart, ev->getID(), ev->isRead(),
+                                   ev->getTarget(), ev->getMemReq());
+          outstanding.push_back(V);
+          ev->encodeEvent();
+          recordStat( getStatFromPacket(ev), 1 );
+          thisCycle++;
+          iFace->send(R, 0);
+          sendQ.erase(sendQ.begin() + Cur);
+        }
+      }
+    }else{
+      // saturated the number of outstanding requests
+      return false;
+    }
+    Cur++;
+  }
   return false;
 }
