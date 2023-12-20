@@ -72,7 +72,7 @@ ZQM::ZQM(ComponentId_t id, Params& params)
     // Create and init matrix of HART status
     zap_hart_status.resize(num_zaps);
     for (auto &hart_vec: zap_hart_status) {
-        hart_vec.resize(m_num_harts);
+        hart_vec.resize(num_harts);
         for (auto &j : hart_vec)
             j = false;
     }
@@ -145,7 +145,7 @@ void ZQM::handleIncomingZOP(SST::Event *event)
 
 ZqmAidStateTableRow* ZQM::getAidStateTableRow(uint32_t aid)
 {
-    auto iter = aid_state_table.find(aid));
+    auto iter = aid_state_table.find(aid);
     if (iter != aid_state_table.end())
         return iter.second;
     output.fatal(CALL_INFO, 1, "Received a zop with an unfound AID; AID=%u\n", aid);

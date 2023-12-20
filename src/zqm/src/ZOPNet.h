@@ -18,7 +18,7 @@
 #include <unistd.h>
 
 // -- SST Headers
-#include "zen_sst.h"
+#include "zqm_sst.h"
 
 namespace SST::Forza{
 
@@ -94,7 +94,7 @@ enum class zopOpc : uint8_t {
   Z_MZOP_LSB    = 0b00000100,   /// zopOpc: MZOP Load signed byte
   Z_MZOP_LSH    = 0b00000101,   /// zopOpc: MZOP Load signed half
   Z_MZOP_LSW    = 0b00000110,   /// zopOpc: MZOP Load signed word
-  //Z_MZOP_LSD    = 0b00000111,   /// zopOpc: MZOP Load double (dupe)
+  Z_MZOP_LDMA   = 0b00000111,   /// zopOpc: MZOP Load DMA
   Z_MZOP_SB     = 0b00001000,   /// zopOpc: MZOP Store unsigned byte
   Z_MZOP_SH     = 0b00001001,   /// zopOpc: MZOP Store unsigned half
   Z_MZOP_SW     = 0b00001001,   /// zopOpc: MZOP Store unsigned word
@@ -102,7 +102,7 @@ enum class zopOpc : uint8_t {
   Z_MZOP_SSB    = 0b00001100,   /// zopOpc: MZOP Store signed byte
   Z_MZOP_SSH    = 0b00001101,   /// zopOpc: MZOP Store signed half
   Z_MZOP_SSW    = 0b00001110,   /// zopOpc: MZOP Store signed word
-  //Z_MZOP_SSD    = 0b00001111,   /// zopOpc: MSOP Store doubleword (dupe)
+  Z_MZOP_SDMA   = 0b00001111,   /// zopOpc: MSOP Store DMA
 
   Z_MZOP_SCLB   = 0b11100000,   /// zopOpc: MZOP Load scratch unsigned byte
   Z_MZOP_SCLH   = 0b11100001,   /// zopOpc: MZOP Load scratch unsigned half
