@@ -1,5 +1,5 @@
 #
-# src/zqm/Makefile
+# src/zqm/src/Makefile
 #
 
 ifeq (, $(shell which sst-config))
@@ -12,7 +12,7 @@ LDFLAGS=$(shell sst-config --ELEMENT_LDFLAGS)
 CPPFLAGS=-I./ -DDEBUG -g
 OPTIMIZE_FLAGS=-O2
 
-COMPONENT_LIB=libForza.so
+COMPONENT_LIB=libzqm.so
 
 BASICCOMPONENT_SOURCES := $(wildcard *.cc)
 
@@ -30,8 +30,8 @@ $(COMPONENT_LIB): $(BASICCOMPONENT_OBJS)
 %.o:%.cc $(SIMPLEEXAMPLE_HEADERS)
 	$(CXX) $(OPTIMIZE_FLAGS) $(CXXFLAGS) $(CPPFLAGS) -c $<
 install: $(COMPONENT_LIB)
-	sst-register Forza Forza_LIBDIR=$(CURDIR)
+	sst-register zqm ZQM_LIBDIR=$(CURDIR)
 uninstall:
-	sst-register -u Forza
+	sst-register -u zqm
 clean:
 	rm -Rf *.o $(COMPONENT_LIB)

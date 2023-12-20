@@ -101,7 +101,7 @@ namespace SST::Forza{
         // register the component
         SST_ELI_REGISTER_COMPONENT(
         ZQM,                                    // component class
-        "Forza",                                // component libary
+        "zqm",                                // component libary
         "ZQM",                                  // component name
         SST_ELI_ELEMENT_VERSION(0,0,1),         // Version of the component
         "ZQM: Forza ZQM component",             // description
