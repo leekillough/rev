@@ -325,7 +325,7 @@ void ZQM::sendThreadToZap(SST::Forza::zopEvent *thread)
         aid_state->harts_available--;
     }
 
-    m_zop_iface->send(thread, thread->getZCID(dest_zap, false));
+    m_zop_iface->send(thread, static_cast<SST::Forza::zopCompID>(dest_zap));
 }
 
 void ZQM::processMessagingMsgs()
@@ -485,7 +485,7 @@ void ZQM::fillEmptyHart()
     // TODO: Should this run less frequently? What are my rate limiters?
     // For all AIDs (or maybe just a simple round-robin?) see if there are any empty harts that can be filled
     for (auto &i : aid_state_table){
-        ZqmAidStateTableRow *row = i->second;
+        ZqmAidStateTableRow *row = i.second;
         if ( (row->harts_available != 0) && (row->run_queue_depth != 0) )
             getThreadFromRza(i.first);
     }

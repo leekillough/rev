@@ -416,7 +416,7 @@ public:
     DestZCID = Z;
   }
   void setDestZCID(zopCompID Z){
-   DestZCID = Z;
+   DestZCID = static_cast<uint8_t>(Z);
   }
 
   /// zopEvent: set the destination PCID
@@ -439,7 +439,7 @@ public:
     SrcZCID = Z;
   }
   void setSrcZCID(zopCompID Z){
-        SrcZCID = Z;
+        SrcZCID = static_cast<uint8_t>(Z);
   }
 
   /// zopEvent: set the src PCID
