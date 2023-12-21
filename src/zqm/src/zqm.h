@@ -90,7 +90,7 @@ namespace SST::Forza{
             return false;
         }
 
-    private:
+    //private: // leave the below public for now.
         const uint64_t ThreadLengthDblWords = 34;
         const uint64_t ThreadLengthBytes = (ThreadLengthDblWords * 8);
     }; // end class ZqmAidStateTableRow

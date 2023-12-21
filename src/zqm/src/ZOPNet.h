@@ -415,6 +415,9 @@ public:
   void setDestZCID(uint8_t Z){
     DestZCID = Z;
   }
+  void setDestZCID(zopCompID Z){
+   DestZCID = Z;
+  }
 
   /// zopEvent: set the destination PCID
   void setDestPCID(uint8_t P){
@@ -434,6 +437,9 @@ public:
   /// zopEvent: set the src ZCID
   void setSrcZCID(uint8_t Z){
     SrcZCID = Z;
+  }
+  void setSrcZCID(zopCompID Z){
+        SrcZCID = Z;
   }
 
   /// zopEvent: set the src PCID

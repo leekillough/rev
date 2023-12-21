@@ -71,11 +71,8 @@ ZQM::ZQM(ComponentId_t id, Params& params)
 
     // Create and init matrix of HART status
     zap_hart_status.resize(num_zaps);
-    for (auto &hart_vec: zap_hart_status) {
-        hart_vec.resize(num_harts);
-        for (auto &j : hart_vec)
-            j = false;
-    }
+    for (auto &hart_vec: zap_hart_status)
+      hart_vec.resize(num_harts, false);
 
     //assert( m_linkControl );
     msg_id = 0;
@@ -147,7 +144,7 @@ ZqmAidStateTableRow* ZQM::getAidStateTableRow(uint32_t aid)
 {
     auto iter = aid_state_table.find(aid);
     if (iter != aid_state_table.end())
-        return iter.second;
+        return iter->second;
     output.fatal(CALL_INFO, 1, "Received a zop with an unfound AID; AID=%u\n", aid);
     return nullptr;
 }
@@ -192,10 +189,12 @@ void ZQM::sendThreadToRza(SST::Forza::zopEvent *thread)
     output.verbose(CALL_INFO, 1, 0, "Sending SDMA Zop to RZA; msg_id=%u\n", (uint32_t)store_thread_zop->getID());
     m_zop_iface->send(store_thread_zop, zopCompID::Z_RZA);
     auto iter = outstanding_rza_reqs.find(store_thread_zop->getID());
-    if (iter == outstanding_rza_reqs.end())
-        outstanding_rza_reqs.insert(store_thread_zop->getID(), std::pair<uint64_t, uint64_t>(0,0)); // TODO: Fix pair
-    else
+    if (iter == outstanding_rza_reqs.end()) {
+        outstanding_rza_reqs.insert(std::pair<uint8_t, std::pair<uint64_t,uint64_t>>(store_thread_zop->getID(),
+                std::pair<uint64_t, uint64_t>(0, 0))); // TODO: Fix second pair
+    } else {
         output.fatal(CALL_INFO, 1, "Duplicate msg_id going out to RZA\n");
+    }
 
     aid_state->run_queue_depth++;
 
@@ -211,7 +210,7 @@ void ZQM::getThreadFromRza(uint32_t app_id)
     // Going to need to get an address to write
     uint64_t addr_ptr = aid_state->getMemAddr(true, true);
     if (addr_ptr == 0){
-        output.verbose(CALL_INFO, 1, 0, "No threads to read from RZA\n",);
+        output.verbose(CALL_INFO, 1, 0, "No threads to read from RZA\n");
         return;
     }
 
@@ -234,7 +233,10 @@ void ZQM::getThreadFromRza(uint32_t app_id)
 
     // Zop Payload
     uint64_t load_acs = 0;
-    std::vector<uint64_t> payload (load_acs, addr_ptr, aid_state->ThreadLengthDblWords);
+    std::vector<uint64_t> payload;// (load_acs, addr_ptr, aid_state->ThreadLengthDblWords);
+    payload.push_back(load_acs);
+    payload.push_back(addr_ptr);
+    payload.push_back(aid_state->ThreadLengthDblWords);
     load_thread_zop->setPayload(payload);
 
     // Send Zop
@@ -242,7 +244,8 @@ void ZQM::getThreadFromRza(uint32_t app_id)
     m_zop_iface->send(load_thread_zop, zopCompID::Z_RZA);
     auto iter = outstanding_rza_reqs.find(load_thread_zop->getID());
     if (iter == outstanding_rza_reqs.end())
-        outstanding_rza_reqs.insert(load_thread_zop->getID(), std::pair<uint64_t, uint64_t>(0,0)); // TODO: Fix pair
+        outstanding_rza_reqs.insert(std::pair<uint8_t,std::pair<uint64_t,uint64_t>>(load_thread_zop->getID(),
+                std::pair<uint64_t, uint64_t>(0,0))); // TODO: Fix pair
     else
         output.fatal(CALL_INFO, 1, "Duplicate msg_id going out to RZA\n");
 
@@ -315,14 +318,14 @@ void ZQM::sendThreadToZap(SST::Forza::zopEvent *thread)
     uint16_t dest_hart = thread->getDestHart();
     if (zap_hart_status.at(dest_zap).at(dest_hart)){
         output.fatal(CALL_INFO, 1, "TMIG Dest already occupied; ZAP=%u, HART=%u\n",
-                     (uint32_t) zap, (uint32_t) hart);
+                     (uint32_t) dest_zap, (uint32_t) dest_hart);
     } else {
         zap_hart_status.at(dest_zap).at(dest_hart) = true;
         ZqmAidStateTableRow *aid_state = getAidStateTableRow(thread->getAppID());
         aid_state->harts_available--;
     }
 
-    m_zop_iface->send(thread, getZCID(dest_zap, false));
+    m_zop_iface->send(thread, thread->getZCID(dest_zap, false));
 }
 
 void ZQM::processMessagingMsgs()
@@ -331,9 +334,9 @@ void ZQM::processMessagingMsgs()
         output.verbose(CALL_INFO, 1, 0, "setup pkt for zqm\n");
         switch(event->getOpcode()){
             case SST::Forza::zopOpc::Z_MSG_ZQMSET:
-                processSetupMsgSet(event); break;
+                processMessagingZqmSet(event); break;
             case SST::Forza::zopOpc::Z_MSG_ZQMHARTDONE:
-                processSetupMsgHartDone(event); break;
+                processMessagingHartDone(event); break;
                 // TODO: Add ZQM Free AID (or equivalent)
                 // TODO: Add ZQM Set HART (needed for initial program thread)
             default:
@@ -449,7 +452,7 @@ bool ZQM::selectDestHart(SST::Forza::zopEvent *thread)
     // There's probably a more c++-ish way of doing this
     uint16_t max_free_harts = 0;
     int max_zap = -1;
-    for (int i = 0; i < num_occupied_harts.size(); i++){
+    for (int i = 0; i < num_free_harts.size(); i++){
         if (max_free_harts < num_free_harts[i]){
             max_free_harts = num_free_harts[i];
             max_zap = i;
@@ -465,7 +468,7 @@ bool ZQM::selectDestHart(SST::Forza::zopEvent *thread)
          i <= zap_hart_status[max_zap][aid_state->max_zap_hart];
          i++){
         if (!zap_hart_status[max_zap][i]){
-            thread->setDestACID(max_zap);
+            thread->setDestZCID(max_zap);
             thread->setDestHart(i);
             thread->setOpc(zopOpc::Z_TMIG_FIXED);
         }
@@ -482,8 +485,8 @@ void ZQM::fillEmptyHart()
     // TODO: Should this run less frequently? What are my rate limiters?
     // For all AIDs (or maybe just a simple round-robin?) see if there are any empty harts that can be filled
     for (auto &i : aid_state_table){
-        ZqmAidStateTableRow row = i.second;
-        if ( (row.harts_available != 0) && (row.run_queue_depth != 0) )
+        ZqmAidStateTableRow *row = i->second;
+        if ( (row->harts_available != 0) && (row->run_queue_depth != 0) )
             getThreadFromRza(i.first);
     }
 }
