@@ -294,8 +294,6 @@ uint64_t RevMem::CalcPhysAddr(uint64_t pageNum, uint64_t vAddr){
       else {
         /* vAddr not a valid address */
 
-
-        // #ifdef _REV_DEBUG_
         for( auto Seg : MemSegs ){
           std::cout << *Seg << std::endl;
         }
@@ -705,7 +703,7 @@ bool RevMem::WriteMem( unsigned Hart, uint64_t Addr, size_t Len, const void *Dat
 
   if( IsAddrInScratchpad(Addr)){
     scratchpad->WriteMem(Hart, Addr, Len, Data);// , 0);
-  } else {
+  }else{
     if(Addr == 0xDEADBEEF){
       std::cout << "Found special write. Val = " << std::hex << *(int*)(Data) << std::dec << std::endl;
     }
@@ -1115,9 +1113,11 @@ void RevMem::InitScratchpad(const unsigned ZapNum, size_t ScratchpadSize, size_t
 bool RevMem::IsAddrInScratchpad(const uint64_t& Addr){
   //// Mask with bits 56 and 57 set to 1
   uint64_t Mask = (1ULL << 56) | (1ULL << 57);
+#if 0
   if( (Addr & Mask ) ){
     std::cout << "THIS IS A SCRATCHPAD ADDRESS" << std::endl;
   }
+#endif
   return (Addr & Mask);
   //return (Addr & Mask) == Mask;
   //return scratchpad->Contains(Addr);
@@ -1334,11 +1334,11 @@ bool RevMem::ZOP_READMem(unsigned Hart, uint64_t Addr, size_t Len,
 bool RevMem::ZOP_WRITEMem(unsigned Hart, uint64_t Addr, size_t Len,
                           void *Data,
                           RevFlag flags){
-//#ifdef _REV_DEBUG_
+#ifdef _REV_DEBUG_
   std::cout << "ZOP_WRITE request of " << Len << " Bytes Starting at 0x"
             << std::hex << Addr << std::dec
             << std::endl;
-//#endif
+#endif
 
   // check to see if this is a write request of <= 8 bytes
   if( Len <= 8 ){
@@ -1444,10 +1444,10 @@ bool RevMem::__ZOP_WRITEMemLarge(unsigned Hart, uint64_t Addr, size_t Len,
 bool RevMem::__ZOP_WRITEMemBase(unsigned Hart, uint64_t Addr, size_t Len,
                                 void *Data, RevFlag flags,
                                 SST::Forza::zopOpc opc ){
-//#ifdef _REV_DEBUG_
+#ifdef _REV_DEBUG_
   std::cout << "ZOP_WRITE of " << Len << " Bytes Starting at 0x"
             << std::hex << Addr << std::dec << std::endl;
-//#endif
+#endif
 
   // create a new event
   SST::Forza::zopEvent *zev = new SST::Forza::zopEvent();
@@ -1493,19 +1493,26 @@ bool RevMem::__ZOP_WRITEMemBase(unsigned Hart, uint64_t Addr, size_t Len,
   }else{
     // large write
     uint64_t *Tmp = reinterpret_cast<uint64_t *>(Data);
-    std::cout << "Payload @ 0x" << std::hex << Addr << std::dec << std::endl;
+
+#ifdef _REV_DEBUG_
+    std::cout << "DMA Payload @ 0x" << std::hex << Addr << std::dec << std::endl;
+#endif
     for( unsigned i=0; i<(Len/8); i++ ){
-      std::cout << "TmpPayload @ 0x " << std::hex << Tmp << std::dec
+#ifdef _REV_DEBUG_
+      std::cout << "DMA TmpPayload @ 0x " << std::hex << Tmp << std::dec
                 << " = 0x" << std::hex << Tmp[0] << std::endl;
+#endif
       payload.push_back(Tmp[0]);
       Tmp += 1ull;
     }
+#ifdef _REV_DEBUG_
     // print and igbore the ACS and Address
     for( unsigned i=2; i<payload.size(); i++ ){
-      std::cout << "Payload[" << i << "] = @Addr= 0x"
+      std::cout << "DMA Payload[" << i << "] = @Addr= 0x"
                 << std::hex << Addr + ((i-2)*8) << std::dec << " = "
                 << std::hex << payload[i] << std::dec << std::endl;
     }
+#endif
   }
 
   zev->setPayload(payload);

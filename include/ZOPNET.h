@@ -968,6 +968,13 @@ public:
   /// zopNic: get the endpoint type
   virtual zopCompID getEndpointType() { return Type; }
 
+  /// zopNIC: handle load responses
+  void handleLoadResponse(zopEvent *ev,
+                          uint64_t *Target,
+                          SST::Forza::zopOpc Opc,
+                          SST::RevCPU::MemReq Req,
+                          uint8_t ID);
+
   /// zopNIC: callback function for the SimpleNetwork interface
   bool msgNotify(int virtualNetwork);
 
@@ -1025,11 +1032,18 @@ private:
   std::vector<SST::Interfaces::SimpleNetwork::Request*> sendQ;        ///< zopNIC: buffered send queue
   std::map<SST::Interfaces::SimpleNetwork::nid_t,zopCompID> hostMap;  ///< zopNIC: network ID to endpoint type mapping
 
-#define _ZNIC_OUT_HART  0
-#define _ZNIC_OUT_ID    1
-#define _ZNIC_OUT_READ  2
-#define _ZNIC_OUT_REQ   3
-  std::vector<std::tuple<uint16_t, uint8_t, bool, uint64_t *, SST::RevCPU::MemReq>> outstanding; ///< zopNIC: tracks outstanding requests
+#define _ZNIC_OUT_HART    0
+#define _ZNIC_OUT_ID      1
+#define _ZNIC_OUT_READ    2
+#define _ZNIC_OUT_TARGET  3
+#define _ZNIC_OUT_OPC     4
+#define _ZNIC_OUT_REQ     5
+  std::vector<std::tuple<uint16_t,
+                         uint8_t,
+                         bool,
+                         uint64_t *,
+                         SST::Forza::zopOpc,
+                         SST::RevCPU::MemReq>> outstanding; ///< zopNIC: tracks outstanding requests
 
   std::vector<Statistic<uint64_t>*> stats;  ///< zopNIC: statistics vector
 };  // zopNIC
