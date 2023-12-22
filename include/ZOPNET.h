@@ -260,7 +260,11 @@ enum class zopOpc : uint8_t {
   Z_MSG_ZENSET  = 0b11110001,   /// zopOpc: MESSAGING ZEN Setup
   Z_MSG_ACK     = 0b11110010,   /// zopOpc: MESSAGING Send Ack
   Z_MSG_EXCP    = 0b11110011,   /// zopOpc: MESSAGING Send exception
-
+  
+  // -- THREAD MIGRATION --
+  Z_TMIG_SELECT = 0b00000000,   /// zopOpc: THREAD MIGRATION ZQM choose HART
+  Z_TMIG_FIXED  = 0b00000001,   /// zopOpc: THREAD MIGRATION Fixed HART choice  
+  
   // -- RZA RESPONSE --
   Z_RESP_LR     = 0b00000000,   /// zopOpc: RZA RESPONSE Load response
   Z_RESP_LEXCP  = 0b00000001,   /// zopOpc: RZA RESPONSE Load exception
@@ -292,6 +296,8 @@ enum class zopOpc : uint8_t {
 
 // --------------------------------------------
 // zopCompID: ZOP Component ID
+// Note: ZQM (and other components?) assumes the ZAPs
+//    are always 0-(max-1)
 // --------------------------------------------
 enum class zopCompID : uint8_t {
   Z_ZAP0        = 0b00000000,   /// zopCompID: ZAP0
@@ -303,6 +309,7 @@ enum class zopCompID : uint8_t {
   Z_ZAP6        = 0b00000110,   /// zopCompID: ZAP6
   Z_ZAP7        = 0b00000111,   /// zopCompID: ZAP7
   Z_RZA         = 0b00001000,   /// zopCompID: RZA
+  Z_ZQM         = 0b00001010,   /// zopCompID: ZQM
   Z_ZEN         = 0b00001100,   /// zopCompID: ZEN
 };
 
@@ -475,6 +482,9 @@ public:
   void setDestZCID(uint8_t Z){
     DestZCID = Z;
   }
+  void setDestZCID(zopCompID Z){
+    DestZCID = static_cast<uint8_t>(Z);
+  }
 
   /// zopEvent: set the destination PCID
   void setDestPCID(uint8_t P){
@@ -495,7 +505,10 @@ public:
   void setSrcZCID(uint8_t Z){
     SrcZCID = Z;
   }
-
+  void setSrcZCID(zopCompID Z){
+    SrcZCID = static_cast<uint8_t>(Z);
+  }
+  
   /// zopEvent: set the src PCID
   void setSrcPCID(uint8_t P){
     SrcPCID = P;
