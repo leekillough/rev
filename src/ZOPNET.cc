@@ -274,6 +274,57 @@ void zopNIC::send(zopEvent *ev, zopCompID dest){
   sendQ.push_back(req);
 }
 
+void zopNIC::handleLoadResponse(zopEvent *ev,
+                                uint64_t *Target,
+                                SST::Forza::zopOpc Opc,
+                                SST::RevCPU::MemReq Req,
+                                uint8_t ID){
+  // retrieve the data from the response payload
+  uint64_t tmp = 0x00ull;
+  if( !ev->getFLIT(Z_FLIT_DATA_RESP, &tmp) ){
+    output.fatal(CALL_INFO, -1,
+                 "%s, Error: zopEvent on zopNIC failed to read response FLIT; OPC=%d, LENGTH=%d, ID=%d\n",
+                 getName().c_str(), (unsigned)(ev->getOpc()),
+                 (unsigned)(ev->getLength()), ID );
+  }
+
+  // write the data depending upon what the sending opcode was
+  switch( Opc ){
+  case SST::Forza::zopOpc::Z_MZOP_LB:
+    *(reinterpret_cast<uint8_t *>(*Target)) = static_cast<uint8_t>(tmp);
+    break;
+  case SST::Forza::zopOpc::Z_MZOP_LH:
+    *(reinterpret_cast<uint16_t *>(Target)) = static_cast<uint16_t>(tmp);
+    break;
+  case SST::Forza::zopOpc::Z_MZOP_LW:
+    *(reinterpret_cast<uint32_t *>(Target)) = static_cast<uint32_t>(tmp);
+    break;
+  case SST::Forza::zopOpc::Z_MZOP_LD:
+    *Target = tmp;
+    break;
+  case SST::Forza::zopOpc::Z_MZOP_LSB:
+    *(reinterpret_cast<int8_t *>(Target)) = static_cast<int8_t>(tmp);
+    break;
+  case SST::Forza::zopOpc::Z_MZOP_LSH:
+    *(reinterpret_cast<int16_t *>(Target)) = static_cast<int16_t>(tmp);
+    break;
+  case SST::Forza::zopOpc::Z_MZOP_LSW:
+    *(reinterpret_cast<int32_t *>(Target)) = static_cast<int32_t>(tmp);
+    break;
+  default:
+    output.fatal(CALL_INFO, -1, "%s, Error: zopEvent on zopNIC load response could not be handled; OPC=%d\n",
+                 getName().c_str(), (unsigned)(Opc));
+    break;
+  }
+
+  // setup the zopEvent infrastructure to clear the hazards
+  ev->setMemReq(Req);
+  ev->setTarget(Target);
+
+  // trigger the RevCPU to clear the hazard
+  (*msgHandler)(ev);
+}
+
 bool zopNIC::msgNotify(int vn){
   SST::Interfaces::SimpleNetwork::Request* req = iFace->recv(0);
   if( req == nullptr ){
@@ -305,25 +356,14 @@ bool zopNIC::msgNotify(int vn){
   // this is likely a ZAP device,
   // iterate across the outstanding messages
   unsigned Cur = 0;
-  for( auto const& [DestHart, ID, isRead, Target, Req] : outstanding ){
+  for( auto const& [DestHart, ID, isRead, Target, Opc, Req] : outstanding ){
     auto SrcHart = ev->getSrcHart();
     auto EVID = ev->getID();
     if( (DestHart == SrcHart) && (ID == EVID) ){
       // found a match
       // if this is a read request, marshall to the RevCPU to handle the hazarding
       if( isRead ){
-        // TODO: do we need to correctly handle this?
-        if( !ev->getFLIT(Z_FLIT_DATA_RESP, Target) ){
-          output.fatal(CALL_INFO, -1,
-                       "%s, Error: zopEvent on zopNIC failed to read response FLIT; OPC=%d, LENGTH=%d, ID=%d\n",
-                       getName().c_str(), (unsigned)(ev->getOpc()),
-                       (unsigned)(ev->getLength()), ID );
-        }
-        std::cout << "LOAD RESPONSE : 0x" << std::hex << *Target << std::dec << std::endl;
-        std::cout << "LOAD RESPONSE : 0x" << std::hex << Target[0] << std::dec << std::endl;
-        ev->setMemReq(Req);
-        ev->setTarget(Target);
-        (*msgHandler)(ev);
+        handleLoadResponse(ev, Target, Opc, Req, ID);
       }
 
       // clear the request from the outstanding request list
@@ -358,7 +398,7 @@ bool zopNIC::handleFence(zopEvent *ev){
 
   if( ev->getFence() ){
     // fence has been encountered, check to see if we need to clear
-    for( auto const& [Hart, ID, isRead, Target, Req] : outstanding ){
+    for( auto const& [Hart, ID, isRead, Target, Opc, Req] : outstanding ){
       if( (unsigned)(Hart) == ReqHart ){
         // this is an outstanding request for the same Hart, do not clear it
         return false;
@@ -435,7 +475,8 @@ bool zopNIC::clockTick(SST::Cycle_t cycle){
           // we have space to send
           ev->setID( msgId[Hart].getMsgId() );
           auto V = std::make_tuple(Hart, ev->getID(), ev->isRead(),
-                                   ev->getTarget(), ev->getMemReq());
+                                   ev->getTarget(), ev->getOpc(),
+                                   ev->getMemReq());
           outstanding.push_back(V);
           ev->encodeEvent();
           recordStat( getStatFromPacket(ev), 1 );
