@@ -57,9 +57,9 @@ ZQM::ZQM(ComponentId_t id, Params& params)
     cycleCount = params.find<SST::Cycle_t>("clockTicks", "500");
 
     // register the clock handler
-    registerClock(cpuFreq, new Clock::Handler<ZQM>(this, &ZQM::clock));
+    registerClock(clockFreq, new Clock::Handler<ZQM>(this, &ZQM::clock));
     output.output("ZQM[%s] Registering clock with frequency=%s\n",
-                  getName().c_str(), cpuFreq.c_str());
+                  getName().c_str(), clockFreq.c_str());
 
     m_zop_iface = loadUserSubComponent<SST::Forza::zopAPI>( "m_zop_iface" );
     //m_linkControl = loadUserSubComponent<SST::Interfaces::SimpleNetwork>( "rtrLink", ComponentInfo::SHARE_NONE, 1 );
@@ -74,6 +74,8 @@ ZQM::ZQM(ComponentId_t id, Params& params)
     for (auto &hart_vec: zap_hart_status)
       hart_vec.resize(num_harts, false);
 
+    // TODO: Remove this
+    int_id = 0;
     //assert( m_linkControl );
     msg_id = 0;
     sent = false;
@@ -493,10 +495,11 @@ void ZQM::fillEmptyHart()
 
 bool ZQM::clock(Cycle_t cycle)
 {
-    processIncomingThreadsMsgs();
-    processRzaMsgs();
-    processMessagingMsgs();
-    fillEmptyHart();
+    output.verbose(CALL_INFO, 1, 0, "Cycle=%d\n", cycle);
+   // processIncomingThreadsMsgs();
+   // processRzaMsgs();
+   // processMessagingMsgs();
+    //fillEmptyHart();
 
     if ( (cycle % 20) == 0 ){
         output.verbose(CALL_INFO, 1, 0, "Clock cycles: %" PRIu64 ", Sim Cycles: %" PRIu64 ", Sim ns: %" PRIu64 "\n",
@@ -507,7 +510,7 @@ bool ZQM::clock(Cycle_t cycle)
     cycleCount--;
     if (cycleCount != 0)
         return false;
-    primaryComponentOkToEndSim();
+    primaryComponentOKToEndSim();
     return true;
 }
 

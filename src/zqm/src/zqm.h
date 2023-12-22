@@ -111,7 +111,8 @@ namespace SST::Forza{
         // describe the parameters
         SST_ELI_DOCUMENT_PARAMS(
         { "verbose",    "Sets the output verbsoity", 0 },
-        { "clockFreq",  "ZQM core clock frequency", "1GHz" },
+	{ "clockFreq",  "ZQM core clock frequency", "1GHz" },
+	{ "clockTicks", "Ticks to exec (TESTING)", "100"},
         {"numCores",        "Number of RISC-V cores to instantiate",        "1" },
         {"numHarts",        "Number of harts (per core) to instantiate",    "1" },
         {"precinctId",      "[FORZA] The precinct ID of the local device",  "0"},
