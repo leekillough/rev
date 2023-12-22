@@ -248,10 +248,14 @@ namespace SST::Forza{
         bool sent;
 
         // Parameters to maintain
+        std::string clockFreq;
         unsigned num_zaps;
         uint16_t num_harts;
         unsigned precinct_id;
         unsigned zone_id;
+
+        // Parameters for testing
+        SST::Cycle_t cycleCount;
 
     }; // class SST::ZQM
 } // namespace SST::Forza

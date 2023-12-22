@@ -53,8 +53,8 @@ ZQM::ZQM(ComponentId_t id, Params& params)
                 Verbosity, 0, SST::Output::STDOUT);
 
     // read the remaining parameters
-    const std::string cpuFreq = params.find<std::string>("clockFreq", "1GHz");
-    int_id = params.find<uint64_t>("int_id", 0);
+    clockFreq = params.find<std::string>("clockFreq", "1GHz");
+    cycleCount = params.find<SST::Cycle_t>("clockTicks", "500");
 
     // register the clock handler
     registerClock(cpuFreq, new Clock::Handler<ZQM>(this, &ZQM::clock));
@@ -497,7 +497,18 @@ bool ZQM::clock(Cycle_t cycle)
     processRzaMsgs();
     processMessagingMsgs();
     fillEmptyHart();
-    return false;
+
+    if ( (cycle % 20) == 0 ){
+        output.verbose(CALL_INFO, 1, 0, "Clock cycles: %" PRIu64 ", Sim Cycles: %" PRIu64 ", Sim ns: %" PRIu64 "\n",
+                cycle, getCurrentSimCycle(), getCurrentSimTimeNano());
+    }
+
+    // CODE FOR TESTING
+    cycleCount--;
+    if (cycleCount != 0)
+        return false;
+    primaryComponentOkToEndSim();
+    return true;
 }
 
 // EOF
