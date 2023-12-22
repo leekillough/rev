@@ -211,10 +211,13 @@ add_rev_test(BACKINGSTORE backingstore 100 "all;rv64" SCRIPT "run_backingstore.s
 # add_rev_test(DOT_DOUBLE dot_double 30 "all;rv64;blas-required")
 # add_rev_test(BGE_BLE bge_ble 30 "all;rv64")
 
+
+
 add_subdirectory(isa)
 add_subdirectory(amo)
 add_subdirectory(benchmarks)
 add_subdirectory(syscalls)
 add_subdirectory(threading)
+add_subdirectory(FORZA)
 
 # EOF
