@@ -4,7 +4,7 @@
 
 #include <sst/core/sst_config.h>
 #include "zqm.h"
-#include "ZOPNet.h" // TODO: Replace with version from forzarev
+#include "ZOPNET.h"
 
 /**
  * NOTE: There are numerous places where the code uses extra variables, etc.
@@ -124,7 +124,7 @@ void ZQM::handleIncomingZOP(SST::Event *event)
     SST::Forza::zopEvent* ev = dynamic_cast<SST::Forza::zopEvent*>(event);
     ev->decodeEvent();
     output.verbose(CALL_INFO, 1, 0, "Msg type %d, opcode %ld\n",
-                   ev->getType(), ev->getOpcode());
+                   ev->getType(), ev->getOpc());
 
     if (ev->getType() == SST::Forza::zopMsgT::Z_RESP) {
         rza_responses.push_back(ev);
@@ -264,7 +264,7 @@ void ZQM::processRzaMsgs() {
         }
 
         // Should have 4 valid types
-        switch (resp->getOpcode()) {
+        switch (resp->getOpc()) {
             case zopOpc::Z_RESP_LR: { // valid data (should be a load dma response)
                 output.verbose(CALL_INFO, 1, 0, "Found msgId=%u (load response) in outstanding_rza_reqs map\n",
                                (uint32_t) resp->getID());
@@ -286,7 +286,7 @@ void ZQM::processRzaMsgs() {
                 break;
             default:
                 output.fatal(CALL_INFO, 1, "Received an invalid RZA response type; type=%u\n",
-                             (uint32_t) resp->getOpcode());
+                             (uint32_t) resp->getOpc());
         }
         outstanding_rza_reqs.erase(iter);
         delete resp;
@@ -332,7 +332,7 @@ void ZQM::processMessagingMsgs()
 {
     for (auto &event : setup_reqs) {
         output.verbose(CALL_INFO, 1, 0, "setup pkt for zqm\n");
-        switch(event->getOpcode()){
+        switch(event->getOpc()){
             case SST::Forza::zopOpc::Z_MSG_ZQMSET:
                 processMessagingZqmSet(event); break;
             case SST::Forza::zopOpc::Z_MSG_ZQMHARTDONE:
@@ -341,7 +341,7 @@ void ZQM::processMessagingMsgs()
                 // TODO: Add ZQM Set HART (needed for initial program thread)
             default:
                 output.fatal(CALL_INFO, 1, "Received an expected zqm msg opcode = %u\n",
-                             (uint32_t)event->getOpcode());
+                             (uint32_t)event->getOpc());
         }
         delete event;
     }
@@ -398,10 +398,10 @@ void ZQM::processIncomingThreadsMsgs()
         return;
 
     for (auto &thread : incoming_threads_vec){
-        if (thread->getOpcode() == zopOpc::Z_TMIG_FIXED){
+        if (thread->getOpc() == zopOpc::Z_TMIG_FIXED){
             // Always assumed to have the hart available, but the sendThreadToZap checks
             sendThreadToZap(thread);
-        } else if (thread->getOpcode() == zopOpc::Z_TMIG_SELECT){
+        } else if (thread->getOpc() == zopOpc::Z_TMIG_SELECT){
             ZqmAidStateTableRow *aid_state = getAidStateTableRow(thread->getAppID());
             int32_t rqd = aid_state->run_queue_depth;
             int32_t ha = aid_state->harts_available;

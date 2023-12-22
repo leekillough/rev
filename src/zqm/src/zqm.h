@@ -7,7 +7,7 @@
 #define _ZQM_H_
 
 #include "zqm_sst.h"
-#include "ZOPNet.h" // TODO: replace with version from forzarev
+#include "ZOPNET.h"
 #include <string>
 
 namespace SST::Forza{
