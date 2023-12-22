@@ -258,6 +258,8 @@ enum class zopOpc : uint8_t {
   Z_MSG_SENDAS  = 0b00000001,   /// zopOpc: MESSAGING Send with address and size
   Z_MSG_CREDIT  = 0b11110000,   /// zopOpc: MESSAGING Credit replenishment
   Z_MSG_ZENSET  = 0b11110001,   /// zopOpc: MESSAGING ZEN Setup
+  Z_MSG_ZQMSET  = 0b11110100,   /// zopOpc: MESSAGING ZQM Setup
+  Z_MSG_ZQMHARTDONE = 0b11110101, /// zopOpc: MESSAGING ZQM Notify HART completion
   Z_MSG_ACK     = 0b11110010,   /// zopOpc: MESSAGING Send Ack
   Z_MSG_EXCP    = 0b11110011,   /// zopOpc: MESSAGING Send exception
   
