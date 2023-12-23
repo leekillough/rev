@@ -1183,6 +1183,7 @@ SST::Forza::zopOpc RevMem::flagToZOP(uint32_t flags, size_t Len){
     }
   }
 
+  std::cout << "Z_NULL_OPC" << std::endl;
   return SST::Forza::zopOpc::Z_NULL_OPC;
 }
 
@@ -1261,7 +1262,6 @@ bool RevMem::ZOP_AMOMem(unsigned Hart, uint64_t Addr, size_t Len,
   // set all the fields
   zev->setType(SST::Forza::zopMsgT::Z_HZOPAC);
   zev->setNB(0);
-  //zev->setID(zNic->getMsgId(Hart));
   zev->setID(Hart);   // -- we set this to the Hart temporarily.  The zNic will set the actual message ID
   zev->setCredit(0);
   zev->setOpc(flagToZOP((uint32_t)(flags), Len));
@@ -1274,6 +1274,9 @@ bool RevMem::ZOP_AMOMem(unsigned Hart, uint64_t Addr, size_t Len,
   zev->setSrcZCID((uint8_t)(zNic->getEndpointType()));
   zev->setSrcPCID((uint8_t)(zNic->getPCID(zNic->getZoneID())));
   zev->setSrcPrec((uint8_t)(zNic->getPrecinctID()));
+
+  zev->setMemReq(req);
+  zev->setTarget(static_cast<uint64_t *>(Target));
 
   // set the payload
   std::vector<uint64_t> payload;
@@ -1335,7 +1338,7 @@ bool RevMem::ZOP_WRITEMem(unsigned Hart, uint64_t Addr, size_t Len,
                           void *Data,
                           RevFlag flags){
 #ifdef _REV_DEBUG_
-  std::cout << "ZOP_WRITE request of " << Len << " Bytes Starting at 0x"
+  std::cout << "ZOP_WRITEMem request of " << Len << " Bytes Starting at 0x"
             << std::hex << Addr << std::dec
             << std::endl;
 #endif
@@ -1345,15 +1348,18 @@ bool RevMem::ZOP_WRITEMem(unsigned Hart, uint64_t Addr, size_t Len,
     // request is <= 8 bytes; break it up into byte-aligned chunks
     uint64_t CurAddr = Addr;
     void *CurData = Data;
-    size_t CurLen = 8;
+    size_t CurLen = Len;
     size_t BytesWritten = 0;
 
-    if( CurLen > 4 ){
+    if( CurLen >= 4 ){
       CurLen = 4;
-    }else if( CurLen > 2 ){
+    }else if( CurLen >= 2 ){
       CurLen = 2;
-    }else if( CurLen > 1 ){
+    }else if( CurLen >= 1 ){
       CurLen = 1;
+    }else{
+      output->fatal(CALL_INFO, -1,
+                    "Error: requesting to write 0 bytes in ZOP packet\n");
     }
 
     while( BytesWritten != Len ){
@@ -1366,21 +1372,22 @@ bool RevMem::ZOP_WRITEMem(unsigned Hart, uint64_t Addr, size_t Len,
       BytesWritten += CurLen;
 
       // adjust the current address, length, etc
-      if( (Len-BytesWritten) >= 8 ){
-        CurLen = 8;
-      }else{
-        CurLen = Len-BytesWritten;
-        if( CurLen > 4 ){
-          CurLen = 4;
-        }else if( CurLen > 2 ){
-          CurLen = 2;
-        }else if( CurLen > 1 ){
-          CurLen = 1;
-        }
-      }
       CurAddr += (uint64_t)(CurLen);
       CurData = (static_cast<uint64_t *>(CurData) + (uint64_t)(CurLen));
-    }
+
+      CurLen = Len-BytesWritten;
+      if( CurLen == 8 ){
+        CurLen = 8;
+      }else if( CurLen >= 4 ){
+        CurLen = 4;
+      }else if( CurLen >= 2 ){
+        CurLen = 2;
+      }else if( CurLen >= 1 ){
+        CurLen = 1;
+      }else{
+        CurLen = 0;
+      }
+    } // end while
   }else{
     return __ZOP_WRITEMemLarge(Hart, Addr, Len, Data, flags);
   }
@@ -1390,10 +1397,10 @@ bool RevMem::ZOP_WRITEMem(unsigned Hart, uint64_t Addr, size_t Len,
 bool RevMem::__ZOP_WRITEMemLarge(unsigned Hart, uint64_t Addr, size_t Len,
                                     void *Data,
                                     RevFlag flags){
-//#ifdef _REV_DEBUG_
+#ifdef _REV_DEBUG_
   std::cout << "ZOP_WRITE_LARGE of " << Len << " Bytes Starting at 0x"
             << std::hex << Addr << std::dec << std::endl;
-//#endif
+#endif
   if( Len < Z_MZOP_DMA_MAX ){
     if( (Len%8) == 0 ){
       // aligned to a FLIT
@@ -1445,7 +1452,7 @@ bool RevMem::__ZOP_WRITEMemBase(unsigned Hart, uint64_t Addr, size_t Len,
                                 void *Data, RevFlag flags,
                                 SST::Forza::zopOpc opc ){
 #ifdef _REV_DEBUG_
-  std::cout << "ZOP_WRITE of " << Len << " Bytes Starting at 0x"
+  std::cout << "ZOP_WRITEMemBase of " << Len << " Bytes Starting at 0x"
             << std::hex << Addr << std::dec << std::endl;
 #endif
 

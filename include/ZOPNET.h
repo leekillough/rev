@@ -986,7 +986,8 @@ public:
                           uint64_t *Target,
                           SST::Forza::zopOpc Opc,
                           SST::RevCPU::MemReq Req,
-                          uint8_t ID);
+                          uint8_t ID,
+                          uint16_t SrcHart);
 
   /// zopNIC: callback function for the SimpleNetwork interface
   bool msgNotify(int virtualNetwork);

@@ -78,6 +78,10 @@ bool RevCoProc::sendSuccessResp(Forza::zopAPI *zNic,
   if( zev == nullptr )
     return false;
 
+  output->verbose(CALL_INFO, 9, 0,
+                  "[FORZA][RZA][]: Building LOAD or HZOP response for MSG @ ID=%d\n",
+                  (unsigned)(zev->getID()));
+
   uint64_t Addr=0x00ull;
   zev->getFLIT(Z_FLIT_ADDR,&Addr);
 
