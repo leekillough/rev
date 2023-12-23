@@ -17,5 +17,6 @@ int main() {
     __atomic_fetch_add(&atom32, 2, __ATOMIC_RELEASE);
     __atomic_fetch_add(&atom32, 2, __ATOMIC_ACQ_REL);
     __atomic_fetch_add(&atom32, 2, __ATOMIC_SEQ_CST);
+
     return 0;
 }

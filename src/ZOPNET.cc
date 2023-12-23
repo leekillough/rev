@@ -278,7 +278,8 @@ void zopNIC::handleLoadResponse(zopEvent *ev,
                                 uint64_t *Target,
                                 SST::Forza::zopOpc Opc,
                                 SST::RevCPU::MemReq Req,
-                                uint8_t ID){
+                                uint8_t ID,
+                                uint16_t SrcHart){
   // retrieve the data from the response payload
   uint64_t tmp = 0x00ull;
   if( !ev->getFLIT(Z_FLIT_DATA_RESP, &tmp) ){
@@ -289,32 +290,151 @@ void zopNIC::handleLoadResponse(zopEvent *ev,
   }
 
   // write the data depending upon what the sending opcode was
-  switch( Opc ){
-  case SST::Forza::zopOpc::Z_MZOP_LB:
-    *(reinterpret_cast<uint8_t *>(*Target)) = static_cast<uint8_t>(tmp);
-    break;
-  case SST::Forza::zopOpc::Z_MZOP_LH:
-    *(reinterpret_cast<uint16_t *>(Target)) = static_cast<uint16_t>(tmp);
-    break;
-  case SST::Forza::zopOpc::Z_MZOP_LW:
-    *(reinterpret_cast<uint32_t *>(Target)) = static_cast<uint32_t>(tmp);
-    break;
-  case SST::Forza::zopOpc::Z_MZOP_LD:
-    *Target = tmp;
-    break;
-  case SST::Forza::zopOpc::Z_MZOP_LSB:
-    *(reinterpret_cast<int8_t *>(Target)) = static_cast<int8_t>(tmp);
-    break;
-  case SST::Forza::zopOpc::Z_MZOP_LSH:
-    *(reinterpret_cast<int16_t *>(Target)) = static_cast<int16_t>(tmp);
-    break;
-  case SST::Forza::zopOpc::Z_MZOP_LSW:
-    *(reinterpret_cast<int32_t *>(Target)) = static_cast<int32_t>(tmp);
-    break;
-  default:
-    output.fatal(CALL_INFO, -1, "%s, Error: zopEvent on zopNIC load response could not be handled; OPC=%d\n",
-                 getName().c_str(), (unsigned)(Opc));
-    break;
+  if( SrcHart == Z_MZOP_PIPE_HART ){
+    // this request is a response from an MZOP RZA pipe
+    switch( Opc ){
+    case SST::Forza::zopOpc::Z_MZOP_LB:
+      *(reinterpret_cast<uint8_t *>(*Target)) = static_cast<uint8_t>(tmp);
+      break;
+    case SST::Forza::zopOpc::Z_MZOP_LH:
+      *(reinterpret_cast<uint16_t *>(Target)) = static_cast<uint16_t>(tmp);
+      break;
+    case SST::Forza::zopOpc::Z_MZOP_LW:
+      *(reinterpret_cast<uint32_t *>(Target)) = static_cast<uint32_t>(tmp);
+      break;
+    case SST::Forza::zopOpc::Z_MZOP_LD:
+      *Target = tmp;
+      break;
+    case SST::Forza::zopOpc::Z_MZOP_LSB:
+      *(reinterpret_cast<int8_t *>(Target)) = static_cast<int8_t>(tmp);
+      break;
+    case SST::Forza::zopOpc::Z_MZOP_LSH:
+      *(reinterpret_cast<int16_t *>(Target)) = static_cast<int16_t>(tmp);
+      break;
+    case SST::Forza::zopOpc::Z_MZOP_LSW:
+      *(reinterpret_cast<int32_t *>(Target)) = static_cast<int32_t>(tmp);
+      break;
+    default:
+      output.fatal(CALL_INFO, -1, "%s, Error: zopEvent on zopNIC MZOP load response could not be handled; OPC=%d\n",
+                  getName().c_str(), (unsigned)(Opc));
+      break;
+    }
+  }else if( SrcHart == Z_HZOP_PIPE_HART ){
+    // this request is a response from an HZOP RZA pipe
+    switch( Opc ){
+    case SST::Forza::zopOpc::Z_HAC_32_BASE_ADD:
+    case SST::Forza::zopOpc::Z_HAC_32_BASE_AND:
+    case SST::Forza::zopOpc::Z_HAC_32_BASE_OR:
+    case SST::Forza::zopOpc::Z_HAC_32_BASE_XOR:
+    case SST::Forza::zopOpc::Z_HAC_32_BASE_SMAX:
+    case SST::Forza::zopOpc::Z_HAC_32_BASE_MAX:
+    case SST::Forza::zopOpc::Z_HAC_32_BASE_SMIN:
+    case SST::Forza::zopOpc::Z_HAC_32_BASE_MIN:
+    case SST::Forza::zopOpc::Z_HAC_32_BASE_SWAP:
+    case SST::Forza::zopOpc::Z_HAC_32_BASE_CAS:
+    case SST::Forza::zopOpc::Z_HAC_32_BASE_FADD:
+    case SST::Forza::zopOpc::Z_HAC_32_BASE_FSUB:
+    case SST::Forza::zopOpc::Z_HAC_32_BASE_FRSUB:
+    case SST::Forza::zopOpc::Z_HAC_32_M_ADD:
+    case SST::Forza::zopOpc::Z_HAC_32_M_AND:
+    case SST::Forza::zopOpc::Z_HAC_32_M_OR:
+    case SST::Forza::zopOpc::Z_HAC_32_M_XOR:
+    case SST::Forza::zopOpc::Z_HAC_32_M_SMAX:
+    case SST::Forza::zopOpc::Z_HAC_32_M_MAX:
+    case SST::Forza::zopOpc::Z_HAC_32_M_SMIN:
+    case SST::Forza::zopOpc::Z_HAC_32_M_MIN:
+    case SST::Forza::zopOpc::Z_HAC_32_M_SWAP:
+    case SST::Forza::zopOpc::Z_HAC_32_M_CAS:
+    case SST::Forza::zopOpc::Z_HAC_32_M_FADD:
+    case SST::Forza::zopOpc::Z_HAC_32_M_FSUB:
+    case SST::Forza::zopOpc::Z_HAC_32_M_FRSUB:
+    case SST::Forza::zopOpc::Z_HAC_32_S_ADD:
+    case SST::Forza::zopOpc::Z_HAC_32_S_AND:
+    case SST::Forza::zopOpc::Z_HAC_32_S_OR:
+    case SST::Forza::zopOpc::Z_HAC_32_S_XOR:
+    case SST::Forza::zopOpc::Z_HAC_32_S_SMAX:
+    case SST::Forza::zopOpc::Z_HAC_32_S_MAX:
+    case SST::Forza::zopOpc::Z_HAC_32_S_SMIN:
+    case SST::Forza::zopOpc::Z_HAC_32_S_MIN:
+    case SST::Forza::zopOpc::Z_HAC_32_S_SWAP:
+    case SST::Forza::zopOpc::Z_HAC_32_S_CAS:
+    case SST::Forza::zopOpc::Z_HAC_32_S_FADD:
+    case SST::Forza::zopOpc::Z_HAC_32_S_FSUB:
+    case SST::Forza::zopOpc::Z_HAC_32_S_FRSUB:
+    case SST::Forza::zopOpc::Z_HAC_32_MS_ADD:
+    case SST::Forza::zopOpc::Z_HAC_32_MS_AND:
+    case SST::Forza::zopOpc::Z_HAC_32_MS_OR:
+    case SST::Forza::zopOpc::Z_HAC_32_MS_XOR:
+    case SST::Forza::zopOpc::Z_HAC_32_MS_SMAX:
+    case SST::Forza::zopOpc::Z_HAC_32_MS_MAX:
+    case SST::Forza::zopOpc::Z_HAC_32_MS_SMIN:
+    case SST::Forza::zopOpc::Z_HAC_32_MS_MIN:
+    case SST::Forza::zopOpc::Z_HAC_32_MS_SWAP:
+    case SST::Forza::zopOpc::Z_HAC_32_MS_CAS:
+    case SST::Forza::zopOpc::Z_HAC_32_MS_FADD:
+    case SST::Forza::zopOpc::Z_HAC_32_MS_FSUB:
+    case SST::Forza::zopOpc::Z_HAC_32_MS_FRSUB:
+      *(reinterpret_cast<uint32_t *>(Target)) = static_cast<uint32_t>(tmp);
+      break;
+    case SST::Forza::zopOpc::Z_HAC_64_BASE_ADD:
+    case SST::Forza::zopOpc::Z_HAC_64_BASE_AND:
+    case SST::Forza::zopOpc::Z_HAC_64_BASE_OR:
+    case SST::Forza::zopOpc::Z_HAC_64_BASE_XOR:
+    case SST::Forza::zopOpc::Z_HAC_64_BASE_SMAX:
+    case SST::Forza::zopOpc::Z_HAC_64_BASE_MAX:
+    case SST::Forza::zopOpc::Z_HAC_64_BASE_SMIN:
+    case SST::Forza::zopOpc::Z_HAC_64_BASE_MIN:
+    case SST::Forza::zopOpc::Z_HAC_64_BASE_SWAP:
+    case SST::Forza::zopOpc::Z_HAC_64_BASE_CAS:
+    case SST::Forza::zopOpc::Z_HAC_64_BASE_FADD:
+    case SST::Forza::zopOpc::Z_HAC_64_BASE_FSUB:
+    case SST::Forza::zopOpc::Z_HAC_64_BASE_FRSUB:
+    case SST::Forza::zopOpc::Z_HAC_64_M_ADD:
+    case SST::Forza::zopOpc::Z_HAC_64_M_AND:
+    case SST::Forza::zopOpc::Z_HAC_64_M_OR:
+    case SST::Forza::zopOpc::Z_HAC_64_M_XOR:
+    case SST::Forza::zopOpc::Z_HAC_64_M_SMAX:
+    case SST::Forza::zopOpc::Z_HAC_64_M_MAX:
+    case SST::Forza::zopOpc::Z_HAC_64_M_SMIN:
+    case SST::Forza::zopOpc::Z_HAC_64_M_MIN:
+    case SST::Forza::zopOpc::Z_HAC_64_M_SWAP:
+    case SST::Forza::zopOpc::Z_HAC_64_M_CAS:
+    case SST::Forza::zopOpc::Z_HAC_64_M_FADD:
+    case SST::Forza::zopOpc::Z_HAC_64_M_FSUB:
+    case SST::Forza::zopOpc::Z_HAC_64_M_FRSUB:
+    case SST::Forza::zopOpc::Z_HAC_64_S_ADD:
+    case SST::Forza::zopOpc::Z_HAC_64_S_AND:
+    case SST::Forza::zopOpc::Z_HAC_64_S_OR:
+    case SST::Forza::zopOpc::Z_HAC_64_S_XOR:
+    case SST::Forza::zopOpc::Z_HAC_64_S_SMAX:
+    case SST::Forza::zopOpc::Z_HAC_64_S_MAX:
+    case SST::Forza::zopOpc::Z_HAC_64_S_SMIN:
+    case SST::Forza::zopOpc::Z_HAC_64_S_MIN:
+    case SST::Forza::zopOpc::Z_HAC_64_S_SWAP:
+    case SST::Forza::zopOpc::Z_HAC_64_S_CAS:
+    case SST::Forza::zopOpc::Z_HAC_64_S_FADD:
+    case SST::Forza::zopOpc::Z_HAC_64_S_FSUB:
+    case SST::Forza::zopOpc::Z_HAC_64_S_FRSUB:
+    case SST::Forza::zopOpc::Z_HAC_64_MS_ADD:
+    case SST::Forza::zopOpc::Z_HAC_64_MS_AND:
+    case SST::Forza::zopOpc::Z_HAC_64_MS_OR:
+    case SST::Forza::zopOpc::Z_HAC_64_MS_XOR:
+    case SST::Forza::zopOpc::Z_HAC_64_MS_SMAX:
+    case SST::Forza::zopOpc::Z_HAC_64_MS_MAX:
+    case SST::Forza::zopOpc::Z_HAC_64_MS_SMIN:
+    case SST::Forza::zopOpc::Z_HAC_64_MS_MIN:
+    case SST::Forza::zopOpc::Z_HAC_64_MS_SWAP:
+    case SST::Forza::zopOpc::Z_HAC_64_MS_CAS:
+    case SST::Forza::zopOpc::Z_HAC_64_MS_FADD:
+    case SST::Forza::zopOpc::Z_HAC_64_MS_FSUB:
+    case SST::Forza::zopOpc::Z_HAC_64_MS_FRSUB:
+      *Target = tmp;
+      break;
+    default:
+      output.fatal(CALL_INFO, -1, "%s, Error: zopEvent on zopNIC HZOP AMO response could not be handled; OPC=%d\n",
+                  getName().c_str(), (unsigned)(Opc));
+      break;
+    }
   }
 
   // setup the zopEvent infrastructure to clear the hazards
@@ -357,13 +477,13 @@ bool zopNIC::msgNotify(int vn){
   // iterate across the outstanding messages
   unsigned Cur = 0;
   for( auto const& [DestHart, ID, isRead, Target, Opc, Req] : outstanding ){
-    auto SrcHart = ev->getSrcHart();
+    auto SrcHart = ev->getDestHart();
     auto EVID = ev->getID();
     if( (DestHart == SrcHart) && (ID == EVID) ){
       // found a match
       // if this is a read request, marshall to the RevCPU to handle the hazarding
       if( isRead ){
-        handleLoadResponse(ev, Target, Opc, Req, ID);
+        handleLoadResponse(ev, Target, Opc, Req, ID, ev->getSrcHart());
       }
 
       // clear the request from the outstanding request list
@@ -378,7 +498,21 @@ bool zopNIC::msgNotify(int vn){
     }
     Cur++;
   }
-
+#if 0
+  // debug statements
+  std::cout << "NO MATCHING REQUEST : src=" << (unsigned)(ev->getSrcHart())
+            << "; ID= " << (unsigned)(ev->getID())
+            << "; outstanding.size() = " << outstanding.size() << std::endl;
+  for( auto const& [DestHart, ID, isRead, Target, Opc, Req] : outstanding ){
+    std::cout << " ===== " << std::endl;
+    std::cout << "SrcHart = " << (unsigned)(DestHart) << std::endl;
+    std::cout << "ID = " << (unsigned)(ID) << std::endl;
+    std::cout << "isRead = " << isRead << std::endl;
+    std::cout << "Target = " << Target << std::endl;
+    std::cout << "Opc = " << (unsigned)(Opc) << std::endl;
+    std::cout << " ===== " << std::endl;
+  }
+#endif
   // we didn't find a matching request, return false
   return false;
 }
@@ -394,12 +528,12 @@ bool zopNIC::handleFence(zopEvent *ev){
   // this function returns TRUE if the fence is ready to clear
   // otherwise, this function returns false
 
-  unsigned ReqHart = (unsigned)(ev->getSrcHart());
+  auto ReqHart = ev->getSrcHart();
 
   if( ev->getFence() ){
     // fence has been encountered, check to see if we need to clear
     for( auto const& [Hart, ID, isRead, Target, Opc, Req] : outstanding ){
-      if( (unsigned)(Hart) == ReqHart ){
+      if( Hart == ReqHart ){
         // this is an outstanding request for the same Hart, do not clear it
         return false;
       }
@@ -439,16 +573,17 @@ SST::Interfaces::SimpleNetwork::nid_t zopNIC::getAddress(){
 bool zopNIC::clockTick(SST::Cycle_t cycle){
   unsigned thisCycle = 0;
   unsigned Hart = 0;
-  unsigned Cur = 0;
+  bool erase = false;
 
   // check if there are any outstanding requests
   if( sendQ.empty() ){
     return false;
   }
 
-  for( auto R : sendQ ){
+  for( auto it = sendQ.begin(); it != sendQ.end(); ){
+    erase = false;
     if( thisCycle < ReqPerCycle ){
-      zopEvent *ev = static_cast<zopEvent*>(R->inspectPayload());
+      zopEvent *ev = static_cast<zopEvent*>((*it)->inspectPayload());
       Hart = (unsigned)(ev->getSrcHart());
       if( Type == SST::Forza::zopCompID::Z_RZA ){
         // I am an RZA... I don't need to reserve any message IDs
@@ -458,14 +593,16 @@ bool zopNIC::clockTick(SST::Cycle_t cycle){
           // we have space to send
           recordStat( getStatFromPacket(ev), 1 );
           thisCycle++;
-          iFace->send(R, 0);
-          sendQ.erase(sendQ.begin() + Cur);
+          iFace->send((*it), 0);
+          it = sendQ.erase(it);
+          erase = true;
         }
       }else if( ev->getType() == SST::Forza::zopMsgT::Z_FENCE ){
         // handle the fence operation
         if( handleFence(ev) ){
           // fence is ready to clear
-          sendQ.erase(sendQ.begin() + Cur);
+          it = sendQ.erase(it);
+          erase = true;
         }
       }else if( (msgId[Hart].getNumFree() > 0) &&
                 (HARTFence[Hart] == 0) ){
@@ -481,15 +618,18 @@ bool zopNIC::clockTick(SST::Cycle_t cycle){
           ev->encodeEvent();
           recordStat( getStatFromPacket(ev), 1 );
           thisCycle++;
-          iFace->send(R, 0);
-          sendQ.erase(sendQ.begin() + Cur);
+          iFace->send((*it), 0);
+          it = sendQ.erase(it);
+          erase = true;
         }
       }
     }else{
       // saturated the number of outstanding requests
       return false;
     }
-    Cur++;
+    if( !erase ){
+      it++;
+    }
   }
   return false;
 }
