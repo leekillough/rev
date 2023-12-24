@@ -317,6 +317,9 @@ public:
   void SetHeapEnd(const uint64_t& HeapEnd){ heapend = HeapEnd; }
   const uint64_t& GetHeapEnd(){ return heapend; }
 
+  // FIXME:
+  uint64_t GetBrk(){ return brk; }
+  void AdjustBrk(const int64_t NumBytes){ brk += NumBytes ; }
   uint64_t ExpandHeap(uint64_t Size);
 
   void SetTLSInfo(const uint64_t& BaseAddr, const uint64_t& Size);
@@ -474,8 +477,10 @@ private:
   uint32_t                                      nextPage;  ///< RevMem: next physical page to be allocated. Will result in index
   /// nextPage * pageSize into physMem
 
-  uint64_t heapend;        ///< RevMem: top of the stack
-  uint64_t heapstart;      ///< RevMem: top of the stack
+  uint64_t heapend;        ///< RevMem: End of the heap
+  uint64_t brk;        ///< RevMem: Program BRK FIXME: HACK
+  uint64_t mmapRegion;     ///< RevMem: FIXME: HACK
+  uint64_t heapstart;      ///< RevMem: Start of the heap space
   uint64_t stacktop = 0;   ///< RevMem: top of the stack
 
   std::vector<uint64_t> FutureRes;  ///< RevMem: future operation reservations
