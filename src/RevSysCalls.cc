@@ -2041,23 +2041,19 @@ EcallStatus RevCore::ECALL_readahead() {
   return EcallStatus::SUCCESS;
 }
 
-// 214, rev_brk(unsigned long brk)
-EcallStatus RevCore::ECALL_brk() {
-  auto Addr              = RegFile->GetX<uint64_t>( RevReg::a0 );
+// 214, rev_sbrk(unsigned long brk)
+EcallStatus RevProc::ECALL_sbrk(RevInst& inst){
+  auto NumBytes = RegFile->GetX<uint64_t>(RevReg::a0);
 
-  const uint64_t heapend = mem->GetHeapEnd();
-  if( Addr > 0 && Addr > heapend ) {
-    uint64_t Size = Addr - heapend;
-    mem->ExpandHeap( Size );
-  } else {
-    output->fatal(
-      CALL_INFO,
-      11,
-      "Out of memory / Unable to expand system break (brk) to "
-      "Addr = 0x%" PRIx64 "\n",
-      Addr
-    );
-  }
+  // Return the current brk and then incremenet it by NumBytes
+  const uint64_t brk = mem->GetHeapEnd();
+  // FIXME: Add Error Checking
+  mem->AdjustBrk(NumBytes);
+   // output->fatal(CALL_INFO, 11,
+   //               "Out of memory / Unable to expand system break (brk) to "
+   //               "NumBytes = 0x%" PRIx64 "\n", NumBytes);
+  //}
+  RegFile->SetX(RevReg::a0, brk);
   return EcallStatus::SUCCESS;
 }
 

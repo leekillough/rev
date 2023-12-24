@@ -1088,9 +1088,13 @@ void RevMem::InitHeap( const uint64_t& EndOfStaticData ) {
   } else {
     // Mark heap as free
     FreeMemSegs.emplace_back( std::make_shared<MemSegment>( EndOfStaticData + 1, maxHeapSize ) );
-
     heapend   = EndOfStaticData + 1;
     heapstart = EndOfStaticData + 1;
+
+    // FIXME: Hack
+    mmapRegion = heapstart + maxHeapSize + 4096;
+    // FIXME: HAck
+    brk = heapend;
   }
   return;
 }
