@@ -427,7 +427,45 @@ public:
   SST_ELI_DOCUMENT_PORTS()
 
   // Register statistics
-  SST_ELI_DOCUMENT_STATISTICS()
+  SST_ELI_DOCUMENT_STATISTICS(
+    {"MZOP_LB",   "MZOP LB Requests",   "count",  1},
+    {"MZOP_LH",   "MZOP LH Requests",   "count",  1},
+    {"MZOP_LW",   "MZOP LW Requests",   "count",  1},
+    {"MZOP_LD",   "MZOP LD Requests",   "count",  1},
+    {"MZOP_LSB",  "MZOP LSB Requests",  "count",  1},
+    {"MZOP_LSH",  "MZOP LSH Requests",  "count",  1},
+    {"MZOP_LSW",  "MZOP LSW Requests",  "count",  1},
+    {"MZOP_LDMA", "MZOP LDMA Requests", "count",  1},
+    {"MZOP_SB",   "MZOP SB Requests",   "count",  1},
+    {"MZOP_SH",   "MZOP SH Requests",   "count",  1},
+    {"MZOP_SW",   "MZOP SW Requests",   "count",  1},
+    {"MZOP_SD",   "MZOP SD Requests",   "count",  1},
+    {"MZOP_SSB",  "MZOP SSB Requests",  "count",  1},
+    {"MZOP_SSH",  "MZOP SSH Requests",  "count",  1},
+    {"MZOP_SSW",  "MZOP SSW Requests",  "count",  1},
+    {"MZOP_SDMA", "MZOP SDMA Requests", "count",  1},
+  )
+
+
+  enum mzopStats : uint32_t {
+    MZOP_LB     = 0,
+    MZOP_LH     = 1,
+    MZOP_LW     = 2,
+    MZOP_LD     = 3,
+    MZOP_LSB    = 4,
+    MZOP_LSH    = 5,
+    MZOP_LSW    = 6,
+    MZOP_LDMA   = 7,
+    MZOP_SB     = 8,
+    MZOP_SH     = 9,
+    MZOP_SW     = 10,
+    MZOP_SD     = 11,
+    MZOP_SSB    = 12,
+    MZOP_SSH    = 13,
+    MZOP_SSW    = 14,
+    MZOP_SDMA   = 15,
+    MZOP_END    = 16,
+  };
 
   /// RZALSCoProc: default constructor
   RZALSCoProc(ComponentId_t id, Params& params, RevProc* parent);
@@ -472,14 +510,22 @@ private:
   Forza::zopAPI *zNic;  ///< RZALSCoProc: ZOPNic object
   RegAlloc Alloc;       ///< RZALSCoProc: Register allocator object
 
-  /// Handle the incoming MZOP request
+  /// RZALSCoProc: Handle the incoming MZOP request
   bool handleMZOP(Forza::zopEvent *zev, bool &flag);
+
+  /// RZALSCoProc: Register all the statistics
+  void registerStats();
+
+  /// RZALSCoProc: record the target statistic
+  void recordStat(mzopStats Stat, uint64_t Data);
 
 #define LOADQ_ZEV   0
 #define LOADQ_RS2   1
   std::vector<std::pair<Forza::zopEvent *,unsigned>> LoadQ; ///< RZALSCoProc: Outstanding load queue
 
   std::function<void(const MemReq&)> MarkLoadCompleteFunc;  ///< RZALSCoProc: Hazard function
+
+  std::vector<Statistic<uint64_t>*> stats;                  ///< RZALSCoProc: Statistics handlers
 
   /// RZALSCoProc: checks the load queues for completed operations and clears hazards
   void CheckLSQueue();
@@ -509,7 +555,220 @@ public:
   SST_ELI_DOCUMENT_PORTS()
 
   // Register statistics
-  SST_ELI_DOCUMENT_STATISTICS()
+  SST_ELI_DOCUMENT_STATISTICS(
+    {"HZOP_32_BASE_ADD",    "HZOP_32_BASE_ADD Requests",    "count",  1},
+    {"HZOP_32_BASE_AND",    "HZOP_32_BASE_AND Requests",    "count",  1},
+    {"HZOP_32_BASE_OR",    "HZOP_32_BASE_OR Requests",    "count",  1},
+    {"HZOP_32_BASE_XOR",    "HZOP_32_BASE_XOR Requests",    "count",  1},
+    {"HZOP_32_BASE_SMAX",    "HZOP_32_BASE_SMAX Requests",    "count",  1},
+    {"HZOP_32_BASE_MAX",    "HZOP_32_BASE_MAX Requests",    "count",  1},
+    {"HZOP_32_BASE_SMIN",    "HZOP_32_BASE_SMIN Requests",    "count",  1},
+    {"HZOP_32_BASE_MIN",    "HZOP_32_BASE_MIN Requests",    "count",  1},
+    {"HZOP_32_BASE_SWAP",    "HZOP_32_BASE_SWAP Requests",    "count",  1},
+    {"HZOP_32_BASE_CAS",    "HZOP_32_BASE_CAS Requests",    "count",  1},
+    {"HZOP_32_BASE_FADD",    "HZOP_32_BASE_FADD Requests",    "count",  1},
+    {"HZOP_32_BASE_FSUB",    "HZOP_32_BASE_FSUB Requests",    "count",  1},
+    {"HZOP_32_BASE_FRSUB",    "HZOP_32_BASE_FRSUB Requests",    "count",  1},
+    {"HZOP_64_BASE_ADD",    "HZOP_64_BASE_ADD Requests",    "count",  1},
+    {"HZOP_64_BASE_AND",    "HZOP_64_BASE_AND Requests",    "count",  1},
+    {"HZOP_64_BASE_OR",    "HZOP_64_BASE_OR Requests",    "count",  1},
+    {"HZOP_64_BASE_XOR",    "HZOP_64_BASE_XOR Requests",    "count",  1},
+    {"HZOP_64_BASE_SMAX",    "HZOP_64_BASE_SMAX Requests",    "count",  1},
+    {"HZOP_64_BASE_MAX",    "HZOP_64_BASE_MAX Requests",    "count",  1},
+    {"HZOP_64_BASE_SMIN",    "HZOP_64_BASE_SMIN Requests",    "count",  1},
+    {"HZOP_64_BASE_MIN",    "HZOP_64_BASE_MIN Requests",    "count",  1},
+    {"HZOP_64_BASE_SWAP",    "HZOP_64_BASE_SWAP Requests",    "count",  1},
+    {"HZOP_64_BASE_CAS",    "HZOP_64_BASE_CAS Requests",    "count",  1},
+    {"HZOP_64_BASE_FADD",    "HZOP_64_BASE_FADD Requests",    "count",  1},
+    {"HZOP_64_BASE_FSUB",    "HZOP_64_BASE_FSUB Requests",    "count",  1},
+    {"HZOP_64_BASE_FRSUB",    "HZOP_64_BASE_FRSUB Requests",    "count",  1},
+    {"HZOP_32_M_ADD",    "HZOP_32_M_ADD Requests",    "count",  1},
+    {"HZOP_32_M_AND",    "HZOP_32_M_AND Requests",    "count",  1},
+    {"HZOP_32_M_OR",    "HZOP_32_M_OR Requests",    "count",  1},
+    {"HZOP_32_M_XOR",    "HZOP_32_M_XOR Requests",    "count",  1},
+    {"HZOP_32_M_SMAX",    "HZOP_32_M_SMAX Requests",    "count",  1},
+    {"HZOP_32_M_MAX",    "HZOP_32_M_MAX Requests",    "count",  1},
+    {"HZOP_32_M_SMIN",    "HZOP_32_M_SMIN Requests",    "count",  1},
+    {"HZOP_32_M_MIN",    "HZOP_32_M_MIN Requests",    "count",  1},
+    {"HZOP_32_M_SWAP",    "HZOP_32_M_SWAP Requests",    "count",  1},
+    {"HZOP_32_M_CAS",    "HZOP_32_M_CAS Requests",    "count",  1},
+    {"HZOP_32_M_FADD",    "HZOP_32_M_FADD Requests",    "count",  1},
+    {"HZOP_32_M_FSUB",    "HZOP_32_M_FSUB Requests",    "count",  1},
+    {"HZOP_32_M_FRSUB",    "HZOP_32_M_FRSUB Requests",    "count",  1},
+    {"HZOP_64_M_ADD",    "HZOP_64_M_ADD Requests",    "count",  1},
+    {"HZOP_64_M_AND",    "HZOP_64_M_AND Requests",    "count",  1},
+    {"HZOP_64_M_OR",    "HZOP_64_M_OR Requests",    "count",  1},
+    {"HZOP_64_M_XOR",    "HZOP_64_M_XOR Requests",    "count",  1},
+    {"HZOP_64_M_SMAX",    "HZOP_64_M_SMAX Requests",    "count",  1},
+    {"HZOP_64_M_MAX",    "HZOP_64_M_MAX Requests",    "count",  1},
+    {"HZOP_64_M_SMIN",    "HZOP_64_M_SMIN Requests",    "count",  1},
+    {"HZOP_64_M_MIN",    "HZOP_64_M_MIN Requests",    "count",  1},
+    {"HZOP_64_M_SWAP",    "HZOP_64_M_SWAP Requests",    "count",  1},
+    {"HZOP_64_M_CAS",    "HZOP_64_M_CAS Requests",    "count",  1},
+    {"HZOP_64_M_FADD",    "HZOP_64_M_FADD Requests",    "count",  1},
+    {"HZOP_64_M_FSUB",    "HZOP_64_M_FSUB Requests",    "count",  1},
+    {"HZOP_64_M_FRSUB",    "HZOP_64_M_FRSUB Requests",    "count",  1},
+    {"HZOP_32_S_ADD",    "HZOP_32_S_ADD Requests",    "count",  1},
+    {"HZOP_32_S_AND",    "HZOP_32_S_AND Requests",    "count",  1},
+    {"HZOP_32_S_OR",    "HZOP_32_S_OR Requests",    "count",  1},
+    {"HZOP_32_S_XOR",    "HZOP_32_S_XOR Requests",    "count",  1},
+    {"HZOP_32_S_SMAX",    "HZOP_32_S_SMAX Requests",    "count",  1},
+    {"HZOP_32_S_MAX",    "HZOP_32_S_MAX Requests",    "count",  1},
+    {"HZOP_32_S_SMIN",    "HZOP_32_S_SMIN Requests",    "count",  1},
+    {"HZOP_32_S_MIN",    "HZOP_32_S_MIN Requests",    "count",  1},
+    {"HZOP_32_S_SWAP",    "HZOP_32_S_SWAP Requests",    "count",  1},
+    {"HZOP_32_S_CAS",    "HZOP_32_S_CAS Requests",    "count",  1},
+    {"HZOP_32_S_FADD",    "HZOP_32_S_FADD Requests",    "count",  1},
+    {"HZOP_32_S_FSUB",    "HZOP_32_S_FSUB Requests",    "count",  1},
+    {"HZOP_32_S_FRSUB",    "HZOP_32_S_FRSUB Requests",    "count",  1},
+    {"HZOP_64_S_ADD",    "HZOP_64_S_ADD Requests",    "count",  1},
+    {"HZOP_64_S_AND",    "HZOP_64_S_AND Requests",    "count",  1},
+    {"HZOP_64_S_OR",    "HZOP_64_S_OR Requests",    "count",  1},
+    {"HZOP_64_S_XOR",    "HZOP_64_S_XOR Requests",    "count",  1},
+    {"HZOP_64_S_SMAX",    "HZOP_64_S_SMAX Requests",    "count",  1},
+    {"HZOP_64_S_MAX",    "HZOP_64_S_MAX Requests",    "count",  1},
+    {"HZOP_64_S_SMIN",    "HZOP_64_S_SMIN Requests",    "count",  1},
+    {"HZOP_64_S_MIN",    "HZOP_64_S_MIN Requests",    "count",  1},
+    {"HZOP_64_S_SWAP",    "HZOP_64_S_SWAP Requests",    "count",  1},
+    {"HZOP_64_S_CAS",    "HZOP_64_S_CAS Requests",    "count",  1},
+    {"HZOP_64_S_FADD",    "HZOP_64_S_FADD Requests",    "count",  1},
+    {"HZOP_64_S_FSUB",    "HZOP_64_S_FSUB Requests",    "count",  1},
+    {"HZOP_64_S_FRSUB",    "HZOP_64_S_FRSUB Requests",    "count",  1},
+    {"HZOP_32_MS_ADD",    "HZOP_32_MS_ADD Requests",    "count",  1},
+    {"HZOP_32_MS_AND",    "HZOP_32_MS_AND Requests",    "count",  1},
+    {"HZOP_32_MS_OR",    "HZOP_32_MS_OR Requests",    "count",  1},
+    {"HZOP_32_MS_XOR",    "HZOP_32_MS_XOR Requests",    "count",  1},
+    {"HZOP_32_MS_SMAX",    "HZOP_32_MS_SMAX Requests",    "count",  1},
+    {"HZOP_32_MS_MAX",    "HZOP_32_MS_MAX Requests",    "count",  1},
+    {"HZOP_32_MS_SMIN",    "HZOP_32_MS_SMIN Requests",    "count",  1},
+    {"HZOP_32_MS_MIN",    "HZOP_32_MS_MIN Requests",    "count",  1},
+    {"HZOP_32_MS_SWAP",    "HZOP_32_MS_SWAP Requests",    "count",  1},
+    {"HZOP_32_MS_CAS",    "HZOP_32_MS_CAS Requests",    "count",  1},
+    {"HZOP_32_MS_FADD",    "HZOP_32_MS_FADD Requests",    "count",  1},
+    {"HZOP_32_MS_FSUB",    "HZOP_32_MS_FSUB Requests",    "count",  1},
+    {"HZOP_32_MS_FRSUB",    "HZOP_32_MS_FRSUB Requests",    "count",  1},
+    {"HZOP_64_MS_ADD",    "HZOP_64_MS_ADD Requests",    "count",  1},
+    {"HZOP_64_MS_AND",    "HZOP_64_MS_AND Requests",    "count",  1},
+    {"HZOP_64_MS_OR",    "HZOP_64_MS_OR Requests",    "count",  1},
+    {"HZOP_64_MS_XOR",    "HZOP_64_MS_XOR Requests",    "count",  1},
+    {"HZOP_64_MS_SMAX",    "HZOP_64_MS_SMAX Requests",    "count",  1},
+    {"HZOP_64_MS_MAX",    "HZOP_64_MS_MAX Requests",    "count",  1},
+    {"HZOP_64_MS_SMIN",    "HZOP_64_MS_SMIN Requests",    "count",  1},
+    {"HZOP_64_MS_MIN",    "HZOP_64_MS_MIN Requests",    "count",  1},
+    {"HZOP_64_MS_SWAP",    "HZOP_64_MS_SWAP Requests",    "count",  1},
+    {"HZOP_64_MS_CAS",    "HZOP_64_MS_CAS Requests",    "count",  1},
+    {"HZOP_64_MS_FADD",    "HZOP_64_MS_FADD Requests",    "count",  1},
+    {"HZOP_64_MS_FSUB",    "HZOP_64_MS_FSUB Requests",    "count",  1},
+    {"HZOP_64_MS_FRSUB",    "HZOP_64_MS_FRSUB Requests",    "count",  1},
+  )
+
+  enum hzopStats : uint32_t {
+    HZOP_32_BASE_ADD    = 0,
+    HZOP_32_BASE_AND    = 1,
+    HZOP_32_BASE_OR     = 2,
+    HZOP_32_BASE_XOR    = 3,
+    HZOP_32_BASE_SMAX   = 4,
+    HZOP_32_BASE_MAX    = 5,
+    HZOP_32_BASE_SMIN   = 6,
+    HZOP_32_BASE_MIN    = 7,
+    HZOP_32_BASE_SWAP   = 8,
+    HZOP_32_BASE_CAS    = 9,
+    HZOP_32_BASE_FADD   = 10,
+    HZOP_32_BASE_FSUB   = 11,
+    HZOP_32_BASE_FRSUB  = 12,
+    HZOP_64_BASE_ADD    = 13,
+    HZOP_64_BASE_AND    = 14,
+    HZOP_64_BASE_OR     = 15,
+    HZOP_64_BASE_XOR    = 16,
+    HZOP_64_BASE_SMAX   = 17,
+    HZOP_64_BASE_MAX    = 18,
+    HZOP_64_BASE_SMIN   = 19,
+    HZOP_64_BASE_MIN    = 20,
+    HZOP_64_BASE_SWAP   = 21,
+    HZOP_64_BASE_CAS    = 22,
+    HZOP_64_BASE_FADD   = 23,
+    HZOP_64_BASE_FSUB   = 24,
+    HZOP_64_BASE_FRSUB  = 25,
+    HZOP_32_M_ADD       = 26,
+    HZOP_32_M_AND       = 27,
+    HZOP_32_M_OR        = 28,
+    HZOP_32_M_XOR       = 29,
+    HZOP_32_M_SMAX      = 30,
+    HZOP_32_M_MAX       = 31,
+    HZOP_32_M_SMIN      = 32,
+    HZOP_32_M_MIN       = 33,
+    HZOP_32_M_SWAP      = 34,
+    HZOP_32_M_CAS       = 35,
+    HZOP_32_M_FADD      = 36,
+    HZOP_32_M_FSUB      = 37,
+    HZOP_32_M_FRSUB     = 38,
+    HZOP_64_M_ADD       = 39,
+    HZOP_64_M_AND       = 40,
+    HZOP_64_M_OR        = 41,
+    HZOP_64_M_XOR       = 42,
+    HZOP_64_M_SMAX      = 43,
+    HZOP_64_M_MAX       = 44,
+    HZOP_64_M_SMIN      = 45,
+    HZOP_64_M_MIN       = 46,
+    HZOP_64_M_SWAP      = 47,
+    HZOP_64_M_CAS       = 48,
+    HZOP_64_M_FADD      = 49,
+    HZOP_64_M_FSUB      = 50,
+    HZOP_64_M_FRSUB     = 51,
+    HZOP_32_S_ADD       = 52,
+    HZOP_32_S_AND       = 53,
+    HZOP_32_S_OR        = 54,
+    HZOP_32_S_XOR       = 55,
+    HZOP_32_S_SMAX      = 56,
+    HZOP_32_S_MAX       = 57,
+    HZOP_32_S_SMIN      = 58,
+    HZOP_32_S_MIN       = 59,
+    HZOP_32_S_SWAP      = 60,
+    HZOP_32_S_CAS       = 61,
+    HZOP_32_S_FADD      = 62,
+    HZOP_32_S_FSUB      = 63,
+    HZOP_32_S_FRSUB     = 64,
+    HZOP_64_S_ADD       = 65,
+    HZOP_64_S_AND       = 66,
+    HZOP_64_S_OR        = 67,
+    HZOP_64_S_XOR       = 68,
+    HZOP_64_S_SMAX      = 69,
+    HZOP_64_S_MAX       = 70,
+    HZOP_64_S_SMIN      = 71,
+    HZOP_64_S_MIN       = 72,
+    HZOP_64_S_SWAP      = 73,
+    HZOP_64_S_CAS       = 74,
+    HZOP_64_S_FADD      = 75,
+    HZOP_64_S_FSUB      = 76,
+    HZOP_64_S_FRSUB     = 77,
+    HZOP_32_MS_ADD      = 78,
+    HZOP_32_MS_AND      = 79,
+    HZOP_32_MS_OR       = 80,
+    HZOP_32_MS_XOR      = 81,
+    HZOP_32_MS_SMAX     = 82,
+    HZOP_32_MS_MAX      = 83,
+    HZOP_32_MS_SMIN     = 84,
+    HZOP_32_MS_MIN      = 85,
+    HZOP_32_MS_SWAP     = 86,
+    HZOP_32_MS_CAS      = 87,
+    HZOP_32_MS_FADD     = 88,
+    HZOP_32_MS_FSUB     = 89,
+    HZOP_32_MS_FRSUB    = 90,
+    HZOP_64_MS_ADD      = 91,
+    HZOP_64_MS_AND      = 92,
+    HZOP_64_MS_OR       = 93,
+    HZOP_64_MS_XOR      = 94,
+    HZOP_64_MS_SMAX     = 95,
+    HZOP_64_MS_MAX      = 96,
+    HZOP_64_MS_SMIN     = 97,
+    HZOP_64_MS_MIN      = 98,
+    HZOP_64_MS_SWAP     = 99,
+    HZOP_64_MS_CAS      = 100,
+    HZOP_64_MS_FADD     = 101,
+    HZOP_64_MS_FSUB     = 102,
+    HZOP_64_MS_FRSUB    = 103,
+    HZOP_END            = 104,
+  };
 
   /// RZAAMOCoProc: default constructor
   RZAAMOCoProc(ComponentId_t id, Params& params, RevProc* parent);
@@ -554,8 +813,14 @@ private:
   Forza::zopAPI *zNic;  ///< RZAAMOCoProc: ZOPNic object
   RegAlloc Alloc;       ///< RZAAMOCoProc: Register allocator object
 
-  /// Handle the incoming HZOP request
+  /// RZAAMOCoProc: Handle the incoming HZOP request
   bool handleHZOP(Forza::zopEvent *zev, bool &flag);
+
+  /// RZAAMOCoProc: Register all the statistics
+  void registerStats();
+
+  /// RZAAMOCoProc: record the target statistic
+  void recordStat(hzopStats Stat, uint64_t Data);
 
 #define AMOQ_ZEV   0
 #define AMOQ_RS1   1
@@ -563,6 +828,8 @@ private:
   std::vector<std::tuple<Forza::zopEvent *,unsigned, unsigned>> AMOQ; ///< RZAAMOCoProc: Outstanding load queue
 
   std::function<void(const MemReq&)> MarkLoadCompleteFunc;  ///< RZAAMOCoProc: Hazard function
+
+  std::vector<Statistic<uint64_t>*> stats;                  ///< RZAAMOCoProc: Statistics handlers
 
   /// RZAAMOCoProc: checks the load queues for completed operations and clears hazards
   void CheckLSQueue();

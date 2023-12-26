@@ -592,6 +592,7 @@ bool zopNIC::clockTick(SST::Cycle_t cycle){
         if( iFace->spaceToSend(0, P.size()*64) ){
           // we have space to send
           recordStat( getStatFromPacket(ev), 1 );
+          recordStat( zopStats::BytesSent, P.size()*64 );
           thisCycle++;
           iFace->send((*it), 0);
           it = sendQ.erase(it);
@@ -617,6 +618,7 @@ bool zopNIC::clockTick(SST::Cycle_t cycle){
           outstanding.push_back(V);
           ev->encodeEvent();
           recordStat( getStatFromPacket(ev), 1 );
+          recordStat( zopStats::BytesSent, P.size()*64 );
           thisCycle++;
           iFace->send((*it), 0);
           it = sendQ.erase(it);
