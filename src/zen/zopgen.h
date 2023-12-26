@@ -101,7 +101,7 @@ namespace SST::Forza{
     void sendLoadToRZA(uint64_t addr, uint64_t size) ;
     uint64_t getReadACS(uint64_t acs_pair) ;
     uint64_t getWriteACS(uint64_t acs_pair) ;
-
+    void sendCreditsToZEN(int i);
   private:
     // private class members
 
@@ -120,7 +120,7 @@ namespace SST::Forza{
     std::vector<SST::Forza::zenZopEvent*> zap_credits;
     std::map<uint8_t, std::pair<uint64_t, uint64_t> > outstanding_mem_req;
     uint64_t int_id;
-    uint8_t msg_id;
+    uint8_t msg_id, cnt;
     uint64_t m_num_harts;
     SST::Forza::zenZopAPI* m_zop_iface;
     std::unordered_map<uint64_t, uint64_t> mem_map;

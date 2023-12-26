@@ -330,13 +330,14 @@ bool zenZopNIC::msgNotify(int vn){
   // decode the event
   ev->decodeEvent();
   output.verbose(CALL_INFO, 9, 0,
-                 "%s:%s received zop message of type %s\n",
+                 "%s:%s received zop message of type %s with opcode %" PRIu8 "\n",
                  getName().c_str(),
                  endPToStr(getEndpointType()).c_str(),
-                 msgTToStr(ev->getType()).c_str());
+                 msgTToStr(ev->getType()).c_str(), (uint8_t)ev->getOpcode());
 
   // if this is an RZA device, marshall it through to the ZIQ
-  if( Type == Forza::zopCompID::Z_RZA || Type == Forza::zopCompID::Z_ZEN || ev->getOpcode() == zopOpc::Z_MZOP_SCSD ){
+  if( Type == Forza::zopCompID::Z_RZA || Type == Forza::zopCompID::Z_ZEN
+        || ev->getOpcode() == zopOpc::Z_MZOP_SCSD || ev->getOpcode() == zopOpc::Z_MSG_ACK ){
     (*msgHandler)(ev);
     return true;
   }
@@ -347,22 +348,28 @@ bool zenZopNIC::msgNotify(int vn){
   for( auto const& [DestHart, ID, isRead, Target, Req] : outstanding ){
     auto SrcHart = ev->getSrcHart();
     auto EVID = ev->getID();
+    output.verbose(CALL_INFO, 5,0,
+                       "SrcHart, EVID: %lu %lu\n", (long)SrcHart, (long)EVID);
+    output.verbose(CALL_INFO, 5,0,
+                       "DestHart, ID: %lu %lu\n", (long)DestHart, (long)ID);
     if( (DestHart == SrcHart) && (ID == EVID) ){
       // found a match
       // if this is a read request, marshall to the RevCPU to handle the hazarding
       if( isRead ){
         // TODO: do we need to correctly handle this?
         if( !ev->getFLIT(Z_FLIT_DATA_RESP, Target) ){
-          output.fatal(CALL_INFO, -1,
+          output.verbose(CALL_INFO, 9, 0,
                        "%s, Error: zenZopEvent on zenZopNIC failed to read response FLIT; OPC=%d, LENGTH=%d, ID=%d\n",
                        getName().c_str(), (unsigned)(ev->getOpcode()),
                        (unsigned)(ev->getLength()), ID );
-        }
-        std::cout << "LOAD RESPONSE : 0x" << std::hex << *Target << std::dec << std::endl;
-        std::cout << "LOAD RESPONSE : 0x" << std::hex << Target[0] << std::dec << std::endl;
-        ev->setMemReq(Req);
-        ev->setTarget(Target);
-        (*msgHandler)(ev);
+    (*msgHandler)(ev);
+        } else {
+            std::cout << "LOAD RESPONSE : 0x" << std::hex << *Target << std::dec << std::endl;
+          std::cout << "LOAD RESPONSE : 0x" << std::hex << Target[0] << std::dec << std::endl;
+          ev->setMemReq(Req);
+          ev->setTarget(Target);
+          (*msgHandler)(ev);
+    }
       }
 
       // clear the request from the outstanding request list
@@ -447,6 +454,14 @@ bool zenZopNIC::clockTick(SST::Cycle_t cycle){
   }
 
   for( auto R : sendQ ){
+    if ( Type == SST::Forza::zopCompID::Z_RZA) {
+        zenZopEvent *ev = static_cast<zenZopEvent*>(R->inspectPayload());
+        output.verbose(CALL_INFO, 4, 0,
+                   "Issuing msg from %s @ [hart:zcid:pcid:type]=[%d:%d:%d:%s]\n",
+                   getName().c_str(),
+                   ev->getSrcHart(), ev->getSrcZCID(), ev->getSrcPCID(),
+                   endPToStr(getEndpointType()).c_str() );
+    }
     if( thisCycle < ReqPerCycle ){
       zenZopEvent *ev = static_cast<zenZopEvent*>(R->inspectPayload());
       Hart = (unsigned)(ev->getSrcHart());
@@ -460,6 +475,12 @@ bool zenZopNIC::clockTick(SST::Cycle_t cycle){
           thisCycle++;
           iFace->send(R, 0);
           sendQ.erase(sendQ.begin() + Cur);
+    output.verbose(CALL_INFO, 4, 0,
+                   "Issuing msg from %s @ [hart:zcid:pcid:type]=[%d:%d:%d:%s] %d, type: %s, opcode: %" PRIu8 "\n",
+                   getName().c_str(),
+                   ev->getSrcHart(), ev->getSrcZCID(), ev->getSrcPCID(),
+                   endPToStr(getEndpointType()).c_str(), ev->getID(),
+                   msgTToStr(ev->getType()), ev->getOpcode());
         }
       }else if( ev->getType() == SST::Forza::zopMsgT::Z_FENCE ){
         // handle the fence operation
@@ -477,13 +498,13 @@ bool zenZopNIC::clockTick(SST::Cycle_t cycle){
         // we have a free message Id for this hart
         auto P = ev->getPacket();
         if( iFace->spaceToSend(0, P.size()*64) ){
-    output.verbose(CALL_INFO, 4, 0,
-                   "Issuing msg from %s @ [hart:zcid:pcid:type]=[%d:%d:%d:%s]\n",
-                   getName().c_str(),
-                   ev->getSrcHart(), ev->getSrcZCID(), ev->getSrcPCID(),
-                   endPToStr(getEndpointType()).c_str() );
           // we have space to send
           ev->setID( msgId[Hart].getMsgId() );
+    output.verbose(CALL_INFO, 4, 0,
+                   "Issuing msg from %s @ [hart:zcid:pcid:type]=[%d:%d:%d:%s] %d\n",
+                   getName().c_str(),
+                   ev->getSrcHart(), ev->getSrcZCID(), ev->getSrcPCID(),
+                   endPToStr(getEndpointType()).c_str(), ev->getID() );
           auto V = std::make_tuple(Hart, ev->getID(), ev->isRead(),
                                    ev->getTarget(), ev->getMemReq());
           outstanding.push_back(V);
