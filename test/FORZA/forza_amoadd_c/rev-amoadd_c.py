@@ -158,4 +158,8 @@ zap_link0.connect( (zap_iface, "rtr_port", "1us"), (router, "port0", "1us") )
 rza_link0 = sst.Link("rza_link")
 rza_link0.connect( (rza_iface, "rtr_port", "1us"), (router, "port1", "1us") )
 
+sst.setStatisticLoadLevel(10)
+sst.setStatisticOutput("sst.statOutputCSV")
+sst.enableAllStatisticsForAllComponents()
+
 # EOF
