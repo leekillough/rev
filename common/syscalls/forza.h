@@ -22,3 +22,12 @@ int forza_scratchpad_free( uint64_t addr, size_t size ){
     "mv %0, a0" : "=r" (rc)
   );
 }
+
+int forza_get_hart_id( ){
+  int rc;
+  asm volatile (
+    "li a7, 4002 \n\t"
+    "ecall \n\t"
+    "mv %0, a0" : "=r" (rc)
+  );
+}
