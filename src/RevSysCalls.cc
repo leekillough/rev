@@ -3259,7 +3259,14 @@ EcallStatus RevProc::ECALL_forza_scratchpad_free(RevInst& inst){
   return EcallStatus::SUCCESS;
 }
 
-  // 9000, rev_dump_mem_range(uint64_t addr, uint64_t size)
+// 4002, forza_get_hart_id();
+EcallStatus RevProc::ECALL_forza_get_hart_id(RevInst& inst){
+  output->verbose(CALL_INFO, 2, 0, "ECALL: forza_get_hart_id called by thread %" PRIu32 " on hart %" PRIu32 "\n", GetActiveThreadID(), HartToExecID);
+  RegFile->SetX(RevReg::a0, HartToExecID);
+  return EcallStatus::SUCCESS;
+}
+
+// 9000, rev_dump_mem_range(uint64_t addr, uint64_t size)
 EcallStatus RevCore::ECALL_dump_mem_range() {
   auto& EcallState = Harts.at( HartToExecID )->GetEcallState();
   if( EcallState.bytesRead == 0 ) {
@@ -3745,6 +3752,7 @@ const std::unordered_map<uint32_t, EcallStatus(RevCore::*)()> RevCore::Ecalls = 
     // FORZA
     { 4000, &RevProc::ECALL_forza_scratchpad_alloc },
     { 4001, &RevProc::ECALL_forza_scratchpad_free },
+    { 4002, &RevProc::ECALL_forza_get_hart_id },
 };
 // clang-format on
 
