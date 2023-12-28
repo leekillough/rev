@@ -3,5 +3,6 @@
 # this is triggered via the top-level CMakeLists.txt in forzarev
 
 add_subdirectory(zen)
+add_subdirectory(zqm)
 
 # EOF
