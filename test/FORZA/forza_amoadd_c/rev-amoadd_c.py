@@ -128,10 +128,10 @@ rtr_params = {
   "num_ports" : "2",
   "id" : 0
 }
-zap_nic = zap_cpu1.setSubComponent("zone_nic", "Forza.zopNIC")
+zap_nic = zap_cpu1.setSubComponent("zone_nic", "forza.zopNIC")
 zap_iface = zap_nic.setSubComponent("iface", "merlin.linkcontrol")
 
-rza_nic = rza.setSubComponent("zone_nic", "Forza.zopNIC")
+rza_nic = rza.setSubComponent("zone_nic", "forza.zopNIC")
 rza_iface = rza_nic.setSubComponent("iface", "merlin.linkcontrol")
 
 router = sst.Component("router", "merlin.hr_router")
