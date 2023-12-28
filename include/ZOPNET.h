@@ -75,6 +75,9 @@ namespace SST::Forza{
 
 #define Z_MZOP_DMA_MAX      2040
 
+#define Z_ACS_WRITE         0xFFFFFFFF00000000ULL
+#define Z_ACS_READ          0xFFFFFFFFFFFFFFFFULL
+
 // --------------------------------------------
 // zopMsgT : ZOP Type
 // --------------------------------------------
@@ -508,7 +511,7 @@ public:
   void setSrcZCID(zopCompID Z){
     SrcZCID = static_cast<uint8_t>(Z);
   }
-  
+
   /// zopEvent: set the src PCID
   void setSrcPCID(uint8_t P){
     SrcPCID = P;
