@@ -114,7 +114,7 @@ namespace SST::Forza{
     void processZAPCredits();
     void sendMsgToZEN();
     void sendSetupToZEN();
-    int getRZATailQueue(uint64_t harts, uint64_t size);
+    int getRZATailQueue(uint64_t zap_id, uint64_t harts, uint64_t size);
     void sendMZOPAckToZEN(SST::Forza::zenZopEvent *ev);
     uint64_t  getReadACS(uint64_t);
     uint64_t  getWriteACS(uint64_t);
@@ -137,21 +137,22 @@ namespace SST::Forza{
     // private data members
     SST::Output output;             ///< ZEN: SST output handler
     SST::Interfaces::SimpleNetwork*     m_linkControl;
-    std::map<uint64_t, ZENTableRow*> hart_tables;
+    std::map<std::pair<uint64_t, uint64_t>, ZENTableRow*> hart_tables;
     std::map<uint64_t, ZENTableRow*> zone_tables;
     std::map<uint64_t, ZENTableRow*> precinct_tables;
-    std::map<uint64_t, std::vector<ZENEntry*> > zen_queue;
+    std::map<std::pair<uint64_t, uint64_t>, std::vector<ZENEntry*> > zen_queue;
     std::map<uint64_t, std::vector<ZENEntry*> > zone_queue;
     std::map<uint64_t, std::vector<ZENEntry*> > precinct_queue;
     std::vector<SST::Forza::zenZopEvent*> mem_acks;
     std::vector<SST::Forza::zenZopEvent*> setup_reqs;
     std::vector<SST::Forza::zenZopEvent*> zap_credits;
-    std::map<uint8_t, std::pair<uint64_t, uint64_t> > outstanding_mem_req;
+    std::map<uint8_t, ZENEntry*> outstanding_mem_req;
     uint64_t int_id;
     std::bitset<256> msg_id;
     uint64_t m_num_harts;
     uint64_t m_num_zones;
     uint64_t m_num_precincts;
+    uint64_t m_num_zaps;
     SST::Forza::zenZopAPI* m_zop_iface;
     //SST::Forza::zenZopAPI* m_zop_prec_iface;
     bool sent;

@@ -514,7 +514,7 @@ public:
 
   /// zopEvent: set the fence encountered flag
   void setFence() { FenceEncountered = true; }
- 
+
   /// zenZopEvent: retrieve the data payload from the packet
   std::vector<uint64_t> getPayload() {
     std::vector<uint64_t> P;
@@ -526,9 +526,11 @@ public:
 
   /// zenZopEvent: get the memory request handler
   const SST::RevCPU::MemReq& getMemReq() { return req; }
-  
+
   /// zenZopEvent: determines if the target request is a read or AMO request
   bool isRead() { return Read; }
+
+  void setRead() { Read = true; }
 
   /// zenZopEvent: get the target for the read request
   uint64_t *getTarget() { return Target; }
@@ -992,7 +994,7 @@ public:
   };
 
   /// zenZopNIC: constructor
-  
+
   zenZopNIC(ComponentId_t id, Params& params);
 
   /// zenZopNIC: destructor
@@ -1054,7 +1056,7 @@ public:
   virtual void clearMsgID(unsigned Hart, uint8_t Id){
     msgId[Hart].clearMsgId(Id);
   }
-  
+
   /// zenZopNIC: clock tick function
   virtual bool clockTick(Cycle_t cycle);
 

@@ -115,7 +115,7 @@ def main():
   zap1_link0.connect( (zap1_zopapi_lc, "rtr_port", "1us"), (router, "port3", "1us") )
   zen1 = sst.Component("zen1", "Forza.ZEN")
   #zen0.addGlobalParamSet("zen_params")
-  zen1.addParams({"int_id" : 1})
+  zen1.addParams({"int_id" : 1, "dma_enabled": 1})
 
   zen1_lc = zen1.setSubComponent("m_zop_iface", "Forza.zenZopNIC", 0)
   zen1_lc.addGlobalParamSet("networkLinkControl_params")
