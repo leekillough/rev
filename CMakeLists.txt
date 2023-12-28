@@ -139,6 +139,11 @@ add_subdirectory(src)
 add_subdirectory(common)
 add_subdirectory(test)
 
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/zen")
+  message(STATUS "Enabling FORZA ZEN Build")
+  add_subdirectory(zen)
+endif()
+
 # Custom Commands
 add_custom_target(uninstall COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/scripts/uninstall.sh")
 
