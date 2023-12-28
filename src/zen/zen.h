@@ -56,12 +56,13 @@ namespace SST::Forza{
         empty = true;
       }
   };
+
   class ZEN : public SST::Component{
   public:
     // register the component
     SST_ELI_REGISTER_COMPONENT(
       ZEN,                                    // component class
-      "Forza",                             // component libary
+      "forza",                             // component libary
       "ZEN",                                  // component name
       SST_ELI_ELEMENT_VERSION(1,0,0),         // Version of the component
       "ZEN: Forza ZEN component",             // description
