@@ -18,6 +18,7 @@
 #include <unistd.h>
 
 // -- SST Headers
+#include "RevCommon.h"
 #include "zen_sst.h"
 
 namespace SST::Forza{
@@ -61,9 +62,16 @@ namespace SST::Forza{
 #define Z_FLIT_DEST         0
 #define Z_FLIT_SRC          1
 
+#define Z_FLIT_ACS          2
+#define Z_FLIT_ADDR         3
+#define Z_FLIT_DATA         4
+#define Z_FLIT_DATA_RESP    3
+
 #define Z_MZOP_PIPE_HART    0
 #define Z_HZOP_PIPE_HART    1
 #define Z_RZOP_PIPE_HART    2
+
+#define Z_MZOP_DMA_MAX      2040
 
 // --------------------------------------------
 // zopMsgT : ZOP Type
@@ -78,7 +86,8 @@ enum class zopMsgT : uint8_t {
   Z_TMGT  = 0b0110,   /// FORZA THREAD MANAGEMENT
   Z_SYSC  = 0b0111,   /// FORZA SYSCALL
   Z_RESP  = 0b1000,   /// FORZA RESPONSE
-  // -- 0b1000 - 0b1110 UNASSIGNED
+  // -- 0b1001 - 0b1101 UNASSIGNED
+  Z_FENCE = 0b1110,   /// FORZE FENCE
   Z_EXCP  = 0b1111,   /// FORZA EXCEPTION
 };
 
@@ -94,15 +103,15 @@ enum class zopOpc : uint8_t {
   Z_MZOP_LSB    = 0b00000100,   /// zopOpc: MZOP Load signed byte
   Z_MZOP_LSH    = 0b00000101,   /// zopOpc: MZOP Load signed half
   Z_MZOP_LSW    = 0b00000110,   /// zopOpc: MZOP Load signed word
-  //Z_MZOP_LSD    = 0b00000111,   /// zopOpc: MZOP Load double (dupe)
+  Z_MZOP_LDMA   = 0b00000111,   /// zopOpc: MZOP Load DMA
   Z_MZOP_SB     = 0b00001000,   /// zopOpc: MZOP Store unsigned byte
   Z_MZOP_SH     = 0b00001001,   /// zopOpc: MZOP Store unsigned half
-  Z_MZOP_SW     = 0b00001001,   /// zopOpc: MZOP Store unsigned word
+  Z_MZOP_SW     = 0b00001010,   /// zopOpc: MZOP Store unsigned word
   Z_MZOP_SD     = 0b00001011,   /// zopOpc: MZOP Store doubleword
   Z_MZOP_SSB    = 0b00001100,   /// zopOpc: MZOP Store signed byte
   Z_MZOP_SSH    = 0b00001101,   /// zopOpc: MZOP Store signed half
   Z_MZOP_SSW    = 0b00001110,   /// zopOpc: MZOP Store signed word
-  //Z_MZOP_SSD    = 0b00001111,   /// zopOpc: MSOP Store doubleword (dupe)
+  Z_MZOP_SDMA   = 0b00001111,   /// zopOpc: MSOP Store DMA
 
   Z_MZOP_SCLB   = 0b11100000,   /// zopOpc: MZOP Load scratch unsigned byte
   Z_MZOP_SCLH   = 0b11100001,   /// zopOpc: MZOP Load scratch unsigned half
@@ -260,6 +269,11 @@ enum class zopOpc : uint8_t {
   Z_RESP_RRESP  = 0b00000110,   /// zopOpc: RZA RESPONSE RZOP response
   Z_RESP_REXCP  = 0b00000111,   /// zopOpc: RZA RESPONSE RZOP exception
 
+  // -- FENCE --
+  Z_FENCE_HART  = 0b00000000,   /// zopOpc: HART Fence (only fences the calling HART)
+  Z_FENCE_ZAP   = 0b00000001,   /// zopOpc: ZAP Fence (fences all HARTs on a ZAP)
+  Z_FENCE_RZA   = 0b00000010,   /// zopOpc: RZA Fence (fences all requests on an RZA)
+
   // -- EXCEPTION --
   Z_EXCP_NONE   = 0b00000000,   /// zopOpc: Exception; no exception
   Z_EXCP_INVENDP= 0b00000001,   /// zopOpc: Exception; Invalid endpoint
@@ -307,47 +321,108 @@ enum class zopPrecID : uint8_t {
 };
 
 // --------------------------------------------
-// zopEvent
+// zopMsgID
 // --------------------------------------------
-class zopEvent : public SST::Event{
+class zopMsgID{
+public:
+  // zopMsgID: constructor
+  zopMsgID()
+    : NumFree(64){
+    for( uint8_t i = 0; i<64; i++ ){
+      Mask[i] = false;
+    }
+  }
+
+  // zopMsgID: destructor
+  ~zopMsgID() = default;
+
+  // zopMsgID: get the number of free message slots
+  unsigned getNumFree() { return NumFree; }
+
+  /// zopMsgID: clear the message id
+  void clearMsgId(uint8_t I){
+    Mask[I] = false;
+    NumFree++;
+  }
+
+  // zopMsgID: retrieve a new message id
+  uint8_t getMsgId(){
+    for( uint8_t i=0; i<64; i++ ){
+      if( Mask[i] == false ){
+        NumFree--;
+        Mask[i] = true;
+        return i;
+      }
+    }
+    return 64;  // this is an erroneous id
+  }
+
+private:
+  unsigned NumFree;
+  bool Mask[64];
+};
+
+// --------------------------------------------
+// zenZopEvent
+// --------------------------------------------
+class zenZopEvent : public SST::Event{
 public:
   // Note: all constructors create two full FLITs
   // This is comprised of 2 x 64bit words
 
-  /// zopEvent: init broadcast constructor
+  /// zenZopEvent: init broadcast constructor
   //  This constructor is ONLY utilized for initialization
   //  DO NOT use this constructor for normal packet construction
-  explicit zopEvent(unsigned srcId, zopCompID Type )
-    : Event(){
+  explicit zenZopEvent(unsigned srcId, zopCompID Type )
+    : Event(), Read(false), FenceEncountered(false), Target(nullptr){
     Packet.push_back((uint64_t)(Type));
     Packet.push_back((uint64_t)(srcId));
   }
 
-  /// zopEvent: raw event constructor
-  explicit zopEvent()
-    : Event(){
+  /// zenZopEvent: init broadcast constructor
+  //  This constructor is ONLY utilized for initialization
+  //  DO NOT use this constructor for normal packet construction
+  explicit zenZopEvent(unsigned srcId, zopPrecID Type )
+    : Event(), Read(false), FenceEncountered(false), Target(nullptr){
+    Packet.push_back((uint64_t)(Type));
+    Packet.push_back((uint64_t)(srcId));
+  }
+
+  /// zenZopEvent: raw event constructor
+  explicit zenZopEvent()
+    : Event(), Read(false), FenceEncountered(false), Target(nullptr){
     Packet.push_back(0x00ull);
     Packet.push_back(0x00ull);
   }
 
-  explicit zopEvent(zopMsgT T, zopOpc O)
-    : Event(){
+  explicit zenZopEvent(zopMsgT T, zopOpc O)
+    : Event(), Read(false), FenceEncountered(false), Target(nullptr){
     Packet.push_back(0x00ul);
     Packet.push_back(0x00ul);
     Type = T;
     Opc = O;
   }
 
-  /// zopEvent: virtual function to clone an event
+  /// zenZopEvent: virtual function to clone an event
   virtual Event* clone(void) override{
-    zopEvent *ev = new zopEvent(*this);
+    zenZopEvent *ev = new zenZopEvent(*this);
     return ev;
   }
 
-  /// zopEvent: retrieve the raw packet
+  /// zopEvent: set the memory request handler
+  void setMemReq( const SST::RevCPU::MemReq& r ){
+    req = r;
+    Read = true;
+  }
+  /// zenZopEvent: retrieve the raw packet
   std::vector<uint64_t> const getPacket() { return Packet; }
 
-  /// zopEvent: set the packet payload.  NOTE: this is a destructive operation, but it does reset the size
+  /// zenZopEvent: set the target address for the read
+  void setTarget( uint64_t *T ){
+    Target = T;
+  }
+
+  /// zenZopEvent: set the packet payload.  NOTE: this is a destructive operation, but it does reset the size
   void setPacket(const std::vector<uint64_t> P){
     Packet.clear();
     for( auto i : P ){
@@ -355,89 +430,92 @@ public:
     }
   }
 
-  /// zopEvent: set the packet packet payload w/o the header. NOT a destructive operation
+  /// zenZopEvent: set the packet packet payload w/o the header. NOT a destructive operation
   void setPayload(const std::vector<uint64_t> P){
     for( auto i : P ){
       Packet.push_back(i);
     }
   }
 
-  /// zopEvent: clear the packet payload
+  /// zenZopEvent: clear the packet payload
   void clearPacket(){
     Packet.clear();
   }
 
-  /// zopEvent: set the packet type
+  /// zenZopEvent: set the packet type
   void setType(zopMsgT T){
     Type = T;
   }
 
-  /// zopEvent: set the NB flag
+  /// zenZopEvent: set the NB flag
   void setNB(uint8_t N){
     NB = N;
   }
 
-  /// zopEvent: set the packet ID
+  /// zenZopEvent: set the packet ID
   void setID(uint8_t I){
     ID = I;
   }
 
-  /// zopEvent: set the credit
+  /// zenZopEvent: set the credit
   void setCredit(uint8_t C){
     Credit = C;
   }
 
-  /// zopEvent: set the opcode
+  /// zenZopEvent: set the opcode
   void setOpc(zopOpc O){
     Opc = O;
   }
 
-  /// zopEvent: set the application id
+  /// zenZopEvent: set the application id
   void setAppID(uint32_t A){
     AppID = A;
   }
 
-  /// zopEvent: set the destination hart
+  /// zenZopEvent: set the destination hart
   void setDestHart(uint16_t H){
     DestHart = H;
   }
 
-  /// zopEvent: set the destination ZCID
+  /// zenZopEvent: set the destination ZCID
   void setDestZCID(uint8_t Z){
     DestZCID = Z;
   }
 
-  /// zopEvent: set the destination PCID
+  /// zenZopEvent: set the destination PCID
   void setDestPCID(uint8_t P){
     DestPCID = P;
   }
 
-  /// zopEvent: set the destination precinct
+  /// zenZopEvent: set the destination precinct
   void setDestPrec(uint16_t P){
     DestPrec = P;
   }
 
-  /// zopEvent: set the src hart
+  /// zenZopEvent: set the src hart
   void setSrcHart(uint16_t H){
     SrcHart = H;
   }
 
-  /// zopEvent: set the src ZCID
+  /// zenZopEvent: set the src ZCID
   void setSrcZCID(uint8_t Z){
     SrcZCID = Z;
   }
 
-  /// zopEvent: set the src PCID
+  /// zenZopEvent: set the src PCID
   void setSrcPCID(uint8_t P){
     SrcPCID = P;
   }
 
-  /// zopEvent: set the src precinct
+  /// zenZopEvent: set the src precinct
   void setSrcPrec(uint16_t P){
     SrcPrec = P;
   }
 
-  /// zopEvent: retrieve the data payload from the packet
+  /// zopEvent: set the fence encountered flag
+  void setFence() { FenceEncountered = true; }
+ 
+  /// zenZopEvent: retrieve the data payload from the packet
   std::vector<uint64_t> getPayload() {
     std::vector<uint64_t> P;
     for( unsigned i=2; i<Packet.size(); i++ ){
@@ -446,52 +524,77 @@ public:
     return P;
   }
 
-  /// zopEvent: get the destination Hart
+  /// zenZopEvent: get the memory request handler
+  const SST::RevCPU::MemReq& getMemReq() { return req; }
+  
+  /// zenZopEvent: determines if the target request is a read or AMO request
+  bool isRead() { return Read; }
+
+  /// zenZopEvent: get the target for the read request
+  uint64_t *getTarget() { return Target; }
+
+  /// zenZopEvent: get the destination Hart
   uint16_t getDestHart() { return DestHart; }
 
-  /// zopEvent: get the destination ZCID
+  /// zenZopEvent: get the destination ZCID
   uint8_t getDestZCID() { return DestZCID; }
 
-  /// zopEvent: get the destination PCID
+  /// zenZopEvent: get the destination PCID
   uint8_t getDestPCID() { return DestPCID; }
 
-  /// zopEvent: get the destination precinct
+  /// zenZopEvent: get the destination precinct
   uint16_t getDestPrec() { return DestPrec; }
 
-  /// zopEvent: get the source Hart
+  /// zenZopEvent: get the source Hart
   uint16_t getSrcHart() { return SrcHart; }
 
-  /// zopEvent: get the source ZCID
+  /// zenZopEvent: get the source ZCID
   uint8_t getSrcZCID() { return SrcZCID; }
 
-  /// zopEvent: get the source PCID
+  /// zenZopEvent: get the source PCID
   uint8_t getSrcPCID() { return SrcPCID; }
 
-  /// zopEvent: get the source precinct
+  /// zenZopEvent: get the source precinct
   uint16_t getSrcPrec() { return SrcPrec; }
 
-  /// zopEvent: get the packet type
+  /// zenZopEvent: get the packet type
   zopMsgT getType() { return Type; }
 
-  /// zopEvent: get the NB flag
+  /// zenZopEvent: get the NB flag
   uint8_t getNB() { return NB; }
 
-  /// zopEvent: get the packet length
+  /// zenZopEvent: get the packet length
   uint8_t getLength() { return Length; }
 
-  /// zopEvent: get the packet ID
+  /// zenZopEvent: get the packet ID
   uint8_t getID() { return ID; }
 
-  /// zopEvent: get the credit
+  /// zenZopEvent: get the credit
   uint8_t getCredit() { return Credit; }
 
-  /// zopEvent: get the opcode
+  /// zenZopEvent: get the opcode
   zopOpc getOpcode() { return Opc; }
 
-  /// zopEvent: get the application id
+  /// zenZopEvent: get the application id
   uint32_t getAppID() { return AppID; }
 
-  /// zopEvent: decode this event and set the appropriate internal structures
+  /// zenZopEvent: determine whether the fence has been encountered
+  bool getFence() { return FenceEncountered; }
+
+  /// zenZopEvent: retrieve the FLIT at the target location
+  bool getFLIT(unsigned flit, uint64_t *F){
+    if( flit > (Packet.size()-1) ){
+      return false;
+    }else if( F == nullptr ){
+      return false;
+    }
+
+    *F = Packet[flit];
+
+    return true;
+  }
+
+  /// zenZopEvent: decode this event and set the appropriate internal structures
   void decodeEvent(){
     DestHart = (uint16_t)((Packet[Z_FLIT_DEST] >> Z_SHIFT_HARTID) & Z_MASK_HARTID);
     DestZCID = (uint8_t)((Packet[Z_FLIT_DEST] >> Z_SHIFT_ZCID) & Z_MASK_ZCID);
@@ -513,7 +616,7 @@ public:
     AppID = (uint32_t)((Packet[Z_FLIT_APPID] >> Z_SHIFT_APPID) & Z_MASK_APPID);
   }
 
-  /// zopEvent: encode this event and set the appropriate internal packet structures
+  /// zenZopEvent: encode this event and set the appropriate internal packet structures
   void encodeEvent(){
     Length = Packet.size() - Z_NUM_HEADER_FLITS;
     Packet[Z_FLIT_DEST] |= ((uint64_t)(DestHart & Z_MASK_HARTID) << Z_SHIFT_HARTID);
@@ -537,95 +640,108 @@ public:
   }
 
 private:
-  std::vector<uint64_t> Packet; ///< zopEvent: data payload: serialized payload
+  std::vector<uint64_t> Packet; ///< zenZopEvent: data payload: serialized payload
 
   // -- private, non-serialized data members
-  uint16_t DestHart;            ///< zopEvent: destination hart id
-  uint8_t DestZCID;             ///< zopEvent: destination ZCID
-  uint8_t DestPCID;             ///< zopEvent: destination PCID
-  uint16_t DestPrec;            ///< zopEvent: destination Precinct
-  uint16_t SrcHart;             ///< zopEvent: src hart id
-  uint8_t SrcZCID;              ///< zopEvent: src ZCID
-  uint8_t SrcPCID;              ///< zopEvent: src PCID
-  uint16_t SrcPrec;             ///< zopEvent: src Precinct
+  uint16_t DestHart;            ///< zenZopEvent: destination hart id
+  uint8_t DestZCID;             ///< zenZopEvent: destination ZCID
+  uint8_t DestPCID;             ///< zenZopEvent: destination PCID
+  uint16_t DestPrec;            ///< zenZopEvent: destination Precinct
+  uint16_t SrcHart;             ///< zenZopEvent: src hart id
+  uint8_t SrcZCID;              ///< zenZopEvent: src ZCID
+  uint8_t SrcPCID;              ///< zenZopEvent: src PCID
+  uint16_t SrcPrec;             ///< zenZopEvent: src Precinct
 
-  zopMsgT Type;                 ///< zopEvent: message type
-  uint8_t NB;                   ///< zopEvent: blocking/non-blocking
-  uint8_t Length;               ///< zopEvent: packet length (in flits)
-  uint8_t ID;                   ///< zopEvent: message ID
-  uint8_t Credit;               ///< zopEvent: credit piggyback
-  zopOpc Opc;                   ///< zopEvent: opcode
-  uint32_t AppID;               ///< zopEvent: application source
+  zopMsgT Type;                 ///< zenZopEvent: message type
+  uint8_t NB;                   ///< zenZopEvent: blocking/non-blocking
+  uint8_t Length;               ///< zenZopEvent: packet length (in flits)
+  uint8_t ID;                   ///< zenZopEvent: message ID
+  uint8_t Credit;               ///< zenZopEvent: credit piggyback
+  zopOpc Opc;                   ///< zenZopEvent: opcode
+  uint32_t AppID;               ///< zenZopEvent: application source
 
+  bool Read;                    ///< zenZopEvent: sets this request as a read request
+  bool FenceEncountered;        ///< zenZopEvent: whether this ZOP's fence has been seen
+  uint64_t *Target;             ///< zenZopEvent: target for the read request
+  SST::RevCPU::MemReq req;      ///< zenZopEvent: read response handler
 public:
-  // zopEvent: event serializer
+  // zenZopEvent: event serializer
   void serialize_order(SST::Core::Serialization::serializer &ser) override{
     // we only serialize the raw packet
     Event::serialize_order(ser);
     ser & Packet;
   }
 
-  // zopEvent: implements the nic serialization
-  ImplementSerializable(SST::Forza::zopEvent);
+  // zenZopEvent: implements the nic serialization
+  ImplementSerializable(SST::Forza::zenZopEvent);
 
-};  // class zopEvent
+};  // class zenZopEvent
 
 // --------------------------------------------
-// zopAPI
+// zenZopAPI
 // --------------------------------------------
-class zopAPI : public SST::SubComponent{
+class zenZopAPI : public SST::SubComponent{
 public:
-  SST_ELI_REGISTER_SUBCOMPONENT_API(SST::Forza::zopAPI)
+  SST_ELI_REGISTER_SUBCOMPONENT_API(SST::Forza::zenZopAPI)
 
-  /// zopAPI: constructor
-  zopAPI(ComponentId_t id, Params& params) : SubComponent(id) { }
+  /// zenZopAPI: constructor
+  zenZopAPI(ComponentId_t id, Params& params) : SubComponent(id) { }
 
-  /// zopAPI: destructor
-  virtual ~zopAPI() = default;
+  /// zenZopAPI: destructor
+  virtual ~zenZopAPI() = default;
 
-  /// zopAPI: registers the the event handler with the core
+  /// zenZopAPI: registers the the event handler with the core
   virtual void setMsgHandler(Event::HandlerBase* handler) = 0;
 
-  /// zopAPI: initializes the network
+  /// zenZopAPI: initializes the network
   virtual void init(unsigned int phase) = 0;
 
-  /// zopAPI : setup the network
+  /// zenZopAPI : setup the network
   virtual void setup() { }
 
-  /// zopAPI : send a message on the network
-  virtual void send(zopEvent *ev, zopCompID dest) = 0;
+  /// zenZopAPI : send a message on the network
+  virtual void send(zenZopEvent *ev, zopCompID dest) = 0;
 
-  /// zopAPI : retrieve the number of potential endpoints
+  /// zenZopAPI : send a message on the network
+  virtual void send(zenZopEvent *ev, zopPrecID dest) = 0;
+
+  /// zenZopAPI : retrieve the number of potential endpoints
   virtual unsigned getNumDestinations() = 0;
 
-  /// zopAPI: return the NIC's network address
+  /// zenZopAPI: return the NIC's network address
   virtual SST::Interfaces::SimpleNetwork::nid_t getAddress() = 0;
 
-  /// zopAPI: set the type of the endpoint
+  /// zenZopAPI: set the type of the endpoint
   virtual void setEndpointType(zopCompID type) = 0;
 
-  /// zopAPI: get the type of the endpoint
+  /// zenZopAPI: set the type of the endpoint
+  virtual void setEndpointType(zopPrecID type) = 0;
+
+  /// zenZopAPI: get the type of the endpoint
   virtual zopCompID getEndpointType() = 0;
 
-  /// zopAPI: set the number of harts
+  /// zenZopAPI: get the type of the endpoint
+  virtual zopPrecID getEndpointTypePrec() = 0;
+
+  /// zenZopAPI: set the number of harts
   virtual void setNumHarts(unsigned Hart) = 0;
 
-  /// zopAPI: set the precinct ID
+  /// zenZopAPI: set the precinct ID
   virtual void setPrecinctID(unsigned Precinct) = 0;
 
-  /// zopAPI: set the zone ID
+  /// zenZopAPI: set the zone ID
   virtual void setZoneID(unsigned Zone) = 0;
 
-  /// zopAPI: get the precinct ID
+  /// zenZopAPI: get the precinct ID
   virtual unsigned getPrecinctID() = 0;
 
-  /// zopAPI: get the zone ID
+  /// zenZopAPI: get the zone ID
   virtual unsigned getZoneID() = 0;
 
-  /// zopAPI: retrieve the next message id for the target hart
-  virtual uint8_t getMsgId(unsigned Hart) = 0;
+  /// zenZopAPI: clear the message Id hazard
+  virtual void clearMsgID(unsigned Hart, uint8_t Id) = 0;
 
-  /// zopAPI: convert the precinct ID to zopPrecID
+  /// zenZopAPI: convert the precinct ID to zopPrecID
   SST::Forza::zopPrecID getPCID(unsigned Z){
     switch( Z ){
     case 0:
@@ -659,7 +775,7 @@ public:
     return SST::Forza::zopPrecID::Z_ZIP;
   }
 
-  /// zopAPI: convert the zone ID to zopCompID
+  /// zenZopAPI: convert the zone ID to zopCompID
   SST::Forza::zopCompID getZCID(unsigned Z, bool isRZA){
     if( isRZA )
       return SST::Forza::zopCompID::Z_RZA;
@@ -697,7 +813,46 @@ public:
     return SST::Forza::zopCompID::Z_ZEN;
   }
 
-  /// zopAPI: convert endpoint to string name
+  /// zenZopAPI: convert endpoint to string name
+  std::string const precIDToStr(zopPrecID T){
+    switch( T ){
+    case zopPrecID::Z_ZONE0:
+      return "ZONE0";
+      break;
+    case zopPrecID::Z_ZONE1:
+      return "ZONE1";
+      break;
+    case zopPrecID::Z_ZONE2:
+      return "ZONE2";
+      break;
+    case zopPrecID::Z_ZONE3:
+      return "ZONE3";
+      break;
+    case zopPrecID::Z_ZONE4:
+      return "ZONE4";
+      break;
+    case zopPrecID::Z_ZONE5:
+      return "ZONE5";
+      break;
+    case zopPrecID::Z_ZONE6:
+      return "ZONE6";
+      break;
+    case zopPrecID::Z_ZONE7:
+      return "ZONE7";
+      break;
+    case zopPrecID::Z_PMP:
+      return "PMP";
+      break;
+    case zopPrecID::Z_ZIP:
+      return "ZIP";
+      break;
+    default:
+      return "UNK";
+      break;
+    }
+  }
+
+  /// zenZopAPI: convert endpoint to string name
   std::string const endPToStr(zopCompID T){
     switch( T ){
     case zopCompID::Z_ZAP0:
@@ -736,7 +891,7 @@ public:
     }
   }
 
-  /// zopAPI : convert message type to string name
+  /// zenZopAPI : convert message type to string name
   std::string const msgTToStr(zopMsgT T){
     switch( T ){
     case zopMsgT::Z_MZOP:
@@ -777,18 +932,18 @@ public:
 };
 
 // --------------------------------------------
-// zopNIC
+// zenZopNIC
 // --------------------------------------------
-class zopNIC : public zopAPI {
+class zenZopNIC : public zenZopAPI {
 public:
   // register ELI with the SST core
   SST_ELI_REGISTER_SUBCOMPONENT(
-    zopNIC,
+    zenZopNIC,
     "Forza",
-    "zopNIC",
+    "zenZopNIC",
     SST_ELI_ELEMENT_VERSION(1, 0, 0),
     "FORZA ZOP NIC",
-    SST::Forza::zopAPI
+    SST::Forza::zenZopAPI
   )
 
   SST_ELI_DOCUMENT_PARAMS(
@@ -817,6 +972,7 @@ public:
     {"TMGTSent",        "Number of TMGTs sent",     "count",    1},
     {"SYSCSent",        "Number of Syscalls sent",  "count",    1},
     {"RESPSent",        "Number of RESPs sent",     "count",    1},
+    {"FENCESent",       "Number of Fences sent",    "count",    1},
     {"EXCPSent",        "Number of Exceptions sent","count",    1},
   )
 
@@ -831,91 +987,118 @@ public:
     TMGTSent      = 7,
     SYSCSent      = 8,
     RESPSent      = 9,
-    EXCPSent      = 10,
+    FENCESent     = 10,
+    EXCPSent      = 11,
   };
 
-  /// zopNIC: constructor
-  zopNIC(ComponentId_t id, Params& params);
+  /// zenZopNIC: constructor
+  
+  zenZopNIC(ComponentId_t id, Params& params);
 
-  /// zopNIC: destructor
-  virtual ~zopNIC();
+  /// zenZopNIC: destructor
+  virtual ~zenZopNIC();
 
-  /// zopNIC: callback to parent on received messages
+  /// zenZopNIC: callback to parent on received messages
   virtual void setMsgHandler(Event::HandlerBase* handler);
 
-  /// zopNIC: initialization function
+  /// zenZopNIC: initialization function
   virtual void init(unsigned int phase);
 
-  /// zopNIC: setup function
+  /// zenZopNIC: setup function
   virtual void setup();
 
-  /// zopNIC: send an event
-  virtual void send(zopEvent *ev, zopCompID dest);
+  /// zenZopNIC: send an event
+  virtual void send(zenZopEvent *ev, zopCompID dest);
 
-  /// zopNIC: get the number of destinations
+  /// zenZopNIC: send an event
+  virtual void send(zenZopEvent *ev, zopPrecID dest);
+
+  /// zenZopNIC: get the number of destinations
   virtual unsigned getNumDestinations();
 
-  /// zopNIC: get the end network address
+  /// zenZopNIC: get the end network address
   virtual SST::Interfaces::SimpleNetwork::nid_t getAddress();
 
-  /// zopNIC: set the endpoint type
+  /// zenZopNIC: set the endpoint type
   virtual void setEndpointType(zopCompID type) { Type = type; }
+
+  /// zenZopNIC: set the endpoint type
+  virtual void setEndpointType(zopPrecID type) { TypePrec = type; }
 
   /// zopNic: get the endpoint type
   virtual zopCompID getEndpointType() { return Type; }
 
-  /// zopNIC: callback function for the SimpleNetwork interface
+  /// zopNic: get the endpoint type
+  virtual zopPrecID getEndpointTypePrec() { return TypePrec; }
+
+  /// zenZopNIC: callback function for the SimpleNetwork interface
   bool msgNotify(int virtualNetwork);
 
-  /// zopNIC: initialize the number of Harts
+  /// zenZopNIC: initialize the number of Harts
   virtual void setNumHarts(unsigned Hart);
 
-  /// zopNIC: retrieve the next message id for the target hart
-  virtual uint8_t getMsgId(unsigned Hart);
 
-  /// zopNIC: set the precinct ID
+  /// zenZopNIC: set the precinct ID
   virtual void setPrecinctID(unsigned P){ Precinct = P; }
 
-  /// zopNIC: set the zone ID
+  /// zenZopNIC: set the zone ID
   virtual void setZoneID(unsigned Z){ Zone = Z; }
 
-  /// zopNIC: get the precinct ID
+  /// zenZopNIC: get the precinct ID
   virtual unsigned getPrecinctID() { return Precinct; }
 
-  /// zopNIC: get the zone ID
+  /// zenZopNIC: get the zone ID
   virtual unsigned getZoneID() { return Zone; }
 
-  /// zopNIC: clock tick function
+  /// zenZopAPI: clear the message Id hazard
+  virtual void clearMsgID(unsigned Hart, uint8_t Id){
+    msgId[Hart].clearMsgId(Id);
+  }
+  
+  /// zenZopNIC: clock tick function
   virtual bool clockTick(Cycle_t cycle);
 
 private:
-  /// zopNIC: registers all the statistics with SST
+  /// zenZopNIC: registers all the statistics with SST
   void registerStats();
 
-  /// zopNIC: adds a statistic value to the desired entry
-  void recordStat(zopNIC::zopStats Stat, uint64_t Data);
+  /// zenZopNIC: adds a statistic value to the desired entry
+  void recordStat(zenZopNIC::zopStats Stat, uint64_t Data);
 
-  /// zopNIC: retrieve the zopStat entry from the target zopEvent
-  zopNIC::zopStats getStatFromPacket(zopEvent *ev);
+  /// zenZopNIC: retrieve the zopStat entry from the target zenZopEvent
+  zenZopNIC::zopStats getStatFromPacket(zenZopEvent *ev);
 
-  SST::Output output;                       ///< zopNIC: SST output object
-  SST::Interfaces::SimpleNetwork * iFace;   ///< zopNIC: SST network interface
-  SST::Event::HandlerBase *msgHandler;      ///< zopNIC: SST message handler
-  bool initBroadcastSent;                   ///< zopNIC: has the broadcast msg been sent
-  unsigned numDest;                         ///< zopNIC: number of destination endpoints
-  unsigned ReqPerCycle;                     ///< zopNIC: max requests to send per cycle
-  unsigned numHarts;                        ///< zopNIC: number of attached Harts
-  unsigned Precinct;                        ///< zopNIC: precinct ID
-  unsigned Zone;                            ///< zopNIC: zone ID
-  zopCompID Type;                           ///< zopNIC: endpoint type
+  /// zopNIC: test the fence condition
+  bool handleFence(zenZopEvent *ev);
 
-  uint8_t *msgId;                           ///< zopNIC: per hart message IDs
+  SST::Output output;                       ///< zenZopNIC: SST output object
+  SST::Interfaces::SimpleNetwork * iFace;   ///< zenZopNIC: SST network interface
+  SST::Event::HandlerBase *msgHandler;      ///< zenZopNIC: SST message handler
+  bool initBroadcastSent;                   ///< zenZopNIC: has the broadcast msg been sent
+  unsigned numDest;                         ///< zenZopNIC: number of destination endpoints
+  unsigned ReqPerCycle;                     ///< zenZopNIC: max requests to send per cycle
+  unsigned numHarts;                        ///< zenZopNIC: number of attached Harts
+  unsigned Precinct;                        ///< zenZopNIC: precinct ID
+  unsigned Zone;                            ///< zenZopNIC: zone ID
+  zopCompID Type;                           ///< zenZopNIC: endpoint type
+  zopPrecID TypePrec;                       ///< zenZopNIC: endpoint type
+  bool isPrec;
 
-  std::queue<SST::Interfaces::SimpleNetwork::Request*> sendQ;       ///< zopNIC: buffered send queue
-  std::map<SST::Interfaces::SimpleNetwork::nid_t,zopCompID> hostMap;  ///< zopNIC: network ID to endpoint type mapping
+  SST::Forza::zopMsgID *msgId;              ///< zopNIC: per hart message ID object
+  unsigned *HARTFence;                      ///< zopNIC: per hart fence counters
 
-  std::vector<Statistic<uint64_t>*> stats;  ///< zopNIC: statistics vector
-};  // zopNIC
+  std::vector<std::pair<zenZopEvent *, zopCompID>> preInitQ;             ///< zopNIC: holds buffered requests before the network boots
+  std::vector<SST::Interfaces::SimpleNetwork::Request*> sendQ;       ///< zenZopNIC: buffered send queue
+  std::map<SST::Interfaces::SimpleNetwork::nid_t,zopCompID> hostMap;  ///< zenZopNIC: network ID to endpoint type mapping
+  std::map<SST::Interfaces::SimpleNetwork::nid_t,zopPrecID> hostMapPrec;  ///< zenZopNIC: network ID to endpoint type mapping
+
+#define _ZNIC_OUT_HART  0
+#define _ZNIC_OUT_ID    1
+#define _ZNIC_OUT_READ  2
+#define _ZNIC_OUT_REQ   3
+  std::vector<std::tuple<uint16_t, uint8_t, bool, uint64_t *, SST::RevCPU::MemReq>> outstanding; ///< zopNIC: tracks outstanding requests
+  std::vector<Statistic<uint64_t>*> stats;  ///< zenZopNIC: statistics vector
+};  // zenZopNIC
 
 } // namespace SST::Forza
 
