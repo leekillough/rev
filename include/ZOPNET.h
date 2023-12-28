@@ -260,11 +260,11 @@ enum class zopOpc : uint8_t {
   Z_MSG_ZENSET  = 0b11110001,   /// zopOpc: MESSAGING ZEN Setup
   Z_MSG_ACK     = 0b11110010,   /// zopOpc: MESSAGING Send Ack
   Z_MSG_EXCP    = 0b11110011,   /// zopOpc: MESSAGING Send exception
-  
+
   // -- THREAD MIGRATION --
   Z_TMIG_SELECT = 0b00000000,   /// zopOpc: THREAD MIGRATION ZQM choose HART
   Z_TMIG_FIXED  = 0b00000001,   /// zopOpc: THREAD MIGRATION Fixed HART choice  
-  
+
   // -- RZA RESPONSE --
   Z_RESP_LR     = 0b00000000,   /// zopOpc: RZA RESPONSE Load response
   Z_RESP_LEXCP  = 0b00000001,   /// zopOpc: RZA RESPONSE Load exception
@@ -899,7 +899,7 @@ public:
   // register ELI with the SST core
   SST_ELI_REGISTER_SUBCOMPONENT(
     zopNIC,
-    "Forza",
+    "forza",
     "zopNIC",
     SST_ELI_ELEMENT_VERSION(1, 0, 0),
     "FORZA ZOP NIC",
