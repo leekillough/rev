@@ -3,9 +3,9 @@
 # this is triggered via the top-level CMakeLists.txt in forzarev
 
 set(ZQMSrcs
-zqm.cc
-zqm.h
-zen_sst.h
+src/zqm.cc
+src/zqm.h
+src/zqm_sst.h
 )
 
 add_subdirectory(../../../common common)
