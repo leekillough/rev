@@ -6,7 +6,7 @@ if ! [ -f "$1" ]; then
   cat<<EOF
 Usage: $0 <sharedlib>
 
-Tests for unresolved ForzaZen symbols in shared library
+Tests for unresolved Forza ZEN symbols in shared library
 EOF
   exit 1
 fi
@@ -20,7 +20,7 @@ else
 fi
 
 printf "\n${RED}"
-if ldd -r "$1" 2>&1 | c++filt | grep "\bundefined\b.*\bSST::Forza::"; then
+if ldd -r "$1" 2>&1 | c++filt | grep "\bundefined\b.*\bSST::Forza::ZEN"; then
   rc=1
 else
   rc=0

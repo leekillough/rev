@@ -8,12 +8,14 @@ zen.h
 zen_sst.h
 )
 
+message(STATUS "FORZA ZEN model using ZOPNET from ${REVCPU_INCLUDE_PATH}")
+
 add_subdirectory(../../../common common)
 add_library(forzazen SHARED ${ZENSrcs})
 target_include_directories(forzazen PRIVATE ${REVCPU_INCLUDE_PATH} PUBLIC ${SST_INSTALL_DIR}/include)
 
 install(TARGETS forzazen DESTINATION ${CMAKE_CURRENT_SOURCE_DIR})
-install(CODE "execute_process(COMMAND forzazen forzazen_LIBDIR=${CMAKE_CURRENT_SOURCE_DIR})")
+install(CODE "execute_process(COMMAND sst-register forzazen forzazen_LIBDIR=${CMAKE_CURRENT_SOURCE_DIR})")
 
 if( ${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
   install(CODE "execute_process(COMMAND_ERROR_IS_FATAL ANY COMMAND_ECHO STDERR COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/test_undefined_symbols.sh ${CMAKE_CURRENT_SOURCE_DIR}/libforzazen.dylib)")
