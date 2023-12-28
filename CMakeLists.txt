@@ -144,6 +144,13 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/zen")
   add_subdirectory(zen)
 endif()
 
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/zqm")
+  message(STATUS "Enabling FORZA ZQM Build")
+  add_subdirectory(zqm)
+endif()
+
+
+
 # Custom Commands
 add_custom_target(uninstall COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/scripts/uninstall.sh")
 
