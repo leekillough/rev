@@ -61,7 +61,7 @@ ZQM::ZQM(ComponentId_t id, Params& params)
     output.output("ZQM[%s] Registering clock with frequency=%s\n",
                   getName().c_str(), clockFreq.c_str());
 
-    m_zop_iface = loadUserSubComponent<SST::Forza::zopAPI>( "m_zop_iface" );
+    m_zop_iface = loadUserSubComponent<SST::Forza::zopAPI>( "zone_nic" );
     //m_linkControl = loadUserSubComponent<SST::Interfaces::SimpleNetwork>( "rtrLink", ComponentInfo::SHARE_NONE, 1 );
     // The parameter finds below are using the same names as RevCPU.h
     num_zaps = params.find<unsigned>("numCores", 1);

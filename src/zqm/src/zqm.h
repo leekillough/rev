@@ -101,7 +101,7 @@ namespace SST::Forza{
         // register the component
         SST_ELI_REGISTER_COMPONENT(
         ZQM,                                    // component class
-        "forza",                                // component libary
+        "forzazqm",                             // component libary
         "ZQM",                                  // component name
         SST_ELI_ELEMENT_VERSION(0,0,1),         // Version of the component
         "ZQM: Forza ZQM component",             // description
@@ -130,7 +130,7 @@ namespace SST::Forza{
 
         // describe the subcomponent slots
         SST_ELI_DOCUMENT_SUBCOMPONENT_SLOTS(
-        {"m_zop_iface","[FORZA] Zone NIC", "SST::Forza::zopNIC"},
+        {"zone_nic","[FORZA] Zone NIC", "SST::Forza::zopNIC"},
         )
 
         // public class members
