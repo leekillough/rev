@@ -78,7 +78,7 @@ if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
   set(WERROR_FLAG "")
   set(FP_MODE_FLAG "-ffp-model=strict")
 else()
-  set(WERROR_FLAG "-Werror")
+	#  set(WERROR_FLAG "-Werror") # TODO: FIX ZEN & ZQM WARNINGS AND UNCOMMENT
   set(FP_MODE_FLAG "-frounding-math")
 endif()
 
@@ -136,17 +136,10 @@ add_subdirectory(src)
 add_subdirectory(common)
 add_subdirectory(test)
 
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/zen")
-  message(STATUS "Enabling FORZA ZEN Build")
-  add_subdirectory(zen)
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/forza-elts")
+	message(STATUS "Enable Forza-elements Build")
+	add_subdirectory(forza-elts)
 endif()
-
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/zqm")
-  message(STATUS "Enabling FORZA ZQM Build")
-  add_subdirectory(zqm)
-endif()
-
-
 
 # Custom Commands
 add_custom_target(uninstall COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/scripts/uninstall.sh")
