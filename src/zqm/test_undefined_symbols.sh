@@ -20,7 +20,7 @@ else
 fi
 
 printf "\n${RED}"
-if ldd -r "$1" 2>&1 | c++filt | grep "\bundefined\b.*\bSST::Forza::"; then
+if ldd -r "$1" 2>&1 | c++filt | grep "\bundefined\b.*\bSST::Forza::ZQM"; then
   rc=1
 else
   rc=0
