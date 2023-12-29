@@ -128,8 +128,9 @@ void ZQM::handleIncomingZOP(SST::Event *event)
 {
     SST::Forza::zopEvent* ev = dynamic_cast<SST::Forza::zopEvent*>(event);
     ev->decodeEvent();
-    output.verbose(CALL_INFO, 1, 0, "Msg type %d, opcode %ld\n",
-                   ev->getType(), ev->getOpc());
+    output.verbose(CALL_INFO, 1, 0, "Msg type %u, opcode %u\n",
+                   static_cast<uint8_t>(ev->getType()), 
+		   static_cast<uint8_t>(ev->getOpc()));
 
     if (ev->getType() == SST::Forza::zopMsgT::Z_RESP) {
         rza_responses.push_back(ev);
@@ -220,7 +221,7 @@ void ZQM::getThreadFromRza(uint32_t app_id)
     }
 
     if (aid_state->run_queue_depth == 0)
-        output.fatal(CALL_INFO, 1, "app_id.run_queue_depth = 0, pointers found valid read. rptr=0x%x, wptr=0x%x\n",
+        output.fatal(CALL_INFO, 1, "app_id.run_queue_depth = 0, pointers found valid read. rptr=0x%lx, wptr=0x%lx\n",
                      aid_state->mem_read_ptr, aid_state->mem_write_ptr);
 
     // Create a new Zop (Load DMA type)
@@ -448,8 +449,8 @@ bool ZQM::selectDestHart(SST::Forza::zopEvent *thread)
     std::vector<uint32_t> num_free_harts(zap_hart_status.size(), 0);
 
     // Number of free harts per zap for this AID
-    for (int i = 0; i < zap_hart_status.size(); i++){
-        for (int j = aid_state->min_zap_hart; j <= aid_state->max_zap_hart; j++)
+    for (size_t i = 0; i < zap_hart_status.size(); i++){
+        for (auto j = aid_state->min_zap_hart; j <= aid_state->max_zap_hart; j++)
             num_free_harts[i] += (zap_hart_status[i][j]) ? 0 : 1;
     }
 
@@ -457,7 +458,7 @@ bool ZQM::selectDestHart(SST::Forza::zopEvent *thread)
     // There's probably a more c++-ish way of doing this
     uint16_t max_free_harts = 0;
     int max_zap = -1;
-    for (int i = 0; i < num_free_harts.size(); i++){
+    for (size_t i = 0; i < num_free_harts.size(); i++){
         if (max_free_harts < num_free_harts[i]){
             max_free_harts = num_free_harts[i];
             max_zap = i;
@@ -469,7 +470,7 @@ bool ZQM::selectDestHart(SST::Forza::zopEvent *thread)
         return false;
 
     // Set destination HART to first available hart in zap we just found
-    for (int i = zap_hart_status[max_zap][aid_state->min_zap_hart];
+    for (uint32_t i = zap_hart_status[max_zap][aid_state->min_zap_hart];
          i <= zap_hart_status[max_zap][aid_state->max_zap_hart];
          i++){
         if (!zap_hart_status[max_zap][i]){
@@ -498,7 +499,7 @@ void ZQM::fillEmptyHart()
 
 bool ZQM::clock(Cycle_t cycle)
 {
-    output.verbose(CALL_INFO, 1, 0, "Cycle=%d\n", cycle);
+    output.verbose(CALL_INFO, 1, 0, "Cycle=%" PRIu64 "\n", cycle);
    // processIncomingThreadsMsgs();
    // processRzaMsgs();
    // processMessagingMsgs();
