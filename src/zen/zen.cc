@@ -48,7 +48,7 @@ ZEN::~ZEN(){
 }
 
 uint64_t ZEN::findFirstUnsetBit(const std::bitset<256>& bv) {
-  for (int i = 0; i < bv.size(); ++i) {
+  for (unsigned i = 0; i < bv.size(); ++i) {
     if (!bv[i]) {
       return i;
     }
@@ -85,15 +85,18 @@ void ZEN::handleIncomingZOP(SST::Event *event) {
   bool from_zip = false;
   SST::Forza::zopEvent* ev = static_cast<SST::Forza::zopEvent*>(event);
 
-  output.verbose(CALL_INFO, 1, 0, "Msg type %lu, src %ld, dest %d src%lu\n", ev->getType(),
-                 ev->getPacket()[1], ev->getDestHart(), ev->getSrcHart());
+  output.verbose(CALL_INFO, 9, 0, "Msg type %s, src %ld, dest %d src%d\n",
+                 m_zop_iface->msgTToStr(ev->getType()).c_str(), ev->getPacket()[1],
+                 ev->getDestHart(), ev->getSrcHart());
   if (ev->getType() != SST::Forza::zopMsgT::Z_MSG && ev->getType() != SST::Forza::zopMsgT::Z_RESP) {
-    output.verbose(CALL_INFO, 1, 0, "Invalid msg type %d, expected %d or %d\n", ev->getType(),
-                   SST::Forza::zopMsgT::Z_MSG, SST::Forza::zopMsgT::Z_RESP);
+    output.verbose(CALL_INFO, 9, 0, "Invalid msg type %s, expected %s or %s\n",
+                   m_zop_iface->msgTToStr(ev->getType()).c_str(),
+                   m_zop_iface->msgTToStr(SST::Forza::zopMsgT::Z_MSG).c_str(),
+                   m_zop_iface->msgTToStr(SST::Forza::zopMsgT::Z_RESP).c_str());
     if (m_zop_iface->getPCID(ev->getSrcPCID()) == zopPrecID::Z_ZIP) {
-      sendNACKToZAP(ev->getSrcHart(), ev->getSrcZCID());
+      sendNACKToZAP(ev->getSrcHart(), ev->getSrcZCID(), ev->getID());
     } else {
-      sendNACKToZIP(ev->getSrcHart(), ev->getSrcZCID());
+      sendNACKToZIP(ev->getSrcHart(), ev->getSrcZCID(), ev->getID());
     }
     return;
   }
@@ -103,18 +106,16 @@ void ZEN::handleIncomingZOP(SST::Event *event) {
       if (zone_queue[ev->getDestPCID()].size() < zen_queue_size_limit) {
         zone_queue[ev->getDestPCID()].push_back(new ZENEntry(ev, ZENStatus::UNPROCESSED, false));
       } else {
-        output.verbose(CALL_INFO, 1, 0, "Destination %d queue full\n", ev->getDestHart(),
-                      SST::Forza::zopMsgT::Z_MSG, SST::Forza::zopMsgT::Z_RESP);
-        sendNACKToZAP(ev->getSrcHart(), ev->getSrcZCID());
+        output.verbose(CALL_INFO, 1, 0, "Destination %d queue full\n", ev->getDestHart());
+        sendNACKToZAP(ev->getSrcHart(), ev->getSrcZCID(), ev->getID());
         return;
       }
     } else if (ev->getDestPrec() != m_zop_iface->getPrecinctID()) {
       if (precinct_queue[ev->getDestPCID()].size() < zen_queue_size_limit) {
         precinct_queue[ev->getDestPCID()].push_back(new ZENEntry(ev, ZENStatus::UNPROCESSED, false));
       } else {
-        output.verbose(CALL_INFO, 1, 0, "Destination %d queue full\n", ev->getDestHart(),
-                      SST::Forza::zopMsgT::Z_MSG, SST::Forza::zopMsgT::Z_RESP);
-        sendNACKToZAP(ev->getSrcHart(), ev->getSrcZCID());
+        output.verbose(CALL_INFO, 1, 0, "Destination %d queue full\n", ev->getDestHart());
+        sendNACKToZAP(ev->getSrcHart(), ev->getSrcZCID(), ev->getID());
         return;
       }
     } else {
@@ -126,9 +127,8 @@ void ZEN::handleIncomingZOP(SST::Event *event) {
       if (zen_queue[hart_zap_id].size() < zen_queue_size_limit) {
         zen_queue[hart_zap_id].push_back(new ZENEntry(ev, ZENStatus::UNPROCESSED, from_zip));
       } else {
-        output.verbose(CALL_INFO, 1, 0, "Destination %d queue full\n", ev->getDestHart(),
-                      SST::Forza::zopMsgT::Z_MSG, SST::Forza::zopMsgT::Z_RESP);
-        sendNACKToZAP(ev->getSrcHart(), ev->getSrcZCID());
+        output.verbose(CALL_INFO, 1, 0, "Destination %d queue full\n", ev->getDestHart());
+        sendNACKToZAP(ev->getSrcHart(), ev->getSrcZCID(), ev->getID());
         return;
       }
     }
@@ -145,16 +145,16 @@ void ZEN::sendMsgToRZADMA(uint64_t acs, uint64_t addr,
                           std::vector<uint64_t> src_payload,
                           uint8_t msg_id, uint64_t hart_id,
                           uint64_t queue_loc) {
-  output.verbose(CALL_INFO, 1, 0, "Msg tgt %d, msg id %" PRIu8 "\n", addr, msg_id);
+  output.verbose(CALL_INFO, 9, 0, "Msg tgt %lu, msg id %" PRIu8 "\n", addr, msg_id);
   std::vector<uint64_t> payload;
   SST::Forza::zopEvent *rzaMsg = new SST::Forza::zopEvent();
   rzaMsg->setType(SST::Forza::zopMsgT::Z_MZOP);
   rzaMsg->setID(msg_id);
   rzaMsg->setOpc(SST::Forza::zopOpc::Z_MZOP_SDMA);
   rzaMsg->setSrcHart((uint16_t)zopCompID::Z_ZEN);   //FIXME
-  rzaMsg->setSrcZCID((uint8_t)zopCompID::Z_ZEN);    //FIXME
-  rzaMsg->setSrcPCID(m_zop_iface->getZoneID());     //FIXME
-  rzaMsg->setSrcPrec(m_zop_iface->getPrecinctID());
+  rzaMsg->setSrcZCID((uint8_t)m_zop_iface->getEndpointType());  //FIXME
+  rzaMsg->setSrcPCID((uint8_t)m_zop_iface->getPCID(m_zop_iface->getZoneID()));   //FIXME
+  rzaMsg->setSrcPrec((uint8_t)m_zop_iface->getPrecinctID());
   // Likely to be used later for extended msg ids
   rzaMsg->setDestHart(3);                           //FIXME
   payload.push_back(acs);
@@ -168,7 +168,7 @@ void ZEN::sendMsgToRZADMA(uint64_t acs, uint64_t addr,
 void ZEN::sendHZOPToRZA(uint64_t acs, uint64_t addr, uint64_t src_addr,
                         uint64_t size, uint8_t cur_msg_id, uint64_t hart_id,
                         uint64_t queue_loc) {
-  output.verbose(CALL_INFO, 1, 0, "Msg tgt %d, msg id %" PRIu8 "\n", addr, cur_msg_id);
+  output.verbose(CALL_INFO, 9, 0, "Msg tgt %lu, msg id %" PRIu8 "\n", addr, cur_msg_id);
 
   // TODO: Fix HZOP format
   std::vector<uint64_t> payload;
@@ -182,9 +182,9 @@ void ZEN::sendHZOPToRZA(uint64_t acs, uint64_t addr, uint64_t src_addr,
   // TODO: Update with HZOP for memcpy
   rzaMsg->setOpc(SST::Forza::zopOpc::Z_MZOP_SD);
   rzaMsg->setSrcHart((uint16_t)zopCompID::Z_ZEN); //FIXME
-  rzaMsg->setSrcZCID((uint8_t)zopCompID::Z_ZEN);  //FIXME
-  rzaMsg->setSrcPCID(m_zop_iface->getZoneID());   //FIXME
-  rzaMsg->setSrcPrec(m_zop_iface->getPrecinctID());
+  rzaMsg->setSrcZCID((uint8_t)m_zop_iface->getEndpointType());  //FIXME
+  rzaMsg->setSrcPCID((uint8_t)m_zop_iface->getPCID(m_zop_iface->getZoneID()));   //FIXME
+  rzaMsg->setSrcPrec((uint8_t)m_zop_iface->getPrecinctID());
   // Likely to be used later for extended msg ids
   rzaMsg->setDestHart(3);     //FIXME
   rzaMsg->setPayload(payload);
@@ -195,7 +195,7 @@ void ZEN::sendHZOPToRZA(uint64_t acs, uint64_t addr, uint64_t src_addr,
 void ZEN::sendMsgToRZANonDMA(uint64_t acs, uint64_t addr, uint64_t src_payload,
                              uint8_t cur_msg_id, uint64_t hart_id,
                              uint64_t queue_loc) {
-  output.verbose(CALL_INFO, 1, 0, "Msg tgt %d, msg id %" PRIu8 "\n", addr, cur_msg_id);
+  output.verbose(CALL_INFO, 9, 0, "Msg tgt %lu, msg id %" PRIu8 "\n", addr, cur_msg_id);
 
   // TODO: Update with RZA id
   std::vector<uint64_t> payload;
@@ -207,9 +207,9 @@ void ZEN::sendMsgToRZANonDMA(uint64_t acs, uint64_t addr, uint64_t src_payload,
   rzaMsg->setID(cur_msg_id);
   rzaMsg->setOpc(SST::Forza::zopOpc::Z_MZOP_SD);
   rzaMsg->setSrcHart((uint16_t)zopCompID::Z_ZEN); // FIXME
-  rzaMsg->setSrcZCID((uint8_t)zopCompID::Z_ZEN);  // FIXME
-  rzaMsg->setSrcPCID(m_zop_iface->getZoneID());   // FIXME
-  rzaMsg->setSrcPrec(m_zop_iface->getPrecinctID());
+  rzaMsg->setSrcZCID((uint8_t)m_zop_iface->getEndpointType());  //FIXME
+  rzaMsg->setSrcPCID((uint8_t)m_zop_iface->getPCID(m_zop_iface->getZoneID()));   //FIXME
+  rzaMsg->setSrcPrec((uint8_t)m_zop_iface->getPrecinctID());
   // Likely to be used later for extended msg ids
   rzaMsg->setDestHart(3); //FIXME
   rzaMsg->setPayload(payload);
@@ -221,16 +221,16 @@ void ZEN::sendMsgToRZANonDMA(uint64_t acs, uint64_t addr, uint64_t src_payload,
 void ZEN::sendMsgToScratchpad(uint64_t dest, uint64_t zcid,
                               uint64_t scratch_addr, uint64_t size,
                               uint64_t addr){
-  output.verbose(CALL_INFO, 1, 0, "hart %d, scratch a %d, size %d, addr %d\n",
+  output.verbose(CALL_INFO, 9, 0, "hart %lu, scratch a %lu, size %lu, addr %lu\n",
                  dest, scratch_addr, size, addr);
   std::vector<uint64_t> payload;
   SST::Forza::zopEvent *zapMsg = new SST::Forza::zopEvent(m_zop_iface->getAddress(), (zopCompID)dest);
   zapMsg->setType(SST::Forza::zopMsgT::Z_MZOP);
   zapMsg->setOpc(SST::Forza::zopOpc::Z_MZOP_SCSD);
   zapMsg->setSrcHart((uint16_t)zopCompID::Z_ZEN);
-  zapMsg->setSrcZCID((uint8_t)zopCompID::Z_ZEN);
-  zapMsg->setSrcPCID(m_zop_iface->getZoneID());     //FIXME
-  zapMsg->setSrcPrec(m_zop_iface->getPrecinctID()); //FIXME
+  zapMsg->setSrcZCID((uint8_t)m_zop_iface->getEndpointType());  //FIXME
+  zapMsg->setSrcPCID((uint8_t)m_zop_iface->getPCID(m_zop_iface->getZoneID()));   //FIXME
+  zapMsg->setSrcPrec((uint8_t)m_zop_iface->getPrecinctID());
   zapMsg->setDestHart(dest);
   zapMsg->setDestZCID(zcid);
   zapMsg->setDestPCID(m_zop_iface->getZoneID());
@@ -241,9 +241,8 @@ void ZEN::sendMsgToScratchpad(uint64_t dest, uint64_t zcid,
   payload.push_back(size);
   zapMsg->setPayload(payload);
   zapMsg->encodeEvent();
-  //m_zop_iface->send(zapMsg, (zopCompID)zcid);
-  m_zop_iface->send(zapMsg, (zopCompID)dest);
-  output.verbose(CALL_INFO, 1, 0, "Progress HART scratchpad opcode %" PRIu8 "\n", (uint8_t)zapMsg->getOpc());
+  m_zop_iface->send(zapMsg, (zopCompID)zcid);
+  output.verbose(CALL_INFO, 9, 0, "Progress HART scratchpad opcode %" PRIu8 "\n", (uint8_t)zapMsg->getOpc());
 }
 
 void ZEN::forwardPktToZIP(Forza::zopEvent *ev) {
@@ -261,7 +260,6 @@ void ZEN::forwardPktToExtZEN(Forza::zopEvent *ev) {
 void ZEN::notifyHARTScratchpad() {
   uint64_t cur_processed = 0;
  // output.verbose(CALL_INFO, 1, 0, "Progress HART scratchpad\n");
-  uint64_t cur_tail = 0;
 
   for (unsigned zap_id = 0; zap_id < m_num_zaps; ++zap_id) {
     for (unsigned hart = 0; hart < m_num_harts; ++hart) {
@@ -271,16 +269,14 @@ void ZEN::notifyHARTScratchpad() {
       if (zen_queue[hart_zap_id].size() == 0) {
         continue;
       }
-      for (int i = 0; i < zen_queue[hart_zap_id].size(); ++i) {
+      for (unsigned i = 0; i < zen_queue[hart_zap_id].size(); ++i) {
         //output.verbose(CALL_INFO, 1, 0, "Progress HART scratchpad id %d for msg payload %lu with status %d\n",
         //              hart, zen_queue[hart_zap_id][i]->msg->getPayload()[0], zen_queue[hart_zap_id][i]->status);
         std::vector<uint64_t> payload = zen_queue[hart_zap_id][i]->msg->getPayload();
         if (zen_queue[hart_zap_id][i]->status == ZENStatus::MZOP_ACK_PROCESSED) {
-          cur_tail = zen_queue[hart_zap_id][i]->tail;
-          output.verbose(CALL_INFO, 1, 0, "set queue loc %lu to status %lu\n", i, 6);
           zen_queue[hart_zap_id][i]->status = ZENStatus::DONE;
           if (!hart_tables[hart_zap_id]) {
-            output.verbose(CALL_INFO, 1, 0, "Progress HART scratchpad id %d fail\n", hart);
+            output.verbose(CALL_INFO, 9, 0, "Progress HART scratchpad id %u fail\n", hart);
             break;
           } else {
             next_tail = zen_queue[hart_zap_id][i]->tail;
@@ -292,7 +288,7 @@ void ZEN::notifyHARTScratchpad() {
             tail_set = true;
           }
         } else if (zen_queue[hart_zap_id][i]->status < ZENStatus::MZOP_ACK_PROCESSED) {
-          if (tail_set)output.verbose(CALL_INFO, 1, 0, "break! %d -> %lu\n", i, zen_queue[hart_zap_id][i]->status );
+          if (tail_set)output.verbose(CALL_INFO, 9, 0, "break! %u -> %d\n", i, zen_queue[hart_zap_id][i]->status );
           break;
         }
         cur_processed++;
@@ -308,7 +304,7 @@ void ZEN::notifyHARTScratchpad() {
         }), zen_queue[hart_zap_id].end());
 
       if (zq_sz != zen_queue[hart_zap_id].size()) {
-        output.verbose(CALL_INFO, 1, 0, "zenq size %d\n", zen_queue[hart_zap_id].size());
+        output.verbose(CALL_INFO, 9, 0, "zenq size %lu\n", zen_queue[hart_zap_id].size());
       }
     }
   }
@@ -316,7 +312,7 @@ void ZEN::notifyHARTScratchpad() {
 
 void ZEN::handleIncomingRZAMsg() {
   uint64_t cur_processed = 0;
-  for (int i = 0; i < mem_acks.size(); ++i) {
+  for (unsigned i = 0; i < mem_acks.size(); ++i) {
     uint8_t inc_msg_id = mem_acks[i]->getID();
     //output.verbose(CALL_INFO, 1, 0, "progress status msg_id %lu\n", inc_msg_id);
     if (outstanding_mem_req.count(inc_msg_id)) {
@@ -329,11 +325,8 @@ void ZEN::handleIncomingRZAMsg() {
       auto it = std::find(zqloc->msg_ids.begin(), zqloc->msg_ids.end(), inc_msg_id);
       if (it != zqloc->msg_ids.end()) {
         zqloc->msg_ids.erase(it);
-        output.verbose(CALL_INFO, 1, 0, "progress status msg_id erased to size\n", zqloc->msg_ids.size());
+        output.verbose(CALL_INFO, 9, 0, "progress status msg_id erased to size %lu\n", zqloc->msg_ids.size());
       } else {
-        //output.verbose(CALL_INFO, 1, 0, "progress status msg_id %lu not found for ZEN\n ", inc_msg_id);
-
-        //output.verbose(CALL_INFO, 1, 0, "progress status msg_id %lu not found for ZEN %d %d %d\n ", inc_msg_id, hart_id, queue_loc, zen_queue[hart_zap_id][queue_loc]->msg_ids[0]);
         continue;
       }
       msg_id[inc_msg_id] = false;
@@ -342,17 +335,17 @@ void ZEN::handleIncomingRZAMsg() {
         //output.verbose(CALL_INFO, 1, 0, "set queue loc %lu to status %lu\n", queue_loc, 2);
         zqloc->status = ZENStatus::MZOP_ACK_PROCESSED;
         if (!zqloc->from_zip) {
-          output.verbose(CALL_INFO, 1, 0, "Send ACK to ZCID, HARTID %d %d\n",
+          output.verbose(CALL_INFO, 9, 0, "Send ACK to ZCID, HARTID %d %d\n",
                          zqloc->msg->getSrcHart(), zqloc->msg->getSrcZCID());
-          sendACKToZAP(zqloc->msg->getSrcHart(), zqloc->msg->getSrcZCID());
+          sendACKToZAP(zqloc->msg->getSrcHart(), zqloc->msg->getSrcZCID(), zqloc->msg->getID());
         } else {
-          sendACKToZIP(zqloc->msg->getSrcHart(), zqloc->msg->getSrcZCID());
+          sendACKToZIP(zqloc->msg->getSrcHart(), zqloc->msg->getSrcZCID(), zqloc->msg->getID());
         }
       }
       delete mem_acks[i];
       mem_acks[i] = NULL;
     } else {
-      output.verbose(CALL_INFO, 1, 0, "progress status msg_id %lu not found\n", inc_msg_id);
+      output.verbose(CALL_INFO, 9, 0, "progress status msg_id %d not found\n", inc_msg_id);
     }
     cur_processed++;
     if (cur_processed > process_per_cycle) {
@@ -367,7 +360,7 @@ void ZEN::handleIncomingRZAMsg() {
 }
 
 
-void ZEN::sendNACKToZIP(uint64_t hart_id, uint64_t zcid) {
+void ZEN::sendNACKToZIP(uint64_t hart_id, uint64_t zcid, uint8_t msg_id) {
   std::vector<uint32_t> payload;
   // TODO: Update with precinct NW ZOP call
   SST::Forza::zopEvent *nackMsg = new SST::Forza::zopEvent();
@@ -375,87 +368,90 @@ void ZEN::sendNACKToZIP(uint64_t hart_id, uint64_t zcid) {
   nackMsg->setOpc(SST::Forza::zopOpc::Z_MSG_EXCP);
   // This should not matter, we could use this later to augment msg_id
   nackMsg->setSrcHart((uint16_t)zopCompID::Z_ZEN);
-  nackMsg->setSrcZCID((uint8_t)zopCompID::Z_ZEN);
-  nackMsg->setSrcPCID(m_zop_iface->getZoneID());
-  nackMsg->setSrcPrec(m_zop_iface->getPrecinctID());
+  nackMsg->setSrcZCID((uint8_t)m_zop_iface->getEndpointType());  //FIXME
+  nackMsg->setSrcPCID((uint8_t)m_zop_iface->getPCID(m_zop_iface->getZoneID()));   //FIXME
+  nackMsg->setSrcPrec((uint8_t)m_zop_iface->getPrecinctID());
   nackMsg->setDestHart(hart_id);
   nackMsg->setDestZCID(zcid);
   nackMsg->setDestPCID((uint8_t)zopPrecID::Z_ZIP);
   nackMsg->setDestPrec(m_zop_iface->getPrecinctID());
+  nackMsg->setID(msg_id);
   nackMsg->encodeEvent();
   //m_zop_prec_iface->send(nackMsg, zopPrecID::Z_ZIP);
 }
 
-void ZEN::sendACKToZIP(uint64_t hart_id, uint64_t zcid) {
+void ZEN::sendACKToZIP(uint64_t hart_id, uint64_t zcid, uint8_t msg_id) {
   std::vector<uint32_t> payload;
   // TODO: Update with precinct NW ZOP call
   SST::Forza::zopEvent *ackMsg = new SST::Forza::zopEvent();
   ackMsg->setType(SST::Forza::zopMsgT::Z_MSG);
   ackMsg->setOpc(SST::Forza::zopOpc::Z_MSG_ACK);
-  ackMsg->setSrcHart(9);
-  ackMsg->setSrcZCID((uint8_t)zopCompID::Z_ZEN);
-  ackMsg->setSrcPCID(m_zop_iface->getZoneID());
-  ackMsg->setSrcPrec(m_zop_iface->getPrecinctID());
+  ackMsg->setSrcHart(9);    //FIXME
+  ackMsg->setSrcZCID((uint8_t)m_zop_iface->getEndpointType());  //FIXME
+  ackMsg->setSrcPCID((uint8_t)m_zop_iface->getPCID(m_zop_iface->getZoneID()));   //FIXME
+  ackMsg->setSrcPrec((uint8_t)m_zop_iface->getPrecinctID());
   ackMsg->setDestHart(hart_id);
   ackMsg->setDestZCID(zcid);
   ackMsg->setDestPCID((uint8_t)zopPrecID::Z_ZIP);
   ackMsg->setDestPrec(m_zop_iface->getPrecinctID());
-  ackMsg->setDestPrec(0);
+  ackMsg->setID(msg_id);
   ackMsg->encodeEvent();
   //m_zop_prec_iface->send(ackMsg, zopPrecID::Z_ZIP);
 }
 
-void ZEN::sendNACKToZAP(uint64_t hart_id, uint64_t zcid) {
+void ZEN::sendNACKToZAP(uint64_t hart_id, uint64_t zcid, uint8_t msg_id) {
   std::vector<uint32_t> payload;
   SST::Forza::zopEvent *nackMsg = new SST::Forza::zopEvent();
   nackMsg->setType(SST::Forza::zopMsgT::Z_MSG);
   nackMsg->setOpc(SST::Forza::zopOpc::Z_MSG_EXCP);
   // This should not matter, we could use this later to augment msg_id
   nackMsg->setSrcHart((uint16_t)zopCompID::Z_ZEN);    //FIXME: all of these!!
-  nackMsg->setSrcZCID((uint8_t)zopCompID::Z_ZEN);
-  nackMsg->setSrcPCID(m_zop_iface->getZoneID());
-  nackMsg->setSrcPrec(m_zop_iface->getPrecinctID());
+  nackMsg->setSrcZCID((uint8_t)m_zop_iface->getEndpointType());  //FIXME
+  nackMsg->setSrcPCID((uint8_t)m_zop_iface->getPCID(m_zop_iface->getZoneID()));   //FIXME
+  nackMsg->setSrcPrec((uint8_t)m_zop_iface->getPrecinctID());
   nackMsg->setDestHart(hart_id);
   nackMsg->setDestZCID(zcid);
-  nackMsg->setDestPCID(m_zop_iface->getZoneID());
-  nackMsg->setDestPrec(m_zop_iface->getPrecinctID());
+  nackMsg->setDestPCID((uint8_t)m_zop_iface->getPCID(m_zop_iface->getZoneID()));
+  nackMsg->setDestPrec((uint8_t)m_zop_iface->getPrecinctID());
+  nackMsg->setID(msg_id);
   nackMsg->encodeEvent();
   m_zop_iface->send(nackMsg, (zopCompID)zcid);
 }
 
-void ZEN::sendACKToZAP(uint64_t hart_id, uint64_t zcid) {
+void ZEN::sendACKToZAP(uint64_t hart_id, uint64_t zcid, uint8_t msg_id) {
   std::vector<uint32_t> payload;
   // TODO: Update with ZAP id
   SST::Forza::zopEvent *ackMsg = new SST::Forza::zopEvent();
   ackMsg->setType(SST::Forza::zopMsgT::Z_MSG);
   ackMsg->setOpc(SST::Forza::zopOpc::Z_MSG_ACK);
   ackMsg->setSrcHart((uint16_t)zopCompID::Z_ZEN);
-  ackMsg->setSrcZCID((uint8_t)zopCompID::Z_ZEN);
-  ackMsg->setSrcPCID(m_zop_iface->getZoneID());
-  ackMsg->setSrcPrec(m_zop_iface->getPrecinctID());
+  ackMsg->setSrcZCID((uint8_t)m_zop_iface->getEndpointType());  //FIXME
+  ackMsg->setSrcPCID((uint8_t)m_zop_iface->getPCID(m_zop_iface->getZoneID()));   //FIXME
+  ackMsg->setSrcPrec((uint8_t)m_zop_iface->getPrecinctID());
   ackMsg->setDestHart(hart_id);
   ackMsg->setDestZCID(zcid);
-  ackMsg->setDestPCID(m_zop_iface->getZoneID());
-  ackMsg->setDestPrec(m_zop_iface->getPrecinctID());
+  ackMsg->setDestPCID((uint8_t)m_zop_iface->getPCID(m_zop_iface->getZoneID()));
+  ackMsg->setDestPrec((uint8_t)m_zop_iface->getPrecinctID());
   ackMsg->setDestPrec(0);
+  ackMsg->setID(msg_id);
   ackMsg->encodeEvent();
   m_zop_iface->send(ackMsg, (zopCompID)zcid);
 }
 
 int ZEN::getRZATailQueue(uint64_t zap_id, uint64_t hart_id, uint64_t size) {
   std::pair<uint64_t, uint64_t> hart_zap_id = std::make_pair(zap_id, hart_id);
-  output.verbose(CALL_INFO, 1, 0, "hart_zap_id: [%lu, %lu]\n", hart_zap_id.first, hart_zap_id.second);
+  output.verbose(CALL_INFO, 9, 0, "hart_zap_id: [%lu, %lu]\n", hart_zap_id.first, hart_zap_id.second);
   if (!hart_tables[hart_zap_id]) { /* TODO: Raise exception */
-    output.verbose(CALL_INFO, 1, 0, "no table entry for %d\n", hart_id);
+    output.verbose(CALL_INFO, 9, 0, "no table entry for %lu\n", hart_id);
     return 0;
   }
   uint64_t cur_tail = hart_tables[hart_zap_id]->mem_cur_tail;
   uint64_t cur_head = hart_tables[hart_zap_id]->mem_cur_head;
-  output.verbose(CALL_INFO, 1, 0, "RZA[%d]: cur_head: %lu, cur_tail: %lu, size %lu\n", hart_id, cur_head, cur_tail, size);
-  output.verbose(CALL_INFO, 1, 0, "RZA[%d]: mem_head: %lu, mem_tail %lu\n", hart_id, hart_tables[hart_zap_id]->mem_head, hart_tables[hart_zap_id]->mem_tail);
+  output.verbose(CALL_INFO, 9, 0, "RZA[%lu]: cur_head: %lu, cur_tail: %lu, size %lu\n", hart_id, cur_head, cur_tail, size);
+  output.verbose(CALL_INFO, 9, 0, "RZA[%lu]: mem_head: %lu, mem_tail %lu\n", hart_id, hart_tables[hart_zap_id]->mem_head, hart_tables[hart_zap_id]->mem_tail);
   if (cur_tail >= cur_head) {
     if (cur_tail == cur_head && !hart_tables[hart_zap_id]->empty) {
-      output.verbose(CALL_INFO, 1, 0, "RZA[%d]: GOT -1!\n", hart_id);
+      output.verbose(CALL_INFO, 9, 0, "RZA[%lu]: GOT -1!\n", hart_id);
       return -1;
     }
     if (cur_tail + size > hart_tables[hart_zap_id]->mem_tail) {
@@ -472,17 +468,17 @@ int ZEN::getRZATailQueue(uint64_t zap_id, uint64_t hart_id, uint64_t size) {
       hart_tables[hart_zap_id]->mem_cur_tail += size;
       hart_tables[hart_zap_id]->empty = false;
       if (hart_tables[hart_zap_id]->mem_cur_tail > hart_tables[hart_zap_id]->mem_tail) {
-        output.verbose(CALL_INFO, 1, 0, "Mem addr unexpected wrap");
+        output.verbose(CALL_INFO, 9, 0, "Mem addr unexpected wrap");
         hart_tables[hart_zap_id]->mem_cur_tail = hart_tables[hart_zap_id]->mem_head;
       }
       return cur_tail;
     }
   } else {
-  output.verbose(CALL_INFO, 1, 0, "RZA[%d]: mem_head: %lu, mem_tail %lu\n", hart_id, hart_tables[hart_zap_id]->mem_head, hart_tables[hart_zap_id]->mem_tail);
+  output.verbose(CALL_INFO, 9, 0, "RZA[%lu]: mem_head: %lu, mem_tail %lu\n", hart_id, hart_tables[hart_zap_id]->mem_head, hart_tables[hart_zap_id]->mem_tail);
     // Wraparound
     if (cur_tail + size > cur_head) {
       // Not enough space
-  output.verbose(CALL_INFO, 1, 0, "RZA[%d]: mem_head: %lu, mem_tail %lu\n", hart_id, hart_tables[hart_zap_id]->mem_head, hart_tables[hart_zap_id]->mem_tail);
+  output.verbose(CALL_INFO, 9, 0, "RZA[%lu]: mem_head: %lu, mem_tail %lu\n", hart_id, hart_tables[hart_zap_id]->mem_head, hart_tables[hart_zap_id]->mem_tail);
       return -1;
     } else {
       hart_tables[hart_zap_id]->empty = false;
@@ -493,8 +489,8 @@ int ZEN::getRZATailQueue(uint64_t zap_id, uint64_t hart_id, uint64_t size) {
 
 void ZEN::processZoneEgressQueue() {
   uint64_t cur_processed = 0;
-  for (int zones = 0; zones < m_num_zones; ++zones) {
-    for (int i = 0; i < zone_queue[zones].size(); ++i) {
+  for (unsigned zones = 0; zones < m_num_zones; ++zones) {
+    for (unsigned i = 0; i < zone_queue[zones].size(); ++i) {
       if (zone_queue[zones][i]->status == ZENStatus::UNPROCESSED) {
         // TODO: Credit check for dest zone
         forwardPktToExtZEN(zone_queue[zones][i]->msg);
@@ -515,8 +511,8 @@ void ZEN::processZoneEgressQueue() {
 
 void ZEN::processPrecinctEgressQueue() {
   uint64_t cur_processed = 0;
-  for (int precincts = 0; precincts < m_num_precincts; ++precincts) {
-    for (int i = 0; i < precinct_queue[precincts].size(); ++i) {
+  for (unsigned precincts = 0; precincts < m_num_precincts; ++precincts) {
+    for (unsigned i = 0; i < precinct_queue[precincts].size(); ++i) {
       if (precinct_queue[precincts][i]->status == ZENStatus::UNPROCESSED) {
         // TODO: Credit check for dest zone
         forwardPktToZIP(precinct_queue[precincts][i]->msg);
@@ -537,22 +533,23 @@ void ZEN::processPrecinctEgressQueue() {
 
 void ZEN::processEgressQueue() {
   uint64_t cur_processed = 0;
-  for (int zap_id = 0; zap_id < m_num_zaps; ++zap_id) {
-    for (int harts = 0; harts < m_num_harts; ++harts) {
+  for (unsigned zap_id = 0; zap_id < m_num_zaps; ++zap_id) {
+    for (unsigned harts = 0; harts < m_num_harts; ++harts) {
       std::pair<uint64_t, uint64_t> hart_zap_id = std::make_pair(zap_id, harts);
-      for (int i = 0; i < zen_queue[hart_zap_id].size(); ++i) {
+      for (unsigned i = 0; i < zen_queue[hart_zap_id].size(); ++i) {
         if (zen_queue[hart_zap_id][i]->status == ZENStatus::UNPROCESSED) {
           // TODO: Credits check. This will still be functional since entries beyond what the RZA queue
           // is provisioned for will be NACKed.
-          output.verbose(CALL_INFO, 1, 0, "progress status %lu\n", zen_queue[hart_zap_id][i]->status);
+          output.verbose(CALL_INFO, 9, 0, "progress status %d\n", zen_queue[hart_zap_id][i]->status);
           int rza_addr = getRZATailQueue(zap_id, harts, (uint64_t)zen_queue[hart_zap_id][i]->msg->getPayload().size() * DW_OFFSET);
           if (rza_addr < 0) {
             if (!zen_queue[hart_zap_id][i]->from_zip) {
-              sendNACKToZAP(zen_queue[hart_zap_id][i]->msg->getSrcHart(), zen_queue[hart_zap_id][i]->msg->getSrcZCID());
+              sendNACKToZAP(zen_queue[hart_zap_id][i]->msg->getSrcHart(), zen_queue[hart_zap_id][i]->msg->getSrcZCID(),
+                            zen_queue[hart_zap_id][i]->msg->getID());
             } else {
-              sendNACKToZIP(zen_queue[hart_zap_id][i]->msg->getSrcHart(), zen_queue[hart_zap_id][i]->msg->getSrcZCID());
+              sendNACKToZIP(zen_queue[hart_zap_id][i]->msg->getSrcHart(), zen_queue[hart_zap_id][i]->msg->getSrcZCID(),
+                            zen_queue[hart_zap_id][i]->msg->getID());
             }
-            output.verbose(CALL_INFO, 1, 0, "set queue loc %lu to status %lu\n", i, 5);
             zen_queue[hart_zap_id][i]->status = ZENStatus::RZA_ADDR_ERROR;
             return;
           }
@@ -579,13 +576,12 @@ void ZEN::processEgressQueue() {
 void ZEN::prepSendRZAHZOP() {
   // Send with address and size
   uint64_t cur_processed = 0;
-  for (int zap_id = 0; zap_id < m_num_zaps; ++zap_id) {
-    for (int harts = 0; harts < m_num_harts; ++harts) {
+  for (unsigned zap_id = 0; zap_id < m_num_zaps; ++zap_id) {
+    for (unsigned harts = 0; harts < m_num_harts; ++harts) {
       std::pair<uint64_t, uint64_t> hart_zap_id = std::make_pair(zap_id, harts);
-      for (int i = 0; i < zen_queue[hart_zap_id].size(); ++i) {
+      for (unsigned i = 0; i < zen_queue[hart_zap_id].size(); ++i) {
         if (zen_queue[hart_zap_id][i]->status == ZENStatus::RZA_ADDR_ASSIGNED
             && zen_queue[hart_zap_id][i]->msg->getOpc() == SST::Forza::zopOpc::Z_MSG_SENDAS) {
-          bool success = true;
           uint64_t rza_addr = zen_queue[hart_zap_id][i]->rza_start_addr;
           std::vector<uint64_t> payload = zen_queue[hart_zap_id][i]->msg->getPayload();
           uint64_t next_msg_id = findFirstUnsetBit(msg_id);
@@ -599,7 +595,6 @@ void ZEN::prepSendRZAHZOP() {
           outstanding_mem_req[next_msg_id] = zen_queue[hart_zap_id][i];
           zen_queue[hart_zap_id][i]->msg_ids.push_back(next_msg_id);
           zen_queue[hart_zap_id][i]->status = MZOP_SENT;
-          output.verbose(CALL_INFO, 1, 0, "set queue loc %lu to status %lu\n", i, 1);
         }
       }
       cur_processed++;
@@ -616,13 +611,13 @@ void ZEN::prepSendRZAHZOP() {
 void ZEN::prepSendRZAStore() {
   // Send with payload
   uint64_t cur_processed = 0;
-  for (int zap_id = 0; zap_id < m_num_zaps; ++zap_id) {
-    for (int harts = 0; harts < m_num_harts; ++harts) {
+  for (unsigned zap_id = 0; zap_id < m_num_zaps; ++zap_id) {
+    for (unsigned harts = 0; harts < m_num_harts; ++harts) {
       std::pair<uint64_t, uint64_t> hart_zap_id = std::make_pair(zap_id, harts);
-      for (int i = 0; i < zen_queue[hart_zap_id].size(); ++i) {
+      for (unsigned i = 0; i < zen_queue[hart_zap_id].size(); ++i) {
+        bool success = true;
         if (zen_queue[hart_zap_id][i]->status == ZENStatus::RZA_ADDR_ASSIGNED
             && zen_queue[hart_zap_id][i]->msg->getOpc() == SST::Forza::zopOpc::Z_MSG_SENDP) {
-          bool success = true;
           uint64_t rza_addr = zen_queue[hart_zap_id][i]->rza_start_addr;
           std::vector<uint64_t> payload = zen_queue[hart_zap_id][i]->msg->getPayload();
           if (dma_enabled) {
@@ -634,16 +629,16 @@ void ZEN::prepSendRZAStore() {
             sendMsgToRZADMA(getWriteACS(hart_tables[hart_zap_id]->acs_pair), rza_addr, payload, next_msg_id, harts, i);
             zen_queue[hart_zap_id][i]->tail = rza_addr;
             outstanding_mem_req[next_msg_id] = zen_queue[hart_zap_id][i];
-              output.verbose(CALL_INFO, 1, 0, "Free msg_id %lu in [%lu,%lu]\n", next_msg_id, harts, i);
+            output.verbose(CALL_INFO, 9, 0, "Free msg_id %lu in [%u,%u]\n", next_msg_id, harts, i);
             zen_queue[hart_zap_id][i]->msg_ids.push_back(next_msg_id);
             zen_queue[hart_zap_id][i]->status = MZOP_SENT;
           } else {
             std::vector<uint8_t> avail_msg_id;
-            for (int j = 0; j < payload.size(); ++j) {
+            for (unsigned j = 0; j < payload.size(); ++j) {
               uint64_t next_msg_id = findFirstUnsetBit(msg_id);
-              output.verbose(CALL_INFO, 1, 0, "Free msg_id %lu\n", next_msg_id);
+              output.verbose(CALL_INFO, 9, 0, "Free msg_id %lu\n", next_msg_id);
               if (next_msg_id > 256) {
-                for (int k = 0; j < avail_msg_id.size(); ++k) {
+                for (unsigned k = 0; j < avail_msg_id.size(); ++k) {
                   msg_id[avail_msg_id[k]] = false;
                 }
                 success = false;
@@ -653,7 +648,7 @@ void ZEN::prepSendRZAStore() {
               avail_msg_id.push_back(static_cast<uint8_t>(next_msg_id));
             }
             if (success) {
-              for (int j = 0; j < payload.size(); ++j) {
+              for (unsigned j = 0; j < payload.size(); ++j) {
                 sendMsgToRZANonDMA(getWriteACS(hart_tables[hart_zap_id]->acs_pair),
                                    rza_addr, payload[j], avail_msg_id[j],  harts, i);
                 zen_queue[hart_zap_id][i]->tail = rza_addr;
@@ -670,7 +665,6 @@ void ZEN::prepSendRZAStore() {
           if (!success) {
             continue;
           }
-          output.verbose(CALL_INFO, 1, 0, "set queue loc %lu to status %lu\n", i, 1);
         }
       }
       cur_processed++;
@@ -686,13 +680,13 @@ void ZEN::prepSendRZAStore() {
 
 void ZEN::processZAPCredits() {
   uint64_t cur_processed = 0;
-  for (int i = 0; i < zap_credits.size(); ++i) {
-    output.verbose(CALL_INFO, 1, 0, "queue loc %d\n", i);
+  for (unsigned i = 0; i < zap_credits.size(); ++i) {
+    output.verbose(CALL_INFO, 9, 0, "queue loc %d\n", i);
     if (!zap_credits[i]) continue;
     uint64_t hart_id = zap_credits[i]->getSrcHart();
     uint64_t zap_id = zap_credits[i]->getSrcZCID();
     std::pair<uint64_t, uint64_t> hart_zap_id = std::make_pair(zap_id, hart_id);
-    output.verbose(CALL_INFO, 1, 0, "hart_zap_id: [%lu, %lu]\n", hart_zap_id.first, hart_zap_id.second);
+    output.verbose(CALL_INFO, 9, 0, "hart_zap_id: [%lu, %lu]\n", hart_zap_id.first, hart_zap_id.second);
     uint64_t credits = zap_credits[i]->getCredit();
     uint64_t cur_tail = hart_tables[hart_zap_id]->mem_cur_tail;
     uint64_t cur_head = hart_tables[hart_zap_id]->mem_cur_head;
@@ -706,17 +700,20 @@ void ZEN::processZAPCredits() {
          }
       }
     } else if (cur_tail < cur_head) {
-      cur_head = (cur_head + credits) % hart_tables[hart_zap_id]->mem_tail;
-      if (cur_head > cur_tail) {
-        // TODO: NACK;
-      } else {
-        hart_tables[hart_zap_id]->mem_cur_head = cur_head;
-        if (hart_tables[hart_zap_id]->mem_cur_head == cur_tail) {
-          hart_tables[hart_zap_id]->empty = true;
+      cur_head = (cur_head + credits);
+      if (cur_head > hart_tables[hart_zap_id]->mem_tail) {
+        cur_head = hart_tables[hart_zap_id]->mem_head + cur_head - hart_tables[hart_zap_id]->mem_tail;
+        if (cur_head > cur_tail) {
+          cur_head = cur_tail;    // Do not accept credits beyond queue size
         }
       }
+      hart_tables[hart_zap_id]->mem_cur_head = cur_head;
+      if (hart_tables[hart_zap_id]->mem_cur_head == cur_tail) {
+        hart_tables[hart_zap_id]->empty = true;
+      }
     }
-    output.verbose(CALL_INFO, 1, 0, "set queue %d to [%d, %d]\n", hart_id, hart_tables[hart_zap_id]->mem_cur_head, hart_tables[hart_zap_id]->mem_cur_tail);
+
+    output.verbose(CALL_INFO, 9, 0, "set queue %lu to [%lu, %lu]\n", hart_id, hart_tables[hart_zap_id]->mem_cur_head, hart_tables[hart_zap_id]->mem_cur_tail);
     delete zap_credits[i];
     zap_credits[i] = NULL;
     cur_processed++;
@@ -733,16 +730,16 @@ void ZEN::processZAPCredits() {
 
 void ZEN::processSetupMsgs() {
   uint64_t cur_processed = 0;
-  //output.verbose(CALL_INFO, 1, 0, "Progress setup msg\n");
-  for (int i = 0; i < setup_reqs.size(); ++i) {
+  //output.verbose(CALL_INFO, 9, 0, "Progress setup msg\n");
+  for (unsigned i = 0; i < setup_reqs.size(); ++i) {
     std::vector<uint64_t> payload = setup_reqs[i]->getPayload();
     uint64_t hart_id = setup_reqs[i]->getSrcHart();
     uint64_t zap_id = setup_reqs[i]->getSrcZCID();
     std::pair<uint64_t, uint64_t> hart_zap_id = std::make_pair(zap_id, hart_id);
-    output.verbose(CALL_INFO, 1, 0, "setup pkt size %lu for hart %lu\n", payload.size(), hart_id);
+    output.verbose(CALL_INFO, 9, 0, "setup pkt size %lu for hart %lu\n", payload.size(), hart_id);
     if (setup_reqs[i]->getPayload().size() < 4 || hart_tables.find(hart_zap_id) != hart_tables.end()) {
       // From ZIP setup is assumed to be validated at ZIP
-      sendNACKToZAP(setup_reqs[i]->getSrcHart(), setup_reqs[i]->getSrcZCID());
+      sendNACKToZAP(hart_id, zap_id, setup_reqs[i]->getID());
     }
     // TODO: Specify payload format
     uint64_t acs_pair = payload[0];
@@ -751,9 +748,9 @@ void ZEN::processSetupMsgs() {
     uint64_t mem_end_addr = mem_start_addr + size - 1;
     uint64_t scratch_tail = payload[4];
     hart_tables[hart_zap_id] = new ZENTableRow(acs_pair, mem_start_addr, mem_end_addr, size, scratch_tail, 500);
-    //sendACKToZAP(hart_id);
-    output.verbose(CALL_INFO, 1, 0, "setup hart table %d, start addr %lu, end addr %lu\n", hart_id, mem_start_addr, mem_end_addr);
-    output.verbose(CALL_INFO, 1, 0, "setup hart table %d, start addr %lu, end addr %lu\n", hart_id, hart_tables[hart_zap_id]->mem_head, hart_tables[hart_zap_id]->mem_tail);
+    sendACKToZAP(hart_id, zap_id, setup_reqs[i]->getID());
+    output.verbose(CALL_INFO, 9, 0, "setup hart table %lu, start addr %lu, end addr %lu\n", hart_id, mem_start_addr, mem_end_addr);
+    output.verbose(CALL_INFO, 9, 0, "setup hart table %lu, start addr %lu, end addr %lu\n", hart_id, hart_tables[hart_zap_id]->mem_head, hart_tables[hart_zap_id]->mem_tail);
     delete setup_reqs[i];
     setup_reqs[i] = NULL;
     cur_processed++;
