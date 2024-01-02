@@ -468,7 +468,8 @@ bool zopNIC::msgNotify(int vn){
                  msgTToStr(ev->getType()).c_str());
 
   // if this is an RZA device, marshall it through to the ZIQ
-  if( Type == Forza::zopCompID::Z_RZA ){
+  // if this is a ZEN, forward it in the incoming queue
+  if( Type == Forza::zopCompID::Z_RZA || Type == Forza::zopCompID::Z_ZEN ){
     (*msgHandler)(ev);
     return true;
   }
@@ -585,8 +586,10 @@ bool zopNIC::clockTick(SST::Cycle_t cycle){
     if( thisCycle < ReqPerCycle ){
       zopEvent *ev = static_cast<zopEvent*>((*it)->inspectPayload());
       Hart = (unsigned)(ev->getSrcHart());
-      if( Type == SST::Forza::zopCompID::Z_RZA ){
+      if( Type == SST::Forza::zopCompID::Z_RZA || Type == SST::Forza::zopCompID::Z_ZEN ){
         // I am an RZA... I don't need to reserve any message IDs
+        // ZEN ACKs and NACKs do not use message IDs, ZEN ZOPs to the RZA internally
+        // handle message IDs.
         auto P = ev->getPacket();
         ev->encodeEvent();
         if( iFace->spaceToSend(0, P.size()*64) ){
