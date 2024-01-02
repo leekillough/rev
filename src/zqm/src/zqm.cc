@@ -139,8 +139,10 @@ void ZQM::handleIncomingZOP(SST::Event *event)
     } else if (ev->getType() == SST::Forza::zopMsgT::Z_TMIG){
         incoming_threads_vec.push_back(ev);
     } else{
-        output.fatal(CALL_INFO, 1, "Received unexpected msg type = %u\n",
-                     (uint32_t) ev->getType());
+        //output.fatal(CALL_INFO, 1, "Received unexpected msg type = %u\n",
+        //             (uint32_t) ev->getType());
+        output.verbose(CALL_INFO, 1, 0, "Received unexpected msg type = %u, id=%u\n",
+                       (uint32_t) ev->getType(), (uint32_t)ev->getID);
         //TODO: Is there a generic ZOP Dump/print function for debugging?  If so, use it
         return;
     }
@@ -346,8 +348,10 @@ void ZQM::processMessagingMsgs()
                 // TODO: Add ZQM Free AID (or equivalent)
                 // TODO: Add ZQM Set HART (needed for initial program thread)
             default:
-                output.fatal(CALL_INFO, 1, "Received an expected zqm msg opcode = %u\n",
-                             (uint32_t)event->getOpc());
+                //output.fatal(CALL_INFO, 1, "Received an expected zqm msg opcode = %u\n",
+                //             (uint32_t)event->getOpc());
+                output.verbose(CALL_INFO, 1, 0, "Received messaging packet; opcode = %x, id=%u\n",
+                               (uint32_t) event->getOpc(), (uint32_t)ev->getID);
         }
         delete event;
     }
