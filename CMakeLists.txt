@@ -78,7 +78,7 @@ if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
   set(WERROR_FLAG "")
   set(FP_MODE_FLAG "-ffp-model=strict")
 else()
-	#  set(WERROR_FLAG "-Werror") # TODO: FIX ZEN & ZQM WARNINGS AND UNCOMMENT
+	set(WERROR_FLAG "-Werror")
   set(FP_MODE_FLAG "-frounding-math")
 endif()
 
