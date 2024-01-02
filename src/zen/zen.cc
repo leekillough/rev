@@ -21,9 +21,9 @@ ZEN::ZEN(ComponentId_t id, Params& params)
   const std::string cpuFreq = params.find<std::string>("clockFreq", "1GHz");
   Precinct = params.find<unsigned>("precinctId", 0);
   Zone = params.find<unsigned>("zoneId", 0);
-  m_num_harts = params.find<unsigned>("numHarts", 4);
+  m_num_harts = params.find<unsigned>("numHarts", 512);
   m_num_zaps = params.find<unsigned>("numZaps", 4);
-  m_num_zones = params.find<unsigned>("numZones", 4);
+  m_num_zones = params.find<unsigned>("numZones", 8);
   m_num_precincts = params.find<unsigned>("numPrecincts", 4);
   dma_enabled = params.find<bool>("enableDMA", false);
   zen_queue_size_limit = params.find<uint64_t>("zenQSizeLimit", 100000);
@@ -38,7 +38,7 @@ ZEN::ZEN(ComponentId_t id, Params& params)
   m_zop_iface = loadUserSubComponent<SST::Forza::zopAPI>( "zone_nic" );
   m_zop_iface->setMsgHandler(new Event::Handler<ZEN>(this, &ZEN::handleIncomingZOP));
   m_zop_iface->setEndpointType(zopCompID::Z_ZEN);
-  m_zop_iface->setNumHarts(3);  // TODO: why do we use 3 here?
+  m_zop_iface->setNumHarts(m_num_harts);  // TODO: why do we use 3 here?
 
   // complete SST registration
   registerAsPrimaryComponent();
@@ -386,7 +386,7 @@ void ZEN::sendACKToZIP(uint64_t hart_id, uint64_t zcid, uint8_t msg_id) {
   SST::Forza::zopEvent *ackMsg = new SST::Forza::zopEvent();
   ackMsg->setType(SST::Forza::zopMsgT::Z_MSG);
   ackMsg->setOpc(SST::Forza::zopOpc::Z_MSG_ACK);
-  ackMsg->setSrcHart(9);    //FIXME
+  ackMsg->setSrcHart((uint16_t)zopCompID::Z_ZEN);    //FIXME
   ackMsg->setSrcZCID((uint8_t)m_zop_iface->getEndpointType());  //FIXME
   ackMsg->setSrcPCID((uint8_t)m_zop_iface->getPCID(m_zop_iface->getZoneID()));   //FIXME
   ackMsg->setSrcPrec((uint8_t)m_zop_iface->getPrecinctID());
@@ -404,8 +404,8 @@ void ZEN::sendNACKToZAP(uint64_t hart_id, uint64_t zcid, uint8_t msg_id) {
   SST::Forza::zopEvent *nackMsg = new SST::Forza::zopEvent();
   nackMsg->setType(SST::Forza::zopMsgT::Z_MSG);
   nackMsg->setOpc(SST::Forza::zopOpc::Z_MSG_EXCP);
-  // This should not matter, we could use this later to augment msg_id
-  nackMsg->setSrcHart((uint16_t)zopCompID::Z_ZEN);    //FIXME: all of these!!
+  // Match source and destination hart id
+  nackMsg->setSrcHart(hart_id);    //FIXME: all of these!!
   nackMsg->setSrcZCID((uint8_t)m_zop_iface->getEndpointType());  //FIXME
   nackMsg->setSrcPCID((uint8_t)m_zop_iface->getPCID(m_zop_iface->getZoneID()));   //FIXME
   nackMsg->setSrcPrec((uint8_t)m_zop_iface->getPrecinctID());
@@ -424,7 +424,7 @@ void ZEN::sendACKToZAP(uint64_t hart_id, uint64_t zcid, uint8_t msg_id) {
   SST::Forza::zopEvent *ackMsg = new SST::Forza::zopEvent();
   ackMsg->setType(SST::Forza::zopMsgT::Z_MSG);
   ackMsg->setOpc(SST::Forza::zopOpc::Z_MSG_ACK);
-  ackMsg->setSrcHart((uint16_t)zopCompID::Z_ZEN);
+  ackMsg->setSrcHart(hart_id);
   ackMsg->setSrcZCID((uint8_t)m_zop_iface->getEndpointType());  //FIXME
   ackMsg->setSrcPCID((uint8_t)m_zop_iface->getPCID(m_zop_iface->getZoneID()));   //FIXME
   ackMsg->setSrcPrec((uint8_t)m_zop_iface->getPrecinctID());
