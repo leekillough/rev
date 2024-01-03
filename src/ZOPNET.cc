@@ -245,13 +245,14 @@ void zopNIC::init(unsigned int phase){
 }
 
 void zopNIC::send(zopEvent *ev, zopCompID dest){
+  zopCompID TmpDest = dest;
   if( !initBroadcastSent ){
     output.verbose(CALL_INFO, 9, 0,
                    "Buffering message from %s to endpoint [hart:zcid:pcid:type]=[%d:%d:%d:%s] before network boots\n",
                    getName().c_str(),
                    ev->getDestHart(), ev->getDestZCID(), ev->getDestPCID(),
-                   endPToStr(dest).c_str() );
-    preInitQ.push_back(std::make_pair(ev, dest));
+                   endPToStr(TmpDest).c_str() );
+    preInitQ.push_back(std::make_pair(ev, TmpDest));
     return ;
   }
   SST::Interfaces::SimpleNetwork::Request *req =
@@ -260,19 +261,20 @@ void zopNIC::send(zopEvent *ev, zopCompID dest){
                  "Sending message from %s @ phys_id=%d to endpoint[hart:zcid:pcid:type]=[%d:%d:%d:%s]\n",
                  getName().c_str(), (uint32_t)(getAddress()),
                  ev->getDestHart(), ev->getDestZCID(), ev->getDestPCID(),
-                 endPToStr(dest).c_str() );
+                 endPToStr(TmpDest).c_str() );
   auto realDest = 0;
   if ( ev->getType() == SST::Forza::zopMsgT::Z_MSG &&
-      ( ev->getOpc() == SST::Forza::zopOpc::Z_MSG_SENDP || ev->getOpc() == SST::Forza::zopOpc::Z_MSG_SENDAS ) ){
-    dest = zopCompID::Z_ZEN;
+      ( ev->getOpc() == SST::Forza::zopOpc::Z_MSG_SENDP ||
+        ev->getOpc() == SST::Forza::zopOpc::Z_MSG_SENDAS ) ){
+    TmpDest = zopCompID::Z_ZEN;
     output.verbose(CALL_INFO, 9, 0,
                   "Forwarding messaging send from %s @ id=%d to endpoint[hart:zone:prec:Type]=[%d:%d:%d:%s]\n",
                   getName().c_str(), (uint32_t)(getAddress()),
                   ev->getDestHart(), ev->getDestZCID(), ev->getDestPCID(),
-                  endPToStr(dest).c_str() );
+                  endPToStr(TmpDest).c_str() );
   }
   for( auto i : hostMap ){
-    if( i.second == dest ){
+    if( i.second == TmpDest ){
       realDest = i.first;
     }
   }
