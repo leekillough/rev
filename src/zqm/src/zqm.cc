@@ -62,26 +62,21 @@ ZQM::ZQM(ComponentId_t id, Params& params)
                   getName().c_str(), clockFreq.c_str());
 
     m_zop_iface = loadUserSubComponent<SST::Forza::zopAPI>( "zone_nic" );
-    output.output("A\n");// THIS PRINTS
     m_zop_iface->setMsgHandler(new Event::Handler<ZQM>(this, &ZQM::handleIncomingZOP));
-	output.output("B\n"); // THIS DOES NOT PRINT
     m_zop_iface->setEndpointType(zopCompID::Z_ZQM);
     //m_linkControl = loadUserSubComponent<SST::Interfaces::SimpleNetwork>( "rtrLink", ComponentInfo::SHARE_NONE, 1 );
     // The parameter finds below are using the same names as RevCPU.h
-    output.output("One\n");
     num_zaps = params.find<unsigned>("numCores", 1);
     num_harts = params.find<uint16_t>("numHarts", 4);
     precinct_id = params.find<unsigned>("precinctId", 0);
     zone_id = params.find<unsigned>("zoneId", 0);
     m_zop_iface->setNumHarts(num_harts);
 
-    output.output("Two\n");
     // Create and init matrix of HART status
     zap_hart_status.resize(num_zaps);
     for (auto &hart_vec: zap_hart_status)
       hart_vec.resize(num_harts, false);
 
-    output.output("Three\n");
     // TODO: Remove this
     int_id = 0;
     //assert( m_linkControl );
@@ -91,7 +86,6 @@ ZQM::ZQM(ComponentId_t id, Params& params)
     //mem_acks.push_back(1);
     //mem_acks.push_back(2);
     //m_linkControl->setNotifyOnReceive( new SST::Interfaces::SimpleNetwork::Handler<ZQM>(this,&ZQM::handleNetworkEvent) );
-    output.output("Four\n");
     // register with SST
     registerAsPrimaryComponent();
 	
@@ -512,13 +506,13 @@ void ZQM::fillEmptyHart()
 
 bool ZQM::clock(Cycle_t cycle)
 {
-    output.verbose(CALL_INFO, 1, 0, "Cycle=%" PRIu64 "\n", cycle);
-   // processIncomingThreadsMsgs();
-   // processRzaMsgs();
-   // processMessagingMsgs();
-    //fillEmptyHart();
+    //output.verbose(CALL_INFO, 1, 0, "Cycle=%" PRIu64 "\n", cycle);
+   processIncomingThreadsMsgs();
+   processRzaMsgs();
+   processMessagingMsgs();
+   fillEmptyHart();
 
-    if ( (cycle % 20) == 0 ){
+    if ( (cycle % 100) == 0 ){
         output.verbose(CALL_INFO, 1, 0, "Clock cycles: %" PRIu64 ", Sim Cycles: %" PRIu64 ", Sim ns: %" PRIu64 "\n",
                 cycle, getCurrentSimCycle(), getCurrentSimTimeNano());
     }
@@ -527,6 +521,7 @@ bool ZQM::clock(Cycle_t cycle)
     cycleCount--;
     if (cycleCount != 0)
         return false;
+    output.output("ZQM good to end sim\n");
     primaryComponentOKToEndSim();
     return true;
 }
