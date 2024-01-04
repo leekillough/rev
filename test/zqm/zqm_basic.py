@@ -66,7 +66,7 @@ zqm_module.addParams({
 
 # sst.setSubComponent(slot_name (ELI), type (ELI), slot_index=0)
 # ZQM.zone_nic
-m_zop_iface = zqm_module.setSubComponent("zone_nic", "Forza.zenZopNIC", 0)
+m_zop_iface = zqm_module.setSubComponent("zone_nic", "forza.zopNIC", 0)
 m_zop_iface.addGlobalParamSet("networkLinkControl_params")
 # ZQM.zone_nic seems to have a "hidden" SubComponent
 mzopiface_lc = m_zop_iface.setSubComponent("iface", "merlin.linkcontrol", 0)
