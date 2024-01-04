@@ -62,21 +62,26 @@ ZQM::ZQM(ComponentId_t id, Params& params)
                   getName().c_str(), clockFreq.c_str());
 
     m_zop_iface = loadUserSubComponent<SST::Forza::zopAPI>( "zone_nic" );
+    output.output("A\n");// THIS PRINTS
     m_zop_iface->setMsgHandler(new Event::Handler<ZQM>(this, &ZQM::handleIncomingZOP));
-	m_zop_iface->setEndpointType(zopCompID::Z_ZQM);
+	output.output("B\n"); // THIS DOES NOT PRINT
+    m_zop_iface->setEndpointType(zopCompID::Z_ZQM);
     //m_linkControl = loadUserSubComponent<SST::Interfaces::SimpleNetwork>( "rtrLink", ComponentInfo::SHARE_NONE, 1 );
     // The parameter finds below are using the same names as RevCPU.h
+    output.output("One\n");
     num_zaps = params.find<unsigned>("numCores", 1);
     num_harts = params.find<uint16_t>("numHarts", 4);
     precinct_id = params.find<unsigned>("precinctId", 0);
     zone_id = params.find<unsigned>("zoneId", 0);
     m_zop_iface->setNumHarts(num_harts);
 
+    output.output("Two\n");
     // Create and init matrix of HART status
     zap_hart_status.resize(num_zaps);
     for (auto &hart_vec: zap_hart_status)
       hart_vec.resize(num_harts, false);
 
+    output.output("Three\n");
     // TODO: Remove this
     int_id = 0;
     //assert( m_linkControl );
@@ -86,8 +91,12 @@ ZQM::ZQM(ComponentId_t id, Params& params)
     //mem_acks.push_back(1);
     //mem_acks.push_back(2);
     //m_linkControl->setNotifyOnReceive( new SST::Interfaces::SimpleNetwork::Handler<ZQM>(this,&ZQM::handleNetworkEvent) );
+    output.output("Four\n");
     // register with SST
     registerAsPrimaryComponent();
+	
+    output.output("Done with ZQM constructor\n");
+
 }
 
 ZQM::~ZQM()
@@ -142,7 +151,7 @@ void ZQM::handleIncomingZOP(SST::Event *event)
         //output.fatal(CALL_INFO, 1, "Received unexpected msg type = %u\n",
         //             (uint32_t) ev->getType());
         output.verbose(CALL_INFO, 1, 0, "Received unexpected msg type = %u, id=%u\n",
-                       (uint32_t) ev->getType(), (uint32_t)ev->getID);
+                       (uint32_t) ev->getType(), (uint32_t)ev->getID());
         //TODO: Is there a generic ZOP Dump/print function for debugging?  If so, use it
         return;
     }
@@ -351,7 +360,7 @@ void ZQM::processMessagingMsgs()
                 //output.fatal(CALL_INFO, 1, "Received an expected zqm msg opcode = %u\n",
                 //             (uint32_t)event->getOpc());
                 output.verbose(CALL_INFO, 1, 0, "Received messaging packet; opcode = %x, id=%u\n",
-                               (uint32_t) event->getOpc(), (uint32_t)ev->getID);
+                               (uint32_t) event->getOpc(), (uint32_t)event->getID());
         }
         delete event;
     }
