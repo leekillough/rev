@@ -76,7 +76,7 @@ rtr_params = {
 zqm_module = sst.Component("zqm_module", "forzazqm.ZQM")
 zqm_module.addParams({
     "clockFreq" : "2GHz",
-    "clockTicks" : 1000,
+    "clockTicks" : 2000,
     "numCores" : 1,
     "numHarts" : 16,
     "precinctId" : 0,
@@ -91,10 +91,8 @@ zqm_module.addParams({
 zqm_nic = zqm_module.setSubComponent("zone_nic", "forza.zopNIC")
 zqm_nic.addParams(nic_params)
 
-#m_zop_iface.addGlobalParamSet("networkLinkControl_params")
 #ZQM.zone_nic seems to have a "hidden" SubComponent
 zqm_nic_iface = zqm_nic.setSubComponent("iface", "merlin.linkcontrol")
-#mzopiface_lc.addGlobalParamSet("networkLinkControl_params")
 zqm_nic_iface.addParams(net_params)
 
 ## DEFINE ZOPGEN ##

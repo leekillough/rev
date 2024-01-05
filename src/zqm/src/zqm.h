@@ -120,9 +120,7 @@ namespace SST::Forza{
         )
 
         // describe the ports
-        SST_ELI_DOCUMENT_PORTS(
-        {"rtrLink", "Links to Network.", {"merlin.linkcontrol"}},
-        )
+        SST_ELI_DOCUMENT_PORTS()
 
         // describe the statistics
         // TODO: Add stats
