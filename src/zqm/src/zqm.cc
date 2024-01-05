@@ -71,6 +71,8 @@ ZQM::ZQM(ComponentId_t id, Params& params)
     precinct_id = params.find<unsigned>("precinctId", 0);
     zone_id = params.find<unsigned>("zoneId", 0);
     m_zop_iface->setNumHarts(num_harts);
+    m_zop_iface->setPrecinctID(precinct_id);
+    m_zop_iface->setZoneID(zone_id);
 
     // Create and init matrix of HART status
     zap_hart_status.resize(num_zaps);
@@ -129,6 +131,7 @@ void ZQM::finish() {
 
 void ZQM::handleIncomingZOP(SST::Event *event)
 {
+    output.output("Handle zop\n");	
     SST::Forza::zopEvent* ev = dynamic_cast<SST::Forza::zopEvent*>(event);
     ev->decodeEvent();
     output.verbose(CALL_INFO, 1, 0, "Msg type %u, opcode %u\n",
@@ -512,20 +515,19 @@ void ZQM::doSimpleMsg()
 
     // Fill in Zop src/dest info
     dummy_zop0->setSrcZCID(zopCompID::Z_ZQM);
-    dummy_zop0->setSrcPrec(10);
-    dummy_zop0->setSrcPCID(3);
+    dummy_zop0->setSrcPrec(precinct_id);
+    dummy_zop0->setSrcPCID(zone_id);
     dummy_zop0->setDestZCID(zopCompID::Z_ZQM);
     dummy_zop0->setDestPrec(precinct_id);
     dummy_zop0->setDestPCID(zone_id);
-    dummy_zop0->setAppID(app_id);
+    dummy_zop0->setAppID(0xd);
     dummy_zop0->setID(msg_id++);
 
     // Zop Payload
-    uint64_t load_acs = 0;
     std::vector<uint64_t> payload;// (load_acs, addr_ptr, aid_state->ThreadLengthDblWords);
     payload.push_back(0x10);
     payload.push_back(0x2000);
-    payload.push_back(aid_state->ThreadLengthDblWords);
+    payload.push_back(34);
     dummy_zop0->setPayload(payload);
 
     // Send Zop
@@ -544,15 +546,14 @@ void ZQM::doSimpleMsg()
     dummy_zop1->setDestZCID(zopCompID::Z_ZQM);
     dummy_zop1->setDestPrec(precinct_id);
     dummy_zop1->setDestPCID(zone_id);
-    dummy_zop1->setAppID(app_id);
+    dummy_zop1->setAppID(0xc);
     dummy_zop1->setID(msg_id++);
 
     // Zop Payload
-    uint64_t load_acs = 1;
     std::vector<uint64_t> payload;// (load_acs, addr_ptr, aid_state->ThreadLengthDblWords);
     payload.push_back(0x11);
     payload.push_back(0x2002);
-    payload.push_back(aid_state->ThreadLengthDblWords);
+    payload.push_back(16);
     dummy_zop1->setPayload(payload);
 
     // Send Zop
