@@ -387,10 +387,13 @@ public:
   /// zopEvent: init broadcast constructor
   //  This constructor is ONLY utilized for initialization
   //  DO NOT use this constructor for normal packet construction
-  explicit zopEvent(unsigned srcId, zopCompID Type )
+  explicit zopEvent(unsigned srcId, zopCompID Type,
+                    unsigned ZoneID, unsigned PrecinctID )
     : Event(), Read(false), FenceEncountered(false), Target(nullptr){
     Packet.push_back((uint64_t)(Type));
     Packet.push_back((uint64_t)(srcId));
+    Packet.push_back((uint64_t)(ZoneID));
+    Packet.push_back((uint64_t)(PrecinctID));
   }
 
   /// zopEvent: raw event constructor
@@ -715,6 +718,10 @@ public:
   /// zopAPI : send a message on the network
   virtual void send(zopEvent *ev, zopCompID dest) = 0;
 
+  /// zopAPI : send a message on the network to a specific zone+precinct
+  virtual void send(zopEvent *ev, zopCompID dest,
+                    zopPrecID zone, unsigned precinct) = 0;
+
   /// zopAPI : retrieve the number of potential endpoints
   virtual unsigned getNumDestinations() = 0;
 
@@ -974,6 +981,10 @@ public:
   /// zopNIC: send an event
   virtual void send(zopEvent *ev, zopCompID dest);
 
+  /// zopNIC: send an event
+  virtual void send(zopEvent *ev, zopCompID dest,
+                    zopPrecID zone, unsigned precinct);
+
   /// zopNIC: get the number of destinations
   virtual unsigned getNumDestinations();
 
@@ -1049,7 +1060,12 @@ private:
 
   std::vector<std::pair<zopEvent *, zopCompID>> preInitQ;             ///< zopNIC: holds buffered requests before the network boots
   std::vector<SST::Interfaces::SimpleNetwork::Request*> sendQ;        ///< zopNIC: buffered send queue
-  std::map<SST::Interfaces::SimpleNetwork::nid_t,zopCompID> hostMap;  ///< zopNIC: network ID to endpoint type mapping
+
+#define _HM_ENDP_T  0
+#define _HM_ZID     1
+#define _HM_PID     2
+  std::map<SST::Interfaces::SimpleNetwork::nid_t,
+          std::tuple<zopCompID,zopPrecID,unsigned>> hostMap;          ///< zopNIC: network ID to endpoint type mapping
 
 #define _ZNIC_OUT_HART    0
 #define _ZNIC_OUT_ID      1

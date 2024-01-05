@@ -405,6 +405,9 @@ private:
   /// FORZA: convert a standard RISC-V memory request to a ZOP opcode
   Forza::zopOpc memToZOP(uint32_t flags, size_t Len, bool Write);
 
+  /// FORZA: send a thread migration request
+  bool ZOP_ThreadMigrate(unsigned Hart, unsigned Zone, unsigned Precinct);
+
   /// FORZA: send an AMO request
   bool ZOP_AMOMem(unsigned Hart, uint64_t Addr, size_t Len,
                   void *Data, void *Target,

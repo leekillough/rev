@@ -1567,6 +1567,36 @@ bool RevMem::__ZOP_FENCEHart(unsigned Hart){
   return true;
 }
 
+bool RevMem::ZOP_ThreadMigrate(unsigned Hart, unsigned Zone, unsigned Precinct){
+#ifdef _REV_DEBUG_
+  std::cout << "ZOP_THREADMIGRATE" << std::endl;
+#endif
+
+  // create a new event
+  SST::Forza::zopEvent *zev = new SST::Forza::zopEvent();
+
+  // set all the fields
+  zev->setType(SST::Forza::zopMsgT::Z_TMIG);
+  zev->setNB(0);
+  zev->setID(Hart);
+  zev->setCredit(0);
+  zev->setOpc(SST::Forza::zopOpc::Z_TMIG_SELECT);
+  zev->setAppID(0);
+  zev->setDestZCID((uint8_t)(SST::Forza::zopCompID::Z_ZQM));
+  zev->setDestPCID((uint8_t)(zNic->getPCID(Zone)));  //FIXME
+  zev->setDestPrec((uint8_t)(Precinct)); //FIXME
+  zev->setSrcHart(Hart);
+  zev->setSrcZCID((uint8_t)(zNic->getEndpointType()));
+  zev->setSrcPCID((uint8_t)(zNic->getPCID(zNic->getZoneID())));
+  zev->setSrcPrec((uint8_t)(zNic->getPrecinctID()));
+
+  // No Payload
+  zNic->send(zev, SST::Forza::zopCompID::Z_ZQM,
+             zNic->getPCID(Zone), Precinct);
+
+  return true;
+}
+
 // Handles an RZA response message
 // This specifically handles MZOP and HZOP responses
 bool RevMem::handleRZAResponse(Forza::zopEvent *zev){
@@ -1592,6 +1622,7 @@ bool RevMem::isZRqst(uint64_t Addr){
 void RevMem::clearZRqst(uint64_t Addr){
   ZRqst.erase(Addr);
 }
+
 } // namespace SST::RevCPU
 
 // EOF
