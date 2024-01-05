@@ -184,7 +184,9 @@ void zopNIC::init(unsigned int phase){
     if( !initBroadcastSent ){
       initBroadcastSent = true;
       zopEvent *ev = new zopEvent(iFace->getEndpointID(),
-                                  getEndpointType());
+                                  getEndpointType(),
+                                  unsigned(getPCID(getZoneID())),
+                                  getPrecinctID());
       SST::Interfaces::SimpleNetwork::Request * req =
         new SST::Interfaces::SimpleNetwork::Request();
       req->dest = SST::Interfaces::SimpleNetwork::INIT_BROADCAST_ADDR;
@@ -193,7 +195,10 @@ void zopNIC::init(unsigned int phase){
       iFace->sendUntimedData(req);
 
       // add myself to the local endpoint table
-      hostMap[iFace->getEndpointID()] = getEndpointType();
+      hostMap.emplace(iFace->getEndpointID(),
+                      std::make_tuple(getEndpointType(),
+                                      getPCID(getZoneID()),
+                                      getPrecinctID()));
     }
   }
 
@@ -204,11 +209,16 @@ void zopNIC::init(unsigned int phase){
     numDest++;
     SST::Interfaces::SimpleNetwork::nid_t srcID = req->src;
     std::vector<uint64_t> Pkt = ev->getPacket();
-    hostMap[srcID] = static_cast<zopCompID>(Pkt[0] & Z_MASK_TYPE);
+    auto t = std::make_tuple(static_cast<zopCompID>(Pkt[0] & Z_MASK_TYPE),
+                             static_cast<zopPrecID>(Pkt[2] & Z_MASK_PCID),
+                             static_cast<unsigned>(Pkt[3] & Z_MASK_PRECINCT));
+    hostMap.emplace(srcID, t);
     output.verbose(CALL_INFO, 7, 0,
-                   "%s received init broadcast messages from %d of type %s\n",
+                   "%s received init broadcast messages from %d of [Type][PCID][Precinct]: [%s][%d][%d]\n",
                    getName().c_str(), (uint32_t)(srcID),
-                   endPToStr(hostMap[srcID]).c_str());
+                   endPToStr(std::get<_HM_ENDP_T>(t)).c_str(),
+                   (uint32_t)(std::get<_HM_ZID>(t)),
+                   (uint32_t)(std::get<_HM_PID>(t)));
     delete ev;
   }
 
@@ -223,8 +233,11 @@ void zopNIC::init(unsigned int phase){
 
     for(auto const& [key, val] : hostMap){
       output.verbose(CALL_INFO, 9, 0,
-                    "Endpoint ID=%d is of Type=%s\n",
-                    (uint32_t)(key), endPToStr(val).c_str());
+                    "Endpoint ID=%d is of [Type][PCID][Precinct] = [%s][%d][%d]\n",
+                    (uint32_t)(key),
+                    endPToStr(std::get<_HM_ENDP_T>(val)).c_str(),
+                    (uint32_t)(std::get<_HM_ZID>(val)),
+                    (uint32_t)(std::get<_HM_PID>(val)));
     }
 
     output.verbose(CALL_INFO, 9, 0,
@@ -245,6 +258,11 @@ void zopNIC::init(unsigned int phase){
 }
 
 void zopNIC::send(zopEvent *ev, zopCompID dest){
+  // assuming we are sending within a zone+precinct
+  send(ev, dest, getPCID(getZoneID()), getPrecinctID());
+}
+
+void zopNIC::send(zopEvent *ev, zopCompID dest, zopPrecID zone, unsigned prec){
   zopCompID TmpDest = dest;
   if( !initBroadcastSent ){
     output.verbose(CALL_INFO, 9, 0,
@@ -274,7 +292,10 @@ void zopNIC::send(zopEvent *ev, zopCompID dest){
                   endPToStr(TmpDest).c_str() );
   }
   for( auto i : hostMap ){
-    if( i.second == TmpDest ){
+    auto t = i.second;
+    if( (std::get<_HM_ENDP_T>(t) == dest) &&
+        (std::get<_HM_ZID>(t) == zone) &&
+        (std::get<_HM_PID>(t) == prec) ){
       realDest = i.first;
     }
   }
