@@ -51,6 +51,15 @@
 
 #define _STACK_SIZE_ ( size_t{ 1024 * 1024 } )
 
+#define Z_ADDR_MASK   0xFFFFFFFFFF
+#define Z_ZONE_MASK   0b111
+#define Z_PREC_MASK   0xFFF
+#define Z_SEG_MASK    0x3F
+#define Z_ADDR_SHIFT  0x00
+#define Z_ZONE_SHIFT  40
+#define Z_PREC_SHIFT  43
+#define Z_SEG_SHIFT   57
+
 namespace SST::RevCPU {
 
 class RevMem {
@@ -472,15 +481,22 @@ public:
   /// FORZA: clear the taret address from the zop request hazard map
   void clearZRqst(uint64_t Addr);
 
+  /// FORZA: Determine if the target address resides on the same zone
+  ///        Returns false if the address is not local and places the
+  ///        target Zone and Precinct IDs in `Zone` and `Precinct`, respectively.
+  ///        Returns true if the address is local
+  bool isLocalAddr(uint64_t vAddr,
+                   unsigned &Zone, unsigned &Precinct);
+
+  /// FORZA: send a thread migration request
+  bool ZOP_ThreadMigrate(unsigned Hart, unsigned Zone, unsigned Precinct);
+
 private:
   /// FORZA: convert a standard RISC-V AMO opcode to a ZOP opcode
   Forza::zopOpc flagToZOP(uint32_t flags, size_t Len);
 
   /// FORZA: convert a standard RISC-V memory request to a ZOP opcode
   Forza::zopOpc memToZOP(uint32_t flags, size_t Len, bool Write);
-
-  /// FORZA: send a thread migration request
-  bool ZOP_ThreadMigrate(unsigned Hart, unsigned Zone, unsigned Precinct);
 
   /// FORZA: send an AMO request
   bool ZOP_AMOMem(unsigned Hart, uint64_t Addr, size_t Len,

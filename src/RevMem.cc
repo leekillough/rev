@@ -1686,6 +1686,25 @@ bool RevMem::ZOP_ThreadMigrate(unsigned Hart, unsigned Zone, unsigned Precinct){
   return true;
 }
 
+bool RevMem::isLocalAddr(uint64_t vAddr, unsigned &Zone, unsigned &Precinct){
+  unsigned TmpZone = 0x00;
+  unsigned TmpPrecinct = 0x00;
+
+  TmpZone = (unsigned)((vAddr >> Z_ZONE_SHIFT) & Z_ZONE_MASK);
+  TmpPrecinct = (unsigned)((vAddr >> Z_PREC_SHIFT) & Z_PREC_MASK);
+
+  if( TmpZone != zNic->getZoneID() ){
+    Zone = TmpZone;
+    Precinct = TmpPrecinct;
+    output->verbose(CALL_INFO, 7, 0,
+                  "[FORZA][ZAP] Triggering ThreadMigrate on vAddr=0x%" PRIx64 "to Zone=%d;Precinct=%d\n",
+                  vAddr, Zone, Precinct);
+    return false;
+  }
+
+  return true;
+}
+
 // Handles an RZA response message
 // This specifically handles MZOP and HZOP responses
 bool RevMem::handleRZAResponse(Forza::zopEvent *zev){
