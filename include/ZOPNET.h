@@ -857,6 +857,9 @@ public:
     case zopCompID::Z_ZEN:
       return "ZEN";
       break;
+    case zopCompID::Z_ZQM:
+	return "ZQM";
+	break;
     default:
       return "UNK";
       break;
