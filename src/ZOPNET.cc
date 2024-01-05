@@ -501,7 +501,9 @@ bool zopNIC::msgNotify(int vn){
 
   // if this is an RZA device, marshall it through to the ZIQ
   // if this is a ZEN, forward it in the incoming queue
-  if( Type == Forza::zopCompID::Z_RZA || Type == Forza::zopCompID::Z_ZEN ){
+  if( Type == Forza::zopCompID::Z_RZA ||
+      Type == Forza::zopCompID::Z_ZEN ||
+      Type == Forza::zopCompID::Z_ZQM ){
     (*msgHandler)(ev);
     return true;
   }

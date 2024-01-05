@@ -66,6 +66,15 @@ unsigned fclass(T val, bool quietNaN = true) {
 /// Load template
 template<typename T>
 bool load(RevFeature *F, RevRegFile *R, RevMem *M, const RevInst& Inst) {
+
+  // FORZA: check the address to see whether we need to migrate the thread
+  unsigned Zone = 0x00;
+  unsigned Precinct = 0x00;
+  if( !M->isLocalAddr(R->GetX<uint64_t>(Inst.rs1)+ Inst.ImmSignExt(12),
+                      Zone, Precinct) ){
+    // trigger the migration
+  }
+
   if( sizeof(T) < sizeof(int64_t) && R->IsRV32 ){
     static constexpr RevFlag flags = sizeof(T) < sizeof(int32_t) ?
       std::is_signed_v<T> ? RevFlag::F_SEXT32 : RevFlag::F_ZEXT32 : RevFlag::F_NONE;
@@ -112,6 +121,15 @@ bool load(RevFeature *F, RevRegFile *R, RevMem *M, const RevInst& Inst) {
 /// Store template
 template<typename T>
 bool store(RevFeature *F, RevRegFile *R, RevMem *M, const RevInst& Inst) {
+
+  // FORZA: check the address to see whether we need to migrate the thread
+  unsigned Zone = 0x00;
+  unsigned Precinct = 0x00;
+  if( !M->isLocalAddr(R->GetX<uint64_t>(Inst.rs1)+ Inst.ImmSignExt(12),
+                      Zone, Precinct) ){
+    // trigger the migration
+  }
+
   M->Write(F->GetHartToExecID(),
            R->GetX<uint64_t>(Inst.rs1) + Inst.ImmSignExt(12),
            R->GetX<T>(Inst.rs2));
@@ -122,6 +140,15 @@ bool store(RevFeature *F, RevRegFile *R, RevMem *M, const RevInst& Inst) {
 /// Floating-point load template
 template<typename T>
 bool fload(RevFeature *F, RevRegFile *R, RevMem *M, const RevInst& Inst) {
+
+  // FORZA: check the address to see whether we need to migrate the thread
+  unsigned Zone = 0x00;
+  unsigned Precinct = 0x00;
+  if( !M->isLocalAddr(R->GetX<uint64_t>(Inst.rs1)+ Inst.ImmSignExt(12),
+                      Zone, Precinct) ){
+    // trigger the migration
+  }
+
   if(std::is_same_v<T, double> || F->HasD()){
     static constexpr RevFlag flags = sizeof(T) < sizeof(double) ?
       RevFlag::F_BOXNAN : RevFlag::F_NONE;
@@ -172,6 +199,15 @@ bool fload(RevFeature *F, RevRegFile *R, RevMem *M, const RevInst& Inst) {
 /// Floating-point store template
 template<typename T>
 bool fstore(RevFeature *F, RevRegFile *R, RevMem *M, const RevInst& Inst) {
+
+  // FORZA: check the address to see whether we need to migrate the thread
+  unsigned Zone = 0x00;
+  unsigned Precinct = 0x00;
+  if( !M->isLocalAddr(R->GetX<uint64_t>(Inst.rs1)+ Inst.ImmSignExt(12),
+                      Zone, Precinct) ){
+    // trigger the migration
+  }
+
   T val = R->GetFP<T, true>(Inst.rs2);
   M->Write(F->GetHartToExecID(), R->GetX<uint64_t>(Inst.rs1) + Inst.ImmSignExt(12), val);
   R->AdvancePC(Inst);
