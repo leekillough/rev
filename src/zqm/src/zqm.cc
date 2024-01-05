@@ -504,6 +504,65 @@ void ZQM::fillEmptyHart()
     }
 }
 
+void ZQM::doSimpleMsg()
+{
+#if 1 // Do a zop with a non-zqm message type
+    // Create a new Zop
+    SST::Forza::zopEvent *dummy_zop0 = new SST::Forza::zopEvent(zopMsgT::Z_FENCE, zopOpc::Z_FENCE_HART);
+
+    // Fill in Zop src/dest info
+    dummy_zop0->setSrcZCID(zopCompID::Z_ZQM);
+    dummy_zop0->setSrcPrec(10);
+    dummy_zop0->setSrcPCID(3);
+    dummy_zop0->setDestZCID(zopCompID::Z_ZQM);
+    dummy_zop0->setDestPrec(precinct_id);
+    dummy_zop0->setDestPCID(zone_id);
+    dummy_zop0->setAppID(app_id);
+    dummy_zop0->setID(msg_id++);
+
+    // Zop Payload
+    uint64_t load_acs = 0;
+    std::vector<uint64_t> payload;// (load_acs, addr_ptr, aid_state->ThreadLengthDblWords);
+    payload.push_back(0x10);
+    payload.push_back(0x2000);
+    payload.push_back(aid_state->ThreadLengthDblWords);
+    dummy_zop0->setPayload(payload);
+
+    // Send Zop
+    output.verbose(CALL_INFO, 1, 0, "Sending Loopback FENCE; msg_id=%u\n", (uint32_t)dummy_zop0->getID());
+    m_zop_iface->send(dummy_zop0, zopCompID::Z_ZQM);
+#endif
+
+#if 0
+    // Do a messaging packet with a non-ZQM opcode
+    SST::Forza::zopEvent *dummy_zop1 = new SST::Forza::zopEvent(zopMsgT::Z_MSG, zopOpc::Z_MSG_CREDIT);
+
+    // Fill in Zop src/dest info
+    dummy_zop1->setSrcZCID(zopCompID::Z_ZQM);
+    dummy_zop1->setSrcPrec(11);
+    dummy_zop1->setSrcPCID(2);
+    dummy_zop1->setDestZCID(zopCompID::Z_ZQM);
+    dummy_zop1->setDestPrec(precinct_id);
+    dummy_zop1->setDestPCID(zone_id);
+    dummy_zop1->setAppID(app_id);
+    dummy_zop1->setID(msg_id++);
+
+    // Zop Payload
+    uint64_t load_acs = 1;
+    std::vector<uint64_t> payload;// (load_acs, addr_ptr, aid_state->ThreadLengthDblWords);
+    payload.push_back(0x11);
+    payload.push_back(0x2002);
+    payload.push_back(aid_state->ThreadLengthDblWords);
+    dummy_zop1->setPayload(payload);
+
+    // Send Zop
+    output.verbose(CALL_INFO, 1, 0, "Sending Loopback FENCE; msg_id=%u\n", (uint32_t)dummy_zop1->getID());
+    m_zop_iface->send(dummy_zop1, zopCompID::Z_ZQM);
+#endif
+
+
+}
+
 bool ZQM::clock(Cycle_t cycle)
 {
     //output.verbose(CALL_INFO, 1, 0, "Cycle=%" PRIu64 "\n", cycle);
@@ -515,6 +574,10 @@ bool ZQM::clock(Cycle_t cycle)
     if ( (cycle % 100) == 0 ){
         output.verbose(CALL_INFO, 1, 0, "Clock cycles: %" PRIu64 ", Sim Cycles: %" PRIu64 ", Sim ns: %" PRIu64 "\n",
                 cycle, getCurrentSimCycle(), getCurrentSimTimeNano());
+    }
+
+    if (cycle == 202){
+        doSimpleMsg();
     }
 
     // CODE FOR TESTING

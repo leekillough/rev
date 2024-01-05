@@ -258,6 +258,9 @@ namespace SST::Forza{
         // Parameters for testing
         SST::Cycle_t cycleCount;
 
+        // Functions for simple loopback testing
+        void doSimpleMsg();
+
     }; // class SST::ZQM
 } // namespace SST::Forza
 
