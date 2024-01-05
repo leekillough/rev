@@ -49,6 +49,28 @@ sst.addGlobalParams("topology_params", {
     "num_ports" : "3"
 })
 
+# Note: Copied from forzarev/test/FORZA/forza_noc_discovery/rev-test-noc-discovery.py
+nic_params = {
+        "verbose" : 9,
+        "clock" : "1GHz",
+        "req_per_cycle" : 1
+        }
+
+net_params = {
+        "input_buf_size" : "2048B",
+        "output_buf_size" : "2048B",
+        "link_bw" : "100GB/s"
+        }
+
+rtr_params = {
+        "xbar_bw" : "100GB/s",
+        "flit_size" : "8B",
+        "num_ports" : "1",
+        "id" : 0
+        }
+
+
+
 ## DEFINE ZQM ##
 # sst.Component(name here, type - (sub)component name from ELI)
 zqm_module = sst.Component("zqm_module", "forzazqm.ZQM")
@@ -58,7 +80,7 @@ zqm_module.addParams({
     "numCores" : 1,
     "numHarts" : 16,
     "precinctId" : 0,
-    "zoneId" : 1
+    "zoneId" : 0
     #    "debug" : DEBUG,
     #    "debug_level" : DEBUG,
     #"verbose" : 1
@@ -66,11 +88,14 @@ zqm_module.addParams({
 
 # sst.setSubComponent(slot_name (ELI), type (ELI), slot_index=0)
 # ZQM.zone_nic
-m_zop_iface = zqm_module.setSubComponent("zone_nic", "forza.zopNIC", 0)
-m_zop_iface.addGlobalParamSet("networkLinkControl_params")
-# ZQM.zone_nic seems to have a "hidden" SubComponent
-mzopiface_lc = m_zop_iface.setSubComponent("iface", "merlin.linkcontrol", 0)
-mzopiface_lc.addGlobalParamSet("networkLinkControl_params")
+zqm_nic = zqm_module.setSubComponent("zone_nic", "forza.zopNIC")
+zqm_nic.addParams(nic_params)
+
+#m_zop_iface.addGlobalParamSet("networkLinkControl_params")
+#ZQM.zone_nic seems to have a "hidden" SubComponent
+zqm_nic_iface = zqm_nic.setSubComponent("iface", "merlin.linkcontrol")
+#mzopiface_lc.addGlobalParamSet("networkLinkControl_params")
+zqm_nic_iface.addParams(net_params)
 
 ## DEFINE ZOPGEN ##
 #zopgen = sst.Component("zopgen", "Forza.ZOPGen")
@@ -83,10 +108,13 @@ mzopiface_lc.addGlobalParamSet("networkLinkControl_params")
 
 ## DEFINE ZONE ROUTER ##
 router = sst.Component("router", "merlin.hr_router")
-router.addGlobalParamSet("router_params") # These params were set above
-router.addParams({"id": 0, "num_ports": 1}) # Ports is 4 in zen-test - 2 zaps, rza (mem), zop gen
-merlin_topo = router.setSubComponent("topology", "merlin.singlerouter", 0)
-merlin_topo.addGlobalParamSet("topology_params")
+#router.addGlobalParamSet("router_params") # These params were set above
+#router.addParams({"id": 0, "num_ports": 1}) # Ports is 4 in zen-test - 2 zaps, rza (mem), zop gen
+router.setSubComponent("topology", "merlin.singlerouter")
+#merlin_topo.addGlobalParamSet("topology_params")
+router.addParams(net_params)
+router.addParams(rtr_params)
+
 
 ## DEFINE PRECINCT ROUTER (Necessary?) ##
 #prec_router = sst.Component("prec_router", "merlin.hr_router")
@@ -105,7 +133,7 @@ merlin_topo.addGlobalParamSet("topology_params")
 ## TODO: DEFINE LINKS BETWEEN MODULES ##
 # Link between zone router and mzopiface_lc (part of the zone_nic in the zqm)
 zqm_router_link = sst.Link("zqm_router_link")
-zqm_router_link.connect( (mzopiface_lc, "rtr_port", "1us"), (router, "port0", "1us") )
+zqm_router_link.connect( (zqm_nic_iface, "rtr_port", "1us"), (router, "port0", "1us") )
 
 # Link between zone router and zopgeniface_lc (part of the zopgen_lc inside of ZOPGen)
 #zopgen_router_link = sst.Link("zopgen_router_link")
