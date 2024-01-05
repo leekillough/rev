@@ -265,6 +265,7 @@ void RevMem::AddToTLB(uint64_t vAddr, uint64_t physAddr){
 }
 
 uint64_t RevMem::CalcPhysAddr(uint64_t pageNum, uint64_t vAddr){
+
   /* Check if vAddr is in the TLB */
   uint64_t physAddr = SearchTLB(vAddr);
 
@@ -1593,6 +1594,25 @@ bool RevMem::ZOP_ThreadMigrate(unsigned Hart, unsigned Zone, unsigned Precinct){
   // No Payload
   zNic->send(zev, SST::Forza::zopCompID::Z_ZQM,
              zNic->getPCID(Zone), Precinct);
+
+  return true;
+}
+
+bool RevMem::isLocalAddr(uint64_t vAddr, unsigned &Zone, unsigned &Precinct){
+  unsigned TmpZone = 0x00;
+  unsigned TmpPrecinct = 0x00;
+
+  TmpZone = (unsigned)((vAddr >> Z_ZONE_SHIFT) & Z_ZONE_MASK);
+  TmpPrecinct = (unsigned)((vAddr >> Z_PREC_SHIFT) & Z_PREC_MASK);
+
+  if( TmpZone != zNic->getZoneID() ){
+    Zone = TmpZone;
+    Precinct = TmpPrecinct;
+    output->verbose(CALL_INFO, 7, 0,
+                  "[FORZA][ZAP] Triggering ThreadMigrate on vAddr=0x%" PRIx64 "to Zone=%d;Precinct=%d\n",
+                  vAddr, Zone, Precinct);
+    return false;
+  }
 
   return true;
 }
