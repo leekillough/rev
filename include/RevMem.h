@@ -415,7 +415,8 @@ RevMemStats GetMemStatsTotal() const {
                    unsigned &Zone, unsigned &Precinct);
 
   /// FORZA: send a thread migration request
-  bool ZOP_ThreadMigrate(unsigned Hart, unsigned Zone, unsigned Precinct);
+  bool ZOP_ThreadMigrate(unsigned Hart, std::vector<uint64_t> Payload,
+                         unsigned Zone, unsigned Precinct);
 
 private:
   /// FORZA: convert a standard RISC-V AMO opcode to a ZOP opcode

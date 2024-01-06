@@ -73,6 +73,18 @@ bool load(RevFeature *F, RevRegFile *R, RevMem *M, const RevInst& Inst) {
   if( !M->isLocalAddr(R->GetX<uint64_t>(Inst.rs1)+ Inst.ImmSignExt(12),
                       Zone, Precinct) ){
     // trigger the migration
+    std::vector<uint64_t> P;
+    P.push_back(R->GetPC());
+    for( unsigned i=1; i<32; i++ ){
+      P.push_back(R->GetX<uint64_t>(i));
+    }
+    for( unsigned i=0; i<32; i++ ){
+      uint64_t t = 0x00ull;
+      double s= R->DPF[i];
+      memcpy(&t, &s, sizeof(t));
+      P.push_back(t);
+    }
+    return M->ZOP_ThreadMigrate(F->GetHartToExecID(), P, Zone, Precinct);
   }
 
   if( sizeof(T) < sizeof(int64_t) && R->IsRV32 ){
@@ -128,6 +140,18 @@ bool store(RevFeature *F, RevRegFile *R, RevMem *M, const RevInst& Inst) {
   if( !M->isLocalAddr(R->GetX<uint64_t>(Inst.rs1)+ Inst.ImmSignExt(12),
                       Zone, Precinct) ){
     // trigger the migration
+    std::vector<uint64_t> P;
+    P.push_back(R->GetPC());
+    for( unsigned i=1; i<32; i++ ){
+      P.push_back(R->GetX<uint64_t>(i));
+    }
+    for( unsigned i=0; i<32; i++ ){
+      uint64_t t = 0x00ull;
+      double s= R->DPF[i];
+      memcpy(&t, &s, sizeof(t));
+      P.push_back(t);
+    }
+    return M->ZOP_ThreadMigrate(F->GetHartToExecID(), P, Zone, Precinct);
   }
 
   M->Write(F->GetHartToExecID(),
@@ -147,6 +171,18 @@ bool fload(RevFeature *F, RevRegFile *R, RevMem *M, const RevInst& Inst) {
   if( !M->isLocalAddr(R->GetX<uint64_t>(Inst.rs1)+ Inst.ImmSignExt(12),
                       Zone, Precinct) ){
     // trigger the migration
+    std::vector<uint64_t> P;
+    P.push_back(R->GetPC());
+    for( unsigned i=1; i<32; i++ ){
+      P.push_back(R->GetX<uint64_t>(i));
+    }
+    for( unsigned i=0; i<32; i++ ){
+      uint64_t t = 0x00ull;
+      double s= R->DPF[i];
+      memcpy(&t, &s, sizeof(t));
+      P.push_back(t);
+    }
+    return M->ZOP_ThreadMigrate(F->GetHartToExecID(), P, Zone, Precinct);
   }
 
   if(std::is_same_v<T, double> || F->HasD()){
@@ -206,6 +242,18 @@ bool fstore(RevFeature *F, RevRegFile *R, RevMem *M, const RevInst& Inst) {
   if( !M->isLocalAddr(R->GetX<uint64_t>(Inst.rs1)+ Inst.ImmSignExt(12),
                       Zone, Precinct) ){
     // trigger the migration
+    std::vector<uint64_t> P;
+    P.push_back(R->GetPC());
+    for( unsigned i=1; i<32; i++ ){
+      P.push_back(R->GetX<uint64_t>(i));
+    }
+    for( unsigned i=0; i<32; i++ ){
+      uint64_t t = 0x00ull;
+      double s= R->DPF[i];
+      memcpy(&t, &s, sizeof(t));
+      P.push_back(t);
+    }
+    return M->ZOP_ThreadMigrate(F->GetHartToExecID(), P, Zone, Precinct);
   }
 
   T val = R->GetFP<T, true>(Inst.rs2);

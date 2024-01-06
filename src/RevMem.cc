@@ -1568,10 +1568,34 @@ bool RevMem::__ZOP_FENCEHart(unsigned Hart){
   return true;
 }
 
-bool RevMem::ZOP_ThreadMigrate(unsigned Hart, unsigned Zone, unsigned Precinct){
+bool RevMem::ZOP_ThreadMigrate(unsigned Hart, std::vector<uint64_t> Payload,
+                               unsigned Zone, unsigned Precinct){
 #ifdef _REV_DEBUG_
   std::cout << "ZOP_THREADMIGRATE" << std::endl;
 #endif
+
+  // --------------------------------------------------
+  // This method is called from the load, store, fload and fstore
+  // templates in RevInstHelper.h
+  // This generates a thread migration request to a ZQM
+  // device that resides in the Zone::Precinct portion
+  // of the system.  The request payload has the same
+  // header as all the other ZOP requests with the addition
+  // of all the thread-specific data.  The thread-specific
+  // data is formatted as follows:
+  // pkt[0] = <header info>
+  // pkt[1] = <header info>
+  // pkt[2] = THREAD PC
+  // pkt[3] = x[1] register contents
+  // pkt[4] = x[2] register contents
+  // pkt[5] = x[3] register contents
+  // ...
+  // pkt[33] = x[31] register contents
+  // pkt[34] = f[0] register contents
+  // pkt[35] = f[1] register contents
+  // ...
+  // pkt[65] = f[31] register contents
+  // --------------------------------------------------
 
   // create a new event
   SST::Forza::zopEvent *zev = new SST::Forza::zopEvent();
@@ -1591,7 +1615,8 @@ bool RevMem::ZOP_ThreadMigrate(unsigned Hart, unsigned Zone, unsigned Precinct){
   zev->setSrcPCID((uint8_t)(zNic->getPCID(zNic->getZoneID())));
   zev->setSrcPrec((uint8_t)(zNic->getPrecinctID()));
 
-  // No Payload
+  zev->setPayload(Payload);
+
   zNic->send(zev, SST::Forza::zopCompID::Z_ZQM,
              zNic->getPCID(Zone), Precinct);
 
@@ -1599,6 +1624,12 @@ bool RevMem::ZOP_ThreadMigrate(unsigned Hart, unsigned Zone, unsigned Precinct){
 }
 
 bool RevMem::isLocalAddr(uint64_t vAddr, unsigned &Zone, unsigned &Precinct){
+
+  if( !zNic ){
+    // no ZOPNET NIC interface loaded, probably not FORZA
+    return true;
+  }
+
   unsigned TmpZone = 0x00;
   unsigned TmpPrecinct = 0x00;
 
