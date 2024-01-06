@@ -224,7 +224,7 @@ void ZEN::sendMsgToScratchpad(uint64_t dest, uint64_t zcid,
   output.verbose(CALL_INFO, 9, 0, "hart %lu, scratch a %lu, size %lu, addr %lu\n",
                  dest, scratch_addr, size, addr);
   std::vector<uint64_t> payload;
-  SST::Forza::zopEvent *zapMsg = new SST::Forza::zopEvent(m_zop_iface->getAddress(), (zopCompID)dest);
+  SST::Forza::zopEvent *zapMsg = new SST::Forza::zopEvent();
   zapMsg->setType(SST::Forza::zopMsgT::Z_MZOP);
   zapMsg->setOpc(SST::Forza::zopOpc::Z_MZOP_SCSD);
   zapMsg->setSrcHart((uint16_t)zopCompID::Z_ZEN);
