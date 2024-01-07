@@ -20,17 +20,27 @@ namespace SST::RevCPU {
 
 class RV32A : public RevExt {
 
-  static bool lrw( RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) {
-    if( R->IsRV32 ) {
-      MemReq req(
-        uint64_t( R->RV32[Inst.rs1] ),
-        Inst.rd,
-        RevRegClass::RegGPR,
-        F->GetHartToExecID(),
-        MemOp::MemOpAMO,
-        true,
-        R->GetMarkLoadComplete()
-      );
+  static bool lrw(RevFeature *F, RevRegFile *R, RevMem *M, const RevInst& Inst) {
+    unsigned Zone = 0x00;
+    unsigned Precinct = 0x00;
+    if( !M->isLocalAddr(R->GetX<uint64_t>(Inst.rs1),
+                      Zone, Precinct) ){
+      // trigger the migration
+      std::vector<uint64_t> P;
+      P.push_back(R->GetPC());
+      for( unsigned i=1; i<32; i++ ){
+        P.push_back(R->GetX<uint64_t>(i));
+      }
+      for( unsigned i=0; i<32; i++ ){
+        uint64_t t = 0x00ull;
+        double s= R->DPF[i];
+        memcpy(&t, &s, sizeof(t));
+        P.push_back(t);
+      }
+      return M->ZOP_ThreadMigrate(F->GetHartToExecID(), P, Zone, Precinct);
+    }
+    if( R->IsRV32 ){
+      MemReq req(uint64_t(R->RV32[Inst.rs1]), Inst.rd, RevRegClass::RegGPR, F->GetHartToExecID(), MemOp::MemOpAMO, true, R->GetMarkLoadComplete());
       R->LSQueue->insert( req.LSQHashPair() );
       M->LR( F->GetHartToExecID(), uint64_t( R->RV32[Inst.rs1] ), &R->RV32[Inst.rd], Inst.aq, Inst.rl, req, RevFlag::F_SEXT32 );
     } else {
@@ -53,27 +63,63 @@ class RV32A : public RevExt {
     return true;
   }
 
-  static bool scw( RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) {
-    if( R->IsRV32 ) {
-      M->SC( F->GetHartToExecID(), R->RV32[Inst.rs1], &R->RV32[Inst.rs2], &R->RV32[Inst.rd], Inst.aq, Inst.rl, RevFlag::F_SEXT32 );
-    } else {
-      M->SC(
-        F->GetHartToExecID(),
-        R->RV64[Inst.rs1],
-        reinterpret_cast<uint32_t*>( &R->RV64[Inst.rs2] ),
-        reinterpret_cast<uint32_t*>( &R->RV64[Inst.rd] ),
-        Inst.aq,
-        Inst.rl,
-        RevFlag::F_SEXT64
-      );
+  static bool scw(RevFeature *F, RevRegFile *R, RevMem *M, const RevInst& Inst) {
+    unsigned Zone = 0x00;
+    unsigned Precinct = 0x00;
+    if( !M->isLocalAddr(R->GetX<uint64_t>(Inst.rs1),
+                      Zone, Precinct) ){
+      // trigger the migration
+      std::vector<uint64_t> P;
+      P.push_back(R->GetPC());
+      for( unsigned i=1; i<32; i++ ){
+        P.push_back(R->GetX<uint64_t>(i));
+      }
+      for( unsigned i=0; i<32; i++ ){
+        uint64_t t = 0x00ull;
+        double s= R->DPF[i];
+        memcpy(&t, &s, sizeof(t));
+        P.push_back(t);
+      }
+      return M->ZOP_ThreadMigrate(F->GetHartToExecID(), P, Zone, Precinct);
+    }
+    if( R->IsRV32 ){
+      M->SC(F->GetHartToExecID(), R->RV32[Inst.rs1],
+            &R->RV32[Inst.rs2],
+            &R->RV32[Inst.rd],
+            Inst.aq, Inst.rl,
+            RevFlag::F_SEXT32);
+    }else{
+      M->SC(F->GetHartToExecID(), R->RV64[Inst.rs1],
+            reinterpret_cast<uint32_t*>(&R->RV64[Inst.rs2]),
+            reinterpret_cast<uint32_t*>(&R->RV64[Inst.rd]),
+            Inst.aq, Inst.rl,
+            RevFlag::F_SEXT64);
     }
     R->AdvancePC( Inst );
     return true;
   }
 
   template<RevFlag F_AMO>
-  static bool amooper( RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) {
-    uint32_t flags = static_cast<uint32_t>( F_AMO );
+  static bool amooper(RevFeature *F, RevRegFile *R, RevMem *M, const RevInst& Inst) {
+    unsigned Zone = 0x00;
+    unsigned Precinct = 0x00;
+    if( !M->isLocalAddr(R->GetX<uint64_t>(Inst.rs1),
+                      Zone, Precinct) ){
+      // trigger the migration
+      std::vector<uint64_t> P;
+      P.push_back(R->GetPC());
+      for( unsigned i=1; i<32; i++ ){
+        P.push_back(R->GetX<uint64_t>(i));
+      }
+      for( unsigned i=0; i<32; i++ ){
+        uint64_t t = 0x00ull;
+        double s= R->DPF[i];
+        memcpy(&t, &s, sizeof(t));
+        P.push_back(t);
+      }
+      return M->ZOP_ThreadMigrate(F->GetHartToExecID(), P, Zone, Precinct);
+    }
+    uint32_t flags = static_cast<uint32_t>(F_AMO);
 
     if( Inst.aq && Inst.rl ) {
       flags |= uint32_t( RevFlag::F_AQ ) | uint32_t( RevFlag::F_RL );
