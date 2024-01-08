@@ -829,22 +829,21 @@ void RevCPU::handleZOPThreadMigrate(Forza::zopEvent *zev){
     MigratedRegState->SetX(i, pkt[3+i]);
   }
 
-  // HACK: Find the threadmemseg that belongs to this thread (This is based solely on the tp register value and will blow up
-  // if we start not having a single memory object )
-  for( auto seg : Mem->GetThreadMemSegs() ){
-    if( seg->getTopAddr() == MigratedRegState->GetX<uint64_t>(RevReg::tp) ){
-      // found the thread's memory segment
-      // set the thread's memory segment
+  uint64_t ThreadMemTopAddr = MigratedRegState->GetX<uint64_t>(RevReg::tp);
+  uint64_t ThreadMemBaseAddr = ThreadMemTopAddr - Mem->GetTLSSize() - _STACK_SIZE_;
+
+  // TODO: Remove ThreadMemSeg upon ThreadCompletion (ie. ThreadState == DONE)
+  std::shared_ptr<MemSegment> seg = std::make_shared<MemSegment>(ThreadMemBaseAddr, Mem->GetTLSSize() + _STACK_SIZE_);
+  Mem->GetThreadMemSegs().push_back(seg);
+
       std::unique_ptr<RevThread> MigratedThread = std::make_unique<RevThread>(GetNewThreadID(),   // TODO: Include in Payload
                                                                              _INVALID_TID_, // TODO: Include in payload
                                                                              seg,
                                                                              std::move(MigratedRegState));
 
-      output.verbose(CALL_INFO, 1, 0, "[FORZA][RZA] Received thread that starts at address: 0x%" PRIx64 "\n", pkt[2]);
+  output.verbose(CALL_INFO, 1, 0, "[FORZA][RZA] Received thread that starts at address: 0x%" PRIx64 "\n",
+                  pkt[2]);
       ReadyThreads.push_back(std::move(MigratedThread));
-      break;
-    }
-  }
 }
 
 void RevCPU::handleZOPMessageZAP(Forza::zopEvent *zev){
