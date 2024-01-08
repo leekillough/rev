@@ -223,7 +223,6 @@ void ZEN::sendMsgToScratchpad(uint64_t dest, uint64_t zcid,
                               uint64_t addr){
   output.verbose(CALL_INFO, 9, 0, "hart %lu, scratch a %lu, size %lu, addr %lu\n",
                  dest, scratch_addr, size, addr);
-#if 0
   std::vector<uint64_t> payload;
   SST::Forza::zopEvent *zapMsg = new SST::Forza::zopEvent();
   zapMsg->setType(SST::Forza::zopMsgT::Z_MZOP);
@@ -244,7 +243,6 @@ void ZEN::sendMsgToScratchpad(uint64_t dest, uint64_t zcid,
   zapMsg->encodeEvent();
   m_zop_iface->send(zapMsg, (zopCompID)zcid);
   output.verbose(CALL_INFO, 9, 0, "Progress HART scratchpad opcode %" PRIu8 "\n", (uint8_t)zapMsg->getOpc());
-#endif
 }
 
 void ZEN::forwardPktToZIP(Forza::zopEvent *ev) {
