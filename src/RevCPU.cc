@@ -800,12 +800,51 @@ void RevCPU::handleZOPMessageRZA(Forza::zopEvent *zev){
 
 void RevCPU::handleZOPThreadMigrate(Forza::zopEvent *zev){
   output.verbose(CALL_INFO, 9, 0, "[FORZA][RZA] Handling thread migration\n");
+
   if( zev == nullptr ){
     output.fatal(CALL_INFO, -1,
                  "[FORZA][RZA]: Cannot handle null thread migration\n");
   }
 
-  // TODO: handle the thread migration
+  const auto& pkt = zev->getPacket();
+  // The thread-specific
+  // data is formatted as follows:
+  // pkt[0] = <header info>
+  // pkt[1] = <header info>
+  // pkt[2] = THREAD PC
+  // pkt[3] = x[1] register contents
+  // pkt[4] = x[2] register contents
+  // pkt[5] = x[3] register contents
+  // ...
+  // pkt[33] = x[31] register contents
+  // pkt[34] = f[0] register contents
+  // pkt[35] = f[1] register contents
+  // ...
+  // pkt[65] = f[31] register contents
+
+  // Create the regfile
+  std::unique_ptr<RevRegFile> MigratedRegState = std::make_unique<RevRegFile>(Procs[0]->GetRevFeature());
+  MigratedRegState->SetPC(pkt[2]);
+  for( unsigned i=0; i<32; i++ ){
+    MigratedRegState->SetX(i, pkt[3+i]);
+  }
+
+  // HACK: Find the threadmemseg that belongs to this thread (This is based solely on the tp register value and will blow up
+  // if we start not having a single memory object )
+  for( auto seg : Mem->GetThreadMemSegs() ){
+    if( seg->getTopAddr() == MigratedRegState->GetX<uint64_t>(RevReg::tp) ){
+      // found the thread's memory segment
+      // set the thread's memory segment
+      std::unique_ptr<RevThread> MigratedThread = std::make_unique<RevThread>(GetNewThreadID(),   // TODO: Include in Payload
+                                                                             _INVALID_TID_, // TODO: Include in payload
+                                                                             seg,
+                                                                             std::move(MigratedRegState));
+
+      output.verbose(CALL_INFO, 1, 0, "[FORZA][RZA] Received thread that starts at address: 0x%" PRIx64 "\n", pkt[2]);
+      ReadyThreads.push_back(std::move(MigratedThread));
+      break;
+    }
+  }
 }
 
 void RevCPU::handleZOPMessageZAP(Forza::zopEvent *zev){
