@@ -111,8 +111,8 @@ namespace SST::Forza{
         // describe the parameters
         SST_ELI_DOCUMENT_PARAMS(
         { "verbose",    "Sets the output verbsoity", 0 },
-	{ "clockFreq",  "ZQM core clock frequency", "1GHz" },
-	{ "clockTicks", "Ticks to exec (TESTING)", "100"},
+        { "clockFreq",  "ZQM core clock frequency", "1GHz" },
+        { "clockTicks", "Ticks to exec (TESTING)", "100"},
         {"numCores",        "Number of RISC-V cores to instantiate",        "1" },
         {"numHarts",        "Number of harts (per core) to instantiate",    "1" },
         {"precinctId",      "[FORZA] The precinct ID of the local device",  "0"},
@@ -120,9 +120,7 @@ namespace SST::Forza{
         )
 
         // describe the ports
-        SST_ELI_DOCUMENT_PORTS(
-        {"rtrLink", "Links to Network.", {"merlin.linkcontrol"}},
-        )
+        SST_ELI_DOCUMENT_PORTS()
 
         // describe the statistics
         // TODO: Add stats
@@ -257,6 +255,9 @@ namespace SST::Forza{
 
         // Parameters for testing
         SST::Cycle_t cycleCount;
+
+        // Functions for simple loopback testing
+        void doSimpleMsg();
 
     }; // class SST::ZQM
 } // namespace SST::Forza

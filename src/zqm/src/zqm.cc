@@ -63,7 +63,7 @@ ZQM::ZQM(ComponentId_t id, Params& params)
 
     m_zop_iface = loadUserSubComponent<SST::Forza::zopAPI>( "zone_nic" );
     m_zop_iface->setMsgHandler(new Event::Handler<ZQM>(this, &ZQM::handleIncomingZOP));
-	m_zop_iface->setEndpointType(zopCompID::Z_ZQM);
+    m_zop_iface->setEndpointType(zopCompID::Z_ZQM);
     //m_linkControl = loadUserSubComponent<SST::Interfaces::SimpleNetwork>( "rtrLink", ComponentInfo::SHARE_NONE, 1 );
     // The parameter finds below are using the same names as RevCPU.h
     num_zaps = params.find<unsigned>("numCores", 1);
@@ -71,6 +71,11 @@ ZQM::ZQM(ComponentId_t id, Params& params)
     precinct_id = params.find<unsigned>("precinctId", 0);
     zone_id = params.find<unsigned>("zoneId", 0);
     m_zop_iface->setNumHarts(num_harts);
+    m_zop_iface->setPrecinctID(precinct_id);
+    m_zop_iface->setZoneID(zone_id);
+
+    output.output("Verbosity=%d, precID=%u, zoneID=%u\n", Verbosity, precinct_id, zone_id);
+    output.output("mzop_iface: precID=%u, zoneID=%u\n", m_zop_iface->getPrecinctID(), m_zop_iface->getZoneID());
 
     // Create and init matrix of HART status
     zap_hart_status.resize(num_zaps);
@@ -88,6 +93,9 @@ ZQM::ZQM(ComponentId_t id, Params& params)
     //m_linkControl->setNotifyOnReceive( new SST::Interfaces::SimpleNetwork::Handler<ZQM>(this,&ZQM::handleNetworkEvent) );
     // register with SST
     registerAsPrimaryComponent();
+	
+    output.output("Done with ZQM constructor\n");
+
 }
 
 ZQM::~ZQM()
@@ -126,6 +134,7 @@ void ZQM::finish() {
 
 void ZQM::handleIncomingZOP(SST::Event *event)
 {
+    output.output("Handle zop\n");	
     SST::Forza::zopEvent* ev = dynamic_cast<SST::Forza::zopEvent*>(event);
     ev->decodeEvent();
     output.verbose(CALL_INFO, 1, 0, "Msg type %u, opcode %u\n",
@@ -139,8 +148,10 @@ void ZQM::handleIncomingZOP(SST::Event *event)
     } else if (ev->getType() == SST::Forza::zopMsgT::Z_TMIG){
         incoming_threads_vec.push_back(ev);
     } else{
-        output.fatal(CALL_INFO, 1, "Received unexpected msg type = %u\n",
-                     (uint32_t) ev->getType());
+        //output.fatal(CALL_INFO, 1, "Received unexpected msg type = %u\n",
+        //             (uint32_t) ev->getType());
+        output.verbose(CALL_INFO, 1, 0, "Received unexpected msg type = %u, id=%u\n",
+                       (uint32_t) ev->getType(), (uint32_t)ev->getID());
         //TODO: Is there a generic ZOP Dump/print function for debugging?  If so, use it
         return;
     }
@@ -346,8 +357,10 @@ void ZQM::processMessagingMsgs()
                 // TODO: Add ZQM Free AID (or equivalent)
                 // TODO: Add ZQM Set HART (needed for initial program thread)
             default:
-                output.fatal(CALL_INFO, 1, "Received an expected zqm msg opcode = %u\n",
-                             (uint32_t)event->getOpc());
+                //output.fatal(CALL_INFO, 1, "Received an expected zqm msg opcode = %u\n",
+                //             (uint32_t)event->getOpc());
+                output.verbose(CALL_INFO, 1, 0, "Received messaging packet; opcode = %x, id=%u\n",
+                               (uint32_t) event->getOpc(), (uint32_t)event->getID());
         }
         delete event;
     }
@@ -497,25 +510,90 @@ void ZQM::fillEmptyHart()
     }
 }
 
+void ZQM::doSimpleMsg()
+{
+#if 0 // Do a zop with a non-zqm message type
+    // Create a new Zop
+    SST::Forza::zopEvent *dummy_zop0 = new SST::Forza::zopEvent(zopMsgT::Z_FENCE, zopOpc::Z_FENCE_HART);
+
+    // Fill in Zop src/dest info
+    dummy_zop0->setSrcZCID(zopCompID::Z_ZQM);
+    dummy_zop0->setSrcPrec(precinct_id);
+    dummy_zop0->setSrcPCID(zone_id);
+    dummy_zop0->setDestZCID(zopCompID::Z_ZQM);
+    dummy_zop0->setDestPrec(precinct_id);
+    dummy_zop0->setDestPCID(zone_id);
+    dummy_zop0->setAppID(0xd);
+    dummy_zop0->setID(msg_id++);
+
+    // Zop Payload
+    std::vector<uint64_t> payload;// (load_acs, addr_ptr, aid_state->ThreadLengthDblWords);
+    payload.push_back(0x10);
+    payload.push_back(0x2000);
+    payload.push_back(34);
+    dummy_zop0->setPayload(payload);
+
+    // Send Zop
+    output.verbose(CALL_INFO, 1, 0, "Sending Loopback FENCE; msg_id=%u\n", (uint32_t)dummy_zop0->getID());
+    m_zop_iface->send(dummy_zop0, zopCompID::Z_ZQM);
+#endif
+
+#if 1
+    // Do a messaging packet with a non-ZQM opcode
+    SST::Forza::zopEvent *dummy_zop1 = new SST::Forza::zopEvent(zopMsgT::Z_MSG, zopOpc::Z_MSG_CREDIT);
+
+    // Fill in Zop src/dest info
+    dummy_zop1->setSrcZCID(zopCompID::Z_ZQM);
+    dummy_zop1->setSrcPrec(precinct_id);
+    dummy_zop1->setSrcPCID(zone_id);
+    dummy_zop1->setDestZCID(zopCompID::Z_ZQM);
+    dummy_zop1->setDestPrec(precinct_id);
+    dummy_zop1->setDestPCID(zone_id);
+    dummy_zop1->setAppID(0xc);
+    dummy_zop1->setID(msg_id++);
+
+    // Zop Payload
+    std::vector<uint64_t> payload;// (load_acs, addr_ptr, aid_state->ThreadLengthDblWords);
+    payload.push_back(0x11);
+    payload.push_back(0x2002);
+    payload.push_back(16);
+    dummy_zop1->setPayload(payload);
+
+    // Send Zop
+    output.verbose(CALL_INFO, 1, 0, "Sending dummy MSG type; msg_id=%u\n", (uint32_t)dummy_zop1->getID());
+    m_zop_iface->send(dummy_zop1, zopCompID::Z_ZQM);
+#endif
+
+
+}
+
 bool ZQM::clock(Cycle_t cycle)
 {
-    output.verbose(CALL_INFO, 1, 0, "Cycle=%" PRIu64 "\n", cycle);
-   // processIncomingThreadsMsgs();
-   // processRzaMsgs();
-   // processMessagingMsgs();
-    //fillEmptyHart();
-
-    if ( (cycle % 20) == 0 ){
+    //output.verbose(CALL_INFO, 1, 0, "Cycle=%" PRIu64 "\n", cycle);
+   processIncomingThreadsMsgs();
+   processRzaMsgs();
+   processMessagingMsgs();
+   fillEmptyHart();
+#if 0
+    if ( (cycle % 100) == 0 ){
         output.verbose(CALL_INFO, 1, 0, "Clock cycles: %" PRIu64 ", Sim Cycles: %" PRIu64 ", Sim ns: %" PRIu64 "\n",
                 cycle, getCurrentSimCycle(), getCurrentSimTimeNano());
     }
+    // Remove to allow for pushing into devel
+    if (cycle == 202){
+        doSimpleMsg();
+    }
+#endif
+
+    return false;
 
     // CODE FOR TESTING
-    cycleCount--;
-    if (cycleCount != 0)
-        return false;
-    primaryComponentOKToEndSim();
-    return true;
+    //cycleCount--;
+    //if (cycleCount != 0)
+    //    return false;
+    //output.output("ZQM good to end sim\n");
+    //primaryComponentOKToEndSim();
+    //return true;
 }
 
 // EOF

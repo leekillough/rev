@@ -21,53 +21,118 @@ import sst
 #DEBUG = int(sys.argv[2])
 #VERBOSE = int(sys.argv[4])
 
-# TODO: Place holder driver for sending commands into the CxlMemElement
-#cpu = sst.Component("core", "memHierarchy.standardCPU")
-#cpu.addParams({
-#    "memFreq" : 100,
-#    "memSize" : "512MiB",
-#    "clock" : "1GHz",
-#    "maxOutstanding" : 10,
-#    "opCount" : 1000,
-#    "write_freq" : 25,
-#    "read_freq" : 75,
-#})
-#iface = cpu.setSubComponent("memory", "memHierarchy.standardInterface")
+sst.setProgramOption("verbose", "1")
 
+
+# Note: Copied from zen-test.py (and matches zen-test-rza.py also)
+sst.addGlobalParams("networkLinkControl_params",{
+    "input_buf_size" : "14kB",
+    "job_id" : "0",
+    "job_size" : "2",
+    "link_bw" : "100Gb/s",
+    "output_buf_size" : "14kB",
+    "use_nid_remap" : "False",
+})
+
+sst.addGlobalParams("router_params", {
+    "flit_size" : "8B",
+    "input_buf_size" : "14kB",
+    "input_latency" : "47ns",
+    "link_bw" : "100Gb/s",
+    "num_vns" : "1",
+    "output_buf_size" : "14kB",
+    "output_latency" : "47ns",
+    "xbar_bw" : "100Gb/s",
+})
+
+sst.addGlobalParams("topology_params", {
+    "num_ports" : "3"
+})
+
+# Note: Copied from forzarev/test/FORZA/forza_noc_discovery/rev-test-noc-discovery.py
+nic_params = {
+        "verbose" : 9,
+        "clock" : "1GHz",
+        "req_per_cycle" : 1
+        }
+
+net_params = {
+        "input_buf_size" : "2048B",
+        "output_buf_size" : "2048B",
+        "link_bw" : "100GB/s"
+        }
+
+rtr_params = {
+        "xbar_bw" : "100GB/s",
+        "flit_size" : "8B",
+        "num_ports" : "1",
+        "id" : 0
+        }
+
+
+
+## DEFINE ZQM ##
 # sst.Component(name here, type - (sub)component name from ELI)
-zqm_module = sst.Component("zqm_module", "zqm.ZQM")
+zqm_module = sst.Component("zqm_module", "forzazqm.ZQM")
 zqm_module.addParams({
     "clockFreq" : "2GHz",
-    "clockTicks" : 1000,
+    "clockTicks" : 2000,
     "numCores" : 1,
     "numHarts" : 16,
     "precinctId" : 0,
-    "zoneId" : 1
+    "zoneId" : 0
     #    "debug" : DEBUG,
     #    "debug_level" : DEBUG,
-    #    "verbose" : VERBOSE,
+    #"verbose" : 1
 })
 
 # sst.setSubComponent(slot_name (ELI), type (ELI), slot_index=0)
-# This should be what's handling the link...I think...
-#memory = memctrl.setSubComponent("backend", "memHierarchy.simpleMem")
-#memory.addParams({
-#    "access_time" : "1000ns",
-#    "mem_size" : "512MiB"
-#})
+# ZQM.zone_nic
+zqm_nic = zqm_module.setSubComponent("zone_nic", "forza.zopNIC")
+zqm_nic.addParams(nic_params)
 
-# TODO: Eventually add a memory backend
+#ZQM.zone_nic seems to have a "hidden" SubComponent
+zqm_nic_iface = zqm_nic.setSubComponent("iface", "merlin.linkcontrol")
+zqm_nic_iface.addParams(net_params)
+
+## DEFINE ZOPGEN ##
+#zopgen = sst.Component("zopgen", "Forza.ZOPGen")
+#zopgen.addParams({"int_id" : 15})
+#zopgen_lc = zopgen.setSubComponent("m_zop_iface", "Forza.zenZopNIC", 0)
+#zopgen_lc.addGlobalParamSet("networkLinkControl_params")
+#zopgen_lc.addParams({"verbose": 10})
+#zopgeniface_lc = zopgen_lc.setSubComponent("iface", "merlin.linkcontrol", 0)
+#zopgeniface_lc.addGlobalParamSet("networkLinkControl_params")
+
+## DEFINE ZONE ROUTER ##
+router = sst.Component("router", "merlin.hr_router")
+#router.addGlobalParamSet("router_params") # These params were set above
+#router.addParams({"id": 0, "num_ports": 1}) # Ports is 4 in zen-test - 2 zaps, rza (mem), zop gen
+router.setSubComponent("topology", "merlin.singlerouter")
+#merlin_topo.addGlobalParamSet("topology_params")
+router.addParams(net_params)
+router.addParams(rtr_params)
+
+
+## DEFINE PRECINCT ROUTER (Necessary?) ##
+#prec_router = sst.Component("prec_router", "merlin.hr_router")
+#prec_router.addGlobalParamSet("router_params")
+#prec_router.addParams({"id": 1, "num_ports": 1})
+
+#prec_topo = prec_router.setSubComponent("topology", "merlin.singlerouter", 0)
+#prec_topo.addGlobalParamSet("topology_params")
+
 
 # Enable statistics - do later
 #sst.setStatisticLoadLevel(10)
 #sst.setStatisticOutput("sst.statOutputConsole")
 #sst.enableAllStatisticsForComponentType("memHierarchy.standardCPU")
-#sst.enableAllStatisticsForComponentType("memHierarchy.standardInterface")
-#sst.enableAllStatisticsForComponentType("memHierarchy.Cache")
-#sst.enableAllStatisticsForComponentType("memHierarchy.MemController")
-#sst.enableAllStatisticsForComponentType("memHierarchy.simpleMem")
 
+## TODO: DEFINE LINKS BETWEEN MODULES ##
+# Link between zone router and mzopiface_lc (part of the zone_nic in the zqm)
+zqm_router_link = sst.Link("zqm_router_link")
+zqm_router_link.connect( (zqm_nic_iface, "rtr_port", "1us"), (router, "port0", "1us") )
 
-# Define the simulation links
-#link_driver_cxl_link = sst.Link("link_driver_cxl_link")
-#link_driver_cxl_link.connect( (iface, "port", "1000ps"), (cxlmem_module, "bus", "1000ps") )
+# Link between zone router and zopgeniface_lc (part of the zopgen_lc inside of ZOPGen)
+#zopgen_router_link = sst.Link("zopgen_router_link")
+#zopgen_router_link.connect( (zopgeniface_lc, "router_port", "1us"), (router, "port0", "1us") )
