@@ -78,6 +78,7 @@ class RevRegFile {
 public:
   const bool IsRV32;                  ///< RevRegFile: Cached copy of Features->IsRV32()
   const bool HasD;                    ///< RevRegFile: Cached copy of Features->HasD()
+  uint32_t ThreadID;                  ///< RevRegFile: Thread ID
 
 private:
   bool trigger{};                     ///< RevRegFile: Has the instruction been triggered?
@@ -94,6 +95,7 @@ private:
 
   std::shared_ptr<std::unordered_multimap<uint64_t, MemReq>> LSQueue{};
   std::function<void(const MemReq&)> MarkLoadCompleteFunc{};
+
 
   union{  // Anonymous union. We zero-initialize the largest member
     uint32_t RV32[_REV_NUM_REGS_];      ///< RevRegFile: RV32I register file
@@ -324,6 +326,9 @@ public:
       SPF[size_t(rd)] = value;               // Store in FP32 register
     }
   }
+
+  uint32_t GetThreadID() const { return ThreadID; }
+  void SetThreadID(uint32_t tid) { ThreadID = tid; }
 
   // Friend functions and classes to access internal register state
   template<typename FP, typename INT>
