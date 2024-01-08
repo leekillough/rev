@@ -104,6 +104,7 @@ public:
   RevCore* const Core;    ///< RevRegFile: Owning core of this register file's hart
   const bool     IsRV32;  ///< RevRegFile: Cached copy of Features->IsRV32()
   const bool     HasD;    ///< RevRegFile: Cached copy of Features->HasD()
+  uint32_t ThreadID;                  ///< RevRegFile: Thread ID
 
 private:
   bool       trigger{};         ///< RevRegFile: Has the instruction been triggered?
@@ -423,6 +424,9 @@ public:
 
   /// Return the Floating-Point Status Register
   FCSR& GetFCSR() { return fcsr; }
+
+  uint32_t GetThreadID() const { return ThreadID; }
+  void SetThreadID(uint32_t tid) { ThreadID = tid; }
 
   // Friend functions and classes to access internal register state
   template<typename FP, typename INT>
