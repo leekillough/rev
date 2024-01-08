@@ -14,6 +14,8 @@
 
 using namespace SST::Forza;
 
+static uint32_t selected_hart = 0xbeef;
+
 uint64_t ZqmAidStateTableRow::getMemAddr(bool do_read, bool update_ptr)
 {
     uint64_t addr_ptr = (do_read) ? mem_read_ptr : mem_write_ptr;
@@ -333,6 +335,7 @@ void ZQM::sendThreadToZap(SST::Forza::zopEvent *thread)
 {
     uint8_t dest_zap = thread->getDestZCID();
     uint16_t dest_hart = thread->getDestHart();
+    int32_t ha = 0;
     if (zap_hart_status.at(dest_zap).at(dest_hart)){
         output.fatal(CALL_INFO, 1, "TMIG Dest already occupied; ZAP=%u, HART=%u\n",
                      (uint32_t) dest_zap, (uint32_t) dest_hart);
@@ -340,8 +343,11 @@ void ZQM::sendThreadToZap(SST::Forza::zopEvent *thread)
         zap_hart_status.at(dest_zap).at(dest_hart) = true;
         ZqmAidStateTableRow *aid_state = getAidStateTableRow(thread->getAppID());
         aid_state->harts_available--;
+        ha = aid_state->harts_available;
     }
-
+    output.verbose(CALL_INFO, 1, 0, "Sending thread to ZAP=%u, HART=%u; ZAP harts avail=%d\n",
+                   dest_zap, dest_hart, ha);
+    selected_hart = (uint32_t)ha;
     m_zop_iface->send(thread, static_cast<SST::Forza::zopCompID>(dest_zap));
 }
 
@@ -376,6 +382,9 @@ void ZQM::processMessagingZqmSet(SST::Forza::zopEvent *event)
     uint64_t mem_buffer_low = payload[2];
     uint64_t mem_buffer_high = payload[3];
 
+    output.verbose(CALL_INFO, 1, 0, "Payload=0x%lx, 0x%lx, 0x%lx, 0x%lx\n", min_zap_hart, max_zap_hart,
+                   mem_buffer_low, mem_buffer_high);
+
     auto it = aid_state_table.find(app_id);
     if (it != aid_state_table.end()) {
         output.fatal(CALL_INFO, 1, "Received a second setup packet for aid=%u\n", app_id);
@@ -389,16 +398,18 @@ void ZQM::processMessagingZqmSet(SST::Forza::zopEvent *event)
     if (!aid_state_row->validateMemBuffSize())
         output.fatal(CALL_INFO, 1, "Invalid memory buffer size for aid=%u, buff_low=%lu, buff_high=%lu\n",
                      app_id, mem_buffer_low, mem_buffer_high);
-    aid_state_table.insert(std::pair<uint32_t, ZqmAidStateTableRow*>(app_id,aid_state_row));
-    output.verbose(CALL_INFO, 1, 0, "setup aid state table %u\n", app_id);
+    aid_state_table.insert(std::pair<uint32_t, ZqmAidStateTableRow*>(app_id, aid_state_row));
+    output.verbose(CALL_INFO, 1, 0, "Setup AID state table %u\n", app_id);
 }
 
 void ZQM::processMessagingHartDone(SST::Forza::zopEvent *event)
 {
     // No payload required; source information is sufficient
-    output.verbose(CALL_INFO, 1, 0, "process SetupMsgHartDone\n");
     uint8_t src_zap = event->getSrcZCID(); // this will be the zap
     uint16_t src_hart = event->getSrcHart();
+
+    output.verbose(CALL_INFO, 1, 0, "process SetupMsgHartDone, zap=%u, hart=%u\n",
+                   src_zap, src_hart);
 
     if (zap_hart_status.at(src_zap).at(src_hart)) {
         zap_hart_status.at(src_zap).at(src_hart) = false;
@@ -413,18 +424,22 @@ void ZQM::processMessagingHartDone(SST::Forza::zopEvent *event)
 void ZQM::processIncomingThreadsMsgs()
 {
     // Sanity check
-    if (outstanding_rza_reqs.size() == UINT8_MAX)
+    if (outstanding_rza_reqs.size() == UINT8_MAX) {
+        output.verbose(CALL_INFO, 1, 0, "Too many outstanding RZA requests\n");
         return;
-
+    }
     for (auto &thread : incoming_threads_vec){
         if (thread->getOpc() == zopOpc::Z_TMIG_FIXED){
             // Always assumed to have the hart available, but the sendThreadToZap checks
             sendThreadToZap(thread);
         } else if (thread->getOpc() == zopOpc::Z_TMIG_SELECT){
+            output.verbose(CALL_INFO, 1, 0, "Handling TMIG_SELECT ZOP\n");
             ZqmAidStateTableRow *aid_state = getAidStateTableRow(thread->getAppID());
             int32_t rqd = aid_state->run_queue_depth;
             int32_t ha = aid_state->harts_available;
             int32_t of = aid_state->outstanding_fills;
+            output.verbose(CALL_INFO, 1, 0, "RQD, HA, OF; aid=%u, rqd=%d, ha=%d, of=%d\n",
+                         thread->getAppID(), rqd, ha, of);
 
             // sanity check
             if ( (rqd < 0) || (ha < 0) || (of < 0) ){
@@ -442,10 +457,12 @@ void ZQM::processIncomingThreadsMsgs()
             if (rqd > 0){
                 sendThreadToRza(thread);
             } else {
-                if (ha > of)
+                if (ha > of) {
+                    selectDestHart(thread);
                     sendThreadToZap(thread);
-                else
+                } else {
                     sendThreadToRza(thread);
+                }
             }
         }
     }
@@ -457,6 +474,8 @@ bool ZQM::selectDestHart(SST::Forza::zopEvent *thread)
     // These should generally be migrating thread code...try to balance use of ZAPs...
     // Want to keep the logic sane so we can actually do it in verilog...however, we'll do the
     // optimal choice for now (for a given AID)
+
+    output.verbose(CALL_INFO, 1, 0, "pick a HART\n");
 
     ZqmAidStateTableRow *aid_state = getAidStateTableRow(thread->getAppID());
     std::vector<uint32_t> num_free_harts(zap_hart_status.size(), 0);
@@ -490,6 +509,8 @@ bool ZQM::selectDestHart(SST::Forza::zopEvent *thread)
             thread->setDestZCID(max_zap);
             thread->setDestHart(i);
             thread->setOpc(zopOpc::Z_TMIG_FIXED);
+            output.verbose(CALL_INFO, 1, 0, "HART selected: ZAP=%d, HART=%u\n", max_zap, i);
+
         }
     }
     return true;
@@ -512,34 +533,8 @@ void ZQM::fillEmptyHart()
 
 void ZQM::doSimpleMsg()
 {
-#if 0 // Do a zop with a non-zqm message type
-    // Create a new Zop
-    SST::Forza::zopEvent *dummy_zop0 = new SST::Forza::zopEvent(zopMsgT::Z_FENCE, zopOpc::Z_FENCE_HART);
-
-    // Fill in Zop src/dest info
-    dummy_zop0->setSrcZCID(zopCompID::Z_ZQM);
-    dummy_zop0->setSrcPrec(precinct_id);
-    dummy_zop0->setSrcPCID(zone_id);
-    dummy_zop0->setDestZCID(zopCompID::Z_ZQM);
-    dummy_zop0->setDestPrec(precinct_id);
-    dummy_zop0->setDestPCID(zone_id);
-    dummy_zop0->setAppID(0xd);
-    dummy_zop0->setID(msg_id++);
-
-    // Zop Payload
-    std::vector<uint64_t> payload;// (load_acs, addr_ptr, aid_state->ThreadLengthDblWords);
-    payload.push_back(0x10);
-    payload.push_back(0x2000);
-    payload.push_back(34);
-    dummy_zop0->setPayload(payload);
-
-    // Send Zop
-    output.verbose(CALL_INFO, 1, 0, "Sending Loopback FENCE; msg_id=%u\n", (uint32_t)dummy_zop0->getID());
-    m_zop_iface->send(dummy_zop0, zopCompID::Z_ZQM);
-#endif
-
-#if 1
-    // Do a messaging packet with a non-ZQM opcode
+#if 0
+    // This was a successful test: Do a messaging packet with a non-ZQM opcode
     SST::Forza::zopEvent *dummy_zop1 = new SST::Forza::zopEvent(zopMsgT::Z_MSG, zopOpc::Z_MSG_CREDIT);
 
     // Fill in Zop src/dest info
@@ -564,7 +559,77 @@ void ZQM::doSimpleMsg()
     m_zop_iface->send(dummy_zop1, zopCompID::Z_ZQM);
 #endif
 
+#if 1
+    // Do a ZQM setup messaging packet
+    SST::Forza::zopEvent *dummy_zop2 = new SST::Forza::zopEvent(zopMsgT::Z_MSG, zopOpc::Z_MSG_ZQMSET);
 
+    // Fill in Zop src/dest info
+    dummy_zop2->setSrcZCID(zopCompID::Z_ZQM);
+    dummy_zop2->setSrcPrec(precinct_id);
+    dummy_zop2->setSrcPCID(zone_id);
+    dummy_zop2->setDestZCID(zopCompID::Z_ZQM);
+    dummy_zop2->setDestPrec(precinct_id);
+    dummy_zop2->setDestPCID(zone_id);
+    dummy_zop2->setAppID(0xa);
+    dummy_zop2->setID(msg_id++);
+
+    // Zop Payload
+    std::vector<uint64_t> payload;
+    payload.push_back(0x0); // min HART ID
+    payload.push_back(511); // max HART id
+    payload.push_back(0); // Mem buffer low
+    payload.push_back(16*ZqmAidStateTableRow::ThreadLengthBytes); // Mem buffer high
+    dummy_zop2->setPayload(payload);
+
+    // Send Zop
+    output.verbose(CALL_INFO, 1, 0, "Sending ZQM SETUP MSG; msg_id=%u\n", (uint32_t)dummy_zop2->getID());
+    m_zop_iface->send(dummy_zop2, zopCompID::Z_ZQM);
+#endif
+}
+
+void ZQM::sendDummyThread()
+{
+    SST::Forza::zopEvent *thread = new SST::Forza::zopEvent(zopMsgT::Z_MSG, zopOpc::Z_TMIG_SELECT);
+
+    // Fill in Zop src/dest info
+    thread->setSrcZCID(zopCompID::Z_ZAP1);
+    thread->setSrcPrec(precinct_id);
+    thread->setSrcPCID(zopPrecID::Z_ZONE6);
+    thread->setDestZCID(zopCompID::Z_ZAP0);
+    thread->setDestPrec(precinct_id);
+    thread->setDestPCID(zone_id);
+    thread->setAppID(0xa);
+    thread->setID(msg_id++);
+
+    std::vector<uint64_t> payload;
+    payload.push_back(0x0dead);
+    for (auto i = 0; i < 31; i++)
+        payload.push_back(i);
+    payload.push_back(0x0cafe);
+    thread->setPayload(payload);
+    output.verbose(CALL_INFO, 1, 0, "Sending MIGR THREAD; msg_id=%u\n", (uint32_t)thread->getID());
+    m_zop_iface->send(thread, zopCompID::Z_ZQM);
+}
+
+void ZQM::sendHartDone()
+{
+    // Do a ZQM setup messaging packet
+    SST::Forza::zopEvent *dummy_zop2 = new SST::Forza::zopEvent(zopMsgT::Z_MSG, zopOpc::Z_MSG_ZQMHARTDONE);
+
+    // Fill in Zop src/dest info
+    dummy_zop2->setSrcZCID(zopCompID::Z_ZAP0);
+    dummy_zop2->setSrcPrec(precinct_id);
+    dummy_zop2->setSrcPCID(zone_id);
+    dummy_zop2->setSrcHart((uint16_t)selected_hart);
+    dummy_zop2->setDestZCID(zopCompID::Z_ZQM);
+    dummy_zop2->setDestPrec(precinct_id);
+    dummy_zop2->setDestPCID(zone_id);
+    dummy_zop2->setAppID(0xa);
+    dummy_zop2->setID(msg_id++);
+
+    // Send Zop
+    output.verbose(CALL_INFO, 1, 0, "Sending ZQM HART DONE; msg_id=%u\n", (uint32_t)dummy_zop2->getID());
+    m_zop_iface->send(dummy_zop2, zopCompID::Z_ZQM);
 }
 
 bool ZQM::clock(Cycle_t cycle)
@@ -579,11 +644,19 @@ bool ZQM::clock(Cycle_t cycle)
         output.verbose(CALL_INFO, 1, 0, "Clock cycles: %" PRIu64 ", Sim Cycles: %" PRIu64 ", Sim ns: %" PRIu64 "\n",
                 cycle, getCurrentSimCycle(), getCurrentSimTimeNano());
     }
+#endif
+
     // Remove to allow for pushing into devel
-    if (cycle == 202){
+    if (cycle == 20){
         doSimpleMsg();
     }
-#endif
+
+    if (cycle == 1000){
+        sendDummyThread();
+    }
+
+    if (cycle == 1500)
+        sendHartDone();
 
     return false;
 

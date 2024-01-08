@@ -258,6 +258,8 @@ namespace SST::Forza{
 
         // Functions for simple loopback testing
         void doSimpleMsg();
+        void sendDummyThread();
+        void sendHartDone();
 
     }; // class SST::ZQM
 } // namespace SST::Forza
