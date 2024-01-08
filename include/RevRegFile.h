@@ -104,13 +104,13 @@ public:
   RevCore* const Core;    ///< RevRegFile: Owning core of this register file's hart
   const bool     IsRV32;  ///< RevRegFile: Cached copy of Features->IsRV32()
   const bool     HasD;    ///< RevRegFile: Cached copy of Features->HasD()
-  uint32_t ThreadID;                  ///< RevRegFile: Thread ID
 
 private:
   bool       trigger{};         ///< RevRegFile: Has the instruction been triggered?
   unsigned   Entry{};           ///< RevRegFile: Instruction entry
   uint32_t   cost{};            ///< RevRegFile: Cost of the instruction
   RevTracer* Tracer = nullptr;  ///< RegRegFile: Tracer object
+  uint32_t ThreadID{};          ///< RevRegFile: Thread ID
 
   union {                // Anonymous union. We zero-initialize the largest member
     uint32_t RV32_PC;    ///< RevRegFile: RV32 PC
