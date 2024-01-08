@@ -411,11 +411,14 @@ private:
   /// RevCPU: Handle FORZA ZOP Message
   void handleZOPMessage(SST::Event *ev);
 
-  /// RevCPU:: Handle FORZA ZOP Message for RZA devices
+  /// RevCPU: Handle FORZA ZOP Message for RZA devices
   void handleZOPMessageRZA(Forza::zopEvent *zev);
 
   /// RevCPU: Handle FORZA ZOP Message for ZAP devices
   void handleZOPMessageZAP(Forza::zopEvent *zev);
+
+  /// RevCPU: Handle FORZA Thread Migration
+  void handleZOPThreadMigrate(Forza::zopEvent *zev);
 
   /// RevCPU: Creates a unique tag for this message
   uint8_t createTag();

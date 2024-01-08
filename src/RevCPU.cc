@@ -671,6 +671,16 @@ void RevCPU::handleZOPMessageRZA(Forza::zopEvent *zev){
   ZIQ.push_back(zev);
 }
 
+void RevCPU::handleZOPThreadMigrate(Forza::zopEvent *zev){
+  output.verbose(CALL_INFO, 9, 0, "[FORZA][RZA] Handling thread migration\n");
+  if( zev == nullptr ){
+    output.fatal(CALL_INFO, -1,
+                 "[FORZA][RZA]: Cannot handle null thread migration\n");
+  }
+
+  // TODO: handle the thread migration
+}
+
 void RevCPU::handleZOPMessageZAP(Forza::zopEvent *zev){
   output.verbose(CALL_INFO, 9, 0, "[FORZA][ZAP] Handling ZOP Message\n");
   switch( zev->getType() ){
@@ -686,6 +696,9 @@ void RevCPU::handleZOPMessageZAP(Forza::zopEvent *zev){
                  "[FORZA][ZAP] Received exception code=%s from message ID=%d\n",
                  zNic->msgTToStr(zev->getType()).c_str(),
                  (uint32_t)(zev->getID()));
+    break;
+  case Forza::zopMsgT::Z_TMIG:
+    handleZOPThreadMigrate(zev);
     break;
   default:
     output.fatal(CALL_INFO, -1,
