@@ -31,13 +31,13 @@ class RV32A : public RevExt {
       for( unsigned i=1; i<32; i++ ){
         P.push_back(R->GetX<uint64_t>(i));
       }
-      for( unsigned i=0; i<32; i++ ){
-        uint64_t t = 0x00ull;
-        double s= R->DPF[i];
-        memcpy(&t, &s, sizeof(t));
-        P.push_back(t);
-      }
-
+//      for( unsigned i=0; i<32; i++ ){
+//        uint64_t t = 0x00ull;
+//        double s= R->DPF[i];
+//        memcpy(&t, &s, sizeof(t));
+//        P.push_back(t);
+//      }
+//
       R->SetSCAUSE(EXCEPTION_CAUSE::THREAD_MIGRATED);
       return M->ZOP_ThreadMigrate(F->GetHartToExecID(), P, Zone, Precinct);
     }
@@ -72,12 +72,12 @@ class RV32A : public RevExt {
       for( unsigned i=1; i<32; i++ ){
         P.push_back(R->GetX<uint64_t>(i));
       }
-      for( unsigned i=0; i<32; i++ ){
-        uint64_t t = 0x00ull;
-        double s= R->DPF[i];
-        memcpy(&t, &s, sizeof(t));
-        P.push_back(t);
-      }
+//      for( unsigned i=0; i<32; i++ ){
+//        uint64_t t = 0x00ull;
+//        double s= R->DPF[i];
+//        memcpy(&t, &s, sizeof(t));
+//        P.push_back(t);
+//      }
       R->SetSCAUSE(EXCEPTION_CAUSE::THREAD_MIGRATED);
       return M->ZOP_ThreadMigrate(F->GetHartToExecID(), P, Zone, Precinct);
     }
@@ -110,13 +110,13 @@ class RV32A : public RevExt {
       for( unsigned i=1; i<32; i++ ){
         P.push_back(R->GetX<uint64_t>(i));
       }
-      for( unsigned i=0; i<32; i++ ){
-        uint64_t t = 0x00ull;
-        double s= R->DPF[i];
-        memcpy(&t, &s, sizeof(t));
-        P.push_back(t);
-      }
-
+//      for( unsigned i=0; i<32; i++ ){
+//        uint64_t t = 0x00ull;
+//        double s= R->DPF[i];
+//        memcpy(&t, &s, sizeof(t));
+//        P.push_back(t);
+//      }
+//
       R->SetSCAUSE(EXCEPTION_CAUSE::THREAD_MIGRATED);
       return M->ZOP_ThreadMigrate(F->GetHartToExecID(), P, Zone, Precinct);
     }
