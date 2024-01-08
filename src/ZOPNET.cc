@@ -508,6 +508,21 @@ bool zopNIC::msgNotify(int vn){
     return true;
   }
 
+  // if this is a ZAP device and a thread migration,
+  // send it to the RevCPU handler
+  if((Type == Forza::zopCompID::Z_ZAP0 ||
+      Type == Forza::zopCompID::Z_ZAP1 ||
+      Type == Forza::zopCompID::Z_ZAP2 ||
+      Type == Forza::zopCompID::Z_ZAP3 ||
+      Type == Forza::zopCompID::Z_ZAP4 ||
+      Type == Forza::zopCompID::Z_ZAP5 ||
+      Type == Forza::zopCompID::Z_ZAP6 ||
+      Type == Forza::zopCompID::Z_ZAP7) &&
+     (ev->getType() == Forza::zopMsgT::Z_TMIG) ){
+    (*msgHandler)(ev);
+    return true;
+  }
+
   // this is likely a ZAP device,
   // iterate across the outstanding messages
   unsigned Cur = 0;

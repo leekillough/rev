@@ -433,26 +433,14 @@ private:
   /// RevCPU: Handle FORZA ZOP Message
   void handleZOPMessage(SST::Event *ev);
 
-  /// RevCPU:: Handle FORZA ZOP Message for RZA devices
+  /// RevCPU: Handle FORZA ZOP Message for RZA devices
   void handleZOPMessageRZA(Forza::zopEvent *zev);
 
   /// RevCPU: Handle FORZA ZOP Message for ZAP devices
   void handleZOPMessageZAP(Forza::zopEvent *zev);
 
-  /// RevCPU: Sends a PAN message
-  bool sendPANMessage();
-
-  /// RevCPU: handles the memory write operations from incoming PAN messages
-  bool processPANMemRead();
-
-  /// RevCPU: handles the PAN RDMA mailbox
-  bool PANProcessRDMAMailbox();
-
-  /// RevCPU: handles the PAN zero address put requests
-  bool processPANZeroAddr();
-
-  /// RevCPU: converts an RDMA payload to a panNicEvent command
-  bool PANConvertRDMAtoEvent(uint64_t Addr, panNicEvent *event);
+  /// RevCPU: Handle FORZA Thread Migration
+  void handleZOPThreadMigrate(Forza::zopEvent *zev);
 
   /// RevCPU: Creates a unique tag for this message
   uint8_t createTag();
