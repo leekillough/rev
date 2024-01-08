@@ -579,11 +579,11 @@ bool ZQM::clock(Cycle_t cycle)
         output.verbose(CALL_INFO, 1, 0, "Clock cycles: %" PRIu64 ", Sim Cycles: %" PRIu64 ", Sim ns: %" PRIu64 "\n",
                 cycle, getCurrentSimCycle(), getCurrentSimTimeNano());
     }
-#endif
-
+    // Remove to allow for pushing into devel
     if (cycle == 202){
         doSimpleMsg();
     }
+#endif
 
     return false;
 
