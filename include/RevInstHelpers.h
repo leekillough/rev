@@ -84,6 +84,9 @@ bool load(RevFeature *F, RevRegFile *R, RevMem *M, const RevInst& Inst) {
       memcpy(&t, &s, sizeof(t));
       P.push_back(t);
     }
+
+    R->SetSCAUSE(EXCEPTION_CAUSE::THREAD_MIGRATED);
+
     return M->ZOP_ThreadMigrate(F->GetHartToExecID(), P, Zone, Precinct);
   }
 
@@ -151,6 +154,7 @@ bool store(RevFeature *F, RevRegFile *R, RevMem *M, const RevInst& Inst) {
       memcpy(&t, &s, sizeof(t));
       P.push_back(t);
     }
+    R->SetSCAUSE(EXCEPTION_CAUSE::THREAD_MIGRATED);
     return M->ZOP_ThreadMigrate(F->GetHartToExecID(), P, Zone, Precinct);
   }
 
@@ -182,6 +186,7 @@ bool fload(RevFeature *F, RevRegFile *R, RevMem *M, const RevInst& Inst) {
       memcpy(&t, &s, sizeof(t));
       P.push_back(t);
     }
+    R->SetSCAUSE(EXCEPTION_CAUSE::THREAD_MIGRATED);
     return M->ZOP_ThreadMigrate(F->GetHartToExecID(), P, Zone, Precinct);
   }
 
@@ -253,6 +258,7 @@ bool fstore(RevFeature *F, RevRegFile *R, RevMem *M, const RevInst& Inst) {
       memcpy(&t, &s, sizeof(t));
       P.push_back(t);
     }
+    R->SetSCAUSE(EXCEPTION_CAUSE::THREAD_MIGRATED);
     return M->ZOP_ThreadMigrate(F->GetHartToExecID(), P, Zone, Precinct);
   }
 
