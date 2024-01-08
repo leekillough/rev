@@ -34,7 +34,8 @@ public:
             std::unique_ptr<RevVirtRegState> VirtRegState)
     : ID(ID), ParentID(ParentID),
       ThreadMem(ThreadMem), VirtRegState(std::move(VirtRegState)){
-    VirtRegState->SetThreadID(ID);
+    // Save thread's ID to regfile
+    this->VirtRegState->SetThreadID(ID);
   }
 
   ///< RevThread: Destructor
