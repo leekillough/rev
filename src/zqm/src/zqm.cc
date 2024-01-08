@@ -348,7 +348,7 @@ void ZQM::sendThreadToZap(SST::Forza::zopEvent *thread)
     output.verbose(CALL_INFO, 1, 0, "Sending thread to ZAP=%u, HART=%u; ZAP harts avail=%d\n",
                    dest_zap, dest_hart, ha);
     selected_hart = (uint32_t)ha;
-    m_zop_iface->send(thread, static_cast<SST::Forza::zopCompID>(dest_zap));
+    //m_zop_iface->send(thread, static_cast<SST::Forza::zopCompID>(dest_zap));
 }
 
 void ZQM::processMessagingMsgs()
@@ -369,6 +369,7 @@ void ZQM::processMessagingMsgs()
                                (uint32_t) event->getOpc(), (uint32_t)event->getID());
         }
         delete event;
+	output.output("Done with MSG type\n");
     }
     setup_reqs.clear();
 }
@@ -404,6 +405,9 @@ void ZQM::processMessagingZqmSet(SST::Forza::zopEvent *event)
 
 void ZQM::processMessagingHartDone(SST::Forza::zopEvent *event)
 {
+    output.verbose(CALL_INFO, 1, 0, "Here\n");
+    return;
+#if 0
     // No payload required; source information is sufficient
     uint8_t src_zap = event->getSrcZCID(); // this will be the zap
     uint16_t src_hart = event->getSrcHart();
@@ -419,6 +423,8 @@ void ZQM::processMessagingHartDone(SST::Forza::zopEvent *event)
         output.fatal(CALL_INFO, 1, "Received a HART done notification for an unused HART; ZAP=%u, HART=%u\n",
                      (uint32_t) src_zap, (uint32_t) src_hart);
     }
+#endif
+
 }
 
 void ZQM::processIncomingThreadsMsgs()
@@ -578,7 +584,7 @@ void ZQM::doSimpleMsg()
     payload.push_back(0x0); // min HART ID
     payload.push_back(511); // max HART id
     payload.push_back(0); // Mem buffer low
-    payload.push_back(16*ZqmAidStateTableRow::ThreadLengthBytes); // Mem buffer high
+    payload.push_back((16*34*8)-1); // Mem buffer high
     dummy_zop2->setPayload(payload);
 
     // Send Zop
@@ -589,12 +595,12 @@ void ZQM::doSimpleMsg()
 
 void ZQM::sendDummyThread()
 {
-    SST::Forza::zopEvent *thread = new SST::Forza::zopEvent(zopMsgT::Z_MSG, zopOpc::Z_TMIG_SELECT);
+    SST::Forza::zopEvent *thread = new SST::Forza::zopEvent(zopMsgT::Z_TMIG, zopOpc::Z_TMIG_SELECT);
 
     // Fill in Zop src/dest info
     thread->setSrcZCID(zopCompID::Z_ZAP1);
     thread->setSrcPrec(precinct_id);
-    thread->setSrcPCID(zopPrecID::Z_ZONE6);
+    thread->setSrcPCID((uint8_t)zopPrecID::Z_ZONE6);
     thread->setDestZCID(zopCompID::Z_ZAP0);
     thread->setDestPrec(precinct_id);
     thread->setDestPCID(zone_id);
@@ -613,9 +619,12 @@ void ZQM::sendDummyThread()
 
 void ZQM::sendHartDone()
 {
+    // The zopNIC appears to be choking pretty hard on this message type - not sure why.
+
     // Do a ZQM setup messaging packet
     SST::Forza::zopEvent *dummy_zop2 = new SST::Forza::zopEvent(zopMsgT::Z_MSG, zopOpc::Z_MSG_ZQMHARTDONE);
 
+    output.output("HartDone type=%u, opcode=%u\n", (uint32_t)dummy_zop2->getType(), (uint32_t)dummy_zop2->getOpc());
     // Fill in Zop src/dest info
     dummy_zop2->setSrcZCID(zopCompID::Z_ZAP0);
     dummy_zop2->setSrcPrec(precinct_id);
@@ -627,9 +636,14 @@ void ZQM::sendHartDone()
     dummy_zop2->setAppID(0xa);
     dummy_zop2->setID(msg_id++);
 
+    // Set a payload?
+    std::vector<uint64_t> payload;
+    payload.push_back(0xdeadbeef);
+    dummy_zop2->setPayload(payload);
+
     // Send Zop
     output.verbose(CALL_INFO, 1, 0, "Sending ZQM HART DONE; msg_id=%u\n", (uint32_t)dummy_zop2->getID());
-    m_zop_iface->send(dummy_zop2, zopCompID::Z_ZQM);
+    //m_zop_iface->send(dummy_zop2, zopCompID::Z_ZQM);
 }
 
 bool ZQM::clock(Cycle_t cycle)
@@ -651,12 +665,14 @@ bool ZQM::clock(Cycle_t cycle)
         doSimpleMsg();
     }
 
-    if (cycle == 1000){
-        sendDummyThread();
-    }
+    //if (cycle == 1000){
+    //    sendDummyThread();
+   // }
 
-    if (cycle == 1500)
+    if (cycle == 1500){
+	output.output("Cycle 1500\n");
         sendHartDone();
+    }
 
     return false;
 
