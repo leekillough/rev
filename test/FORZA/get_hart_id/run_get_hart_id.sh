@@ -4,9 +4,9 @@
 make clean && make
 
 # Check that the exec was built...
-if [ -f amoadd_c.exe ]; then
-  sst --add-lib-path=../../build/src/ ./rev-amoadd_c.py
+if [ -f get_hart_id.exe ]; then
+	sst --add-lib-path=../../build/src/ ./rev_get_hart_id.py
 else
-  echo "Test FORZA amoadd_c: amoadd_c.exe not Found - likely build failed"
-  exit 1
+	echo "Test FORZA get_hart_id: get_hart_id.exe not Found - likely build failed"
+	exit 1
 fi
