@@ -601,6 +601,7 @@ bool zopNIC::handleFence(zopEvent *ev){
     // fence has not been encountered, set it
     ev->setFence();
     HARTFence[ReqHart]++;
+    recordStat( getStatFromPacket(ev), 1 );
     output.verbose(CALL_INFO, 9, 0,
                    "Issuing FENCE from %s @ [hart:zcid:pcid:type]=[%d:%d:%d:%s]\n",
                    getName().c_str(),
