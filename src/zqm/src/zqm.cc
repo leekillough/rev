@@ -340,14 +340,15 @@ void ZQM::sendThreadToZap(SST::Forza::zopEvent *thread)
         output.fatal(CALL_INFO, 1, "TMIG Dest already occupied; ZAP=%u, HART=%u\n",
                      (uint32_t) dest_zap, (uint32_t) dest_hart);
     } else {
-        zap_hart_status.at(dest_zap).at(dest_hart) = true;
+        output.output("Set dz=%u, dh=%u to true\n", dest_zap, dest_hart);
+	zap_hart_status.at(dest_zap).at(dest_hart) = true;
         ZqmAidStateTableRow *aid_state = getAidStateTableRow(thread->getAppID());
         aid_state->harts_available--;
         ha = aid_state->harts_available;
     }
     output.verbose(CALL_INFO, 1, 0, "Sending thread to ZAP=%u, HART=%u; ZAP harts avail=%d\n",
                    dest_zap, dest_hart, ha);
-    selected_hart = (uint32_t)ha;
+    selected_hart = (uint32_t)dest_hart;
     //m_zop_iface->send(thread, static_cast<SST::Forza::zopCompID>(dest_zap));
 }
 
@@ -406,8 +407,6 @@ void ZQM::processMessagingZqmSet(SST::Forza::zopEvent *event)
 void ZQM::processMessagingHartDone(SST::Forza::zopEvent *event)
 {
     output.verbose(CALL_INFO, 1, 0, "Here\n");
-    return;
-#if 0
     // No payload required; source information is sufficient
     uint8_t src_zap = event->getSrcZCID(); // this will be the zap
     uint16_t src_hart = event->getSrcHart();
@@ -423,8 +422,6 @@ void ZQM::processMessagingHartDone(SST::Forza::zopEvent *event)
         output.fatal(CALL_INFO, 1, "Received a HART done notification for an unused HART; ZAP=%u, HART=%u\n",
                      (uint32_t) src_zap, (uint32_t) src_hart);
     }
-#endif
-
 }
 
 void ZQM::processIncomingThreadsMsgs()
@@ -464,8 +461,11 @@ void ZQM::processIncomingThreadsMsgs()
                 sendThreadToRza(thread);
             } else {
                 if (ha > of) {
-                    selectDestHart(thread);
-                    sendThreadToZap(thread);
+                    if(!selectDestHart(thread))
+			    output.output("Failed to pick a hart\n");
+		    selected_hart = (uint32_t)thread->getDestHart();
+                    output.output("Selected hart=%u\n", selected_hart);
+		    sendThreadToZap(thread);
                 } else {
                     sendThreadToRza(thread);
                 }
@@ -490,6 +490,7 @@ bool ZQM::selectDestHart(SST::Forza::zopEvent *thread)
     for (size_t i = 0; i < zap_hart_status.size(); i++){
         for (auto j = aid_state->min_zap_hart; j <= aid_state->max_zap_hart; j++)
             num_free_harts[i] += (zap_hart_status[i][j]) ? 0 : 1;
+	output.output("Num free harts=%u\n", num_free_harts[i]);    
     }
 
     // Check if all zaps are fully occupied/find lowest occupancy
@@ -507,17 +508,24 @@ bool ZQM::selectDestHart(SST::Forza::zopEvent *thread)
     if (max_zap == -1)
         return false;
 
+    output.output("max_zap=%d\n", max_zap);	
+
     // Set destination HART to first available hart in zap we just found
-    for (uint32_t i = zap_hart_status[max_zap][aid_state->min_zap_hart];
-         i <= zap_hart_status[max_zap][aid_state->max_zap_hart];
-         i++){
+    for (uint32_t i = aid_state->min_zap_hart; i <= aid_state->max_zap_hart; i++){
+	    if (zap_hart_status[max_zap][i]){
+		    output.output("Zap used; mz=%u, i=%u\n", max_zap, i);
+	    } else {
+		    output.output("Zap free; mz=%u, i=%u\n", max_zap, i);
+	    }
         if (!zap_hart_status[max_zap][i]){
             thread->setDestZCID(max_zap);
             thread->setDestHart(i);
             thread->setOpc(zopOpc::Z_TMIG_FIXED);
             output.verbose(CALL_INFO, 1, 0, "HART selected: ZAP=%d, HART=%u\n", max_zap, i);
-
-        }
+	    break;
+        } else {
+	    output.output("zap=%d, i=%u\n", max_zap, i);
+	}
     }
     return true;
 }
@@ -619,8 +627,6 @@ void ZQM::sendDummyThread()
 
 void ZQM::sendHartDone()
 {
-    // The zopNIC appears to be choking pretty hard on this message type - not sure why.
-
     // Do a ZQM setup messaging packet
     SST::Forza::zopEvent *dummy_zop2 = new SST::Forza::zopEvent(zopMsgT::Z_MSG, zopOpc::Z_MSG_ZQMHARTDONE);
 
@@ -629,6 +635,11 @@ void ZQM::sendHartDone()
     dummy_zop2->setSrcZCID(zopCompID::Z_ZAP0);
     dummy_zop2->setSrcPrec(precinct_id);
     dummy_zop2->setSrcPCID(zone_id);
+    output.output("selected hart = 0x%x\n", selected_hart);
+    if (selected_hart > 500){
+	    output.output("Change selected hart\n");
+	    selected_hart = 3;
+    }
     dummy_zop2->setSrcHart((uint16_t)selected_hart);
     dummy_zop2->setDestZCID(zopCompID::Z_ZQM);
     dummy_zop2->setDestPrec(precinct_id);
@@ -643,7 +654,7 @@ void ZQM::sendHartDone()
 
     // Send Zop
     output.verbose(CALL_INFO, 1, 0, "Sending ZQM HART DONE; msg_id=%u\n", (uint32_t)dummy_zop2->getID());
-    //m_zop_iface->send(dummy_zop2, zopCompID::Z_ZQM);
+    m_zop_iface->send(dummy_zop2, zopCompID::Z_ZQM);
 }
 
 bool ZQM::clock(Cycle_t cycle)
@@ -664,16 +675,13 @@ bool ZQM::clock(Cycle_t cycle)
     if (cycle == 20){
         doSimpleMsg();
     }
-
-    //if (cycle == 1000){
-    //    sendDummyThread();
-   // }
-
-    if (cycle == 1500){
+    if (cycle == 1000 || cycle == 1100 || cycle == 4500){
+        sendDummyThread();
+    }
+    if (cycle == 2000){
 	output.output("Cycle 1500\n");
         sendHartDone();
     }
-
     return false;
 
     // CODE FOR TESTING

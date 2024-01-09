@@ -22,6 +22,8 @@ import sst
 #VERBOSE = int(sys.argv[4])
 
 sst.setProgramOption("verbose", "1")
+sst.setProgramOption("timebase", "1 ps")
+sst.setProgramOption("stop-at", "1ms")
 
 
 # Note: Copied from zen-test.py (and matches zen-test-rza.py also)
@@ -75,8 +77,8 @@ rtr_params = {
 # sst.Component(name here, type - (sub)component name from ELI)
 zqm_module = sst.Component("zqm_module", "forzazqm.ZQM")
 zqm_module.addParams({
-    "clockFreq" : "2GHz",
-    "clockTicks" : 2000,
+    "clockFreq" : "1GHz",
+    "clockTicks" : 3000,
     "numCores" : 1,
     "numHarts" : 16,
     "precinctId" : 0,
@@ -129,9 +131,10 @@ router.addParams(rtr_params)
 #sst.enableAllStatisticsForComponentType("memHierarchy.standardCPU")
 
 ## TODO: DEFINE LINKS BETWEEN MODULES ##
+#connect( (interface, port name, port latency), (interface, port name, port latency) )
 # Link between zone router and mzopiface_lc (part of the zone_nic in the zqm)
 zqm_router_link = sst.Link("zqm_router_link")
-zqm_router_link.connect( (zqm_nic_iface, "rtr_port", "1us"), (router, "port0", "1us") )
+zqm_router_link.connect( (zqm_nic_iface, "rtr_port", "100ns"), (router, "port0", "100ns") )
 
 # Link between zone router and zopgeniface_lc (part of the zopgen_lc inside of ZOPGen)
 #zopgen_router_link = sst.Link("zopgen_router_link")
