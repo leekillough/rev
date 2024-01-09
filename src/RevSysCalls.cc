@@ -3229,4 +3229,12 @@ EcallStatus RevProc::ECALL_forza_scratchpad_free(RevInst& inst){
 
   return EcallStatus::SUCCESS;
 }
+
+// 4002, forza_get_hart_id();
+EcallStatus RevProc::ECALL_forza_get_hart_id(RevInst& inst){
+  output->verbose(CALL_INFO, 2, 0, "ECALL: forza_get_hart_id called by thread %" PRIu32 " on hart %" PRIu32 "\n", GetActiveThreadID(), HartToExecID);
+  RegFile->SetX(RevReg::a0, HartToExecID);
+  return EcallStatus::SUCCESS;
+}
+
 } // namespace SST::RevCPU
