@@ -582,7 +582,7 @@ void ZQM::doSimpleMsg()
     // Zop Payload
     std::vector<uint64_t> payload;
     payload.push_back(0x0); // min HART ID
-    payload.push_back(511); // max HART id
+    payload.push_back(0x1); // max HART id
     payload.push_back(0); // Mem buffer low
     payload.push_back((16*34*8)-1); // Mem buffer high
     payload.push_back(1); // sequential_hart_loading
@@ -661,9 +661,11 @@ bool ZQM::clock(Cycle_t cycle)
     if (cycle == 20){
         doSimpleMsg();
     }
-    if (cycle == 1000 || cycle == 1100 || cycle == 4500){
+    if ((cycle > 0) && (cycle % 1000 == 0) && (cycle < 9000)){
+    //if (cycle == 1000 || cycle == 1100 || cycle == 4500){
         sendDummyThread();
     }
+
     //if (cycle == 2000){
     //    sendHartDone(); // really only want to do this if sending one a single dummy thread
     //}

@@ -27,6 +27,7 @@ sst.setProgramOption("stop-at", "1ms")
 
 
 # Note: Copied from zen-test.py (and matches zen-test-rza.py also)
+# The following three batches of parameters are currently unused
 sst.addGlobalParams("networkLinkControl_params",{
     "input_buf_size" : "14kB",
     "job_id" : "0",
@@ -71,15 +72,13 @@ rtr_params = {
         "id" : 0
         }
 
-
-
 ## DEFINE ZQM ##
 # sst.Component(name here, type - (sub)component name from ELI)
 zqm_module = sst.Component("zqm_module", "forzazqm.ZQM")
 zqm_module.addParams({
     "clockFreq" : "1GHz",
     "clockTicks" : 3000,
-    "numCores" : 1,
+    "numCores" : 4,
     "numHarts" : 16,
     "precinctId" : 0,
     "zoneId" : 0
@@ -108,8 +107,6 @@ zqm_nic_iface.addParams(net_params)
 
 ## DEFINE ZONE ROUTER ##
 router = sst.Component("router", "merlin.hr_router")
-#router.addGlobalParamSet("router_params") # These params were set above
-#router.addParams({"id": 0, "num_ports": 1}) # Ports is 4 in zen-test - 2 zaps, rza (mem), zop gen
 router.setSubComponent("topology", "merlin.singlerouter")
 #merlin_topo.addGlobalParamSet("topology_params")
 router.addParams(net_params)
@@ -123,7 +120,6 @@ router.addParams(rtr_params)
 
 #prec_topo = prec_router.setSubComponent("topology", "merlin.singlerouter", 0)
 #prec_topo.addGlobalParamSet("topology_params")
-
 
 # Enable statistics - do later
 #sst.setStatisticLoadLevel(10)
