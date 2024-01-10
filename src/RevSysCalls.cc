@@ -3237,4 +3237,26 @@ EcallStatus RevProc::ECALL_forza_get_hart_id(RevInst& inst){
   return EcallStatus::SUCCESS;
 }
 
+// 4003, forza_send();
+EcallStatus RevProc::ECALL_forza_send(RevInst& inst){
+  output->verbose(CALL_INFO, 2, 0, "ECALL: forza_send called by thread %" PRIu32 " on hart %" PRIu32 "\n", GetActiveThreadID(), HartToExecID);
+  // TODO: Send by payload a ZOP to corresponding Destination.
+  return EcallStatus::SUCCESS;
+}
+
+// 4004, forza_poll();
+EcallStatus RevProc::ECALL_forza_poll(RevInst& inst){
+  output->verbose(CALL_INFO, 2, 0, "ECALL: forza_poll called by thread %" PRIu32 " on hart %" PRIu32 "\n", GetActiveThreadID(), HartToExecID);
+  // TODO: Identify corresponding ZEN queue. check if there is a ZOP and retrieve if there is.
+  RegFile->SetX(RevReg::a0, (uint64_t)nullptr);
+  return EcallStatus::SUCCESS;
+}
+
+// 4005, forzapopq();
+EcallStatus RevProc::ECALL_forza_popq(RevInst& inst){
+  output->verbose(CALL_INFO, 2, 0, "ECALL: forza_popq called by thread %" PRIu32 " on hart %" PRIu32 "\n", GetActiveThreadID(), HartToExecID);
+  // TODO: Identify corresponding ZEN queue and pop the top.
+  return EcallStatus::SUCCESS;
+}
+
 } // namespace SST::RevCPU
