@@ -19,6 +19,8 @@ static uint32_t selected_hart = 0xbeef;
 uint64_t ZqmAidStateTableRow::getMemAddr(bool do_read, bool update_ptr)
 {
     uint64_t addr_ptr = (do_read) ? mem_read_ptr : mem_write_ptr;
+    printf("Addr_ptr = 0x%lx, rd=0x%lx, wr=0x%lx\n", addr_ptr, mem_read_ptr, mem_write_ptr);
+    fflush(NULL);
     if (!update_ptr)
         return addr_ptr;
 
@@ -28,7 +30,14 @@ uint64_t ZqmAidStateTableRow::getMemAddr(bool do_read, bool update_ptr)
     if (next_ptr >= mem_buffer_high)
         next_ptr = mem_buffer_low;
 
+    printf("Next ptr=0x%lx\n", next_ptr);
+    if (do_read)
+	    printf("Do read\n");
+    else
+	    printf("Do write\n");
+
     // Verify that we can do *something*
+    // TODO: ELSE LOGIC IS BAD; REVIEW THIS
     if (do_read){
         if (mem_read_ptr == mem_write_ptr)
             return 0; // empty buffer
@@ -163,6 +172,8 @@ void ZQM::sendThreadToRza(SST::Forza::zopEvent *thread)
 {
     // Let's start by getting the state buffer entry for this AID
     ZqmAidStateTableRow *aid_state = getAidStateTableRow(thread->getAppID());
+
+    output.verbose(CALL_INFO, 1, 0, "appID=0x%x\n", thread->getAppID());
 
     // Going to need to get an address to write
     uint64_t addr_ptr = aid_state->getMemAddr(false, true);
@@ -339,7 +350,7 @@ void ZQM::sendThreadToZap(SST::Forza::zopEvent *thread)
     output.verbose(CALL_INFO, 1, 0, "Sending thread to ZAP=%u, HART=%u; ZAP harts avail=%d\n",
                    dest_zap, dest_hart, ha);
     selected_hart = (uint32_t)dest_hart;
-    m_zop_iface->send(thread, static_cast<SST::Forza::zopCompID>(dest_zap)); // TODO: UNCOMMENT IN FULL ZONE SIM
+    //m_zop_iface->send(thread, static_cast<SST::Forza::zopCompID>(dest_zap)); // TODO: UNCOMMENT IN FULL ZONE SIM
 }
 
 void ZQM::processMessagingMsgs()
@@ -690,8 +701,8 @@ void ZQM::configMTApp()
     std::vector<uint64_t> payload;
     payload.push_back(0x8); // min HART ID
     payload.push_back(0x9); // max HART id
-    payload.push_back(0); // Mem buffer low
-    payload.push_back((16*34*8)-1); // Mem buffer high
+    payload.push_back(0x1000); // Mem buffer low
+    payload.push_back(0x1000+((16*34*8)-1)); // Mem buffer high
     payload.push_back(0); // sequential_hart_loading
     mtconfig_pkt->setPayload(payload);
 
@@ -759,7 +770,7 @@ bool ZQM::clock(Cycle_t cycle)
 
     if (cycle == 30)
         configMTApp();
-    unsigned num_threads_to_send = 2;
+    unsigned num_threads_to_send = 9;
     Cycle_t max_send = 1000 + (num_threads_to_send * 1000);
     if ((cycle > 0) && (cycle % 1000 == 0) && (cycle < max_send)){
         sendMtThread();
