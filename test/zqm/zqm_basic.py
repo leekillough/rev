@@ -22,9 +22,12 @@ import sst
 #VERBOSE = int(sys.argv[4])
 
 sst.setProgramOption("verbose", "1")
+sst.setProgramOption("timebase", "1 ps")
+sst.setProgramOption("stop-at", "1ms")
 
 
 # Note: Copied from zen-test.py (and matches zen-test-rza.py also)
+# The following three batches of parameters are currently unused
 sst.addGlobalParams("networkLinkControl_params",{
     "input_buf_size" : "14kB",
     "job_id" : "0",
@@ -69,16 +72,14 @@ rtr_params = {
         "id" : 0
         }
 
-
-
 ## DEFINE ZQM ##
 # sst.Component(name here, type - (sub)component name from ELI)
 zqm_module = sst.Component("zqm_module", "forzazqm.ZQM")
 zqm_module.addParams({
-    "clockFreq" : "2GHz",
-    "clockTicks" : 2000,
-    "numCores" : 1,
-    "numHarts" : 16,
+    "clockFreq" : "1GHz",
+    "clockTicks" : 3000,
+    "numCores" : 4,
+    "numHarts" : 512,
     "precinctId" : 0,
     "zoneId" : 0
     #    "debug" : DEBUG,
@@ -106,8 +107,6 @@ zqm_nic_iface.addParams(net_params)
 
 ## DEFINE ZONE ROUTER ##
 router = sst.Component("router", "merlin.hr_router")
-#router.addGlobalParamSet("router_params") # These params were set above
-#router.addParams({"id": 0, "num_ports": 1}) # Ports is 4 in zen-test - 2 zaps, rza (mem), zop gen
 router.setSubComponent("topology", "merlin.singlerouter")
 #merlin_topo.addGlobalParamSet("topology_params")
 router.addParams(net_params)
@@ -122,16 +121,16 @@ router.addParams(rtr_params)
 #prec_topo = prec_router.setSubComponent("topology", "merlin.singlerouter", 0)
 #prec_topo.addGlobalParamSet("topology_params")
 
-
 # Enable statistics - do later
 #sst.setStatisticLoadLevel(10)
 #sst.setStatisticOutput("sst.statOutputConsole")
 #sst.enableAllStatisticsForComponentType("memHierarchy.standardCPU")
 
 ## TODO: DEFINE LINKS BETWEEN MODULES ##
+#connect( (interface, port name, port latency), (interface, port name, port latency) )
 # Link between zone router and mzopiface_lc (part of the zone_nic in the zqm)
 zqm_router_link = sst.Link("zqm_router_link")
-zqm_router_link.connect( (zqm_nic_iface, "rtr_port", "1us"), (router, "port0", "1us") )
+zqm_router_link.connect( (zqm_nic_iface, "rtr_port", "100ns"), (router, "port0", "100ns") )
 
 # Link between zone router and zopgeniface_lc (part of the zopgen_lc inside of ZOPGen)
 #zopgen_router_link = sst.Link("zopgen_router_link")

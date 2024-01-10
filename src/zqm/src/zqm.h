@@ -50,6 +50,7 @@ namespace SST::Forza{
         uint64_t mem_write_ptr;
         uint64_t mem_buffer_low;
         uint64_t mem_buffer_high;
+        bool sequential_hart_assignment;
         int32_t harts_available;
         int32_t run_queue_depth;
         int32_t outstanding_fills;
@@ -58,13 +59,14 @@ namespace SST::Forza{
         // Note: No valid data element - assuming that if the row exists, it's valid
         ZqmAidStateTableRow(uint32_t min_zap_hart_, uint32_t max_zap_hart_,
                             uint64_t mem_buffer_low_addr_, uint64_t mem_buffer_high_addr_,
-                            uint16_t num_zaps_) :
+                            bool sequential_hart_assignment_, uint16_t num_zaps_) :
                 min_zap_hart(min_zap_hart_),
                 max_zap_hart(max_zap_hart_),
                 mem_read_ptr(mem_buffer_low_addr_),
                 mem_write_ptr(mem_buffer_low_addr_),
                 mem_buffer_low(mem_buffer_low_addr_),
                 mem_buffer_high(mem_buffer_high_addr_),
+                sequential_hart_assignment(sequential_hart_assignment_),
                 run_queue_depth(0),
                 outstanding_fills(0)
         {
@@ -206,7 +208,8 @@ namespace SST::Forza{
          * @param thread
          * @return true if dest zap/hart filled, false otherwise
          */
-        bool selectDestHart(SST::Forza::zopEvent *thread);
+        bool selectRandomDestHart(SST::Forza::zopEvent *thread);
+        void selectSequentialDestHart(SST::Forza::zopEvent *thread, ZqmAidStateTableRow *aid_state);
 
         /**
          * Get the pointer to the state table for the given AID
@@ -258,6 +261,8 @@ namespace SST::Forza{
 
         // Functions for simple loopback testing
         void doSimpleMsg();
+        void sendDummyThread();
+        void sendHartDone();
 
     }; // class SST::ZQM
 } // namespace SST::Forza
