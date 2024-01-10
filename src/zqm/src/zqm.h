@@ -265,6 +265,10 @@ namespace SST::Forza{
         void sendDummyThread();
         void sendHartDone();
 
+        void configMTApp(); // mostly equiv to doSimpleMsg()
+        void sendMtThread(); // mostly equiv to sendDummyThread()
+
+
     }; // class SST::ZQM
 } // namespace SST::Forza
 

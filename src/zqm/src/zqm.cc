@@ -641,7 +641,7 @@ void ZQM::sendDummyThread()
         payload.push_back(i);
     payload.push_back(0x0cafe);
     thread->setPayload(payload);
-    output.verbose(CALL_INFO, 1, 0, "Sending MIGR THREAD; msg_id=%u\n", (uint32_t)thread->getID());
+    output.verbose(CALL_INFO, 1, 0, "Sending THREAD; msg_id=%u\n", (uint32_t)thread->getID());
     m_zop_iface->send(thread, zopCompID::Z_ZQM);
 }
 
@@ -670,6 +670,60 @@ void ZQM::sendHartDone()
     output.verbose(CALL_INFO, 1, 0, "Sending ZQM HART DONE; msg_id=%u\n", (uint32_t)dummy_zop2->getID());
     m_zop_iface->send(dummy_zop2, zopCompID::Z_ZQM);
 }
+
+void ZQM::configMTApp()
+{
+    // Do a ZQM setup messaging packet
+    SST::Forza::zopEvent *mtconfig_pkt = new SST::Forza::zopEvent(zopMsgT::Z_MSG, zopOpc::Z_MSG_ZQMSET);
+
+    // Fill in Zop src/dest info
+    mtconfig_pkt->setSrcZCID(zopCompID::Z_ZAP7);
+    mtconfig_pkt->setSrcPrec(precinct_id);
+    mtconfig_pkt->setSrcPCID(zone_id);
+    mtconfig_pkt->setDestZCID(zopCompID::Z_ZQM);
+    mtconfig_pkt->setDestPrec(precinct_id);
+    mtconfig_pkt->setDestPCID(zone_id);
+    mtconfig_pkt->setAppID(0xc);
+    mtconfig_pkt->setID(msg_id++);
+
+    // Zop Payload
+    std::vector<uint64_t> payload;
+    payload.push_back(0x8); // min HART ID
+    payload.push_back(0x9); // max HART id
+    payload.push_back(0); // Mem buffer low
+    payload.push_back((16*34*8)-1); // Mem buffer high
+    payload.push_back(0); // sequential_hart_loading
+    mtconfig_pkt->setPayload(payload);
+
+    // Send Zop
+    output.verbose(CALL_INFO, 1, 0, "Sending ZQM SETUP MSG; msg_id=%u\n", (uint32_t)mtconfig_pkt->getID());
+    m_zop_iface->send(mtconfig_pkt, zopCompID::Z_ZQM);
+}
+
+void ZQM::sendMtThread()
+{
+    SST::Forza::zopEvent *thread = new SST::Forza::zopEvent(zopMsgT::Z_TMIG, zopOpc::Z_TMIG_SELECT);
+
+    // Fill in Zop src/dest info
+    thread->setSrcZCID(zopCompID::Z_ZAP1);
+    thread->setSrcPrec(precinct_id);
+    thread->setSrcPCID((uint8_t)zopPrecID::Z_ZONE6);
+    thread->setDestZCID(zopCompID::Z_ZAP0);
+    thread->setDestPrec(precinct_id);
+    thread->setDestPCID(zone_id);
+    thread->setAppID(0xc);
+    thread->setID(msg_id++);
+
+    std::vector<uint64_t> payload;
+    payload.push_back(0x0dead);
+    for (auto i = 0; i < 31; i++)
+        payload.push_back(i);
+    payload.push_back(0x0cafe);
+    thread->setPayload(payload);
+    output.verbose(CALL_INFO, 1, 0, "Sending MIGR THREAD; msg_id=%u\n", (uint32_t)thread->getID());
+    m_zop_iface->send(thread, zopCompID::Z_ZQM);
+}
+
 
 bool ZQM::clock(Cycle_t cycle)
 {
@@ -702,6 +756,15 @@ bool ZQM::clock(Cycle_t cycle)
     //    sendHartDone(); // really only want to do this if sending one a single dummy thread
     //}
 #endif
+
+    if (cycle == 30)
+        configMTApp();
+    unsigned num_threads_to_send = 2;
+    Cycle_t max_send = 1000 + (num_threads_to_send * 1000);
+    if ((cycle > 0) && (cycle % 1000 == 0) && (cycle < max_send)){
+        sendMtThread();
+    }
+
     return false;
 }
 
