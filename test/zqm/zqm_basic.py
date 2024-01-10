@@ -79,7 +79,7 @@ zqm_module.addParams({
     "clockFreq" : "1GHz",
     "clockTicks" : 3000,
     "numCores" : 4,
-    "numHarts" : 16,
+    "numHarts" : 512,
     "precinctId" : 0,
     "zoneId" : 0
     #    "debug" : DEBUG,
