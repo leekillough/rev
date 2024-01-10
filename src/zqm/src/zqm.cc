@@ -339,7 +339,7 @@ void ZQM::sendThreadToZap(SST::Forza::zopEvent *thread)
     output.verbose(CALL_INFO, 1, 0, "Sending thread to ZAP=%u, HART=%u; ZAP harts avail=%d\n",
                    dest_zap, dest_hart, ha);
     selected_hart = (uint32_t)dest_hart;
-    //m_zop_iface->send(thread, static_cast<SST::Forza::zopCompID>(dest_zap)); // TODO: UNCOMMENT IN FULL ZONE SIM
+    m_zop_iface->send(thread, static_cast<SST::Forza::zopCompID>(dest_zap)); // TODO: UNCOMMENT IN FULL ZONE SIM
 }
 
 void ZQM::processMessagingMsgs()
@@ -660,8 +660,10 @@ bool ZQM::clock(Cycle_t cycle)
     // Remove to allow for pushing into devel
 #if 0
     if (cycle == 20){
-        doSimpleMsg();
+        doSimpleMsg(); // This will send the ZQM setup packet for the appID (see Zop spec)
     }
+    // 9 threads will try to be sent, setup packet only allows room for 8;
+    // will cause a fatal error (change cycle<10000 to cycle < 9000 to test 8)
     if ((cycle > 0) && (cycle % 1000 == 0) && (cycle < 10000)){
     //if (cycle == 1000 || cycle == 1100 || cycle == 4500){
         sendDummyThread();
