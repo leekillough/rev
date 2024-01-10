@@ -314,7 +314,7 @@ void ZQM::processRzaThreadDataReturn(SST::Forza::zopEvent *ev)
     thread->decodeEvent();
 
     // Get a destination HART & ship the thread
-    if (!selectDestHart(thread))
+    if (!selectRandomDestHart(thread))
         output.fatal(CALL_INFO, 1, "Returned thread didn't have a HART to go into...\n");
     sendThreadToZap(thread);
     ZqmAidStateTableRow *aid_state = getAidStateTableRow(thread->getAppID());
@@ -436,7 +436,7 @@ void ZQM::processIncomingThreadsMsgs()
             } else {
                 // If we're pulling something from the RunQueue, this thread has to go there
                 // to stay FIFO ordered
-                if ( (aid_state->run_queue_depth > 0) || (aid_state->outstanding_fills > 0){
+                if ( (aid_state->run_queue_depth > 0) || (aid_state->outstanding_fills > 0) ){
                     sendThreadToRza(thread);
                     return;
                 }
