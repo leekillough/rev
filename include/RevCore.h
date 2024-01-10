@@ -671,6 +671,9 @@ private:
   EcallStatus ECALL_forza_scratchpad_alloc(RevInst& inst); // 4000, forza_scratchpad_alloc(size_t size);
   EcallStatus ECALL_forza_scratchpad_free(RevInst& inst);  // 4001, forza_scratchpad_free(size_t size);
   EcallStatus ECALL_forza_get_hart_id(RevInst& inst);  // 4002, forza_get_hart_id();
+  EcallStatus ECALL_forza_send(RevInst& inst);  // 4003, forza_send();
+  EcallStatus ECALL_forza_poll(RevInst& inst);  // 4004, forza_poll();
+  EcallStatus ECALL_forza_popq(RevInst& inst);  // 4005, forza_popq();
 
   EcallStatus ECALL_dump_valid_mem();         // 9004, dump_valid_mem()
   EcallStatus ECALL_dump_valid_mem_to_file(); // 9005, dump_valid_mem_to_file(const char* outputFile)
