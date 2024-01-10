@@ -433,8 +433,8 @@ void ZQM::sendMessagingAck(SST::Forza::zopEvent *event)
     ack_msg->setSrcZCID(zopCompID::Z_ZQM);
     ack_msg->setSrcPCID(zone_id);
     ack_msg->setSrcPrec(precinct_id);
-
-    // TODO: Set msg ID - not sure if new or match sender
+    ack_msg->setID(event->getID());
+    ack_msg->setAppID(event->getAppID());
 
     // Put onto zop iface
     m_zop_iface->send(ack_msg, static_cast<zopCompID>(ack_msg->getDestZCID()));
