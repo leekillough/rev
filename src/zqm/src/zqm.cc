@@ -359,6 +359,7 @@ void ZQM::processMessagingMsgs()
                 output.verbose(CALL_INFO, 1, 0, "Received messaging packet; opcode = %x, id=%u\n",
                                (uint32_t) event->getOpc(), (uint32_t)event->getID());
         }
+        //sendMessagingAck(event); // TODO: Uncomment if sending ACKs to MSG packets
         delete event;
 	output.output("Done with MSG type\n");
     }
@@ -413,6 +414,30 @@ void ZQM::processMessagingHartDone(SST::Forza::zopEvent *event)
         output.fatal(CALL_INFO, 1, "Received a HART done notification for an unused HART; ZAP=%u, HART=%u\n",
                      (uint32_t) src_zap, (uint32_t) src_hart);
     }
+}
+
+void ZQM::sendMessagingAck(SST::Forza::zopEvent *event)
+{
+    // Create Messaging ACK zop
+    SST::Forza::zopEvent *ack_msg = new SST::Forza::zopEvent(zopMsgT::Z_MSG, zopOpc::Z_MSG_ACK);
+
+    // Set src/dest info
+    ack_msg->setDestHart(event->getSrcHart());
+    ack_msg->setDestZCID(event->getSrcZCID());
+    ack_msg->setDestPCID(event->getSrcPCID());
+    ack_msg->setDestPrecinct(event->getSrcPrecinct());
+    ack_msg->setSrcHart(0);
+    ack_msg->setSrcZCID(zopCompID::Z_ZQM);
+    ack_msg->setSrcPCID(zone_id);
+    ack_msg->setSrcPrecinct(precinct_id);
+
+    // Put onto zop iface
+    if ( (event->getSrcPCID() == zone_id) && (event->getSrcPrecinct() == precinct_id) )
+        m_zop_iface->send(ack_msg, ack_msg->getDestZCID());
+    else
+        m_zop_iface->send(ack_msg, zopCompID::Z_ZEN);
+
+    // Return - let the caller worry about deleting the event
 }
 
 // Going to use early returns in this function - its ugly.
