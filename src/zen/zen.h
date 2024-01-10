@@ -105,6 +105,7 @@ namespace SST::Forza{
     // describe the subcomponent slots
     SST_ELI_DOCUMENT_SUBCOMPONENT_SLOTS(
       {"zone_nic", "[FORZA] Zone NIC", "SST::Forza::zopNIC"},
+      {"precinct_nic", "[FORZA] Precinct NIC", "SST::Forza::zopNIC"},
     )
 
     // public class members
@@ -147,6 +148,7 @@ namespace SST::Forza{
     void notifyHARTScratchpad();
     void handleIncomingRZAMsg();
     void handleIncomingZOP(SST::Event *ev);
+    void handleIncomingPrecZOP(SST::Event *ev);
     void sendNACKToZAP(uint64_t hart_id, uint64_t zcid, uint8_t msg_id);
     void sendACKToZAP(uint64_t hart_id, uint64_t zcid, uint8_t msg_id);
     void sendNACKToZIP(uint64_t hart_id, uint64_t zcid, uint8_t msg_id);
@@ -176,6 +178,7 @@ namespace SST::Forza{
     // private data members
     SST::Output output;                   ///< ZEN: SST output handler
     SST::Forza::zopAPI* m_zop_iface;      ///< ZEN: ZOP Network interfaces for zone network
+    SST::Forza::zopAPI* m_prec_iface;     ///< ZEN: ZOP Network interfaces for precinct network
 
     // ----- BEGIN SST PARAMETERS
     unsigned Precinct;              ///< ZEN: Precinct ID

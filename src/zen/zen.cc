@@ -40,6 +40,12 @@ ZEN::ZEN(ComponentId_t id, Params& params)
   m_zop_iface->setEndpointType(zopCompID::Z_ZEN);
   m_zop_iface->setNumHarts(m_num_harts);  // TODO: why do we use 3 here?
 
+  // setup the precinct network
+  m_prec_iface = loadUserSubComponent<SST::Forza::zopAPI>( "precinct_nic" );
+  m_prec_iface->setMsgHandler(new Event::Handler<ZEN>(this, &ZEN::handleIncomingPrecZOP));
+  m_prec_iface->setEndpointType(zopCompID::Z_ZEN);
+  m_prec_iface->setNumHarts(m_num_harts);  // TODO: why do we use 3 here?
+
   // complete SST registration
   registerAsPrimaryComponent();
 }
@@ -67,10 +73,12 @@ uint64_t ZEN::getReadACS(uint64_t acs_pair) {
 void ZEN::init(unsigned int phase) {
   output.verbose(CALL_INFO, 1, 0, "ZEN ID %d\n", Zone);
   m_zop_iface->init(phase);
+  m_prec_iface->init(phase);
 }
 
 void ZEN::setup() {
   m_zop_iface->setup();
+  m_prec_iface->setup();
 }
 
 void ZEN::complete(unsigned int phase) {
@@ -79,6 +87,13 @@ void ZEN::complete(unsigned int phase) {
 
 void ZEN::finish() {
   output.verbose(CALL_INFO, 1, 0, "Finish()\n");
+}
+
+void ZEN::handleIncomingPrecZOP(SST::Event *event) {
+  SST::Forza::zopEvent* ev = static_cast<SST::Forza::zopEvent*>(event);
+  output.verbose(CALL_INFO, 9, 0, "Msg type %s, src %ld, dest %d src%d\n",
+                 m_prec_iface->msgTToStr(ev->getType()).c_str(), ev->getPacket()[1],
+                 ev->getDestHart(), ev->getSrcHart());
 }
 
 void ZEN::handleIncomingZOP(SST::Event *event) {
