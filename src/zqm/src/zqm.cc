@@ -345,21 +345,24 @@ void ZQM::sendThreadToZap(SST::Forza::zopEvent *thread)
 void ZQM::processMessagingMsgs()
 {
     for (auto &event : setup_reqs) {
-        output.verbose(CALL_INFO, 1, 0, "setup pkt for zqm\n");
+        output.verbose(CALL_INFO, 1, 0, "Processing setup packet for zqm\n");
         switch(event->getOpc()){
             case SST::Forza::zopOpc::Z_MSG_ZQMSET:
-                processMessagingZqmSet(event); break;
+                processMessagingZqmSet(event); 
+		// sendMessagingAck(event);
+		break;
             case SST::Forza::zopOpc::Z_MSG_ZQMHARTDONE:
-                processMessagingHartDone(event); break;
+                processMessagingHartDone(event);
+		//sendMessagingAck(event);       
+		break;
                 // TODO: Add ZQM Free AID (or equivalent)
                 // TODO: Add ZQM Set HART (needed for initial program thread)
             default:
-                //output.fatal(CALL_INFO, 1, "Received an expected zqm msg opcode = %u\n",
+                //output.fatal(CALL_INFO, 1, "Received an unexpected zqm msg opcode = %u\n",
                 //             (uint32_t)event->getOpc());
-                output.verbose(CALL_INFO, 1, 0, "Received messaging packet; opcode = %x, id=%u\n",
+                output.verbose(CALL_INFO, 1, 0, "Received an invalid messaging packet; opcode = 0x%x, id=%u\n",
                                (uint32_t) event->getOpc(), (uint32_t)event->getID());
         }
-        //sendMessagingAck(event); // TODO: Uncomment if sending ACKs to MSG packets
         delete event;
 	output.output("Done with MSG type\n");
     }
@@ -425,17 +428,16 @@ void ZQM::sendMessagingAck(SST::Forza::zopEvent *event)
     ack_msg->setDestHart(event->getSrcHart());
     ack_msg->setDestZCID(event->getSrcZCID());
     ack_msg->setDestPCID(event->getSrcPCID());
-    ack_msg->setDestPrecinct(event->getSrcPrecinct());
+    ack_msg->setDestPrec(event->getSrcPrec());
     ack_msg->setSrcHart(0);
     ack_msg->setSrcZCID(zopCompID::Z_ZQM);
     ack_msg->setSrcPCID(zone_id);
-    ack_msg->setSrcPrecinct(precinct_id);
+    ack_msg->setSrcPrec(precinct_id);
+
+    // TODO: Set msg ID - not sure if new or match sender
 
     // Put onto zop iface
-    if ( (event->getSrcPCID() == zone_id) && (event->getSrcPrecinct() == precinct_id) )
-        m_zop_iface->send(ack_msg, ack_msg->getDestZCID());
-    else
-        m_zop_iface->send(ack_msg, zopCompID::Z_ZEN);
+    m_zop_iface->send(ack_msg, static_cast<zopCompID>(ack_msg->getDestZCID()));
 
     // Return - let the caller worry about deleting the event
 }
@@ -595,7 +597,7 @@ void ZQM::doSimpleMsg()
     SST::Forza::zopEvent *dummy_zop2 = new SST::Forza::zopEvent(zopMsgT::Z_MSG, zopOpc::Z_MSG_ZQMSET);
 
     // Fill in Zop src/dest info
-    dummy_zop2->setSrcZCID(zopCompID::Z_ZQM);
+    dummy_zop2->setSrcZCID(zopCompID::Z_ZAP7);
     dummy_zop2->setSrcPrec(precinct_id);
     dummy_zop2->setSrcPCID(zone_id);
     dummy_zop2->setDestZCID(zopCompID::Z_ZQM);
@@ -687,6 +689,8 @@ bool ZQM::clock(Cycle_t cycle)
     if (cycle == 20){
         doSimpleMsg(); // This will send the ZQM setup packet for the appID (see Zop spec)
     }
+
+
     // 9 threads will try to be sent, setup packet only allows room for 8;
     // will cause a fatal error (change cycle<10000 to cycle < 9000 to test 8)
     if ((cycle > 0) && (cycle % 1000 == 0) && (cycle < 10000)){
