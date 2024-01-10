@@ -189,6 +189,7 @@ namespace SST::Forza{
         void processMessagingMsgs(); // invoked by clock handler
         void processMessagingZqmSet(SST::Forza::zopEvent *event);
         void processMessagingHartDone(SST::Forza::zopEvent *event);
+        void sendMessagingAck(SST::Forza::zopEvent *event);
 
 
         /**
