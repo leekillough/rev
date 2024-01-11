@@ -408,6 +408,15 @@ void ZQM::processMessagingZqmSet(SST::Forza::zopEvent *event)
                      app_id, mem_buffer_low, mem_buffer_high);
     aid_state_table.insert(std::pair<uint32_t, ZqmAidStateTableRow*>(app_id, aid_state_row));
     output.verbose(CALL_INFO, 1, 0, "Setup AID state table %u\n", app_id);
+
+    if (app_id == 0xd){
+        for (unsigned i = 0; i < num_zaps; i++) {
+            for (unsigned j = min_zap_hart; j < max_zap_hart; j++) {
+                zap_hart_status[i][j] = true;
+            }
+        }
+        aid_state_row->run_queue_depth = 1;
+    }
 }
 
 void ZQM::processMessagingHartDone(SST::Forza::zopEvent *event)
@@ -734,6 +743,59 @@ void ZQM::sendMtThread()
     m_zop_iface->send(thread, zopCompID::Z_ZQM);
 }
 
+void ZQM::configMtAndRunQueue()
+{
+    // Do a ZQM setup messaging packet
+    SST::Forza::zopEvent *mtconfig_pkt = new SST::Forza::zopEvent(zopMsgT::Z_MSG, zopOpc::Z_MSG_ZQMSET);
+
+    // Fill in Zop src/dest info
+    mtconfig_pkt->setSrcZCID(zopCompID::Z_ZAP7);
+    mtconfig_pkt->setSrcPrec(precinct_id);
+    mtconfig_pkt->setSrcPCID(zone_id);
+    mtconfig_pkt->setDestZCID(zopCompID::Z_ZQM);
+    mtconfig_pkt->setDestPrec(precinct_id);
+    mtconfig_pkt->setDestPCID(zone_id);
+    mtconfig_pkt->setAppID(0xd);
+    mtconfig_pkt->setID(msg_id++);
+
+    // Zop Payload
+    std::vector<uint64_t> payload;
+    payload.push_back(0x8); // min HART ID
+    payload.push_back(0x9); // max HART id
+    payload.push_back(0x1000); // Mem buffer low
+    payload.push_back(0x1000+((16*34*8)-1)); // Mem buffer high
+    payload.push_back(0); // sequential_hart_loading
+    mtconfig_pkt->setPayload(payload);
+
+    // Send Zop
+    output.verbose(CALL_INFO, 1, 0, "Sending ZQM SETUP MSG; msg_id=%u\n", (uint32_t)mtconfig_pkt->getID());
+    m_zop_iface->send(mtconfig_pkt, zopCompID::Z_ZQM);
+}
+
+void ZQM::sendHartDoneForRzaTest() {
+    // Do a ZQM setup messaging packet
+    SST::Forza::zopEvent *dummy_zop2 = new SST::Forza::zopEvent(zopMsgT::Z_MSG, zopOpc::Z_MSG_ZQMHARTDONE);
+
+    // Fill in Zop src/dest info
+    dummy_zop2->setSrcZCID(zopCompID::Z_ZAP1);
+    dummy_zop2->setSrcPrec(precinct_id);
+    dummy_zop2->setSrcPCID(zone_id);
+    dummy_zop2->setSrcHart(9);
+    dummy_zop2->setDestZCID(zopCompID::Z_ZQM);
+    dummy_zop2->setDestPrec(precinct_id);
+    dummy_zop2->setDestPCID(zone_id);
+    dummy_zop2->setAppID(0xd);
+    dummy_zop2->setID(msg_id++);
+
+    // Set a payload?
+    std::vector<uint64_t> payload;
+    payload.push_back(0xdeadbeef);
+    dummy_zop2->setPayload(payload);
+
+    // Send Zop
+    output.verbose(CALL_INFO, 1, 0, "Sending ZQM HART DONE; msg_id=%u\n", (uint32_t)dummy_zop2->getID());
+    m_zop_iface->send(dummy_zop2, zopCompID::Z_ZQM);
+}
 
 bool ZQM::clock(Cycle_t cycle)
 {
@@ -767,6 +829,10 @@ bool ZQM::clock(Cycle_t cycle)
     //}
 #endif
 
+#if 0
+    // This bit of code tests the filling of ZAPs for migrating threads
+    // and that if we send 9+ threads, that we kick one over to the
+    // RZA
     if (cycle == 30)
         configMTApp();
     unsigned num_threads_to_send = 9;
@@ -774,6 +840,14 @@ bool ZQM::clock(Cycle_t cycle)
     if ((cycle > 0) && (cycle % 1000 == 0) && (cycle < max_send)){
         sendMtThread();
     }
+#endif
+
+#if 1
+    if (cycle == 30)
+        configMtAndRunQueue();
+    if (cycle == 1000)
+        sendHartDoneForRzaTest();
+#endif
 
     return false;
 }
