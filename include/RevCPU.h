@@ -120,6 +120,9 @@ public:
     {"trcStartCycle",   "Starting tracer cycle (disables trcOp)",       "0"},
     {"splash",          "Display the splash logo",                      "0"},
     {"independentCoprocClock",  "Enables each coprocessor to register its own clock handler", "0"},
+    {"memTrafficInput",          "Input txt file for memory addres traffic",                      "Input_MemTraffic"},
+    {"memTrafficOutput",          "Output txt file for memory addres traffic",                      "Output_MemTraffic"},
+
     )
 
   // -------------------------------------------------------
@@ -205,7 +208,6 @@ public:
     {"FloatsExec",          "Total SP or DP float instructions executed",           "count",  1},
     {"TLBHitsPerCore",      "TLB hits per core",                                    "count",  1},
     {"TLBMissesPerCore",    "TLB misses per core",                                  "count",  1},
-
     {"TLBHits",             "TLB hits",                                             "count",  1},
     {"TLBMisses",           "TLB misses",                                           "count",  1},
     )
@@ -289,6 +291,8 @@ private:
   bool EnableCoProc;                  ///< RevCPU: Enable a co-processor attached to all cores
   bool EnableRZA;                     ///< RevCPU: Enables the RZA functionality
   bool EnableZopNIC;                  ///< RevCPU: Enables the ZONE/ZOP NIC functionality
+  std::string memTrafficInput;
+  std::string memTrafficOutput;
 
   bool EnableFaults;                  ///< RevCPU: Enable fault injection logic
   bool EnableCrackFaults;             ///< RevCPU: Enable Crack+Decode Faults
@@ -297,7 +301,7 @@ private:
   bool EnableALUFaults;               ///< RevCPU: Enable ALU faults
 
   bool DisableCoprocClock;            ///< RevCPU: Disables manual coproc clocking
-
+  
   unsigned Precinct;                  ///< RevCPU: FORZA precinct ID
   unsigned Zone;                      ///< RevCPU: FORZA zone ID
 
@@ -394,6 +398,9 @@ private:
   std::vector<Statistic<uint64_t>*> FloatsExec;
   std::vector<Statistic<uint64_t>*> TLBMissesPerCore;
   std::vector<Statistic<uint64_t>*> TLBHitsPerCore;
+
+
+
 
   //-------------------------------------------------------
   // -- FUNCTIONS

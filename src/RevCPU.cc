@@ -56,6 +56,8 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params )
     primaryComponentDoNotEndSim();
   }
 
+  // std::string ClockFreq = params.find<std::string>("clock", "1Ghz");
+  // printf("given Txt files : %s\n",txtFile.c_str());
   // Derive the simulation parameters
   // We must always derive the number of cores before initializing the options
   numCores = params.find<unsigned>("numCores", "1");
@@ -132,6 +134,9 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params )
     msgPerCycle = params.find<unsigned>("msgPerCycle", 1);
   }
 
+  
+
+
   // Look for the fault injection logic
   EnableFaults = params.find<bool>("enable_faults", 0);
   if( EnableFaults ){
@@ -149,6 +154,11 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params )
   // Create the memory object
   const uint64_t memSize = params.find<unsigned long>("memSize", 1073741824);
   EnableMemH = params.find<bool>("enable_memH", 0);
+
+  //Added for the security test 
+  std::string memTrafficInput = params.find<std::string>("memTrafficInput","nil");
+  std::string memTrafficOutput = params.find<std::string>("memTrafficOutput","nil");
+
   if( !EnableMemH ){
     // TODO: Use std::nothrow to return null instead of throwing std::bad_alloc
     Mem = new RevMem( memSize, Opts,  &output );
@@ -166,6 +176,13 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params )
 
     if( EnableFaults )
       output.verbose(CALL_INFO, 1, 0, "Warning: memory faults cannot be enabled with memHierarchy support\n");
+  }
+
+  if(memTrafficInput!="nil"){
+    Mem->updatePhysHistoryfromInput(memTrafficInput);
+  }
+  if(memTrafficOutput!="nil"){
+      Mem->setOutputFile(memTrafficOutput);
   }
 
   // FORZA: initialize scratchpad
@@ -673,12 +690,50 @@ void RevCPU::handleZOPMessageRZA(Forza::zopEvent *zev){
 
 void RevCPU::handleZOPThreadMigrate(Forza::zopEvent *zev){
   output.verbose(CALL_INFO, 9, 0, "[FORZA][RZA] Handling thread migration\n");
+
   if( zev == nullptr ){
     output.fatal(CALL_INFO, -1,
                  "[FORZA][RZA]: Cannot handle null thread migration\n");
   }
 
-  // TODO: handle the thread migration
+  const auto& pkt = zev->getPacket();
+  // The thread-specific
+  // data is formatted as follows:
+  // pkt[0] = <header info>
+  // pkt[1] = <header info>
+  // pkt[2] = THREAD PC
+  // pkt[3] = x[1] register contents
+  // pkt[4] = x[2] register contents
+  // pkt[5] = x[3] register contents
+  // ...
+  // pkt[33] = x[31] register contents
+  // pkt[34] = f[0] register contents
+  // pkt[35] = f[1] register contents
+  // ...
+  // pkt[65] = f[31] register contents
+
+  // Create the regfile
+  std::unique_ptr<RevRegFile> MigratedRegState = std::make_unique<RevRegFile>(Procs[0]->GetRevFeature());
+  MigratedRegState->SetPC(pkt[2]);
+  for( unsigned i=0; i<32; i++ ){
+    MigratedRegState->SetX(i, pkt[3+i]);
+  }
+
+  uint64_t ThreadMemTopAddr = MigratedRegState->GetX<uint64_t>(RevReg::tp);
+  uint64_t ThreadMemBaseAddr = ThreadMemTopAddr - Mem->GetTLSSize() - _STACK_SIZE_;
+
+  // TODO: Remove ThreadMemSeg upon ThreadCompletion (ie. ThreadState == DONE)
+  std::shared_ptr<MemSegment> seg = std::make_shared<MemSegment>(ThreadMemBaseAddr, Mem->GetTLSSize() + _STACK_SIZE_);
+  Mem->GetThreadMemSegs().push_back(seg);
+
+  std::unique_ptr<RevThread> MigratedThread = std::make_unique<RevThread>(GetNewThreadID(),    // TODO: Include in Payload
+                                                                          _INVALID_TID_,       // TODO: Include in payload
+                                                                          seg,
+                                                                          std::move(MigratedRegState));
+
+  output.verbose(CALL_INFO, 1, 0, "[FORZA][RZA] Received thread that starts at address: 0x%" PRIx64 "\n",
+                  pkt[2]);
+  ReadyThreads.push_back(std::move(MigratedThread));
 }
 
 void RevCPU::handleZOPMessageZAP(Forza::zopEvent *zev){
@@ -717,13 +772,14 @@ void RevCPU::handleZOPMessage(Event *ev){
     output.fatal(CALL_INFO, -1,
                  "[FORZA][handleZOPMessage] : zopEvent is null\n");
   }
-
   if( EnableRZA ){
     // handle a FORZA ZOP Message
     handleZOPMessageRZA(zev);
   }else{
     // I am a ZAP device, handle the message accordingly
-    handleZOPMessageZAP(zev);
+      handleZOPMessageZAP(zev);
+    }
+
   }
 }
 
@@ -931,6 +987,9 @@ bool RevCPU::clockTick( SST::Cycle_t currentCycle ){
       UpdateCoreStatistics(i);
       Procs[i]->PrintStatSummary();
     }
+    Mem->updatePhysHistorytoOutput();
+    
+
     primaryComponentOKToEndSim();
     output.verbose(CALL_INFO, 5, 0, "OK to end sim at cycle: %" PRIu64 "\n", static_cast<uint64_t>(currentCycle));
   } else {

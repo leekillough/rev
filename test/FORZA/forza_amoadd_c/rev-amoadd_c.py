@@ -37,7 +37,7 @@ zap_cpu1.addParams({
         "precinctId" : 0,                             # [FORZA] precinct ID
         "zoneId" : 0,                                 # [FORZA] zone ID
         "zapId" : 0,                                  # [FORZA] zap ID
-        "splash" : 0                                  # Display the splash message
+        "splash" : 0,                                 # Display the splash message,
 })
 
 
