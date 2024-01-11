@@ -720,7 +720,7 @@ void ZQM::sendHartDone()
     dummy_zop2->setSrcZCID(zopCompID::Z_ZAP0);
     dummy_zop2->setSrcPrec(precinct_id);
     dummy_zop2->setSrcPCID(zone_id);
-    dummy_zop2->setSrcHart((uint16_t)selected_hart);
+    dummy_zop2->setSrcHart(0); // May need to use a variable or change this value to match expected
     dummy_zop2->setDestZCID(zopCompID::Z_ZQM);
     dummy_zop2->setDestPrec(precinct_id);
     dummy_zop2->setDestPCID(zone_id);
