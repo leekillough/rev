@@ -275,12 +275,14 @@ void zopNIC::send(zopEvent *ev, zopCompID dest, zopPrecID zone, unsigned prec){
   }
 
   // check to see whether the designated destination is within the same precinct
+#if 0
   if( (getEndpointType() == Forza::zopCompID::Z_ZEN) &&
       (prec != getPrecinctID()) ){
     // this is a ZEN device and the target location is outside the local precint
     // route the request to the ZIP device
     ev->setDestPCID((uint8_t)(Forza::zopPrecID::Z_ZIP));
   }
+#endif
 
   SST::Interfaces::SimpleNetwork::Request *req =
     new SST::Interfaces::SimpleNetwork::Request();
