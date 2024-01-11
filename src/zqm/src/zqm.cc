@@ -19,7 +19,7 @@ static uint32_t selected_hart = 0xbeef;
 uint64_t ZqmAidStateTableRow::getMemAddr(bool do_read, bool update_ptr)
 {
     uint64_t addr_ptr = (do_read) ? mem_read_ptr : mem_write_ptr;
-    printf("Addr_ptr = 0x%lx, rd=0x%lx, wr=0x%lx\n", addr_ptr, mem_read_ptr, mem_write_ptr);
+    //printf("Addr_ptr = 0x%lx, rd=0x%lx, wr=0x%lx\n", addr_ptr, mem_read_ptr, mem_write_ptr);
     fflush(NULL);
     if (!update_ptr)
         return addr_ptr;
@@ -30,11 +30,11 @@ uint64_t ZqmAidStateTableRow::getMemAddr(bool do_read, bool update_ptr)
     if (next_ptr >= mem_buffer_high)
         next_ptr = mem_buffer_low;
 
-    printf("Next ptr=0x%lx\n", next_ptr);
-    if (do_read)
-	    printf("Do read\n");
-    else
-	    printf("Do write\n");
+    //printf("Next ptr=0x%lx\n", next_ptr);
+    //if (do_read)
+//	    printf("Do read\n");
+  //  else
+//	    printf("Do write\n");
 
     if (do_read){
         if (mem_read_ptr == mem_write_ptr) { // nothing to read
@@ -411,11 +411,13 @@ void ZQM::processMessagingZqmSet(SST::Forza::zopEvent *event)
 
     if (app_id == 0xd){
         for (unsigned i = 0; i < num_zaps; i++) {
-            for (unsigned j = min_zap_hart; j < max_zap_hart; j++) {
+            for (unsigned j = min_zap_hart; j <= max_zap_hart; j++) {
                 zap_hart_status[i][j] = true;
             }
         }
         aid_state_row->run_queue_depth = 1;
+	aid_state_row->mem_write_ptr = 0x01110;
+	aid_state_row->harts_available = 0;
     }
 }
 
@@ -425,8 +427,8 @@ void ZQM::processMessagingHartDone(SST::Forza::zopEvent *event)
     uint8_t src_zap = event->getSrcZCID(); // this will be the zap
     uint16_t src_hart = event->getSrcHart();
 
-    output.verbose(CALL_INFO, 1, 0, "process SetupMsgHartDone, zap=%u, hart=%u\n",
-                   src_zap, src_hart);
+    output.verbose(CALL_INFO, 1, 0, "process SetupMsgHartDone, appID=%u, ap=%u, hart=%u\n",
+                   event->getAppID(), src_zap, src_hart);
 
     if (zap_hart_status.at(src_zap).at(src_hart)) {
         zap_hart_status.at(src_zap).at(src_hart) = false;
