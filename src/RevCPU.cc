@@ -181,6 +181,7 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params ) : SST::Compon
   }
 
   if(memTrafficInput!="nil"){
+    std::cout<<"MemTraffic Input "<<memTrafficInput<<"\n";
     Mem->updatePhysHistoryfromInput(memTrafficInput);
   }
   if(memTrafficOutput!="nil"){
