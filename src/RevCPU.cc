@@ -780,7 +780,6 @@ void RevCPU::handleZOPMessage(Event *ev){
       handleZOPMessageZAP(zev);
     }
 
-  }
 }
 
 void RevCPU::handleMessage(Event *ev){
