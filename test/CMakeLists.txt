@@ -188,6 +188,13 @@ macro(add_rev_test test_name test_dir timeout labels)
 
   else()
     # Custom target for running the specified script
+    #add_custom_target(run_${test_name_lower}_script
+   #   COMMAND ${CMAKE_COMMAND} -E echo "Executing script ${optional_script}"
+   #   COMMAND cd ${CMAKE_CURRENT_SOURCE_DIR}/${test_name_lower} && bash ${optional_script}
+   #   DEPENDS build_${test_name_lower}
+   #   COMMENT "Running script for ${test_name_lower} test"
+   # )
+
     add_custom_target(run_${test_name_lower}_script
       COMMAND ${CMAKE_COMMAND} -E echo "Executing script ${optional_script}"
       COMMAND bash ${optional_script}
