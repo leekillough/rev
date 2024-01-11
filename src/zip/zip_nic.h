@@ -1,0 +1,104 @@
+//
+// _zip_nic_h_
+//
+
+#ifndef _ZIP_NIC_H_
+#define _ZIP_NIC_H_
+
+#include "sst.h"
+#include "zip_events.h"
+#include <string>
+
+namespace SST::Forza{
+  // API for the HFI
+  class nicAPI: public SST::SubComponent{
+  public:
+    SST_ELI_REGISTER_SUBCOMPONENT_API(SST::Forza::nicAPI)
+    nicAPI(ComponentId_t id, Params& params) : SubComponent(id) { }
+    virtual ~nicAPI() = default;
+    virtual void setMsgHandler(Event::HandlerBase* handler) = 0;
+    virtual void init(unsigned int phase) = 0;
+    virtual void setup() { }
+    virtual void send(ZIPEvent *ev, int dest) = 0;
+    virtual int getNumDestinations() = 0;
+    virtual SST::Interfaces::SimpleNetwork::nid_t getAddress() = 0;
+  };
+
+  // HFI NIC for the ZIP (based on Rev NIC)
+  class ZIPHFINIC : public nicAPI {
+  public:
+    // Register with the SST Core
+    SST_ELI_REGISTER_SUBCOMPONENT(
+      ZIPHFINIC,
+      "ForzaZIP",
+      "ZIPHFINIC",
+      SST_ELI_ELEMENT_VERSION(1, 0, 0),
+      "ZIP HFI NIC",
+      SST::Forza::nicAPI
+      )
+
+    // Register the parameters
+    SST_ELI_DOCUMENT_PARAMS(
+      {"clock", "Clock frequency of the NIC", "1Ghz"},
+      {"port", "Port to use, if loaded as an anonymous subcomponent", "network"},
+      {"verbose", "Verbosity for output (0 = nothing)", "0"},
+      )
+
+    // Register the ports
+    SST_ELI_DOCUMENT_PORTS(
+      {"network", "Port to network", {"SST::Forza::ZIPEvent"} }
+      )
+
+    // Register the subcomponent slots
+    SST_ELI_DOCUMENT_SUBCOMPONENT_SLOTS(
+      {"iface", "SimpleNetwork interface to a network", "SST::Interfaces::SimpleNetwork"}
+      )
+
+    /// ZIPHFINIC: constructor
+    ZIPHFINIC(ComponentId_t id, Params& params);
+
+    /// ZIPHFINIC: destructor
+    virtual ~ZIPHFINIC();
+
+    /// ZIPHFINIC: Callback to parent on received messages
+    virtual void setMsgHandler(Event::HandlerBase* handler);
+
+    /// ZIPHFINIC: initialization function
+    virtual void init(unsigned int phase);
+
+    /// ZIPHFINIC: setup function
+    virtual void setup();
+
+    /// ZIPHFINIC: send event to the destination id
+    virtual void send(ZIPEvent *ev, int dest);
+
+    /// ZIPHFINIC: retrieve the number of destinations
+    virtual int getNumDestinations();
+
+    /// ZIPHFINIC: get the endpoint's network address
+    virtual SST::Interfaces::SimpleNetwork::nid_t getAddress();
+
+    /// ZIPHFINIC: callback function for the SimpleNetwork interface
+    bool msgNotify(int virtualNetwork);
+
+    /// ZIPHFINIC: clock function
+    virtual bool clockTick(Cycle_t cycle);
+
+  protected:
+    SST::Output* output;                    ///< ZIPHFINIC: SST output object
+
+    SST::Interfaces::SimpleNetwork * iFace; ///< ZIPHFINIC: SST network interface
+
+    SST::Event::HandlerBase *msgHandler;    ///< ZIPHFINIC: SST message handler
+
+    bool initBroadcastSent;                 ///< ZIPHFINIC: has the init bcast been sent?
+
+    int numDest;                            ///< ZIPHFINIC: number of SST destinations
+
+    std::queue<SST::Interfaces::SimpleNetwork::Request*> sendQ; ///< ZIPHFINIC: buffered send queue
+  };
+} // namespace SST::Forza
+
+#endif // _ZIP_NIC_H_
+
+// EOF

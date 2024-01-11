@@ -11,11 +11,29 @@
 #include <map>
 
 // -- SST Headers
-#include "zip_sst.h"
+#include "sst.h"
 
 namespace SST::Forza{
 
   using namespace SST::Interfaces;
+
+  // target class so that we can keep track of when read and write requests finish
+  class ZIPMemTarget {
+    public:
+      ZIPMemTarget() : done(false) {}
+      ZIPMemTarget(std::vector<uint8_t> target) : done(false), target(target) {}
+      ~ZIPMemTarget() {}
+
+      bool isDone() { return done; }
+      void setDone() { done = true; }
+
+      std::vector<uint8_t> getTarget() { return target; };
+      void setTarget(std::vector<uint8_t> t) { target = t; };
+
+    private:
+      bool done;
+      std::vector<uint8_t> target;
+  };
 
   // ------------------------------------------------------------
   // ZIPMemOp Class
@@ -28,13 +46,8 @@ namespace SST::Forza{
     };
 
     /// ZIPMemOp: constructor
-    ZIPMemOp(MemOp Op, uint64_t Addr, uint32_t Size)
-      : Op(Op), Addr(Addr), Size(Size){}
-
-    /// ZIPMemOp: overloaded constructor
-    ZIPMemOp(MemOp Op, uint64_t Addr, uint32_t Size,
-             std::vector<uint8_t> buffer)
-      : Op(Op), Addr(Addr), Size(Size), membuf(buffer){}
+    ZIPMemOp(MemOp Op, uint64_t Addr, uint32_t Size, ZIPMemTarget* Target)
+      : Op(Op), Addr(Addr), Size(Size), Target(Target){}
 
     /// ZIPMemOp: destructor
     ~ZIPMemOp() = default;
@@ -49,7 +62,10 @@ namespace SST::Forza{
     uint32_t getSize() const { return Size; }
 
     /// ZIPMemOp: retrieve the buffer
-    std::vector<uint8_t> getBuf() const { return membuf; }
+    std::vector<uint8_t> getBuf() const { return Target->getTarget(); }
+
+    /// ZIPMemOp: retrieve the target
+    ZIPMemTarget* getTarget() const { return Target; }
 
     /// ZIPMemOp: set the operation type
     void setOp(MemOp O) { Op = O; }
@@ -64,7 +80,7 @@ namespace SST::Forza{
     MemOp Op;                       ///< ZIPMemOp: target memory operation
     uint64_t Addr;                  ///< ZIPMemOp: address
     uint32_t Size;                  ///< ZIPMemOp: size of the request
-    std::vector<uint8_t> membuf;    ///< ZIPMemOp: memory buffer
+    ZIPMemTarget* Target;           ///< ZIPMemOp: memory target
   };
 
   // ------------------------------------------------------------
@@ -114,11 +130,10 @@ namespace SST::Forza{
     virtual void handleInvResp(StandardMem::InvNotify* ev) = 0;
 
     /// ZIPMemCtrl: send a read request
-    virtual bool sendWRITERequest(uint64_t Addr, uint32_t Size,
-                                  std::vector<uint8_t> buf) = 0;
+    virtual bool sendWRITERequest(uint64_t Addr, uint32_t Size, ZIPMemTarget* Target) = 0;
 
     /// ZIPMemCtrl: send a read request
-    virtual bool sendREADRequest(uint64_t Addr, uint32_t Size) = 0;
+    virtual bool sendREADRequest(uint64_t Addr, uint32_t Size, ZIPMemTarget* Target) = 0;
 
   protected:
     SST::Output output;       ///< ZIPMemCtrl: sst output object
@@ -201,11 +216,10 @@ namespace SST::Forza{
     virtual void handleInvResp(StandardMem::InvNotify* ev) override;
 
     /// ZIPMemCtrl: send a read request
-    virtual bool sendWRITERequest(uint64_t Addr, uint32_t Size,
-                                  std::vector<uint8_t> buf) override;
+    virtual bool sendWRITERequest(uint64_t Addr, uint32_t Size, ZIPMemTarget* Target) override;
 
     /// ZIPMemCtrl: send a read request
-    virtual bool sendREADRequest(uint64_t Addr, uint32_t Size) override;
+    virtual bool sendREADRequest(uint64_t Addr, uint32_t Size, ZIPMemTarget* Target) override;
 
   protected:
     class ZIPStdMemHandlers : public Interfaces::StandardMem::RequestHandler {

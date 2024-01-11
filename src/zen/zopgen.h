@@ -7,15 +7,15 @@
 #define _ZOPGen_H_
 
 #include "zen_sst.h"
-#include "ZOPNet.h"
+#include "ZOPNET.h"
 #include <string>
 
 namespace SST::Forza{
   class ZOPGenEntry {
   public:
-    SST::Forza::zenZopEvent *msg;
+    SST::Forza::zopEvent *msg;
     uint64_t status;
-    ZOPGenEntry(SST::Forza::zenZopEvent *m, uint64_t s) {
+    ZOPGenEntry(SST::Forza::zopEvent *m, uint64_t s) {
       msg = m;
       status = s;
     }
@@ -43,7 +43,7 @@ namespace SST::Forza{
     // register the component
     SST_ELI_REGISTER_COMPONENT(
       ZOPGen,                                    // component class
-      "Forza",                             // component libary
+      "forzazen",                             // component libary
       "ZOPGen",                                  // component name
       SST_ELI_ELEMENT_VERSION(1,0,0),         // Version of the component
       "ZOPGen: Forza ZOPGen component",             // description
@@ -92,12 +92,12 @@ namespace SST::Forza{
     void sendMsgToZOPGen(int i);
     void sendSetupToZOPGen();
     uint64_t getRZATailQueue(uint64_t harts, uint64_t size);
-    void sendMZOPAckToZOPGen(SST::Forza::zenZopEvent *ev);
-    void processMZOP(SST::Forza::zenZopEvent *ev);
-    void processMZOPSDMA(SST::Forza::zenZopEvent *ev);
-    void sendMZOPRespToZAP(SST::Forza::zenZopEvent *ev, std::vector<uint64_t> payload);
+    void sendMZOPAckToZOPGen(SST::Forza::zopEvent *ev);
+    void processMZOP(SST::Forza::zopEvent *ev);
+    void processMZOPSDMA(SST::Forza::zopEvent *ev);
+    void sendMZOPRespToZAP(SST::Forza::zopEvent *ev, std::vector<uint64_t> payload);
     void sendMsgToRZA(uint64_t addr, uint64_t size);
-    void processLoad(SST::Forza::zenZopEvent *ev);
+    void processLoad(SST::Forza::zopEvent *ev);
     void sendLoadToRZA(uint64_t addr, uint64_t size) ;
     uint64_t getReadACS(uint64_t acs_pair) ;
     uint64_t getWriteACS(uint64_t acs_pair) ;
@@ -115,14 +115,14 @@ namespace SST::Forza{
     SST::Interfaces::SimpleNetwork*     m_linkControl;
     std::map<uint64_t, ZOPGenTableRow*> hart_tables;
     std::map<uint64_t, std::vector<ZOPGenEntry*> > zopgen_queue;
-    std::vector<SST::Forza::zenZopEvent*> mem_acks;
-    std::vector<SST::Forza::zenZopEvent*> setup_reqs;
-    std::vector<SST::Forza::zenZopEvent*> zap_credits;
+    std::vector<SST::Forza::zopEvent*> mem_acks;
+    std::vector<SST::Forza::zopEvent*> setup_reqs;
+    std::vector<SST::Forza::zopEvent*> zap_credits;
     std::map<uint8_t, std::pair<uint64_t, uint64_t> > outstanding_mem_req;
     uint64_t int_id;
     uint8_t msg_id, cnt;
     uint64_t m_num_harts;
-    SST::Forza::zenZopAPI* m_zop_iface;
+    SST::Forza::zopAPI* m_zop_iface;
     std::unordered_map<uint64_t, uint64_t> mem_map;
     bool sent, setup_done, all_sent;
   }; // class SST::ZOPGen

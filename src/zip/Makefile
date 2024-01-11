@@ -10,10 +10,11 @@ endif
 CXX=$(shell sst-config --CXX)
 CXXFLAGS=$(shell sst-config --ELEMENT_CXXFLAGS)
 LDFLAGS=$(shell sst-config --ELEMENT_LDFLAGS)
-CPPFLAGS=-I./
-OPTIMIZE_FLAGS=-O2
+CPPFLAGS=-I../../include -I../../../forzarev/include
+# OPTIMIZE_FLAGS=-O2
+OPTIMIZE_FLAGS=-g -O0
 
-COMPONENT_LIB=libForzaZIP.so
+COMPONENT_LIB=libforzazip.so
 
 BASICCOMPONENT_SOURCES := $(wildcard *.cc)
 

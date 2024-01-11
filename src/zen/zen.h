@@ -170,6 +170,7 @@ namespace SST::Forza{
                        uint64_t hart_id, uint64_t queue_loc);
     void forwardPktToZIP(Forza::zopEvent *ev);
     void forwardPktToExtZEN(Forza::zopEvent *ev);
+    void processZIPQueue();
 
 
     /// ZEN: handle a network event
@@ -203,8 +204,11 @@ namespace SST::Forza{
     std::map<uint64_t, std::vector<ZENEntry*> > precinct_queue;
     std::vector<SST::Forza::zopEvent*> mem_acks;
     std::vector<SST::Forza::zopEvent*> setup_reqs;
+    uint64_t zip_credits;
     std::vector<SST::Forza::zopEvent*> zap_credits;
     std::map<uint8_t, ZENEntry*> outstanding_mem_req;
+
+    std::queue<SST::Forza::zopEvent*> zipQ;
 
   }; // class SST::ZEN
 } // namespace SST::Forza
