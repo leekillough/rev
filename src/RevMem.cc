@@ -14,6 +14,9 @@
 #include <iomanip>
 #include <memory>
 #include <utility>
+#include <mutex>
+#include <functional>
+#include <fstream>
 
 namespace SST::RevCPU {
 
@@ -260,6 +263,14 @@ uint64_t RevMem::CalcPhysAddr( uint64_t pageNum, uint64_t vAddr ) {
   /* Check if vAddr is in the TLB */
   uint64_t physAddr = SearchTLB( vAddr );
 
+  // output->verbose
+
+  // output->verbose(CALL_INFO,9,0,"[FORZA CalcPhysAddr]: Current Memory Request VAddr : %lu PAddr : %lu\n",
+  //                 vAddr,physAddr);
+  // printf("[FORZA CalcPhysAddr]: Current Memory Request VAddr : %lu PAddr : %lu\n",
+  //                 vAddr,physAddr);
+
+
   /* If not in TLB, physAddr will equal _INVALID_ADDR_ */
   if( physAddr == _INVALID_ADDR_ ) {
     /* Check if vAddr is a valid address before translating to physAddr */
@@ -284,6 +295,23 @@ uint64_t RevMem::CalcPhysAddr( uint64_t pageNum, uint64_t vAddr ) {
       } else {
         output->fatal( CALL_INFO, -1, "Error: Page allocated multiple times\n" );
       }
+
+        //updatePhysHistory for security test
+        if(PhysAddrLogging){
+            updatePhysHistory(physAddr,0);
+        }
+        if(PhysAddrCheck){
+            auto [validate,reason]= validatePhysAddr(physAddr,0);
+            if(!validate){
+                printf("[FORZA Security]: Invalid PAddr : %lu Reason %s\n",
+                  physAddr,reason.c_str());
+            }else{
+                printf("[FORZA Security]: Valid PAddr : %lu\n",
+                  physAddr);
+
+
+            }
+        }
       }
       else {
       /* vAddr not a valid address */
@@ -1763,6 +1791,109 @@ bool RevMem::isZRqst(uint64_t Addr){
 void RevMem::clearZRqst(uint64_t Addr){
   ZRqst.erase(Addr);
 }
+
+void RevMem::updatePhysHistoryfromInput(const std::string &InputFile){
+  if(InputFile==""){
+    return;
+  }
+  std::ifstream input(InputFile);
+  if( !input.is_open() )
+    output->fatal(CALL_INFO, -1, "Error: failed to read PhysAddrHistory InputFile");
+
+  std::string line;
+  std::getline(input,line);
+  uint64_t physAddr;
+  int appID;
+  std::string type,validStr;
+  bool valid;
+
+  while (std::getline(input, line)) {
+    std::istringstream iss(line);
+    char delim = ','; // 쉼표를 구분자로 명시적으로 설정
+
+    if (!(iss >> physAddr >> delim && getline(iss, type, delim) && getline(iss, validStr, delim) && iss >> appID)){
+      std::cerr << "Parsing error in line: " << line << std::endl;
+      continue;
+    }
+    valid = (validStr == "True");
+
+    // 문자열 "True"/"False"를 bool 타입으로 변환
+    // 데이터를 map에 저장
+    InputPhysAddrHist[physAddr] = std::make_tuple(type, valid, appID);
+    }
+
+    // for (const auto &pair : InputPhysAddrHist)
+    // {
+    //   std::cout << "PhysAddr: " << pair.first
+    //             << ", Type: " << std::get<0>(pair.second)
+    //             << ", Valid: " << std::get<1>(pair.second)
+    //             << ", ProcessID: " << std::get<2>(pair.second) << std::endl;
+    // }
+    PhysAddrCheck = true; // enable Security check based on the given PhysAddrTraffic
+
+  input.close();
+
+}
+void RevMem::updatePhysHistorytoOutput(){
+
+  if(outputFile==""){
+    return ;
+  }
+  std::ofstream outputfile(outputFile);
+  std::cout<<"output File Name "<<outputFile<<"\n";
+  if (!outputfile.is_open())
+    output->fatal(CALL_INFO, -1, "Error: failed to write PhysAddrHistory OutputFile");
+
+  //PhysAddr,Private/Shared, True/False,appID
+  outputfile << "PhysAddr,Type,Valid,AppID\n";
+
+  for (const auto& element : OutputPhysAddrHist) {
+        outputfile << element.first << ","
+                   << std::get<0>(element.second) << ","
+                   << (std::get<1>(element.second) ? "True" : "False") << ","
+                   << std::get<2>(element.second) << "\n";
+    }
+
+
+  outputfile.close();
+}
+void RevMem::enablePhysHistoryLogging(){
+    PhysAddrLogging = true;
+}
+void RevMem::setOutputFile(std::string output){
+  outputFile=output;
+}
+void RevMem::updatePhysHistory(uint64_t pAddr,int appID){
+
+    std::string Type = "Private";
+    bool Valid = true;
+    OutputPhysAddrHist[pAddr] = std::make_tuple(Type, Valid, appID);
+}
+std::pair<bool,std::string> RevMem::validatePhysAddr(uint64_t pAddr,int appID){
+  bool ret=true;
+  std::string reason="";
+
+  auto it = InputPhysAddrHist.find(pAddr);
+  if(it!=InputPhysAddrHist.end()){
+    //key exists
+      const auto& [type, valid, ownerappID] = it->second;
+      if(ownerappID!=appID){
+        ret= false;
+        std::string appIDstr = std::to_string(appID);
+        std::string ownerappIDstr = std::to_string(ownerappID);
+        reason="Invalid app "+appIDstr+" access, Owner appID is "+ownerappIDstr;
+      }
+      if(valid==false){
+        ret= false;
+        reason="Invalid addr range access";
+      }
+  }else{
+    ret = false;
+    reason="Invalid addr range access";
+  }
+  return {ret,reason};
+}
+
 
 }  // namespace SST::RevCPU
 

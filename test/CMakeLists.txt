@@ -221,6 +221,7 @@ if(RV32_Missing MATCHES "Cannot find suitable multilib set for '-march=rv32")
   message(WARNING "RV32 tests disabled because ${RVCC} does not support RV32:\n${RV32_Missing}")
 else()
   message(STATUS "RV32 tests enabled")
+endif()
 
 # -- PROCESS CTest Config Variables
 if(NOT CTEST_BLAS_REQUIRED_TESTS)

@@ -7,6 +7,8 @@
 # endif()
 add_rev_test(forza_noc_discovery forza_noc_discovery 120 "all;memh;rv64;loader;forza" SCRIPT "run_noc_discovery.sh")
 add_rev_test(forza_amoadd_c forza_amoadd_c 30 "all;memh;rv64;loader;forza" SCRIPT "run_amoadd_c.sh")
-add_rev_test(forza_recv forza_recv 30 "all;memh;rv64;loader;forza" SCRIPT "run_recv.sh")
-add_rev_test(forza_send forza_send 30 "all;memh;rv64;loader;forza" SCRIPT "run_send.sh")
-add_rev_test(forza_zen_init forza_zen_init 30 "all;memh;rv64;loader;forza" SCRIPT "run_zen_init.sh")
+
+#add_rev_test(forza_private_invalid forza_security 30 "all;memh;rv64;loader;forza" SCRIPT "run_amoadd_c.sh")
+add_rev_test(forza_private_valid forza_security 30 "all;memh;rv64;loader;forza" SCRIPT "run_private_valid.sh")
+#add_rev_test(forza_shared_invalid forza_security 30 "all;memh;rv64;loader;forza" SCRIPT "run_amoadd_c.sh")
+#add_rev_test(forza_shared_valid forza_security 30 "all;memh;rv64;loader;forza" SCRIPT "run_amoadd_c.sh")

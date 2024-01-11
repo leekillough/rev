@@ -113,6 +113,9 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params ) : SST::Compon
     msgPerCycle = params.find<unsigned>( "msgPerCycle", 1 );
   }
 
+
+
+
   // Look for the fault injection logic
   EnableFaults = params.find<bool>( "enable_faults", 0 );
   if( EnableFaults ) {
@@ -175,6 +178,13 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params ) : SST::Compon
       Mem->setOutputFile( memTrafficOutput );
       Mem->enablePhysHistoryLogging();
     }
+  }
+
+  if(memTrafficInput!="nil"){
+    Mem->updatePhysHistoryfromInput(memTrafficInput);
+  }
+  if(memTrafficOutput!="nil"){
+      Mem->setOutputFile(memTrafficOutput);
   }
 
   // FORZA: initialize scratchpad
@@ -795,13 +805,14 @@ void RevCPU::handleZOPMessage(Event *ev){
     output.fatal(CALL_INFO, -1,
                  "[FORZA][handleZOPMessage] : zopEvent is null\n");
   }
-
   if( EnableRZA ){
     // handle a FORZA ZOP Message
     handleZOPMessageRZA(zev);
   }else{
     // I am a ZAP device, handle the message accordingly
     handleZOPMessageZAP(zev);
+  }
+
   }
 }
 
@@ -1005,6 +1016,9 @@ bool RevCPU::clockTick( SST::Cycle_t currentCycle ) {
       std::ofstream dumpFile( Name + ".dump.final", std::ios::binary );
       Mem->DumpMemSeg( Seg, 16, dumpFile );
     }
+
+    Mem->updatePhysHistorytoOutput();
+
     primaryComponentOKToEndSim();
     output.verbose( CALL_INFO, 5, 0, "OK to end sim at cycle: %" PRIu64 "\n", static_cast<uint64_t>( currentCycle ) );
   } else {
