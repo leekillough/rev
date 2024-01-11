@@ -3240,22 +3240,29 @@ EcallStatus RevProc::ECALL_forza_get_hart_id(RevInst& inst){
 // 4003, forza_send();
 EcallStatus RevProc::ECALL_forza_send(RevInst& inst){
   output->verbose(CALL_INFO, 2, 0, "ECALL: forza_send called by thread %" PRIu32 " on hart %" PRIu32 "\n", GetActiveThreadID(), HartToExecID);
-  // TODO: Send by payload a ZOP to corresponding Destination.
+  // TODO: Using the scratchpad addr and size, read scratrpad memory, create a ZOP and send to destination.
   return EcallStatus::SUCCESS;
 }
 
 // 4004, forza_poll();
 EcallStatus RevProc::ECALL_forza_poll(RevInst& inst){
   output->verbose(CALL_INFO, 2, 0, "ECALL: forza_poll called by thread %" PRIu32 " on hart %" PRIu32 "\n", GetActiveThreadID(), HartToExecID);
-  // TODO: Identify corresponding ZEN queue. check if there is a ZOP and retrieve if there is.
+  // TODO: Return the address of the head of zen queue where the packet is present.
   RegFile->SetX(RevReg::a0, (uint64_t)nullptr);
   return EcallStatus::SUCCESS;
 }
 
-// 4005, forzapopq();
+// 4005, forza_popq();
 EcallStatus RevProc::ECALL_forza_popq(RevInst& inst){
   output->verbose(CALL_INFO, 2, 0, "ECALL: forza_popq called by thread %" PRIu32 " on hart %" PRIu32 "\n", GetActiveThreadID(), HartToExecID);
-  // TODO: Identify corresponding ZEN queue and pop the top.
+  // TODO: Give back a credit to the zen and update ZEN should update its head pointer to new packet.
+  return EcallStatus::SUCCESS;
+}
+
+// 4006, forza_zen_init();
+EcallStatus RevProc::ECALL_forza_zen_init(RevInst& inst){
+  output->verbose(CALL_INFO, 2, 0, "ECALL: forza_zen_init called by thread %" PRIu32 " on hart %" PRIu32 "\n", GetActiveThreadID(), HartToExecID);
+  // TODO: Forza library will pass the memory base address and size allocated by each actor to inform/initialize zen. 
   return EcallStatus::SUCCESS;
 }
 

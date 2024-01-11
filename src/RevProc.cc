@@ -2362,6 +2362,7 @@ void RevProc::InitEcallTable(){
     { 4003, &RevProc::ECALL_forza_send },
     { 4004, &RevProc::ECALL_forza_poll },
     { 4005, &RevProc::ECALL_forza_popq },
+    { 4006, &RevProc::ECALL_forza_zen_init },
 
   };
 }
