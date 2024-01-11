@@ -36,23 +36,22 @@ uint64_t ZqmAidStateTableRow::getMemAddr(bool do_read, bool update_ptr)
     else
 	    printf("Do write\n");
 
-    // Verify that we can do *something*
-    // TODO: ELSE LOGIC IS BAD; REVIEW THIS
     if (do_read){
-        if (mem_read_ptr == mem_write_ptr)
-            return 0; // empty buffer
+        if (mem_read_ptr == mem_write_ptr) { // nothing to read
+            return 0;
+        } else { // can read; update rd_ptr
+            mem_read_ptr = next_ptr;
+            return addr_ptr;
+        }
+
     } else {
-        if (next_ptr >= mem_read_ptr)
-            return 0; // no room to write
+        if (next_ptr == mem_read_ptr) { // no room to write
+            return 0;
+        } else {
+            mem_write_ptr = next_ptr; // can write; update wr_ptr
+            return addr_ptr;
+        }
     }
-
-    // Update proper ptr
-    if (do_read)
-        mem_read_ptr = next_ptr;
-    else
-        mem_write_ptr = next_ptr;
-
-    return addr_ptr;
 }
 
 ZQM::ZQM(ComponentId_t id, Params& params)
