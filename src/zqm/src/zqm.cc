@@ -323,6 +323,9 @@ void ZQM::processRzaThreadDataReturn(SST::Forza::zopEvent *ev)
     // TODO: Necessary?
     thread->decodeEvent();
 
+    for (auto i & rd_payload)
+        output.output("RZA thread data return payload=%lx", i);
+
     // Get a destination HART & ship the thread
     if (!selectRandomDestHart(thread))
         output.fatal(CALL_INFO, 1, "Returned thread didn't have a HART to go into...\n");
@@ -799,6 +802,29 @@ void ZQM::sendHartDoneForRzaTest() {
     m_zop_iface->send(dummy_zop2, zopCompID::Z_ZQM);
 }
 
+void ZQM::sendLdmaPacket() {
+    SST::Forza::zopEvent *thread = new SST::Forza::zopEvent(zopMsgT::Z_RESP, zopOpc::Z_RESP_LR);
+
+    // Fill in Zop src/dest info
+    thread->setSrcZCID(zopCompID::Z_RZA);
+    thread->setSrcPrec(precinct_id);
+    thread->setSrcPCID(zone_id);
+    thread->setDestZCID(zopCompID::Z_ZQM);
+    thread->setDestPrec(precinct_id);
+    thread->setDestPCID(zone_id);
+    thread->setAppID(0xd);
+    thread->setID(2);
+
+    std::vector<uint64_t> payload;
+    payload.push_back(0x0dead);
+    for (auto i = 0; i < 31; i++)
+        payload.push_back(i);
+    payload.push_back(0x0cafe);
+    thread->setPayload(payload);
+    output.verbose(CALL_INFO, 1, 0, "Sending Load Response packet; msg_id=%u\n", (uint32_t)thread->getID());
+    m_zop_iface->send(thread, zopCompID::Z_ZQM);
+}
+
 bool ZQM::clock(Cycle_t cycle)
 {
    processIncomingThreadsMsgs();
@@ -849,6 +875,8 @@ bool ZQM::clock(Cycle_t cycle)
         configMtAndRunQueue();
     if (cycle == 1000)
         sendHartDoneForRzaTest();
+    if (cycle == 2000)
+        sendLdmaPacket();
 #endif
 
     return false;

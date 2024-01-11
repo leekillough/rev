@@ -270,6 +270,7 @@ namespace SST::Forza{
 
         void configMtAndRunQueue();
         void sendHartDoneForRzaTest();
+        void sendLdmaPacket();
 
 
     }; // class SST::ZQM
