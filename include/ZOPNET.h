@@ -316,6 +316,7 @@ enum class zopCompID : uint8_t {
   Z_RZA         = 0b00001000,   /// zopCompID: RZA
   Z_ZQM         = 0b00001010,   /// zopCompID: ZQM
   Z_ZEN         = 0b00001100,   /// zopCompID: ZEN
+  Z_PREC_ZIP    = 0b10000000,   /// zopCompID: PRECINCT ZIP
 };
 
 // --------------------------------------------
@@ -863,6 +864,9 @@ public:
     case zopCompID::Z_ZQM:
 	return "ZQM";
 	break;
+    case zopCompID::Z_PREC_ZIP:
+        return "PREC_ZIP";
+        break;
     default:
       return "UNK";
       break;
