@@ -94,6 +94,18 @@ void ZEN::handleIncomingPrecZOP(SST::Event *event) {
   output.verbose(CALL_INFO, 9, 0, "Msg type %s, src %ld, dest %d src%d\n",
                  m_prec_iface->msgTToStr(ev->getType()).c_str(), ev->getPacket()[1],
                  ev->getDestHart(), ev->getSrcHart());
+  if (ev->getType() == SST::Forza::zopMsgT::Z_MSG &&
+      (ev->getOpc() == SST::Forza::zopOpc::Z_MSG_SENDP || ev->getOpc() == SST::Forza::zopOpc::Z_MSG_SENDAS)) {
+    // incoming SEND from outside the zone
+    std::pair<uint64_t, uint64_t> hart_zap_id = std::make_pair(ev->getDestZCID(), ev->getDestHart());
+    if (zen_queue[hart_zap_id].size() < zen_queue_size_limit) {
+      zen_queue[hart_zap_id].push_back(new ZENEntry(ev, ZENStatus::UNPROCESSED, true));
+    } else {
+      output.verbose(CALL_INFO, 1, 0, "Destination %d queue full\n", ev->getDestHart());
+      sendNACKToZIP(ev->getSrcHart(), ev->getSrcZCID(), ev->getID());
+      return;
+    }
+  }
 }
 
 void ZEN::handleIncomingZOP(SST::Event *event) {
@@ -263,13 +275,13 @@ void ZEN::sendMsgToScratchpad(uint64_t dest, uint64_t zcid,
 void ZEN::forwardPktToZIP(Forza::zopEvent *ev) {
   ev->setSrcPCID(m_zop_iface->getZoneID());
   ev->encodeEvent();
-  //m_zop_prec_iface->send(ev, zopPrecID::Z_ZIP);
+  m_prec_iface->send(ev, zopCompID::Z_PREC_ZIP, zopPrecID::Z_ZIP, m_prec_iface->getPrecinctID());
 }
 
 void ZEN::forwardPktToExtZEN(Forza::zopEvent *ev) {
   ev->setSrcPCID(m_zop_iface->getZoneID());
   ev->encodeEvent();
-  //m_zop_prec_iface->send(ev, (zopPrecID)ev->getDestPCID());
+  m_prec_iface->send(ev, zopCompID::Z_PREC_ZIP, zopPrecID::Z_ZIP, m_prec_iface->getPrecinctID());
 }
 
 void ZEN::notifyHARTScratchpad() {
@@ -392,7 +404,7 @@ void ZEN::sendNACKToZIP(uint64_t hart_id, uint64_t zcid, uint8_t msg_id) {
   nackMsg->setDestPrec(m_zop_iface->getPrecinctID());
   nackMsg->setID(msg_id);
   nackMsg->encodeEvent();
-  //m_zop_prec_iface->send(nackMsg, zopPrecID::Z_ZIP);
+  m_prec_iface->send(nackMsg, zopCompID::Z_PREC_ZIP, zopPrecID::Z_ZIP, m_prec_iface->getPrecinctID());
 }
 
 void ZEN::sendACKToZIP(uint64_t hart_id, uint64_t zcid, uint8_t msg_id) {
@@ -411,7 +423,7 @@ void ZEN::sendACKToZIP(uint64_t hart_id, uint64_t zcid, uint8_t msg_id) {
   ackMsg->setDestPrec(m_zop_iface->getPrecinctID());
   ackMsg->setID(msg_id);
   ackMsg->encodeEvent();
-  //m_zop_prec_iface->send(ackMsg, zopPrecID::Z_ZIP);
+  m_prec_iface->send(ackMsg, zopCompID::Z_PREC_ZIP, zopPrecID::Z_ZIP, m_prec_iface->getPrecinctID());
 }
 
 void ZEN::sendNACKToZAP(uint64_t hart_id, uint64_t zcid, uint8_t msg_id) {
