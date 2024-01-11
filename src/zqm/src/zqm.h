@@ -11,21 +11,6 @@
 #include <string>
 
 namespace SST::Forza{
-#if 0
-    // TJD: Figure out what this class is used for; looks like it may
-    // just be the elements of a fifo (pending activity)
-  class ZQMEntry {
-  public:
-    SST::Forza::zopEvent *msg;
-    uint64_t status;
-    uint64_t tail;
-    ZQMEntry(SST::Forza::zopEvent *m, uint64_t s) {
-      msg = m;
-      status = s;
-      tail = 0;
-    }
-  };
-#endif
 
     class ZqmAidStateTableRow {
         // Will need functionality for updating read/write pointers
@@ -135,11 +120,6 @@ namespace SST::Forza{
 
         // public class members
         /// ZQM: constructor
-        /**
-         * This needs some info on construction - number of ZAPs, number of HARTs
-         * @param id
-         * @param params
-         */
         ZQM(SST::ComponentId_t id, SST::Params& params);
 
         /// ZQM: destructor
@@ -150,54 +130,28 @@ namespace SST::Forza{
         void finish() override;
 
         /**
-         * See text in source file
-         * @param ev
-         *
          * Ok, this is the top level zop handler, there are separate functions
-         * for handling each subtype (they are named as "process..."
+         * for handling each subtype (they are named as "process...)"
          */
         void handleIncomingZOP(SST::Event *ev);
-
-        /**
-         * This should be read/write requests
-         * @param addr
-         * @param msg_id
-         */
-        void sendThreadToRza(SST::Forza::zopEvent *thread);
-
-        /**
-         * How to actually *execute* this function (simulation wise)
-         */
-        void getThreadFromRza(uint32_t app_id);
-
-        /**
-         * Do what the function says - prep and send a thread to a ZAP
-         */
-        void sendThreadToZap(SST::Forza::zopEvent *thread);
-
 
     private:
         /// ZQM: clock handler
         bool clock(SST::Cycle_t cycle);
 
-        bool handleNetworkEvent(int i);
+        //bool handleNetworkEvent(int i);
 
-        /**
-         * This should be reading from the setup_reqs vector and
-         * creating/deleting rows in the aid_state table
-         */
         void processMessagingMsgs(); // invoked by clock handler
         void processMessagingZqmSet(SST::Forza::zopEvent *event);
         void processMessagingHartDone(SST::Forza::zopEvent *event);
         void sendMessagingAck(SST::Forza::zopEvent *event);
 
-
-        /**
-         * This should be reading from the rza_zops vector and processing
-         * them
-         */
         void processRzaMsgs();  // invoked by clock handler
         void processRzaThreadDataReturn(SST::Forza::zopEvent *ev);
+        void sendThreadToRza(SST::Forza::zopEvent *thread);
+        void getThreadFromRza(uint32_t app_id);
+        void sendThreadToZap(SST::Forza::zopEvent *thread);
+
 
         /**
          * Read and process messages from the incoming_threads_vec
@@ -218,7 +172,6 @@ namespace SST::Forza{
          * @return pointer to state table row; nullptr if not found (also a fatal error)
          */
         ZqmAidStateTableRow* getAidStateTableRow(uint32_t aid);
-
 
         /**
          * If a hart is empty, try to fill it (mostly for migrating thread applications)
@@ -245,7 +198,7 @@ namespace SST::Forza{
         // [num_zaps][num_harts]
         std::vector<std::vector<bool>> zap_hart_status;
 
-        uint64_t int_id; //
+        uint64_t int_id; //What is this?
         uint8_t msg_id;
         SST::Forza::zopAPI* m_zop_iface;
         bool sent;
@@ -261,18 +214,15 @@ namespace SST::Forza{
         SST::Cycle_t cycleCount;
 
         // Functions for simple loopback testing
+        // Remove in the near future.
         void doSimpleMsg();
         void sendDummyThread();
         void sendHartDone();
-
         void configMTApp(); // mostly equiv to doSimpleMsg()
         void sendMtThread(); // mostly equiv to sendDummyThread()
-
         void configMtAndRunQueue();
         void sendHartDoneForRzaTest();
         void sendLdmaPacket();
-
-
     }; // class SST::ZQM
 } // namespace SST::Forza
 
