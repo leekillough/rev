@@ -263,10 +263,11 @@ void ZQM::getThreadFromRza(uint32_t app_id)
     output.verbose(CALL_INFO, 1, 0, "Sending LDMA Zop to RZA; msg_id=%u\n", (uint32_t)load_thread_zop->getID());
     m_zop_iface->send(load_thread_zop, zopCompID::Z_RZA);
     auto iter = outstanding_rza_reqs.find(load_thread_zop->getID());
-    if (iter == outstanding_rza_reqs.end())
+    if (iter == outstanding_rza_reqs.end()){
         outstanding_rza_reqs.insert(std::pair<uint8_t,std::pair<uint64_t,uint64_t>>(load_thread_zop->getID(),
                 std::pair<uint64_t, uint64_t>(0,0))); // TODO: Fix pair
-    else
+	output.verbose(CALL_INFO, 1, 0, "Inserted rzq_reqs key=%u\n", load_thread_zop->getID());
+    } else
         output.fatal(CALL_INFO, 1, "Duplicate msg_id going out to RZA\n");
 
     aid_state->run_queue_depth--;
@@ -276,7 +277,8 @@ void ZQM::getThreadFromRza(uint32_t app_id)
 void ZQM::processRzaMsgs() {
     /* Assumes that the Zop.Type field has already been checked via handleIncomingZop */
     for (auto &resp: rza_responses) {
-        // Let's make sure the response was expected first....
+	resp->setID(2);
+    	// Let's make sure the response was expected first....
         auto iter = outstanding_rza_reqs.find(resp->getID());
         if (iter == outstanding_rza_reqs.end()){
             output.fatal(CALL_INFO, 1, "Received RZA load response with an invalid ID; id=%u\n",
@@ -322,9 +324,10 @@ void ZQM::processRzaThreadDataReturn(SST::Forza::zopEvent *ev)
     thread->setPacket(rd_payload);
     // TODO: Necessary?
     thread->decodeEvent();
+    thread->setAppID(0xd);
 
-    for (auto i & rd_payload)
-        output.output("RZA thread data return payload=%lx", i);
+    for (auto i : rd_payload)
+        output.output("RZA thread data return payload=0x%lx\n", i);
 
     // Get a destination HART & ship the thread
     if (!selectRandomDestHart(thread))
@@ -332,7 +335,6 @@ void ZQM::processRzaThreadDataReturn(SST::Forza::zopEvent *ev)
     sendThreadToZap(thread);
     ZqmAidStateTableRow *aid_state = getAidStateTableRow(thread->getAppID());
     aid_state->outstanding_fills--;
-    delete ev;
 }
 
 void ZQM::sendThreadToZap(SST::Forza::zopEvent *thread)
