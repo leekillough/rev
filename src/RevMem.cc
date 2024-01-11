@@ -29,6 +29,7 @@ RevMem::RevMem( uint64_t MemSize, RevOpts *Opts, RevMemCtrl *Ctrl, SST::Output *
   pageSize = 262144; //Page Size (in Bytes)
   addrShift = lg(pageSize);
   nextPage = 0;
+  PhysAddrCheck=false;
 
   // We initialize StackTop to the size of memory minus 1024 bytes
   // This allocates 1024 bytes for program header information to contain
@@ -49,6 +50,8 @@ RevMem::RevMem( uint64_t MemSize, RevOpts *Opts, SST::Output *Output )
   pageSize = 262144; //Page Size (in Bytes)
   addrShift = lg(pageSize);
   nextPage = 0;
+  PhysAddrCheck=false;
+
 
   if( !physMem )
     output->fatal(CALL_INFO, -1, "Error: could not allocate backing memory\n");
@@ -1729,6 +1732,7 @@ void RevMem::updatePhysHistoryfromInput(const std::string &InputFile){
     // 문자열 "True"/"False"를 bool 타입으로 변환
     // 데이터를 map에 저장
     InputPhysAddrHist[physAddr] = std::make_tuple(type, valid, appID);
+    PhysAddrCheck = true; 
     }
 
     // for (const auto &pair : InputPhysAddrHist)
@@ -1738,7 +1742,7 @@ void RevMem::updatePhysHistoryfromInput(const std::string &InputFile){
     //             << ", Valid: " << std::get<1>(pair.second)
     //             << ", ProcessID: " << std::get<2>(pair.second) << std::endl;
     // }
-    PhysAddrCheck = true; // enable Security check based on the given PhysAddrTraffic 
+    // PhysAddrCheck = true; // enable Security check based on the given PhysAddrTraffic 
 
   input.close();
 
