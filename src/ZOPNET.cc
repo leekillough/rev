@@ -15,7 +15,7 @@ using namespace Forza;
 
 zopNIC::zopNIC(ComponentId_t id, Params& params)
   : zopAPI(id, params), iFace(nullptr), msgHandler(nullptr),
-    initBroadcastSent(false), numDest(0), numHarts(0),
+    initBroadcastSent(false), isZipDevice(false), numDest(0), numHarts(0),
     Precinct(0), Zone(0),
     Type(zopCompID::Z_ZAP0), msgId(nullptr), HARTFence(nullptr){
 
@@ -273,6 +273,15 @@ void zopNIC::send(zopEvent *ev, zopCompID dest, zopPrecID zone, unsigned prec){
     preInitQ.push_back(std::make_pair(ev, TmpDest));
     return ;
   }
+
+  // check to see whether the designated destination is within the same precinct
+  if( (getEndpointType() == Forza::zopCompID::Z_ZEN) &&
+      (prec != getPrecinctID()) ){
+    // this is a ZEN device and the target location is outside the local precint
+    // route the request to the ZIP device
+    ev->setDestPCID((uint8_t)(Forza::zopPrecID::Z_ZIP));
+  }
+
   SST::Interfaces::SimpleNetwork::Request *req =
     new SST::Interfaces::SimpleNetwork::Request();
   output.verbose(CALL_INFO, 9, 0,
@@ -499,6 +508,15 @@ bool zopNIC::msgNotify(int vn){
                  endPToStr(getEndpointType()).c_str(),
                  msgTToStr(ev->getType()).c_str());
 
+  // we first look to see whether we are a ZIP device
+  // since ZIP devices only exist in the precinct, they must
+  // be handled with a different path since they are NOT attached
+  // to a ZONE NoC
+  if( isZipDevice ){
+    (*msgHandler)(ev);
+    return true;
+  }
+
   // if this is an RZA device, marshall it through to the ZIQ
   // if this is a ZEN, forward it in the incoming queue
   if( Type == Forza::zopCompID::Z_RZA ||
@@ -507,6 +525,8 @@ bool zopNIC::msgNotify(int vn){
     (*msgHandler)(ev);
     return true;
   }
+
+  // if this is a ZIP device
 
   // if this is a ZAP device and a thread migration,
   // send it to the RevCPU handler
@@ -601,6 +621,7 @@ bool zopNIC::handleFence(zopEvent *ev){
     // fence has not been encountered, set it
     ev->setFence();
     HARTFence[ReqHart]++;
+    recordStat( getStatFromPacket(ev), 1 );
     output.verbose(CALL_INFO, 9, 0,
                    "Issuing FENCE from %s @ [hart:zcid:pcid:type]=[%d:%d:%d:%s]\n",
                    getName().c_str(),

@@ -2358,6 +2358,7 @@ void RevProc::InitEcallTable(){
     // FORZA
     { 4000, &RevProc::ECALL_forza_scratchpad_alloc },
     { 4001, &RevProc::ECALL_forza_scratchpad_free },
+    { 4002, &RevProc::ECALL_forza_get_hart_id },
   };
 }
 

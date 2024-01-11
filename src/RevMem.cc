@@ -1624,6 +1624,7 @@ bool RevMem::ZOP_ThreadMigrate(unsigned Hart, std::vector<uint64_t> Payload,
   // pkt[35] = f[1] register contents
   // ...
   // pkt[65] = f[31] register contents
+  // pkt[66] = THREAD ID
   // --------------------------------------------------
 
   // create a new event

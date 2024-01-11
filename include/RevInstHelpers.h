@@ -78,12 +78,13 @@ bool load(RevFeature *F, RevRegFile *R, RevMem *M, const RevInst& Inst) {
     for( unsigned i=1; i<32; i++ ){
       P.push_back(R->GetX<uint64_t>(i));
     }
-    //for( unsigned i=0; i<32; i++ ){
-    //  uint64_t t = 0x00ull;
-    //  double s= R->DPF[i];
-    //  memcpy(&t, &s, sizeof(t));
-    //  P.push_back(t);
-    //}
+    for( unsigned i=0; i<32; i++ ){
+      uint64_t t = 0x00ull;
+      double s= R->DPF[i];
+      memcpy(&t, &s, sizeof(t));
+      P.push_back(t);
+    }
+    P.push_back(static_cast<uint64_t>(R->GetThreadID()));
 
     R->SetSCAUSE(EXCEPTION_CAUSE::THREAD_MIGRATED);
 
@@ -148,12 +149,13 @@ bool store(RevFeature *F, RevRegFile *R, RevMem *M, const RevInst& Inst) {
     for( unsigned i=1; i<32; i++ ){
       P.push_back(R->GetX<uint64_t>(i));
     }
-//    for( unsigned i=0; i<32; i++ ){
-//      uint64_t t = 0x00ull;
-//      double s= R->DPF[i];
-//      memcpy(&t, &s, sizeof(t));
-//      P.push_back(t);
-//    }
+    for( unsigned i=0; i<32; i++ ){
+      uint64_t t = 0x00ull;
+      double s= R->DPF[i];
+      memcpy(&t, &s, sizeof(t));
+      P.push_back(t);
+    }
+    P.push_back(static_cast<uint64_t>(R->GetThreadID()));
     R->SetSCAUSE(EXCEPTION_CAUSE::THREAD_MIGRATED);
     return M->ZOP_ThreadMigrate(F->GetHartToExecID(), P, Zone, Precinct);
   }
@@ -180,12 +182,13 @@ bool fload(RevFeature *F, RevRegFile *R, RevMem *M, const RevInst& Inst) {
     for( unsigned i=1; i<32; i++ ){
       P.push_back(R->GetX<uint64_t>(i));
     }
-//    for( unsigned i=0; i<32; i++ ){
-//      uint64_t t = 0x00ull;
-//      double s= R->DPF[i];
-//      memcpy(&t, &s, sizeof(t));
-//      P.push_back(t);
-//    }
+    for( unsigned i=0; i<32; i++ ){
+      uint64_t t = 0x00ull;
+      double s= R->DPF[i];
+      memcpy(&t, &s, sizeof(t));
+      P.push_back(t);
+    }
+    P.push_back(static_cast<uint64_t>(R->GetThreadID()));
     R->SetSCAUSE(EXCEPTION_CAUSE::THREAD_MIGRATED);
     return M->ZOP_ThreadMigrate(F->GetHartToExecID(), P, Zone, Precinct);
   }
@@ -252,12 +255,13 @@ bool fstore(RevFeature *F, RevRegFile *R, RevMem *M, const RevInst& Inst) {
     for( unsigned i=1; i<32; i++ ){
       P.push_back(R->GetX<uint64_t>(i));
     }
-    //for( unsigned i=0; i<32; i++ ){
-    //  uint64_t t = 0x00ull;
-    //  double s= R->DPF[i];
-    //  memcpy(&t, &s, sizeof(t));
-    //  P.push_back(t);
-    //}
+    for( unsigned i=0; i<32; i++ ){
+      uint64_t t = 0x00ull;
+      double s= R->DPF[i];
+      memcpy(&t, &s, sizeof(t));
+      P.push_back(t);
+    }
+    P.push_back(static_cast<uint64_t>(R->GetThreadID()));
     R->SetSCAUSE(EXCEPTION_CAUSE::THREAD_MIGRATED);
     return M->ZOP_ThreadMigrate(F->GetHartToExecID(), P, Zone, Precinct);
   }
