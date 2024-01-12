@@ -15,16 +15,24 @@ ZIP::ZIP(ComponentId_t id, Params& params)
   p_clockFreq = params.find<UnitAlgebra> ("clockFreq", "1GHz");
   p_maxWait   = params.find<UnitAlgebra> ("maxWait",   "1ms");
   p_verbose   = params.find<unsigned int>("verbose",    0);
+  p_tests     = params.find<unsigned int>("tests",      0);
 
   // Init the output handler
-  output.init("ZIP[" + getName() + ":@p:@t]: ", p_verbose, 0, SST::Output::STDOUT);
+  output.init("ZIP[" + getName() + ":@p:@t]: ", p_verbose, p_tests, SST::Output::STDOUT);
 
   // register the clock handler
-  registerClock(p_clockFreq, new Clock::Handler<ZIP>(this, &ZIP::clock));
+  zipTime = registerClock(p_clockFreq, new Clock::Handler<ZIP>(this, &ZIP::clock));
   output.verbose(CALL_INFO, 9, 0, "Registering clock with frequency=%s\n", p_clockFreq.toStringBestSI().c_str());
 
   // calculate how many cycles to wait before clearing outgoing queue based on maximum wait time and clock freqency
   waitCycles = (p_maxWait*p_clockFreq).getRoundedValue();
+
+  // register statistics
+  s_numPackets    = registerStatistic<uint64_t>("num_packets");
+  s_numStalls     = registerStatistic<uint64_t>("num_stalls");
+  s_numSentPackets = registerStatistic<uint64_t>("num_sent_packets");
+  s_numRecvPackets = registerStatistic<uint64_t>("num_recv_packets");
+  s_numWaitCycles = registerStatistic<uint64_t>("num_wait_cycles");
 
   // load the backing memory controller
   Ctrl = loadUserSubComponent<ZIPMemCtrl>("memory");
@@ -86,45 +94,61 @@ void ZIP::printStatus() {
 }
 
 // try to send out data from the outgoing buffer for DestPrec if we have enough credits and return true if succesful
-bool ZIP::aggregatePackets(uint16_t DestPrec, ZIPMemTarget* Target) {
-  // check if read operation is done and if the destination precinct has sufficient credits
-  if ( (Target->isDone()) && (outCredit[DestPrec] >= Target->getTarget().size()) ) {
-    // decrease credits by the number of bytes we're about to send
-    outCredit[DestPrec] -= Target->getTarget().size();
+bool ZIP::aggregatePackets(uint16_t DestPrec, ZIPMemTarget* Target, bool* hasStalled) {
+  // check if read operation is done
+  if (Target->isDone()) {
+    // check if the destination precinct has sufficient credits
+    if (outCredit[DestPrec] >= Target->getTarget().size()) {
+      output.verbose(CALL_INFO, 1, 1, "[TEST ZIP_C3] success\n");
 
-    // put buffer of concatenated zopEvent packets into a new ZIPAggEvent
-    ZIPAggEvent* event = new ZIPAggEvent(vec8to64(Target->getTarget()));
+      // decrease credits by the number of bytes we're about to send
+      outCredit[DestPrec] -= Target->getTarget().size();
 
-    event->dest = DestPrec;
-    event->src = p_precID;
+      // put buffer of concatenated zopEvent packets into a new ZIPAggEvent
+      ZIPAggEvent* event = new ZIPAggEvent(vec8to64(Target->getTarget()));
 
-    // send request to HFI
-    output.verbose(CALL_INFO, 9, 0, "aggregatePackets: SrcPrec %d, DestPrec %d\n", p_precID, DestPrec);
-    link_HFI->send(event, DestPrec);
-    // reset buffer size
-    bufOutSize[DestPrec] = 0;
+      event->dest = DestPrec;
+      event->src = p_precID;
 
-    // replenish ZEN credits
-    // iterate over zopEvents sent to HFI
-    for (zopEvent sentZop : event->getZOPs()) {
-      // construct new Z_MSG_CREDIT zopEvent with credits equal to the total number of flits to go to the source ZEN of sentZop
-      zopEvent* creditZop = new zopEvent();
-      creditZop->setType(zopMsgT::Z_MSG);
-      creditZop->setOpc(zopOpc::Z_MSG_CREDIT);
-      creditZop->setSrcZCID(zopCompID::Z_PREC_ZIP);
-      creditZop->setSrcPCID((uint8_t)zopPrecID::Z_ZIP);
-      creditZop->setSrcPrec(link_NOC->getPrecinctID());
-      creditZop->setCredit(sentZop.getLength()+Z_NUM_HEADER_FLITS);
+      // send request to HFI
+      output.verbose(CALL_INFO, 9, 0, "aggregatePackets: SrcPrec %d, DestPrec %d\n", p_precID, DestPrec);
+      link_HFI->send(event, DestPrec);
+      // reset buffer size
+      bufOutSize[DestPrec] = 0;
 
-      // send credits back to source ZEN
-      creditZop->encodeEvent();
-      link_NOC->send(creditZop, zopCompID::Z_ZEN, (zopPrecID)sentZop.getSrcPCID(), link_NOC->getPrecinctID());
+      // replenish ZEN credits
+      // iterate over zopEvents sent to HFI
+      for (zopEvent sentZop : event->getZOPs()) {
+        // construct new Z_MSG_CREDIT zopEvent with credits equal to the total number of flits to go to the source ZEN of sentZop
+        zopEvent* creditZop = new zopEvent();
+        creditZop->setType(zopMsgT::Z_MSG);
+        creditZop->setOpc(zopOpc::Z_MSG_CREDIT);
+        creditZop->setSrcZCID(zopCompID::Z_PREC_ZIP);
+        creditZop->setSrcPCID((uint8_t)zopPrecID::Z_ZIP);
+        creditZop->setSrcPrec(link_NOC->getPrecinctID());
+        creditZop->setCredit(sentZop.getLength()+Z_NUM_HEADER_FLITS);
+
+        // send credits back to source ZEN
+        creditZop->encodeEvent();
+        link_NOC->send(creditZop, zopCompID::Z_ZEN, (zopPrecID)sentZop.getSrcPCID(), link_NOC->getPrecinctID());
+      }
+
+      delete Target;
+
+      output.verbose(CALL_INFO, 1, 1, "[TEST ZIP_C4] success\n");
+      s_numSentPackets->addData(1);
+      return true;
+    // stall due to not enough credits
+    } else {
+      output.verbose(CALL_INFO, 1, 1, "[TEST ZIP_C1] success\n");
+      if (!*hasStalled) {
+        s_numStalls->addData(1);
+	*hasStalled = true;
+      }
+
+      return false;
     }
-
-    delete Target;
-
-    return true;
-  // if waiting or read operation or if destination precinct's ZIP doesn't have enough credits to accept the payload, return false
+  // still waiting for read to complete
   } else {
     return false;
   }
@@ -152,6 +176,7 @@ bool ZIP::disaggregatePackets(uint16_t SrcPrec, ZIPMemTarget* Target) {
       // if any ZEN doesn't have enough credits, disaggregatePackets returns false
       } else{
         output.verbose(CALL_INFO, 9, 0, "disaggregatePackets: need %d credits for %d and only have %llu\n", receivedZop.getLength()+Z_NUM_HEADER_FLITS, receivedZop.getDestPCID(), inCreditCopy[receivedZop.getDestPCID()]);
+        output.verbose(CALL_INFO, 1, 1, "[TEST ZIP_C2] success\n");
         return false;
       }
     }
@@ -175,6 +200,7 @@ bool ZIP::disaggregatePackets(uint16_t SrcPrec, ZIPMemTarget* Target) {
 
     delete Target;
 
+    output.verbose(CALL_INFO, 1, 1, "[TEST ZIP_C5] success\n");
     return true;
   } else {
     return false;
@@ -220,7 +246,8 @@ void ZIP::handleNOCEvent(SST::Event* ev) {
       // if remaining buffer space can no longer fit a zopEvent of maximum size, add the destination precinct to the outgoing queue
       if (MAX_BUFF-bufOutSize[DestPrec] < MAX_ZOP) {
         output.verbose(CALL_INFO, 9, 0, "handleNOCEvent: DestPrec %d buffer out of space, aggregating packet\n", DestPrec);
-        outQ.push(std::pair<uint16_t, ZIPMemTarget*>(DestPrec, waitMemReadComplete(FIRST_OUT_ADDR(DestPrec), bufOutSize[DestPrec])));
+        outQ.push(std::tuple<uint16_t, ZIPMemTarget*, Cycle_t, bool*>(DestPrec, waitMemReadComplete(FIRST_OUT_ADDR(DestPrec), bufOutSize[DestPrec]), getNextClockCycle(zipTime), new bool(false)));
+        s_numPackets->addData(1);
       }
     }
   }
@@ -251,7 +278,8 @@ void ZIP::handleHFIEvent(SST::Event* ev) {
     bufInSize[SrcPrec] += packet8.size();
 
     // add the source precinct to the incoming queue for disaggregation
-    inQ.push(std::pair<uint16_t, ZIPMemTarget*>(SrcPrec, waitMemReadComplete(FIRST_IN_ADDR(SrcPrec), bufInSize[SrcPrec])));
+    inQ.push(std::tuple<uint16_t, ZIPMemTarget*>(SrcPrec, waitMemReadComplete(FIRST_IN_ADDR(SrcPrec), bufInSize[SrcPrec])));
+    s_numRecvPackets->addData(1);
 
     delete ev;
   }
@@ -263,17 +291,19 @@ bool ZIP::clock(Cycle_t cycle){
   if ( cycle % waitCycles == 0 ) {
     for (int DestPrec=0; DestPrec<MAX_PREC; DestPrec++) {
       if (bufOutSize[DestPrec]) {
-        outQ.push(std::pair<uint16_t, ZIPMemTarget*>(DestPrec, waitMemReadComplete(FIRST_OUT_ADDR(DestPrec), bufOutSize[DestPrec])));
+        outQ.push(std::tuple<uint16_t, ZIPMemTarget*, Cycle_t, bool*>(DestPrec, waitMemReadComplete(FIRST_OUT_ADDR(DestPrec), bufOutSize[DestPrec]), getNextClockCycle(zipTime), new bool(false)));
+        s_numPackets->addData(1);
       }
     }
   }
 
   // loop over outgoing queue
   for (unsigned i=0; i<outQ.size(); i++) {
-    std::pair<uint16_t, ZIPMemTarget*> memReq = outQ.front();
+    std::tuple<uint16_t, ZIPMemTarget*, Cycle_t, bool*> memReq = outQ.front();
     // try to send aggregated zopEvents to the destination precinct
-    if (aggregatePackets(memReq.first, memReq.second)) {
+    if (aggregatePackets(std::get<0>(memReq), std::get<1>(memReq), std::get<3>(memReq))) {
       outQ.pop();
+      s_numWaitCycles->addData(getNextClockCycle(zipTime)-std::get<2>(memReq));
     // if unsuccessful (for lack of credits), put back at the end of the queue
     } else {
       outQ.pop();
@@ -283,9 +313,9 @@ bool ZIP::clock(Cycle_t cycle){
 
   // loop over incoming queue
   for (unsigned i=0; i<inQ.size(); i++) {
-    std::pair<uint16_t, ZIPMemTarget*> memReq = inQ.front();
+    std::tuple<uint16_t, ZIPMemTarget*> memReq = inQ.front();
     // try to send disaggregated zopEvents to the local ZENs
-    if (disaggregatePackets(memReq.first, memReq.second)) {
+    if (disaggregatePackets(std::get<0>(memReq), std::get<1>(memReq))) {
       inQ.pop();
     // if unsuccessful (for lack of credits), put back at the end of the queue
     } else {

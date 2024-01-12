@@ -53,7 +53,7 @@ ZEN::ZEN(ComponentId_t id, Params& params)
   // complete SST registration
   registerAsPrimaryComponent();
 
-  zip_credits = 10000;
+  zip_credits = 100;
 }
 
 ZEN::~ZEN(){

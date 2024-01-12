@@ -1,6 +1,7 @@
 import sst
 
 NUM_PRECINCTS = 2
+NUM_ZONES = 1
 
 sst.setProgramOption("verbose", "1")
 
@@ -41,7 +42,7 @@ class Precinct:
 
         self.noc = sst.Component(str(self), "merlin.hr_router")
         self.noc.addGlobalParamSet("router_params")
-        self.noc.addParams({"id": precinct_id+1, "num_ports": 2})
+        self.noc.addParams({"id": 1+precinct_id, "num_ports": 1+NUM_ZONES})
         self.noc.setSubComponent("topology", "merlin.singlerouter", 0)
 
         self.link_zip_noc = sst.Link("link_zip_noc_{}".format(precinct_id))
@@ -71,7 +72,7 @@ class ZIP:
         self.memory = self.memctrl.setSubComponent("backend", "memHierarchy.simpleMem")
         self.memory.addParams({"access_time" : "100ns", "mem_size" : "8GB"})
 
-        self.zip.addParams({"verbose" : 9, "precID" : precinct_id, "maxWait" : "1us"})
+        self.zip.addParams({"tests" : 1, "verbose" : 9, "precID" : precinct_id, "maxWait" : "1us"})
 
         self.nic = self.zip.setSubComponent("zopLink", "forza.zopNIC", 1)
         self.linkcontrol = self.nic.setSubComponent("iface", "merlin.linkcontrol", 0)
@@ -96,11 +97,11 @@ class Zone:
 
         self.xbar = sst.Component("xbar_{}".format(self), "merlin.hr_router")
         self.xbar.addGlobalParamSet("router_params")
-        self.xbar.addParams({"id": 1+NUM_PRECINCTS+1*precinct_id+zone_id, "num_ports": 2})
+        self.xbar.addParams({"id": 1+NUM_PRECINCTS+precinct_id*NUM_ZONES+zone_id, "num_ports": 2})
         self.xbar.setSubComponent("topology", "merlin.singlerouter", 0)
 
         self.zen = sst.Component("zen_{}".format(self), "forzazen.ZEN");
-        self.zen.addParams({"precinctId" : precinct_id, "zoneId" : zone_id, "verbose" : 1})
+        self.zen.addParams({"precinctId" : precinct_id, "zoneId" : zone_id, "verbose" : 9})
 
         self.zone_nic = self.zen.setSubComponent("zone_nic", "forza.zopNIC", 0)
         self.zone_linkcontrol = self.zone_nic.setSubComponent("iface", "merlin.linkcontrol", 0)
@@ -135,5 +136,9 @@ class Zone:
 F = FORZA()
 for i in range(NUM_PRECINCTS):
     F.addPrecinct()
-    for j in range(1):
+    for j in range(NUM_ZONES):
         F.precincts[-1].addZone()
+
+sst.setStatisticLoadLevel(1)
+sst.enableAllStatisticsForComponentType("ForzaZIP.ZIP")
+sst.setStatisticOutput("sst.statOutputConsole")

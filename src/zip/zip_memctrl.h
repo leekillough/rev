@@ -11,7 +11,7 @@
 #include <map>
 
 // -- SST Headers
-#include "sst.h"
+#include "SST.h"
 
 namespace SST::Forza{
 

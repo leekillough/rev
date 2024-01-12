@@ -5,7 +5,7 @@
 #ifndef _ZIP_EVENTS_H_
 #define _ZIP_EVENTS_H_
 
-#include "sst.h"
+#include "SST.h"
 #include "zip_events.h"
 #include <string>
 

@@ -67,7 +67,7 @@ void ZOPGen_prec::finish() {
 }
 
 bool ZOPGen_prec::clock(Cycle_t cycle){
-  if ((cycle == 1) && (int_id == 0)) {
+  if ((cycle > 0) && (cycle <= 10) && (int_id == 0)) {
     for (unsigned i=0; i<10; i++) {
       std::vector<uint64_t> payload;
       SST::Forza::zopEvent* zop = new SST::Forza::zopEvent(zopMsgT::Z_MSG, zopOpc::Z_MSG_SENDP);

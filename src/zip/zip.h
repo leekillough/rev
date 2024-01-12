@@ -5,7 +5,7 @@
 #ifndef _ZIP_H_
 #define _ZIP_H_
 
-#include "sst.h"
+#include "SST.h"
 #include "zip_events.h"
 #include "zip_memctrl.h"
 #include "zip_nic.h"
@@ -18,9 +18,9 @@
 // number of precincts
 #define MAX_PREC 8
 // maximum buffer size in bytes
-#define MAX_BUFF 10000
+#define MAX_BUFF 100
 // maximum zopEvent size in bytes
-#define MAX_ZOP 2056
+#define MAX_ZOP 50
 // starting address of incoming buffer for precinct p
 #define FIRST_IN_ADDR(p) ((2*p)*MAX_BUFF)
 // starting address of outgoing buffer for precinct p
@@ -28,7 +28,7 @@
 // number of ZENs
 #define MAX_ZEN 8
 // maximum ZEN buffer size in bytes
-#define MAX_ZEN_BUFF 10000
+#define MAX_ZEN_BUFF 100
 
 namespace SST::Forza{
   class ZIP : public SST::Component{
@@ -48,7 +48,8 @@ namespace SST::Forza{
       { "precID",    "Precinct ID.",                                  "0" },
       { "clockFreq", "ZIP core clock frequency.",                     "1GHz" },
       { "maxWait",   "Maximum time for a ZOP to wait in ZIP buffer.", "1ms" },
-      { "verbose",   "Sets the output verbosity.",                    "0" }
+      { "verbose",   "Sets the output verbosity.",                    "0" },
+      { "tests",     "Output flag, set to 1 for testing.",            "0" }
     )
 
     // describe the ports
@@ -58,7 +59,13 @@ namespace SST::Forza{
     )
 
     // describe the statistics
-    SST_ELI_DOCUMENT_STATISTICS()
+    SST_ELI_DOCUMENT_STATISTICS(
+      { "num_packets",      "Count of packets to be sent to another ZIP.",                      "count of packets", 1},
+      { "num_stalls",       "Count of packets stalled before being sent to another ZIP.",       "count of packets", 1},
+      { "num_sent_packets", "Count of packets successfully sent to another ZIP.",               "count of packets", 1},
+      { "num_recv_packets", "Count of packets successfully received from another ZIP.",         "count of packets", 1},
+      { "num_wait_cycles" , "Count of cycles packets waited before being sent to another ZIP.", "count of cycles",  1}
+    )
 
     // describe the subcomponent slots
     SST_ELI_DOCUMENT_SUBCOMPONENT_SLOTS(
@@ -95,6 +102,7 @@ namespace SST::Forza{
     /// The clock function runs with the frequency of the clockFreq parameter. Each cycle, the outgoing and incoming queues are
     /// processed, and buffers are sent off if we have the necessary credits.
     bool clock(SST::Cycle_t cycle);
+    TimeConverter* zipTime;
 
     /// ZIP: interfacing with memory
     /// These functions work with the memory controller to send write and read requests. The write operation requires a Buf to store.
@@ -108,10 +116,10 @@ namespace SST::Forza{
     /// These functions try to send data from memory to the NOC or HFI and return true if successful. They'll return false if we
     /// don't have enough credits, meaning that the NOC or HFI doesn't have enough space in its receiving buffer to accept the data.
     /// They require a pointer to a target to check if the read operation has completed.
-    bool    aggregatePackets(uint16_t DestPrec, ZIPMemTarget* Target); // try to send a ZIPAggEvent to HFI containing aggregated
-								       // zopEvents stored in outgoing buffer for precinct DestPrec
-    bool disaggregatePackets(uint16_t SrcPrec, ZIPMemTarget* Target);  // try to send zopEvents to the local NOC from the incoming
-								       // buffer for precinct SrcPrec
+    bool    aggregatePackets(uint16_t DestPrec, ZIPMemTarget* Target, bool* hasStalled); // try to send a ZIPAggEvent to HFI containing aggregated
+								                         // zopEvents stored in outgoing buffer for precinct DestPrec
+    bool disaggregatePackets(uint16_t SrcPrec, ZIPMemTarget* Target);                    // try to send zopEvents to the local NOC from the incoming
+								                         // buffer for precinct SrcPrec
 
     /// ZIP: vector conversion
     /// These help translate between 8-bit and 64-bit vectors.
@@ -143,10 +151,11 @@ namespace SST::Forza{
     // These queues keep track of which buffers are ready to be sent off to external ZIPs or the local NOC. Precincts are added to
     // the outgoing queue once the buffer size hits a threshold size or a maximum number of clock cycles have elapsed, whichever comes
     // sooner. Precincts are added to the incoming queue as soon as a packet of aggregated ZOPs is received from an external ZIP.
-    // Targets are also stored with the precinct ID to track when read operations have completed.
-    std::queue<std::pair<uint16_t, ZIPMemTarget*>> outQ; // contains destination precinct IDs that must be sent their aggregated outgoing buffers
-    std::queue<std::pair<uint16_t, ZIPMemTarget*>> inQ;  // contains source precinct IDs whose incoming buffers must be disaggregated and sent to the NOC
-
+    // Targets are also stored with the precinct ID to track when read operations have completed as well as (for the outgoing queue)
+    // the clock cycle when the packet was added to the queue and whether it was stalled due to lack of credits.
+    std::queue<std::tuple<uint16_t, ZIPMemTarget*, SimTime_t, bool*>> outQ; // contains destination precinct IDs that must be sent their aggregated outgoing buffers
+    std::queue<std::tuple<uint16_t, ZIPMemTarget*>>                   inQ;  // contains source precinct IDs whose incoming buffers must be disaggregated and sent to the NOC
+ 
     // maximum number of cycles to wait for outgoing buffers to be cleared
     unsigned int waitCycles;
 
@@ -155,7 +164,14 @@ namespace SST::Forza{
     UnitAlgebra  p_clockFreq;
     UnitAlgebra  p_maxWait;
     unsigned int p_verbose;
+    unsigned int p_tests;
 
+    // statistics
+    Statistic<uint64_t>* s_numPackets;
+    Statistic<uint64_t>* s_numStalls;
+    Statistic<uint64_t>* s_numSentPackets;
+    Statistic<uint64_t>* s_numRecvPackets;
+    Statistic<uint64_t>* s_numWaitCycles;
   }; // class SST::ZIP
 } // namespace SST::Forza
 
