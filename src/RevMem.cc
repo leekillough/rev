@@ -1812,31 +1812,50 @@ void RevMem::updatePhysHistoryfromInput(const std::string &InputFile){
 
   while (std::getline(input, line)) {
     std::istringstream iss(line);
-    char delim = ','; // 쉼표를 구분자로 명시적으로 설정
+    char delim=','; 
 
-    if (!(iss >> physAddr >> delim && getline(iss, type, delim) && getline(iss, validStr, delim) && iss >> appID)){
-      std::cerr << "Parsing error in line: " << line << std::endl;
+    if (!(iss >> physAddr >> delim && getline(iss, type, delim) && getline(iss, validStr, delim))) {
+        std::cerr << "Parsing error in line (missing fields): " << line << std::endl;
       continue;
     }
+
     valid = (validStr == "True");
 
-    // 문자열 "True"/"False"를 bool 타입으로 변환
-    // 데이터를 map에 저장
-    InputPhysAddrHist[physAddr] = std::make_tuple(type, valid, appID);
-    PhysAddrCheck = true; 
+    std::vector<int> appIDs;
+    if (iss.eof() || iss.fail()) {
+        std::cerr << "Parsing error in line (missing AppID): " << line << std::endl;
+        continue;
+    }
+     while (iss.peek() != std::istringstream::traits_type::eof()) {
+        if (iss >> appID) {
+            appIDs.push_back(appID);
+            if (iss.peek() == ',') iss.ignore();
+        }else{
+          break;
+        }
     }
 
-    // for (const auto &pair : InputPhysAddrHist)
+    if (appIDs.empty()) {
+        std::cerr << "Parsing error in line (no AppIDs found): " << line << std::endl;
+        continue;
+    }
+
+    InputPhysAddrHist[physAddr] = std::make_tuple(type, valid, appIDs);
+    PhysAddrCheck=true;
+  }
+    // for (const auto &element : InputPhysAddrHist)
     // {
-    //   std::cout << "PhysAddr: " << pair.first
-    //             << ", Type: " << std::get<0>(pair.second)
-    //             << ", Valid: " << std::get<1>(pair.second)
-    //             << ", ProcessID: " << std::get<2>(pair.second) << std::endl;
+    //   std::cout << "PhysAddr: " << element.first
+    //             << ", Type: " << std::get<0>(element.second)
+    //             << ", Valid: " << std::get<1>(element.second)
+    //             << ", AppIDs: ";
+    //   for (const auto &id : std::get<2>(element.second))
+    //   {
+    //     std::cout << id << " ";
+    //   }
+    //   std::cout << std::endl;
     // }
-    // PhysAddrCheck = true; // enable Security check based on the given PhysAddrTraffic 
-
   input.close();
-
 }
 void RevMem::updatePhysHistorytoOutput(){
 
@@ -1881,12 +1900,22 @@ std::pair<bool,std::string> RevMem::validatePhysAddr(uint64_t pAddr,int appID){
   if(it!=InputPhysAddrHist.end()){
     //key exists
       const auto& [type, valid, ownerappID] = it->second;
-      if(ownerappID!=appID){
-        ret= false;
+
+      if(std::find(ownerappID.begin(), ownerappID.end(), appID) == ownerappID.end()){
+        // AppID is not in the ownerappID vector
+        ret = false;
         std::string appIDstr = std::to_string(appID);
-        std::string ownerappIDstr = std::to_string(ownerappID);
-        reason="Invalid app "+appIDstr+" access, Owner appID is "+ownerappIDstr;
+        reason = "Invalid app " + appIDstr + " access, Owner appIDs are ";
+        for(const auto& id : ownerappID) {
+            reason += std::to_string(id) + " ";
       }
+      }
+      // if(ownerappID!=appID){
+      //   ret= false;
+      //   std::string appIDstr = std::to_string(appID);
+      //   std::string ownerappIDstr = std::to_string(ownerappID);
+      //   reason="Invalid app "+appIDstr+" access, Owner appID is "+ownerappIDstr;
+      // }
       if(valid==false){
         ret= false;
         reason="Invalid addr range access";
