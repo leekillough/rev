@@ -274,9 +274,17 @@ class FORZA:
         "link_bw" : self.linkBW,
         "xbar_bw" : self.xbarBW,
         "flit_size" : self.flitSize,
-        "num_ports" : self.zones,
+        "num_ports" : self.zones+1,
         "id" : 0
       })
+
+      #---------------------------------------------------
+      # TODO
+      #---------------------------------------------------
+      # - Create a ZIP component (one zip per precinct)
+      # - Connect the ZIP[port_NOC] to prec_router port[self.zones]
+      # - Conenct the ZIP[port_HFI] to the fat-tree system network
+      #---------------------------------------------------
 
       for j in range(self.zones):
         #-- create the zone router
