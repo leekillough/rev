@@ -528,7 +528,7 @@ private:
 
   // FORZA Security Test 
   std::map<uint64_t, std::tuple<std::string,bool, int>> OutputPhysAddrHist; //History to Output file 
-  std::map<uint64_t,std::tuple<std::string,bool,int>> InputPhysAddrHist; //Read from Input file 
+  std::map<uint64_t,std::tuple<std::string,bool,std::vector<int>>> InputPhysAddrHist; //Read from Input file 
   bool PhysAddrCheck;
   bool PhysAddrLogging;
   std::string outputFile;
