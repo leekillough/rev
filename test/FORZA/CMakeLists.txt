@@ -20,9 +20,7 @@ add_rev_test(forza_barrier forza_barrier 30 "all;memh;rv64;loader;forza" SCRIPT 
 add_rev_test(forza_zen_flow forza_zen_flow 60 "all;memh;rv64;loader;forza" SCRIPT "run_forza_zen_flow.sh")
 add_rev_test(forza_multisend forza_multisend 60 "all;memh;rv64;loader;forza" SCRIPT "run_forza_multisend.sh")
 
-#Security related test
-add_rev_test(private_access_allowed_rza forza_security 30 "all;memh;rv64;loader;forza;" SCRIPT "run_private_valid.sh")
+add_rev_test(private_access_allowed_rza forza_security 30 "all;memh;rv64;loader;forza;security" SCRIPT "run_private_valid.sh")
 add_rev_test(private_access_denied_rza forza_security 30 "all;memh;rv64;loader;forza;security" SCRIPT "run_private_invalid.sh")
-add_rev_test(shared_access_allowed forza_security 30 "all;memh;rv64;loader;forza;" SCRIPT "run_shared_valid.sh")
+add_rev_test(shared_access_allowed forza_security 30 "all;memh;rv64;loader;forza;security" SCRIPT "run_shared_valid.sh")
 add_rev_test(shared_access_denied forza_security 30 "all;memh;rv64;loader;forza;security" SCRIPT "run_shared_invalid.sh")
-
