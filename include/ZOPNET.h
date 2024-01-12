@@ -316,7 +316,7 @@ enum class zopCompID : uint8_t {
   Z_RZA         = 0b00001000,   /// zopCompID: RZA
   Z_ZQM         = 0b00001010,   /// zopCompID: ZQM
   Z_ZEN         = 0b00001100,   /// zopCompID: ZEN
-  Z_PREC_ZIP    = 0b10000000,   /// zopCompID: PRECINCT ZIP
+  Z_PREC_ZIP    = 0b00001111,   /// zopCompID: PRECINCT ZIP
 };
 
 // --------------------------------------------
@@ -753,9 +753,6 @@ public:
   /// zopAPI: clear the message Id hazard
   virtual void clearMsgID(unsigned Hart, uint8_t Id) = 0;
 
-  /// zopAPI: set this NIC to exist as a ZIP endpoint to the precinct NoC
-  virtual void setZIP() = 0;
-
   /// zopAPI: convert the precinct ID to zopPrecID
   SST::Forza::zopPrecID getPCID(unsigned Z){
     switch( Z ){
@@ -1038,9 +1035,6 @@ public:
     msgId[Hart].clearMsgId(Id);
   }
 
-  /// zopNIC: set this device to exist as attached to a ZIP
-  virtual void setZIP(){ isZipDevice = true; }
-
   /// zopNIC: clock tick function
   virtual bool clockTick(Cycle_t cycle);
 
@@ -1061,7 +1055,6 @@ private:
   SST::Interfaces::SimpleNetwork * iFace;   ///< zopNIC: SST network interface
   SST::Event::HandlerBase *msgHandler;      ///< zopNIC: SST message handler
   bool initBroadcastSent;                   ///< zopNIC: has the broadcast msg been sent
-  bool isZipDevice;                         ///< zopNIC: sets this device to exist as a ZIP
   unsigned numDest;                         ///< zopNIC: number of destination endpoints
   unsigned ReqPerCycle;                     ///< zopNIC: max requests to send per cycle
   unsigned numHarts;                        ///< zopNIC: number of attached Harts
