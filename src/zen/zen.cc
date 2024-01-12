@@ -97,7 +97,7 @@ void ZEN::finish() {
 
 void ZEN::handleIncomingPrecZOP(SST::Event *event) {
   SST::Forza::zopEvent* ev = static_cast<SST::Forza::zopEvent*>(event);
-  output.verbose(CALL_INFO, 9, 0, "Msg type %s, src %lld, dest %d src%d\n",
+  output.verbose(CALL_INFO, 9, 0, "Msg type %s, src %" PRId64 ", dest %d src%d\n",
                  m_prec_iface->msgTToStr(ev->getType()).c_str(), ev->getPacket()[1],
                  ev->getDestHart(), ev->getSrcHart());
   if ((zopCompID)ev->getSrcZCID() == zopCompID::Z_PREC_ZIP) {
@@ -126,7 +126,7 @@ void ZEN::handleIncomingZOP(SST::Event *event) {
   bool from_zip = false;
   SST::Forza::zopEvent* ev = static_cast<SST::Forza::zopEvent*>(event);
 
-  output.verbose(CALL_INFO, 9, 0, "Msg type %s, src %llu, dest %u src%d\n",
+  output.verbose(CALL_INFO, 9, 0, "Msg type %s, src %" PRIu64 ", dest %u src%d\n",
                  m_zop_iface->msgTToStr(ev->getType()).c_str(), ev->getPacket()[1],
                  ev->getDestHart(), ev->getSrcHart());
   if (ev->getType() != SST::Forza::zopMsgT::Z_MSG && ev->getType() != SST::Forza::zopMsgT::Z_RESP) {
@@ -186,7 +186,7 @@ void ZEN::sendMsgToRZADMA(uint64_t acs, uint64_t addr,
                           std::vector<uint64_t> src_payload,
                           uint8_t msg_id, uint64_t hart_id,
                           uint64_t queue_loc) {
-  output.verbose(CALL_INFO, 9, 0, "Msg tgt %llu, msg id %" PRIu8 "\n", addr, msg_id);
+  output.verbose(CALL_INFO, 9, 0, "Msg tgt %" PRIu64 ", msg id %" PRIu8 "\n", addr, msg_id);
   std::vector<uint64_t> payload;
   SST::Forza::zopEvent *rzaMsg = new SST::Forza::zopEvent();
   rzaMsg->setType(SST::Forza::zopMsgT::Z_MZOP);
@@ -209,7 +209,7 @@ void ZEN::sendMsgToRZADMA(uint64_t acs, uint64_t addr,
 void ZEN::sendHZOPToRZA(uint64_t acs, uint64_t addr, uint64_t src_addr,
                         uint64_t size, uint8_t cur_msg_id, uint64_t hart_id,
                         uint64_t queue_loc) {
-  output.verbose(CALL_INFO, 9, 0, "Msg tgt %llu, msg id %" PRIu8 "\n", addr, cur_msg_id);
+  output.verbose(CALL_INFO, 9, 0, "Msg tgt %" PRIu64 ", msg id %" PRIu8 "\n", addr, cur_msg_id);
 
   // TODO: Fix HZOP format
   std::vector<uint64_t> payload;
@@ -236,7 +236,7 @@ void ZEN::sendHZOPToRZA(uint64_t acs, uint64_t addr, uint64_t src_addr,
 void ZEN::sendMsgToRZANonDMA(uint64_t acs, uint64_t addr, uint64_t src_payload,
                              uint8_t cur_msg_id, uint64_t hart_id,
                              uint64_t queue_loc) {
-  output.verbose(CALL_INFO, 9, 0, "Msg tgt %llu, msg id %" PRIu8 "\n", addr, cur_msg_id);
+  output.verbose(CALL_INFO, 9, 0, "Msg tgt %" PRIu64 ", msg id %" PRIu8 "\n", addr, cur_msg_id);
 
   // TODO: Update with RZA id
   std::vector<uint64_t> payload;
@@ -262,7 +262,7 @@ void ZEN::sendMsgToRZANonDMA(uint64_t acs, uint64_t addr, uint64_t src_payload,
 void ZEN::sendMsgToScratchpad(uint64_t dest, uint64_t zcid,
                               uint64_t scratch_addr, uint64_t size,
                               uint64_t addr){
-  output.verbose(CALL_INFO, 9, 0, "hart %llu, scratch a %llu, size %llu, addr %llu\n",
+  output.verbose(CALL_INFO, 9, 0, "hart %" PRIu64 ", scratch a %" PRIu64 ", size %" PRIu64 ", addr %" PRIu64 "\n",
                  dest, scratch_addr, size, addr);
   std::vector<uint64_t> payload;
   SST::Forza::zopEvent *zapMsg = new SST::Forza::zopEvent();
@@ -482,18 +482,18 @@ void ZEN::sendACKToZAP(uint64_t hart_id, uint64_t zcid, uint8_t msg_id) {
 
 int ZEN::getRZATailQueue(uint64_t zap_id, uint64_t hart_id, uint64_t size) {
   std::pair<uint64_t, uint64_t> hart_zap_id = std::make_pair(zap_id, hart_id);
-  output.verbose(CALL_INFO, 9, 0, "hart_zap_id: [%llu, %llu]\n", hart_zap_id.first, hart_zap_id.second);
+  output.verbose(CALL_INFO, 9, 0, "hart_zap_id: [%" PRIu64 ", %" PRIu64 "]\n", hart_zap_id.first, hart_zap_id.second);
   if (!hart_tables[hart_zap_id]) { /* TODO: Raise exception */
-    output.verbose(CALL_INFO, 9, 0, "no table entry for %llu\n", hart_id);
+    output.verbose(CALL_INFO, 9, 0, "no table entry for %" PRIu64 "\n", hart_id);
     return 0;
   }
   uint64_t cur_tail = hart_tables[hart_zap_id]->mem_cur_tail;
   uint64_t cur_head = hart_tables[hart_zap_id]->mem_cur_head;
-  output.verbose(CALL_INFO, 9, 0, "RZA[%llu]: cur_head: %llu, cur_tail: %llu, size %llu\n", hart_id, cur_head, cur_tail, size);
-  output.verbose(CALL_INFO, 9, 0, "RZA[%llu]: mem_head: %llu, mem_tail %llu\n", hart_id, hart_tables[hart_zap_id]->mem_head, hart_tables[hart_zap_id]->mem_tail);
+  output.verbose(CALL_INFO, 9, 0, "RZA[%" PRIu64 "]: cur_head: %" PRIu64 ", cur_tail: %" PRIu64 ", size %" PRIu64 "\n", hart_id, cur_head, cur_tail, size);
+  output.verbose(CALL_INFO, 9, 0, "RZA[%" PRIu64 "]: mem_head: %" PRIu64 ", mem_tail %" PRIu64 "\n", hart_id, hart_tables[hart_zap_id]->mem_head, hart_tables[hart_zap_id]->mem_tail);
   if (cur_tail >= cur_head) {
     if (cur_tail == cur_head && !hart_tables[hart_zap_id]->empty) {
-      output.verbose(CALL_INFO, 9, 0, "RZA[%llu]: GOT -1!\n", hart_id);
+      output.verbose(CALL_INFO, 9, 0, "RZA[%" PRIu64 "]: GOT -1!\n", hart_id);
       return -1;
     }
     if (cur_tail + size > hart_tables[hart_zap_id]->mem_tail) {
@@ -516,11 +516,11 @@ int ZEN::getRZATailQueue(uint64_t zap_id, uint64_t hart_id, uint64_t size) {
       return cur_tail;
     }
   } else {
-  output.verbose(CALL_INFO, 9, 0, "RZA[%llu]: mem_head: %llu, mem_tail %llu\n", hart_id, hart_tables[hart_zap_id]->mem_head, hart_tables[hart_zap_id]->mem_tail);
+  output.verbose(CALL_INFO, 9, 0, "RZA[%" PRIu64 "]: mem_head: %" PRIu64 ", mem_tail %" PRIu64 "\n", hart_id, hart_tables[hart_zap_id]->mem_head, hart_tables[hart_zap_id]->mem_tail);
     // Wraparound
     if (cur_tail + size > cur_head) {
       // Not enough space
-  output.verbose(CALL_INFO, 9, 0, "RZA[%llu]: mem_head: %llu, mem_tail %llu\n", hart_id, hart_tables[hart_zap_id]->mem_head, hart_tables[hart_zap_id]->mem_tail);
+  output.verbose(CALL_INFO, 9, 0, "RZA[%" PRIu64 "]: mem_head: %" PRIu64 ", mem_tail %" PRIu64 "\n", hart_id, hart_tables[hart_zap_id]->mem_head, hart_tables[hart_zap_id]->mem_tail);
       return -1;
     } else {
       hart_tables[hart_zap_id]->empty = false;
@@ -555,7 +555,7 @@ void ZEN::processPrecinctEgressQueue() {
   uint64_t cur_processed = 0;
   for (unsigned precincts = 0; precincts < m_num_precincts; ++precincts) {
     for (unsigned i = 0; i < precinct_queue[precincts].size(); ++i) {
-      if ( (precinct_queue[precincts][i]->status == ZENStatus::UNPROCESSED) && (zip_credits-(precinct_queue[precincts][i]->msg->getLength()+Z_NUM_HEADER_FLITS) >= 0) ) {
+      if ( (precinct_queue[precincts][i]->status == ZENStatus::UNPROCESSED) && ((int64_t)zip_credits >= (precinct_queue[precincts][i]->msg->getLength()+Z_NUM_HEADER_FLITS)) ) { // used (int64_t)A >= B instead of A - B >= 0 to fix compiler error: comparison of unsigned expression in ‘>= 0’ is always true [-Werror=type-limits] and compiler error  error: comparison of integer expressions of different signedness: ‘uint64_t’ {aka ‘long unsigned int’} and ‘int’ [-Werror=sign-compare]
         // TODO: Credit check for dest zone
         forwardPktToZIP(precinct_queue[precincts][i]->msg);
         precinct_queue[precincts][i]->status = ZENStatus::DONE;
@@ -671,14 +671,14 @@ void ZEN::prepSendRZAStore() {
             sendMsgToRZADMA(getWriteACS(hart_tables[hart_zap_id]->acs_pair), rza_addr, payload, next_msg_id, harts, i);
             zen_queue[hart_zap_id][i]->tail = rza_addr;
             outstanding_mem_req[next_msg_id] = zen_queue[hart_zap_id][i];
-            output.verbose(CALL_INFO, 9, 0, "Free msg_id %llu in [%u,%u]\n", next_msg_id, harts, i);
+            output.verbose(CALL_INFO, 9, 0, "Free msg_id %" PRIu64 " in [%u,%u]\n", next_msg_id, harts, i);
             zen_queue[hart_zap_id][i]->msg_ids.push_back(next_msg_id);
             zen_queue[hart_zap_id][i]->status = MZOP_SENT;
           } else {
             std::vector<uint8_t> avail_msg_id;
             for (unsigned j = 0; j < payload.size(); ++j) {
               uint64_t next_msg_id = findFirstUnsetBit(msg_id);
-              output.verbose(CALL_INFO, 9, 0, "Free msg_id %llu\n", next_msg_id);
+              output.verbose(CALL_INFO, 9, 0, "Free msg_id %" PRIu64 "\n", next_msg_id);
               if (next_msg_id > 256) {
                 for (unsigned k = 0; j < avail_msg_id.size(); ++k) {
                   msg_id[avail_msg_id[k]] = false;
@@ -728,7 +728,7 @@ void ZEN::processZAPCredits() {
     uint64_t hart_id = zap_credits[i]->getSrcHart();
     uint64_t zap_id = zap_credits[i]->getSrcZCID();
     std::pair<uint64_t, uint64_t> hart_zap_id = std::make_pair(zap_id, hart_id);
-    output.verbose(CALL_INFO, 9, 0, "hart_zap_id: [%llu, %llu]\n", hart_zap_id.first, hart_zap_id.second);
+    output.verbose(CALL_INFO, 9, 0, "hart_zap_id: [%" PRIu64 ", %" PRIu64 "]\n", hart_zap_id.first, hart_zap_id.second);
     uint64_t credits = zap_credits[i]->getCredit();
     uint64_t cur_tail = hart_tables[hart_zap_id]->mem_cur_tail;
     uint64_t cur_head = hart_tables[hart_zap_id]->mem_cur_head;
@@ -755,7 +755,7 @@ void ZEN::processZAPCredits() {
       }
     }
 
-    output.verbose(CALL_INFO, 9, 0, "set queue %llu to [%llu, %llu]\n", hart_id, hart_tables[hart_zap_id]->mem_cur_head, hart_tables[hart_zap_id]->mem_cur_tail);
+    output.verbose(CALL_INFO, 9, 0, "set queue %" PRIu64 " to [%" PRIu64 ", %" PRIu64 "]\n", hart_id, hart_tables[hart_zap_id]->mem_cur_head, hart_tables[hart_zap_id]->mem_cur_tail);
     delete zap_credits[i];
     zap_credits[i] = NULL;
     cur_processed++;
@@ -778,7 +778,7 @@ void ZEN::processSetupMsgs() {
     uint64_t hart_id = setup_reqs[i]->getSrcHart();
     uint64_t zap_id = setup_reqs[i]->getSrcZCID();
     std::pair<uint64_t, uint64_t> hart_zap_id = std::make_pair(zap_id, hart_id);
-    output.verbose(CALL_INFO, 9, 0, "setup pkt size %zu for hart %llu\n", payload.size(), hart_id);
+    output.verbose(CALL_INFO, 9, 0, "setup pkt size %zu for hart %" PRIu64 "\n", payload.size(), hart_id);
     if (setup_reqs[i]->getPayload().size() < 4 || hart_tables.find(hart_zap_id) != hart_tables.end()) {
       // From ZIP setup is assumed to be validated at ZIP
       sendNACKToZAP(hart_id, zap_id, setup_reqs[i]->getID());
@@ -791,8 +791,8 @@ void ZEN::processSetupMsgs() {
     uint64_t scratch_tail = payload[4];
     hart_tables[hart_zap_id] = new ZENTableRow(acs_pair, mem_start_addr, mem_end_addr, size, scratch_tail, 500);
     sendACKToZAP(hart_id, zap_id, setup_reqs[i]->getID());
-    output.verbose(CALL_INFO, 9, 0, "setup hart table %llu, start addr %llu, end addr %llu\n", hart_id, mem_start_addr, mem_end_addr);
-    output.verbose(CALL_INFO, 9, 0, "setup hart table %llu, start addr %llu, end addr %llu\n", hart_id, hart_tables[hart_zap_id]->mem_head, hart_tables[hart_zap_id]->mem_tail);
+    output.verbose(CALL_INFO, 9, 0, "setup hart table %" PRIu64 ", start addr %" PRIu64 ", end addr %" PRIu64 "\n", hart_id, mem_start_addr, mem_end_addr);
+    output.verbose(CALL_INFO, 9, 0, "setup hart table %" PRIu64 ", start addr %" PRIu64 ", end addr %" PRIu64 "\n", hart_id, hart_tables[hart_zap_id]->mem_head, hart_tables[hart_zap_id]->mem_tail);
     delete setup_reqs[i];
     setup_reqs[i] = NULL;
     cur_processed++;
@@ -812,7 +812,7 @@ void ZEN::processZIPQueue() {
 
   for (unsigned i=0; i<zipQ.size(); i++) {
     SST::Forza::zopEvent* ev = zipQ.front();
-    bool success = false;
+    // bool success = false; // commented out this line to fix compiler error: unused variable ‘success’ [-Werror=unused-variable]
     std::pair<uint64_t, uint64_t> hart_zap_id = std::make_pair(ev->getDestZCID(), ev->getDestHart());
     if (zen_queue[hart_zap_id].size() < zen_queue_size_limit) {
       output.verbose(CALL_INFO, 9, 0, "Entry in ZIP queue processed\n");
