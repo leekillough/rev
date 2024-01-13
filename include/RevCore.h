@@ -186,6 +186,9 @@ public:
   ///< RevCore: Add a co-processor to the RevCore
   void SetCoProc( RevCoProc* coproc );
 
+  ///< RevProc: Set the ZOP NIC handler
+  void setZNic(Forza::zopAPI *Z) { zNic = Z; }
+
   //--------------- External Interface for use with Co-Processor -------------------------
   ///< RevCore: Allow a co-processor to query the bits in scoreboard. Note the RevCorePassKey may only
   ///  be created by a RevCoProc (or a class derived from RevCoProc) so this function may not be called from even within
@@ -303,6 +306,8 @@ private:
   RevMem*    mem{};       ///< RevCore: memory object
   RevCoProc* coProc{};    ///< RevCore: attached co-processor
   RevLoader* loader{};    ///< RevCore: loader object
+
+  Forza::zopAPI *zNic{};  ///< RevProc: ZOPNic object
 
   // Function pointer to the GetNewThreadID function in RevCPU (monotonically increasing thread ID counter)
   std::function<uint32_t()> const GetNewThreadID;
