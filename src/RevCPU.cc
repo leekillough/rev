@@ -34,14 +34,7 @@ const char splash_msg[] = "\
 \n\
 ";
 
-RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params )
-  : SST::Component(id), testStage(0), PrivTag(0), address(-1), PrevAddr(_PAN_RDMA_MAILBOX_),
-    EnableNIC(false), EnablePAN(false), EnablePANStats(false), EnableMemH(false), DisableCoprocClock( false ),
-    ReadyForRevoke(false), Nic(nullptr), PNic(nullptr), PExec(nullptr), Ctrl(nullptr),
-    EnableMemH(false), EnableCoProc(false),
-    EnableRZA(false), EnableZopNIC(false), DisableCoprocClock(false),
-    Precinct(0), Zone(0),
-    Nic(nullptr), Ctrl(nullptr), zNic(nullptr), ClockHandler(nullptr) {
+RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params ) : SST::Component( id ) {
 
   const int Verbosity = params.find<int>( "verbose", 0 );
 
@@ -54,13 +47,15 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params )
   timeConverter              = registerClock( cpuClock, ClockHandler );
 
   // Inform SST to wait until we authorize it to exit
-  EnableRZA    = params.find<bool>("enableRZA", 0);
-  if( !EnableRZA ){
+  EnableRZA                  = params.find<bool>( "enableRZA", 0 );
+  if( !EnableRZA ) {
     // RZA's do not call these are they are effectively peripheral components
-  registerAsPrimaryComponent();
-  primaryComponentDoNotEndSim();
+    registerAsPrimaryComponent();
+    primaryComponentDoNotEndSim();
   }
 
+  // std::string ClockFreq = params.find<std::string>("clock", "1Ghz");
+  // printf("given Txt files : %s\n",txtFile.c_str());
   // Derive the simulation parameters
   // We must always derive the number of cores before initializing the options
   numCores = params.find<unsigned>( "numCores", "1" );
@@ -118,167 +113,6 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params )
     msgPerCycle = params.find<unsigned>( "msgPerCycle", 1 );
   }
 
-  // See if we should the load PAN network interface controller
-  EnablePAN = params.find<bool>("enable_pan", 0);
-  EnablePANStats = params.find<bool>("enable_pan_stats", 0);
-
-  if( EnablePAN ){
-    // Look up the network component
-
-    PNic = loadUserSubComponent<panNicAPI>("pan_nic");
-
-    // check to see if the nic was loaded.  if not, DO NOT load an anonymous endpoint
-    if(!PNic)
-      output.fatal(CALL_INFO, -1, "Error: no PAN NIC object loaded into RevCPU\n");
-
-    PNic->setMsgHandler(new Event::Handler<RevCPU>(this, &RevCPU::handlePANMessage));
-
-    // setup the PAN target device execution context
-    if( !PNic->IsHost() ){
-      // TODO: Use std::nothrow to return null instead of throwing std::bad_alloc
-      PExec = new PanExec();
-      if( PExec == nullptr ){
-        for( size_t i=0; i<Procs.size(); i++ ){
-          Procs[i]->SetExecCtx(PExec);
-        }
-      }
-      RevokeHasArrived = false;
-    }else{
-      RevokeHasArrived = true;
-    }
-
-    // record the number of injected messages per cycle
-    msgPerCycle = params.find<unsigned>("msgPerCycle", 1);
-    RDMAPerCycle = params.find<unsigned>("RDMAPerCycle", 1);
-    EnableRDMAMBox = params.find<bool>("enableRDMAMbox", 1);
-
-    if( EnablePANStats )
-      registerStatistics();
-  }else{
-    RevokeHasArrived = true;
-  }
-
-  // Look for the fault injection logic
-  EnableFaults = params.find<bool>("enable_faults", 0);
-  if( EnableFaults ){
-    std::vector<std::string> faults;
-    params.find_array<std::string>("faults", faults);
-    DecodeFaultCodes(faults);
-
-    std::string width = params.find<std::string>("fault_width", "1");
-    DecodeFaultWidth(width);
-
-    fault_width = params.find<int64_t>("fault_range", "65536");
-    FaultCntr = fault_width;
-  }
-
-  // Create the memory object
-  const uint64_t memSize = params.find<unsigned long>("memSize", 1073741824);
-  EnableMemH = params.find<bool>("enable_memH", 0);
-  if( !EnableMemH ){
-    // TODO: Use std::nothrow to return null instead of throwing std::bad_alloc
-    Mem = new RevMem( memSize, Opts,  &output );
-    if( !Mem )
-      output.fatal(CALL_INFO, -1, "Error: failed to initialize the memory object\n" );
-  }else{
-    Ctrl = loadUserSubComponent<RevMemCtrl>("memory");
-    if( !Ctrl )
-      output.fatal(CALL_INFO, -1, "Error : failed to inintialize the memory controller subcomponent\n");
-
-    // TODO: Use std::nothrow to return null instead of throwing std::bad_alloc
-    Mem = new RevMem( memSize, Opts, Ctrl, &output );
-    if( !Mem )
-      output.fatal(CALL_INFO, -1, "Error : failed to initialize the memory object\n" );
-
-    if( EnableFaults )
-      output.verbose(CALL_INFO, 1, 0, "Warning: memory faults cannot be enabled with memHierarchy support\n");
-  }
-
-  // FORZA: initialize scratchpad
-  Mem->InitScratchpad(id, _SCRATCHPAD_SIZE_, _CHUNK_SIZE_);
-
-  // FORZA: initialize the network
-  // setup the FORZA NoC NIC endpoint for the Zone
-  // Note that this must occur AFTER memory initialization
-  EnableZopNIC = params.find<bool>("enableZoneNIC", 0);
-  if( EnableZopNIC ){
-    output.verbose(CALL_INFO, 4, 0, "[FORZA] Enabling zone NIC on device=%s\n",
-                     getName().c_str());
-    Precinct = params.find<unsigned>("precinctId", 0);
-    Zone = params.find<unsigned>("zoneId", 0);
-    zNic = loadUserSubComponent<Forza::zopAPI>("zone_nic");
-    if( !zNic ){
-      output.fatal(CALL_INFO, -1, "Error: no ZONE NIC object loaded into RevCPU\n" );
-    }
-    Mem->setZNic(zNic);
-    zNic->setNumHarts(numHarts);
-    zNic->setPrecinctID(Precinct);
-    zNic->setZoneID(Zone);
-
-    // set the message handler for the NoC interface
-    zNic->setMsgHandler(new Event::Handler<RevCPU>(this, &RevCPU::handleZOPMessage));
-
-    // now that the NIC has been loaded, we need to ensure that the NIC knows
-    // what type of endpoint it is
-    if( EnableRZA ){
-      // This Rev instance is an RZA
-      if( !EnableMemH ){
-        output.fatal(CALL_INFO, -1,
-                     "Error : memHierarchy is required if the respective Rev instance is an RZA\n");
-      }
-      zNic->setEndpointType(Forza::zopCompID::Z_RZA);
-      output.verbose(CALL_INFO, 4, 0, "[FORZA] device=%s initialized as RZA device\n",
-                     getName().c_str());
-      // ensure the memory controller knows that it is an RZA device
-      Mem->setRZA();
-    }else{
-      // This Rev instance is a ZAP
-      Mem->unsetRZA();
-      unsigned zap = params.find<unsigned>("zapId", 0);
-      Forza::zopCompID zapId = Forza::zopCompID::Z_ZAP0;
-      switch( zap ){
-      case 0:
-        zapId = Forza::zopCompID::Z_ZAP0;
-        break;
-      case 1:
-        zapId = Forza::zopCompID::Z_ZAP1;
-        break;
-      case 2:
-        zapId = Forza::zopCompID::Z_ZAP2;
-        break;
-      case 3:
-        zapId = Forza::zopCompID::Z_ZAP3;
-        break;
-      case 4:
-        zapId = Forza::zopCompID::Z_ZAP4;
-        break;
-      case 5:
-        zapId = Forza::zopCompID::Z_ZAP5;
-        break;
-      case 6:
-        zapId = Forza::zopCompID::Z_ZAP6;
-        break;
-      case 7:
-        zapId = Forza::zopCompID::Z_ZAP7;
-        break;
-      default:
-        output.fatal(CALL_INFO, -1,
-                     "Error: zapId is out of range [0-7]\n");
-        break;
-      }
-      zNic->setEndpointType(zapId);
-      output.verbose(CALL_INFO, 4, 0, "[FORZA] device=%s initialized as ZAP device: ZAP%d\n",
-                     getName().c_str(), zap);
-    }
-  }
-
-#if 0
-  // See if we should load the test harness as opposed to a binary payload
-  if( EnablePANTest && (!EnablePAN) ){
-    output.fatal(CALL_INFO, -1, "Error: enabling PAN tests requires a pan_nic");
-#endif
-  }
-
   // Look for the fault injection logic
   EnableFaults = params.find<bool>( "enable_faults", 0 );
   if( EnableFaults ) {
@@ -296,6 +130,15 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params )
   // Create the memory object
   const uint64_t memSize = params.find<unsigned long>( "memSize", 1073741824 );
   EnableMemH             = params.find<bool>( "enable_memH", 0 );
+
+  // Added for the security test
+  EnableForzaSecurity    = params.find<bool>( "enableForzaSecurity", false );
+
+  if( EnableForzaSecurity ) {
+    memTrafficInput  = params.find<std::string>( "memTrafficInput", "" );
+    memTrafficOutput = params.find<std::string>( "memTrafficOutput", "" );
+  }
+
   if( !EnableMemH ) {
     // TODO: Use std::nothrow to return null instead of throwing std::bad_alloc
     Mem = new RevMem( memSize, Opts, &output );
@@ -321,11 +164,82 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params )
       );
   }
 
-  // FORZA: initialize scratchpad
-  Mem->InitScratchpad(id, _SCRATCHPAD_SIZE_, _CHUNK_SIZE_);
+  // if the forza security models are enabled, inform RevMem that logging as been enabled
+  if( EnableForzaSecurity ) {
+    if( memTrafficInput != "nil" ) {
+      output.verbose( CALL_INFO, 1, 0, "Enabling MemTrafficInput : %s\n", memTrafficInput.c_str() );
+      Mem->updatePhysHistoryfromInput( memTrafficInput );
+    }
+    if( memTrafficOutput != "nil" ) {
+      output.verbose( CALL_INFO, 1, 0, "Enabling MemTrafficOutput : %s\n", memTrafficOutput.c_str() );
+      Mem->setOutputFile( memTrafficOutput );
+      Mem->enablePhysHistoryLogging();
+    }
+  }
 
-=======
->>>>>>> 0eb87ed9 (fixing issues with memory initialization; updating noc_discovery test to correctly setup the precint, zone, etc)
+  // FORZA: initialize scratchpad
+  Mem->InitScratchpad( id, _SCRATCHPAD_SIZE_, _CHUNK_SIZE_ );
+
+  // FORZA: initialize the network
+  // setup the FORZA NoC NIC endpoint for the Zone
+  // Note that this must occur AFTER memory initialization
+  EnableZopNIC = params.find<bool>( "enableZoneNIC", 0 );
+  if( EnableZopNIC ) {
+    output.verbose( CALL_INFO, 4, 0, "[FORZA] Enabling zone NIC on device=%s\n", getName().c_str() );
+    Precinct = params.find<unsigned>( "precinctId", 0 );
+    Zone     = params.find<unsigned>( "zoneId", 0 );
+    zNic     = loadUserSubComponent<Forza::zopAPI>( "zone_nic" );
+    if( !zNic ) {
+      output.fatal( CALL_INFO, -1, "Error: no ZONE NIC object loaded into RevCPU\n" );
+    }
+    Mem->setZNic( zNic );
+    zNic->setNumHarts( numHarts );
+    zNic->setPrecinctID( Precinct );
+    zNic->setZoneID( Zone );
+
+    // set the message handler for the NoC interface
+    zNic->setMsgHandler( new Event::Handler<RevCPU>( this, &RevCPU::handleZOPMessage ) );
+
+    // set the message id generator
+    zNicMsgIds = new Forza::zopMsgID();
+
+    // now that the NIC has been loaded, we need to ensure that the NIC knows
+    // what type of endpoint it is
+    if( EnableRZA ) {
+      // This Rev instance is an RZA
+      if( !EnableMemH ) {
+        output.fatal(
+          CALL_INFO,
+          -1,
+          "Error : memHierarchy is required if the respective Rev "
+          "instance is an RZA\n"
+        );
+      }
+      zNic->setEndpointType( Forza::zopCompID::Z_RZA );
+      output.verbose( CALL_INFO, 4, 0, "[FORZA] device=%s initialized as RZA device\n", getName().c_str() );
+      // ensure the memory controller knows that it is an RZA device
+      Mem->setRZA();
+    } else {
+      // This Rev instance is a ZAP
+      Mem->unsetRZA();
+      unsigned         zap   = params.find<unsigned>( "zapId", 0 );
+      Forza::zopCompID zapId = Forza::zopCompID::Z_ZAP0;
+      switch( zap ) {
+      case 0: zapId = Forza::zopCompID::Z_ZAP0; break;
+      case 1: zapId = Forza::zopCompID::Z_ZAP1; break;
+      case 2: zapId = Forza::zopCompID::Z_ZAP2; break;
+      case 3: zapId = Forza::zopCompID::Z_ZAP3; break;
+      case 4: zapId = Forza::zopCompID::Z_ZAP4; break;
+      case 5: zapId = Forza::zopCompID::Z_ZAP5; break;
+      case 6: zapId = Forza::zopCompID::Z_ZAP6; break;
+      case 7: zapId = Forza::zopCompID::Z_ZAP7; break;
+      default: output.fatal( CALL_INFO, -1, "Error: zapId is out of range [0-7]\n" ); break;
+      }
+      zNic->setEndpointType( zapId );
+      output.verbose( CALL_INFO, 4, 0, "[FORZA] device=%s initialized as ZAP device: ZAP%d\n", getName().c_str(), zap );
+    }
+  }
+
   // Set TLB Size
   const uint64_t tlbSize = params.find<unsigned long>( "tlbSize", 512 );
   Mem->SetTLBSize( tlbSize );
@@ -335,19 +249,21 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params )
   Mem->SetMaxHeapSize( maxHeapSize );
 
   // Load the binary into memory
-  Loader = new( std::nothrow ) RevLoader( Exe, Opts->GetArgv(), Mem, &output );
+  Loader = new( std::nothrow ) RevLoader( Exe, Opts->GetArgv(), Mem, &output, !EnableZopNIC || EnableRZA );
   if( !Loader ) {
     output.fatal( CALL_INFO, -1, "Error: failed to initialize the RISC-V loader\n" );
   }
 
-  // Create the processor objects
-  Procs.reserve( Procs.size() + numCores );
-  for( unsigned i = 0; i < numCores; i++ ) {
-    Procs.push_back( new RevCore( i, Opts, numHarts, Mem, Loader, this->GetNewTID(), &output ) );
-  }
-
   EnableCoProc = params.find<bool>( "enableCoProc", 0 );
   if( EnableCoProc ) {
+
+    // Create the processor objects
+    Procs.reserve( Procs.size() + numCores );
+    for( unsigned i = 0; i < numCores; i++ ) {
+      RevCore* tmpNewRevCore = new RevCore( i, Opts, numHarts, Mem, Loader, this->GetNewTID(), &output );
+      tmpNewRevCore->setZNic( zNic );
+      Procs.push_back( tmpNewRevCore );
+    }
     // Create the co-processor objects
     for( unsigned i = 0; i < numCores; i++ ) {
       RevCoProc* CoProc = loadUserSubComponent<RevCoProc>( "co_proc", SST::ComponentInfo::SHARE_NONE, Procs[i] );
@@ -357,56 +273,52 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params )
       CoProcs.push_back( CoProc );
       Procs[i]->SetCoProc( CoProc );
     }
-  }else if(EnableRZA){
+  } else if( EnableRZA ) {
     // retrieve each of the RZA pipeline models
     // NOTE:
     // We currently disable the RZOP pipeline as the opcodes
     // are not defined in version 3.3.0 of the spec
-    if( numCores != 2 ){
-      output.fatal(CALL_INFO, -1,
-                   "Error : FORZA RZA devices require at least 2 cores\n" );
+    if( numCores != 2 ) {
+      output.fatal( CALL_INFO, -1, "Error : FORZA RZA devices require at least 2 cores\n" );
     }
 
     // Force the coprocs to be enabled
     EnableCoProc = true;
 
-    Procs.reserve(Procs.size() + numCores);
-    for( unsigned i=0; i<numCores; i++ ){
-      RevProc *tmpNewRevProc = new RevProc( i, Opts, numHarts, Mem,
-                                    Loader, this->GetNewTID(), &output );
-      tmpNewRevProc->setZNic(zNic);
-      Procs.push_back( tmpNewRevProc );
+    Procs.reserve( Procs.size() + numCores );
+    for( unsigned i = 0; i < numCores; i++ ) {
+      RevCore* tmpNewRevCore = new RevCore( i, Opts, numHarts, Mem, Loader, this->GetNewTID(), &output );
+      tmpNewRevCore->setZNic( zNic );
+      Procs.push_back( tmpNewRevCore );
     }
 
-    RevCoProc *LSProc = loadUserSubComponent<RevCoProc>("rza_ls",
-                                                        SST::ComponentInfo::SHARE_NONE,
-                                                        Procs[Z_MZOP_PIPE_HART]);
-    if( !LSProc ){
-      output.fatal(CALL_INFO, -1,
-                   "Error : failed to initialize the RZA LS pipeline\n" );
+    RevCoProc* LSProc = loadUserSubComponent<RevCoProc>( "rza_ls", SST::ComponentInfo::SHARE_NONE, Procs[Z_MZOP_PIPE_HART] );
+    if( !LSProc ) {
+      output.fatal( CALL_INFO, -1, "Error : failed to initialize the RZA LS pipeline\n" );
     }
-    LSProc->setMem(Mem);
-    LSProc->setZNic(zNic);
+    LSProc->setMem( Mem );
+    LSProc->setZNic( zNic );
 
-    RevCoProc *AMOProc = loadUserSubComponent<RevCoProc>("rza_amo",
-                                                         SST::ComponentInfo::SHARE_NONE,
-                                                         Procs[Z_HZOP_PIPE_HART]);
-    if( !AMOProc ){
-      output.fatal(CALL_INFO, -1,
-                   "Error : failed to initialize the RZA AMO pipeline\n" );
+    RevCoProc* AMOProc = loadUserSubComponent<RevCoProc>( "rza_amo", SST::ComponentInfo::SHARE_NONE, Procs[Z_HZOP_PIPE_HART] );
+    if( !AMOProc ) {
+      output.fatal( CALL_INFO, -1, "Error : failed to initialize the RZA AMO pipeline\n" );
     }
-    AMOProc->setMem(Mem);
-    AMOProc->setZNic(zNic);
+    AMOProc->setMem( Mem );
+    AMOProc->setZNic( zNic );
 
-    CoProcs.push_back(LSProc);
-    CoProcs.push_back(AMOProc);
-    Procs[Z_MZOP_PIPE_HART]->SetCoProc(LSProc);
-    Procs[Z_HZOP_PIPE_HART]->SetCoProc(AMOProc);
-  }else{
+    CoProcs.push_back( LSProc );
+    CoProcs.push_back( AMOProc );
+    Procs[Z_MZOP_PIPE_HART]->SetCoProc( LSProc );
+    Procs[Z_HZOP_PIPE_HART]->SetCoProc( AMOProc );
+  } else {
     // Create the processor objects
-    Procs.reserve(Procs.size() + numCores);
-    for( unsigned i=0; i<numCores; i++ ){
-      Procs.push_back( new RevProc( i, Opts, numHarts, Mem, Loader, AssignedThreads.at(i), this->GetNewTID(), &output ) );
+    Procs.reserve( Procs.size() + numCores );
+    for( unsigned i = 0; i < numCores; i++ ) {
+      RevCore* tmpNewRevCore = new RevCore( i, Opts, numHarts, Mem, Loader, this->GetNewTID(), &output );
+      tmpNewRevCore->setZNic( zNic );
+      tmpNewRevCore->setZNicMsgIds( zNicMsgIds );
+      Procs.push_back( tmpNewRevCore );
+    }
   }
 
   // Memory dumping option(s)
@@ -578,7 +490,6 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params )
     Mem->DumpMemSeg( Seg, 16, dumpFile );
   }
 }
-
 RevCPU::~RevCPU() {
   // delete the competion array
   delete[] Enabled;
