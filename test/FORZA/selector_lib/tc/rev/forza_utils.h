@@ -4,9 +4,12 @@
 
 
 // #define THREADS 1
-#define THREADS 2
+int THREADS;
+uint64_t TOTAL_THREADS;
+volatile int *fbarriers;
 #define BUF_SIZE 50000
 #define MAX_PRINT_ARGS 5
+#define PKT_QUEUE_SIZE 100000
 
 typedef unsigned long int forza_thread_t;
 typedef int fd_t;
