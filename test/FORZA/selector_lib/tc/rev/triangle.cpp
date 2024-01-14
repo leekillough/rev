@@ -77,51 +77,71 @@ int main(int argc, char *argv[]) {
     // forza_fprintf(1, "AJ:Main-%d\n", print_args);
 
     // assert(atoi(argv[1]) == 99);
+    forza_fprintf(1, "Initialize FORZA.......\n", print_args);
 
     // int total_pe = atoi(argv[1]);
     void *ptr0 = (void *) argv[0];
     print_args[0] = &ptr0;
-    forza_fprintf(1, "AJ:got argv[0] address - %p\n", print_args);
+    forza_fprintf(1, "argv[0] address - %p\n", print_args);
     // forza_fprintf(1, "AJ:got argv[0] string - %s\n", print_args);
 
 
     void *ptr = (void *) argv[1];
     print_args[0] = &ptr;
-    forza_fprintf(1, "AJ:got argv[1] address - %p\n", print_args);
+    forza_fprintf(1, "argv[1] address - %p\n", print_args);
     // forza_fprintf(1, "AJ:got argv[1] string - %s\n", print_args);
 
-    int test = atoi(argv[1]);
-    print_args[0] = (void *) &test;
-    forza_fprintf(1, "AJ:Main-%d\n", print_args);
+    int TOTAL_PEs = atoi(argv[1]);
+    print_args[0] = (void *) &TOTAL_PEs;
+    forza_fprintf(1, "Total Actors per zone-%d\n", print_args);
 
-    int test1 = atoi(argv[2]);
-    print_args[0] = (void *) &test1;
-    forza_fprintf(1, "AJ:Main-%d\n", print_args);
+    uint64_t TOTAL_PE_SYSTEM = atoi(argv[2]);
+    print_args[0] = (void *) &TOTAL_PE_SYSTEM;
+    forza_fprintf(1, "Total Actors in system-%d\n", print_args);
 
-        int test2 = atoi(argv[3]);
-    print_args[0] = (void *) &test2;
-    forza_fprintf(1, "AJ:Main-%d\n", print_args);
+    THREADS = TOTAL_PEs;
+    TOTAL_THREADS = TOTAL_PE_SYSTEM;
+    fbarriers = (int *) forza_malloc(TOTAL_PE_SYSTEM*sizeof(int));
 
-
-    for(int i = 0; i < THREADS; i++)
+    mb_request = (mailbox **) forza_malloc(TOTAL_PEs*sizeof(mailbox*));
+    for(int i = 0; i < TOTAL_PEs; i++)
     {
-        for(int j = 0; j < THREADS; j++)
-        {
-            mb_request[i][j].send_count = 0;
-            mb_request[i][j].recv_count = 0;
-            mb_request[i][j].mbdone = 0;
-            for(int k = 0; k < 1000; k++)
-            {
-                mb_request[i][j].pkt[k].valid = 0;
-            }
-        }
+        mb_request[i] = (mailbox *) forza_malloc(TOTAL_PEs*sizeof(mailbox));
     }
+
+    mat = (sparsemat_t *) forza_malloc(TOTAL_PEs*sizeof(sparsemat_t));
+    cnt = (int64_t *) forza_malloc(TOTAL_PEs*sizeof(int64_t));
+
+    // int test1 = atoi(argv[2]);
+    // print_args[0] = (void *) &test1;
+    // forza_fprintf(1, "AJ:Main-%d\n", print_args);
+
+    // int test2 = atoi(argv[3]);
+    // print_args[0] = (void *) &test2;
+    // forza_fprintf(1, "AJ:Main-%d\n", print_args);
+
+
+    // for(int i = 0; i < THREADS; i++)
+    // {
+    //     for(int j = 0; j < THREADS; j++)
+    //     {
+    //         mb_request[i][j].send_count = 0;
+    //         mb_request[i][j].recv_count = 0;
+    //         mb_request[i][j].mbdone = 0;
+    //         for(int k = 0; k < PKT_QUEUE_SIZE; k++)
+    //         {
+    //             mb_request[i][j].pkt[k].valid = 0;
+    //         }
+    //     }
+    // }
 
 
     for(int i = 0; i < THREADS; i++)
     {
         generate_graph(mat, i);
     }
+    forza_fprintf(1, "FORZA initilize done.......\n", print_args);
+    
     const char *deps[] = { "system", "bale_actor" };
 
     hclib::launch(deps, 2, [=] {
@@ -149,6 +169,10 @@ int main(int argc, char *argv[]) {
         {
             forza_thread_join(pt[i]);
         }
+
+        // print_args[0] = (void *) &mb_request[0][0].send_count;
+        // print_args[1] = (void *) &mb_request[0][1].send_count;
+        // forza_fprintf(1, "Send - %l, %l\n", print_args);
 
         for(int i = 0; i < THREADS; i++)
         {

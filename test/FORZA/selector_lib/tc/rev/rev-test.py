@@ -30,7 +30,7 @@ comp_cpu.addParams({
         "machine" : "[0:RV64IMAFDC]",                      # Core:Config; RV64I for core 0
         "startAddr" : "[0:0x00000000]",               # Starting address for core 0
         "memCost" : "[0:1:10]",                       # Memory loads required 1-10 cycles
-        "args"    : "99 98 97",
+        "args"    : "4 4",
         "program" : "triangle.exe",  # Target executable
         "splash" : 1                                  # Display the splash message
 })

@@ -36,9 +36,9 @@ typedef struct sparsemat_t_ {
   int64_t nnz;                  //!< total number of nonzeros in the matrix
   int64_t lnnz;                 //!< the number of nonzeros on this PE
   //int64_t * offset;      //!< the row offsets into the array of nonzeros
-  int64_t loffset[1000];            //!< the row offsets for the row with affinity to this PE
+  int64_t loffset[PKT_QUEUE_SIZE];            //!< the row offsets for the row with affinity to this PE
   //int64_t * nonzero;     //!< the global array of column indices of nonzeros
-  int64_t lnonzero[1000];           //!< local array of column indices (for rows on this PE).
+  int64_t lnonzero[PKT_QUEUE_SIZE];           //!< local array of column indices (for rows on this PE).
   //double * value;        //!< the global array of values of nonzeros. Optional.
   //double * lvalue;              //!< local array of values (values for rows on this PE)
 }sparsemat_t;
@@ -49,18 +49,23 @@ typedef struct TrianglePkt {
     volatile int64_t valid;
 } TrianglePkt;
 
+typedef struct ForzaPkt_ {
+    TrianglePkt pkt;
+    int mb_type;
+} ForzaPkt;
+
 typedef struct mailbox_t {
-    TrianglePkt pkt[1000];
+    ForzaPkt pkt[PKT_QUEUE_SIZE];
     uint64_t send_count;
     uint64_t recv_count;
     volatile int mbdone;
 } mailbox;
 
-enum MailBoxType {REQUEST, RESPONSE};
+enum MailBoxType {REQUEST, RESPONSE, FORZA_BARRIER};
 
-mailbox mb_request[4][4];
-sparsemat_t mat[4];
-int64_t cnt[4];
+mailbox **mb_request;
+sparsemat_t *mat;
+int64_t *cnt;
 
 void generate_graph(sparsemat_t *mat, int mynode)
 {
@@ -127,16 +132,43 @@ void generate_graph(sparsemat_t *mat, int mynode)
     return;
 }
 
-void forza_send(mailbox mb[][4], TrianglePkt pkt, int dest, int src)
+void forza_send(mailbox **mb, ForzaPkt pkt, int dest, int src)
 {
     uint64_t sendcnt = mb[dest][src].send_count;
-    mb[dest][src].pkt[sendcnt].w = pkt.w;
-    mb[dest][src].pkt[sendcnt].vj = pkt.vj;
-    mb[dest][src].pkt[sendcnt].valid = 1;
+    mb[dest][src].pkt[sendcnt].pkt.w = pkt.pkt.w;
+    mb[dest][src].pkt[sendcnt].pkt.vj = pkt.pkt.vj;
+    mb[dest][src].pkt[sendcnt].mb_type = pkt.mb_type;
+    mb[dest][src].pkt[sendcnt].pkt.valid = 1;
     mb[dest][src].send_count++;
 }
 
-void forza_done(mailbox mb[][4], int src)
+void forza_barrier(uint64_t TID) 
+{ 
+    ForzaPkt pkt;
+    pkt.mb_type = FORZA_BARRIER;
+    for(int i = 0; i < THREADS; i++)
+    {
+        forza_send(mb_request, pkt, i, TID);
+    }
+
+    fbarriers[TID]++;
+    
+    while (1) 
+    {
+        uint64_t a = fbarriers[TID];
+        int ok = 1;                                                                                                                                                                                                                                                                                                                     
+        if (a < TOTAL_THREADS) {
+            ok = 0;
+        }
+        
+        if (ok) {
+            fbarriers[TID] = 0;
+            break;
+        }
+    }
+}
+
+void forza_done(mailbox **mb, int src)
 {
     for(int i = 0; i < THREADS; i++)
     {
@@ -164,6 +196,9 @@ void forza_recv_process(TrianglePkt pkg, int AID)
 void *forza_poll_thread(int *mytid)
 {
     int mythread = *mytid;
+    print_args[0] = (void *) &mythread;
+    forza_fprintf(1, "Actor[%d]: Start recv handler\n", print_args);
+
     volatile int done_flag = 1;
     
     while(1)
@@ -183,10 +218,20 @@ void *forza_poll_thread(int *mytid)
             uint64_t recvcnt = mb_request[mythread][i].recv_count;
             print_args[0] = (void *) &recvcnt;
 
-            while(mb_request[mythread][i].pkt[recvcnt].valid)
+            while(mb_request[mythread][i].pkt[recvcnt].pkt.valid)
             {
-                forza_recv_process(mb_request[mythread][i].pkt[recvcnt], mythread);
-                mb_request[mythread][i].pkt[recvcnt].valid = 0;
+                switch(mb_request[mythread][i].pkt[recvcnt].mb_type)
+                {
+                    case REQUEST:
+                        forza_recv_process(mb_request[mythread][i].pkt[recvcnt].pkt, mythread);
+                        break;
+                    case RESPONSE:
+                        break;
+                    case FORZA_BARRIER:
+                        fbarriers[mythread]++;
+                        break;
+                }
+                mb_request[mythread][i].pkt[recvcnt].pkt.valid = 0;
                 mb_request[mythread][i].recv_count++;
                 recvcnt++;
             }
@@ -194,6 +239,8 @@ void *forza_poll_thread(int *mytid)
 
         if(done_flag)
         {
+            print_args[0] = (void *) &mythread;
+            forza_fprintf(1, "Actor[%d]: Done recv handler\n", print_args);
             break;
         }
     }
