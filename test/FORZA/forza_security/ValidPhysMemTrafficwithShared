@@ -6,7 +6,7 @@ PhysAddr,Type,Valid,AppID
 261012,Private,True,0
 261056,Private,True,0
 261108,Private,True,0
-262131,Private,True,0
+262125,Private,True,0
 327680,Private,True,0
 327744,Private,True,0
 327808,Private,True,0
@@ -14,9 +14,9 @@ PhysAddr,Type,Valid,AppID
 327936,Private,True,0
 328000,Private,True,0
 328064,Private,True,0
-328092,Shared,True,0
-328096,Shared,True,0
-328100,Shared,True,0
+328092,Private,True,0
+328096,Shared,True,0,4,5
+328100,Private,True,0
 328104,Private,True,0
 328108,Private,True,0
 328112,Private,True,0
@@ -192,10 +192,10 @@ PhysAddr,Type,Valid,AppID
 338624,Private,True,0
 338688,Private,True,0
 338752,Private,True,0
-338816,Private,True,0
+338816,Shared,True,0,1,2,3
 338880,Private,True,0
 338944,Private,True,0
-339008,Private,True,0
+339008,Shared,True,0,1,2
 339072,Private,True,0
 339136,Private,True,0
 339200,Private,True,0

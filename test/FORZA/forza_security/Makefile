@@ -12,7 +12,7 @@
 
 .PHONY: src
 
-EXAMPLE=amoadd_c
+EXAMPLE=forza_security
 CC=${RVCC}
 ARCH=rv64gc
 
