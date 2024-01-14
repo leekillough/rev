@@ -5,8 +5,8 @@ PhysAddr,Type,Valid,AppID
 261004,Private,True,0
 261012,Private,True,0
 261056,Private,False,0
-261108,Private,True,3
-262131,Private,True,2
+261108,Private,True,0
+262131,Private,True,0
 327680,Private,False,0
 327744,Private,True,0
 327808,Private,True,0
@@ -199,9 +199,9 @@ PhysAddr,Type,Valid,AppID
 339072,Private,True,0
 339136,Private,True,0
 339200,Private,True,0
-339264,Private,True,0
-339328,Private,True,0
-339392,Private,True,0
+339264,Private,True,4
+339328,Private,True,3
+339392,Private,True,2
 339456,Private,True,0
 339520,Private,True,0
 339584,Private,True,0

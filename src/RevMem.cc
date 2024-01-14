@@ -311,13 +311,9 @@ uint64_t RevMem::CalcPhysAddr(uint64_t pageNum, uint64_t vAddr){
         if(PhysAddrCheck){
             auto [validate,reason]= validatePhysAddr(physAddr,0);
             if(!validate){
+                output->fatal(CALL_INFO, -1, "Invalid Physical Address Access %lu Reason %s\n",physAddr,reason.c_str());
                 printf("[FORZA Security]: Invalid PAddr : %lu Reason %s\n",
                   physAddr,reason.c_str());
-            }else{
-                printf("[FORZA Security]: Valid PAddr : %lu\n",
-                  physAddr);
-
-
             }
         }
       }

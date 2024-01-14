@@ -14,9 +14,9 @@ PhysAddr,Type,Valid,AppID
 327936,Private,True,0
 328000,Private,True,0
 328064,Private,True,0
-328092,Shared,False,0
-328096,Shared,True,1
-328100,Shared,True,2
+328092,Shared,True,0,1,2,3
+328096,Shared,True,0,1,2
+328100,Shared,True,0
 328104,Private,True,0
 328108,Private,True,0
 328112,Private,True,0
@@ -203,8 +203,8 @@ PhysAddr,Type,Valid,AppID
 339328,Private,True,0
 339392,Private,True,0
 339456,Private,True,0
-339520,Private,True,0
-339584,Private,True,0
+339520,Shared,True,2,3,4
+339584,Shared,True,4,5
 339648,Private,True,0
 339712,Private,True,0
 339776,Private,True,0
