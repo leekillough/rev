@@ -1,4 +1,4 @@
-#include "stdint.h"
+#include "stdlib.h"
 #include "selector.forza.h"
 
 class TriangleSelector: public hclib::Selector<TrianglePkt> {
@@ -33,8 +33,9 @@ private:
 };
 
 
-void *triangle_selector(void *mytid) {
-    int ActorID = *(int *) mytid;
+void *triangle_selector(int *mytid) {
+    int ActorID = *(mytid);
+
     // pthread_t thread_id;
     TriangleSelector* triSelector = new TriangleSelector(&cnt[ActorID], &mat[ActorID]);
 
@@ -70,22 +71,64 @@ void *triangle_selector(void *mytid) {
 }
 
 
-int main(int argc, char* argv[]) {
+int main(int argc, char *argv[]) {
 
-    const char *deps[] = { "system", "bale_actor" };
-    hclib::launch(deps, 2, [=] {
-        
-        for(int i = 0; i < THREADS; i++)
+    // print_args[0] = (void *) &argc;
+    // forza_fprintf(1, "AJ:Main-%d\n", print_args);
+
+    // assert(atoi(argv[1]) == 99);
+
+    // int total_pe = atoi(argv[1]);
+    void *ptr0 = (void *) argv[0];
+    print_args[0] = &ptr0;
+    forza_fprintf(1, "AJ:got argv[0] address - %p\n", print_args);
+    // forza_fprintf(1, "AJ:got argv[0] string - %s\n", print_args);
+
+
+    void *ptr = (void *) argv[1];
+    print_args[0] = &ptr;
+    forza_fprintf(1, "AJ:got argv[1] address - %p\n", print_args);
+    // forza_fprintf(1, "AJ:got argv[1] string - %s\n", print_args);
+
+    int test = atoi(argv[1]);
+    print_args[0] = (void *) &test;
+    forza_fprintf(1, "AJ:Main-%d\n", print_args);
+
+    int test1 = atoi(argv[2]);
+    print_args[0] = (void *) &test1;
+    forza_fprintf(1, "AJ:Main-%d\n", print_args);
+
+        int test2 = atoi(argv[3]);
+    print_args[0] = (void *) &test2;
+    forza_fprintf(1, "AJ:Main-%d\n", print_args);
+
+
+    for(int i = 0; i < THREADS; i++)
+    {
+        for(int j = 0; j < THREADS; j++)
         {
-            generate_graph(mat, i);
+            mb_request[i][j].send_count = 0;
+            mb_request[i][j].recv_count = 0;
+            mb_request[i][j].mbdone = 0;
+            for(int k = 0; k < 1000; k++)
+            {
+                mb_request[i][j].pkt[k].valid = 0;
+            }
         }
+    }
 
-        printf("L has %ld rows/cols and %ld nonzeros.\n", mat[0].numrows, mat[0].nnz);
-    
-        printf("Run triangle counting ...\n");
 
-        pthread_t pt[2*THREADS];
-        // pthread_t t5, t6, t7, t8;
+    for(int i = 0; i < THREADS; i++)
+    {
+        generate_graph(mat, i);
+    }
+    const char *deps[] = { "system", "bale_actor" };
+
+    hclib::launch(deps, 2, [=] {
+
+        
+        forza_thread_t pt[2*THREADS];
+
         int tid[THREADS];
         for(int i = 0; i < THREADS; i++)
         {
@@ -94,27 +137,22 @@ int main(int argc, char* argv[]) {
 
         for(int i = 0; i < THREADS; i++)
         {
-            pthread_create(&pt[i], NULL, triangle_selector, (void *) &tid[i]);
+            forza_thread_create(&pt[i], (void*)triangle_selector, &tid[i]);
         }
 
         for(int i = 0; i < THREADS; i++)
         {
-            pthread_join(pt[i], NULL);
+            forza_thread_create(&pt[i + THREADS], (void *)forza_poll_thread, &tid[i]);
         }
-
-        printf("AJAY: sendcnt - %lu %lu %lu %lu\n", mb_request[0][0].send_count, mb_request[0][1].send_count, mb_request[1][0].send_count, mb_request[1][1].send_count);
-        for(int i = 0; i < THREADS; i++)
-        {
-            pthread_create(&pt[i + THREADS], NULL, forza_poll_thread, (void *) &tid[i]);
-        }
-
-
-
-
 
         for(int i = 0; i < THREADS; i++)
         {
-            pthread_join(pt[i+ THREADS], NULL);
+            forza_thread_join(pt[i]);
+        }
+
+        for(int i = 0; i < THREADS; i++)
+        {
+            forza_thread_join(pt[i+ THREADS]);
         }
 
     });
@@ -124,8 +162,10 @@ int main(int argc, char* argv[]) {
     for(int i = 0; i < THREADS; i++)
     {
         total_tri_cnt += cnt[i];
-        // printf("Triangles[%d]-%ld\n", i, cnt[i]);
     }
-    printf(" %16ld triangles\n", total_tri_cnt);
+
+    print_args[0] = (void *) &total_tri_cnt;
+    forza_fprintf(1, "Triangles-%l\n", print_args);
+
     return 0;
 }
