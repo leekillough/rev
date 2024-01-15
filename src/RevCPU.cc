@@ -34,8 +34,8 @@ const char splash_msg[] = "\
 RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params )
   : SST::Component(id), testStage(0), PrivTag(0), address(-1), EnableNIC(false),
     EnableMemH(false), EnableCoProc(false),
-    EnableRZA(false), EnableZopNIC(false), DisableCoprocClock(false),
-    Precinct(0), Zone(0),
+    EnableRZA(false), EnableZopNIC(false), EnableForzaSecurity(false),
+    DisableCoprocClock(false), Precinct(0), Zone(0),
     Nic(nullptr), Ctrl(nullptr), zNic(nullptr), ClockHandler(nullptr) {
 
   const int Verbosity = params.find<int>("verbose", 0);
@@ -134,9 +134,6 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params )
     msgPerCycle = params.find<unsigned>("msgPerCycle", 1);
   }
 
-  
-
-
   // Look for the fault injection logic
   EnableFaults = params.find<bool>("enable_faults", 0);
   if( EnableFaults ){
@@ -155,9 +152,13 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params )
   const uint64_t memSize = params.find<unsigned long>("memSize", 1073741824);
   EnableMemH = params.find<bool>("enable_memH", 0);
 
-  //Added for the security test 
-  std::string memTrafficInput = params.find<std::string>("memTrafficInput","nil");
-  std::string memTrafficOutput = params.find<std::string>("memTrafficOutput","nil");
+  // Added for the security test
+  EnableForzaSecurity = params.find<bool>("enableForzaSecurity", false);
+
+  if( EnableForzaSecurity ){
+    memTrafficInput = params.find<std::string>("memTrafficInput","");
+    memTrafficOutput = params.find<std::string>("memTrafficOutput","");
+  }
 
   if( !EnableMemH ){
     // TODO: Use std::nothrow to return null instead of throwing std::bad_alloc
@@ -178,13 +179,17 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params )
       output.verbose(CALL_INFO, 1, 0, "Warning: memory faults cannot be enabled with memHierarchy support\n");
   }
 
-  if(memTrafficInput!="nil"){
-    std::cout<<"MemTraffic Input "<<memTrafficInput<<"\n";
-    Mem->updatePhysHistoryfromInput(memTrafficInput);
-  }
-  if(memTrafficOutput!="nil"){
+  // if the forza security models are enabled, inform RevMem that logging as been enabled
+  if( EnableForzaSecurity ){
+    if(memTrafficInput!="nil"){
+      output.verbose(CALL_INFO, 1, 0, "Enabling MemTrafficInput : %s\n", memTrafficInput.c_str());
+      Mem->updatePhysHistoryfromInput(memTrafficInput);
+    }
+    if(memTrafficOutput!="nil"){
+      output.verbose(CALL_INFO, 1, 0, "Enabling MemTrafficOutput : %s\n", memTrafficOutput.c_str());
       Mem->setOutputFile(memTrafficOutput);
       Mem->enablePhysHistoryLogging();
+    }
   }
 
   // FORZA: initialize scratchpad

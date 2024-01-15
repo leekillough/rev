@@ -417,16 +417,25 @@ RevMemStats GetMemStatsTotal() const {
   /// FORZA: send a thread migration request
   bool ZOP_ThreadMigrate(unsigned Hart, std::vector<uint64_t> Payload,
                          unsigned Zone, unsigned Precinct);
-  
-  // Add Physical Addresss Information 
+
+  // Add Physical Addresss Information
+  /// FORZA: update the physical history from the input file
   void updatePhysHistoryfromInput(const std::string &InputFile);
+
+  /// FORZA: update history to the output file
   void updatePhysHistorytoOutput();
+
+  /// FORZA: enable physical history logging
   void enablePhysHistoryLogging();
-  std::pair<bool,std::string> validatePhysAddr(uint64_t pAddr,int appID); // validate physical addr & invalid reason
+
+  /// FORZA: validate a physical address
+  std::pair<bool,std::string> validatePhysAddr(uint64_t pAddr,int appID);
+
+  /// FORZA: update physical history
   void updatePhysHistory(uint64_t pAddr,int appID);
+
+  /// FORZA: set the output file name
   void setOutputFile(std::string name);
-
-
 
 private:
   /// FORZA: convert a standard RISC-V AMO opcode to a ZOP opcode
