@@ -1,7 +1,7 @@
 #
 # Makefile
 #
-# makefile: ex6
+# makefile: ex7
 #
 # Copyright (C) 2017-2023 Tactical Computing Laboratories, LLC
 # All Rights Reserved
@@ -12,7 +12,7 @@
 
 .PHONY: src
 
-EXAMPLE=ex6
+EXAMPLE=ex7
 CC=${RVCC}
 ARCH=rv64imafdc
 

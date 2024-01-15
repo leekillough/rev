@@ -1,7 +1,7 @@
 #
 # Makefile
 #
-# makefile: ex2
+# makefile: vector
 #
 # Copyright (C) 2017-2023 Tactical Computing Laboratories, LLC
 # All Rights Reserved
@@ -12,14 +12,15 @@
 
 .PHONY: src
 
-EXAMPLE=ex2
-CC=${RVCC}
+EXAMPLE=array
+CC=riscv64-unknown-elf-g++
+#CC="${RVCC}"
 #ARCH=rv64g
-ARCH=rv64imafd
+ARCH=rv64imafdc
 
 all: $(EXAMPLE).exe
 $(EXAMPLE).exe: $(EXAMPLE).c
-	$(CC) -march=$(ARCH) -o $(EXAMPLE).exe $(EXAMPLE).c
+	$(CC) -march=$(ARCH) -O0 -I../../../../common/syscalls -I../../../include -o $(EXAMPLE).exe $(EXAMPLE).c -static
 clean:
 	rm -Rf $(EXAMPLE).exe
 

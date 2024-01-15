@@ -3263,6 +3263,35 @@ EcallStatus RevProc::ECALL_forza_popq(RevInst& inst){
 EcallStatus RevProc::ECALL_forza_zen_init(RevInst& inst){
   output->verbose(CALL_INFO, 2, 0, "ECALL: forza_zen_init called by thread %" PRIu32 " on hart %" PRIu32 "\n", GetActiveThreadID(), HartToExecID);
   // TODO: Forza library will pass the memory base address and size allocated by each actor to inform/initialize zen. 
+
+  SST::Forza::zopEvent *zev = new SST::Forza::zopEvent();
+
+  uint8_t msg_id = 0;
+  uint16_t int_id = 0;
+  // set all the fields : FIXME
+  zev->setType(SST::Forza::zopMsgT::Z_MSG);
+  zev->setID(msg_id);
+  zev->setOpc(SST::Forza::zopOpc::Z_MSG_ZENSET);
+  zev->setSrcZCID(int_id);
+  zev->setSrcHart(int_id);
+  zev->setDestHart(1);
+
+  // set the payload, do actual send setup thing : FIXME
+  // read ZEN::processSetupMsgs
+  std::vector<uint64_t> payload;
+  payload.push_back(0x00ull); // acs_pair = payload[0]
+  payload.push_back(10); // mem_start_addr = payload[1]
+  payload.push_back(0x00ull);
+  payload.push_back(512); // size = payload[3]
+  payload.push_back(522); // scratch_tail = payload[4]
+  zev->setPayload(payload);
+
+  // if (!zNic) {
+    // output->fatal(CALL_INFO, -1, "Error : zNic is nullptr\n" );
+  // }
+  // output->fatal(CALL_INFO, -1, "Error : send not implemented\n" );
+  // zNic->send(zev, SST::Forza::zopCompID::Z_ZEN);
+
   return EcallStatus::SUCCESS;
 }
 
