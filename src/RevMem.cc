@@ -1877,17 +1877,16 @@ void RevMem::setOutputFile(std::string output){
 }
 void RevMem::updatePhysHistory(uint64_t pAddr,int appID){
 
-    uint64_t pagenum = (pAddr>>addrShift) * pageSize;
+    uint64_t PhysAddrChunk = (pAddr>>addrShift) * pageSize;
     std::string Type = "Private";
     bool Valid = true;
-    OutputPhysAddrHist[pagenum] = std::make_tuple(Type, Valid, appID);
+    OutputPhysAddrHist[PhysAddrChunk] = std::make_tuple(Type, Valid, appID);
 }
 std::pair<bool,std::string> RevMem::validatePhysAddr(uint64_t pAddr,int appID){
   bool ret=true;
   std::string reason="";
 
   uint64_t PhysAddrChunk = (pAddr>>addrShift) * pageSize;
-  // std::cout << "Physical Addr " <<pAddr << " Physiacl Page Chunk "<<PhysAddrChunk<<"\n";
   auto it = InputPhysAddrHist.find(PhysAddrChunk);
   if(it!=InputPhysAddrHist.end()){
     //key exists
