@@ -273,14 +273,6 @@ uint64_t RevMem::CalcPhysAddr(uint64_t pageNum, uint64_t vAddr){
   /* Check if vAddr is in the TLB */
   uint64_t physAddr = SearchTLB(vAddr);
 
-  // output->verbose
-
-  // output->verbose(CALL_INFO,9,0,"[FORZA CalcPhysAddr]: Current Memory Request VAddr : %lu PAddr : %lu\n",
-  //                 vAddr,physAddr);
-  // printf("[FORZA CalcPhysAddr]: Current Memory Request VAddr : %lu PAddr : %lu\n",
-  //                 vAddr,physAddr);
-
-
   /* If not in TLB, physAddr will equal _INVALID_ADDR_ */
   if( physAddr == _INVALID_ADDR_ ){
     /* Check if vAddr is a valid address before translating to physAddr */
@@ -312,8 +304,6 @@ uint64_t RevMem::CalcPhysAddr(uint64_t pageNum, uint64_t vAddr){
             auto [validate,reason]= validatePhysAddr(physAddr,0);
             if(!validate){
                 output->fatal(CALL_INFO, -1, "Invalid Physical Address Access %lu Reason %s\n",physAddr,reason.c_str());
-                printf("[FORZA Security]: Invalid PAddr : %lu Reason %s\n",
-                  physAddr,reason.c_str());
             }
         }
       }
