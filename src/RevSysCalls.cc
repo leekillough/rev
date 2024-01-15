@@ -3288,8 +3288,12 @@ EcallStatus RevProc::ECALL_forza_popq(RevInst& inst){
   return EcallStatus::SUCCESS;
 }
 
-// 4006, forza_zen_init();
+// 4006, forza_zen_init(uint64_t addr, uint64_t size);
 EcallStatus RevProc::ECALL_forza_zen_init(RevInst& inst){
+
+  uint64_t addr = (uint64_t)RegFile->GetX<uint64_t>(RevReg::a0);
+  uint64_t size = (uint64_t)RegFile->GetX<uint64_t>(RevReg::a1);
+
   output->verbose(CALL_INFO, 2, 0, "ECALL: forza_zen_init called by thread %" PRIu32 " on hart %" PRIu32 "\n", GetActiveThreadID(), HartToExecID);
   // TODO: Forza library will pass the memory base address and size allocated by each actor to inform/initialize zen. 
 
@@ -3301,7 +3305,8 @@ EcallStatus RevProc::ECALL_forza_zen_init(RevInst& inst){
   uint8_t SrcPCID = (uint8_t)(zNic->getPCID(zNic->getZoneID()));
   uint16_t SrcHart = (uint16_t)HartToExecID;
   
-  output->verbose(CALL_INFO, 0, 0, "ECALL_forza_zen_init: SrcZCID = %" PRIu8 ", SrcPCID = %" PRIu8 ", SrcHart = %" PRIu16 "\n", SrcZCID, SrcPCID, SrcHart);
+  output->verbose(CALL_INFO, 0, 0, "ECALL_forza_zen_init: addr = %" PRIu64 ", %" PRIu64 ", SrcZCID = %" PRIu8 
+            ", SrcPCID = %" PRIu8 ", SrcHart = %" PRIu16 "\n", addr, size, SrcZCID, SrcPCID, SrcHart);
 
   // set all the fields : FIXME
   zev->setType(SST::Forza::zopMsgT::Z_MSG);
@@ -3316,10 +3321,10 @@ EcallStatus RevProc::ECALL_forza_zen_init(RevInst& inst){
   // read ZEN::processSetupMsgs
   std::vector<uint64_t> payload;
   payload.push_back(0x00ull); // acs_pair = payload[0]
-  payload.push_back(10); // mem_start_addr = payload[1]
+  payload.push_back(addr); // mem_start_addr = payload[1]
   payload.push_back(0x00ull);
-  payload.push_back(512); // size = payload[3]
-  payload.push_back(522); // scratch_tail = payload[4]
+  payload.push_back(size); // size = payload[3]
+  payload.push_back(addr + size); // TODO: FIXME scratch_tail = payload[4]
   zev->setPayload(payload);
 
   if (!zNic) {

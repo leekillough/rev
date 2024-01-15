@@ -16,8 +16,8 @@
 #include <stdint.h>
 
 int main(int argc, char **argv){
-  uint64_t addr;
-  forza_zen_init(addr, (uint64_t)512);
+  uint64_t addr = 78213;
+  forza_zen_init(78213, (uint64_t)39401);
 
   int i = 9;
   i = i + argc;
