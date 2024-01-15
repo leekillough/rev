@@ -35,7 +35,6 @@ const char splash_msg[] = "\
 ";
 
 RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params ) : SST::Component( id ) {
-
   const int Verbosity = params.find<int>( "verbose", 0 );
 
   // Initialize the output handler
@@ -113,9 +112,6 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params ) : SST::Compon
     msgPerCycle = params.find<unsigned>( "msgPerCycle", 1 );
   }
 
-
-
-
   // Look for the fault injection logic
   EnableFaults = params.find<bool>( "enable_faults", 0 );
   if( EnableFaults ) {
@@ -136,6 +132,10 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params ) : SST::Compon
 
   // Added for the security test
   EnableForzaSecurity    = params.find<bool>( "enableForzaSecurity", false );
+  if( EnableForzaSecurity ){
+    memTrafficInput = params.find<std::string>("memTrafficInput","");
+    memTrafficOutput = params.find<std::string>("memTrafficOutput","");
+  }
 
   if( EnableForzaSecurity ) {
     memTrafficInput  = params.find<std::string>( "memTrafficInput", "" );
@@ -180,13 +180,17 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params ) : SST::Compon
     }
   }
 
+  // if the forza security models are enabled, inform RevMem that logging as been enabled
+  if( EnableForzaSecurity ){
   if(memTrafficInput!="nil"){
-    std::cout<<"MemTraffic Input "<<memTrafficInput<<"\n";
+      output.verbose(CALL_INFO, 1, 0, "Enabling MemTrafficInput : %s\n", memTrafficInput.c_str());
     Mem->updatePhysHistoryfromInput(memTrafficInput);
   }
   if(memTrafficOutput!="nil"){
+      output.verbose(CALL_INFO, 1, 0, "Enabling MemTrafficOutput : %s\n", memTrafficOutput.c_str());
       Mem->setOutputFile(memTrafficOutput);
       Mem->enablePhysHistoryLogging();
+  }
   }
 
   // FORZA: initialize scratchpad
