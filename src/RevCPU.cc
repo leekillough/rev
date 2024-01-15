@@ -690,6 +690,12 @@ void RevCPU::processZOPQ(){
   }
 }
 
+void RevCPU::sendZQMThreadComplete(uint32_t ThreadID){
+  output.verbose(CALL_INFO, 9, 0,
+                 "[FORZA][ZAP] Informing ZQM of completed thread: %d\n",
+                 ThreadID);
+}
+
 void RevCPU::handleZOPMessageRZA(Forza::zopEvent *zev){
   output.verbose(CALL_INFO, 9, 0, "[FORZA][RZA] Injecting ZOP Message into ZIQ\n");
   if( zev == nullptr ){
@@ -1125,9 +1131,15 @@ void RevCPU::HandleThreadStateChangesForProc(uint32_t ProcID){
     uint32_t ThreadID = Thread->GetID();
     // Handle the thread that changed state based on the new state
     switch ( Thread->GetState() ) {
+    case ThreadState::MIGRATE:
+      // This thread has been migrated
+      output.verbose(CALL_INFO, 8, 0, "Thread %" PRIu32 " on Core %" PRIu32 " is MIGRATED\n", ThreadID, ProcID);
+      CompletedThreads.emplace(ThreadID, std::move(Thread));
+      break;
     case ThreadState::DONE:
       // This thread has completed execution
       output.verbose(CALL_INFO, 8, 0, "Thread %" PRIu32 " on Core %" PRIu32 " is DONE\n", ThreadID, ProcID);
+      sendZQMThreadComplete(ThreadID);
       CompletedThreads.emplace(ThreadID, std::move(Thread));
       break;
 

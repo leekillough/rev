@@ -1816,15 +1816,15 @@ bool RevProc::ClockTick( SST::Cycle_t currentCycle ){
       * Exception Handling
       * - Currently this is only for ecall
       */
-    if( RegFile->RV64_SCAUSE == EXCEPTION_CAUSE::THREAD_MIGRATED ||
+    if( RegFile->RV32_SCAUSE == EXCEPTION_CAUSE::THREAD_MIGRATED ||
         RegFile->RV64_SCAUSE == EXCEPTION_CAUSE::THREAD_MIGRATED ){
       output->verbose(CALL_INFO, 6, 0,
                     "Core %" PRIu32 "; Hart %" PRIu32 "; Thread %" PRIu32 " - Exception Raised: Thread migrated\n",
                     id, HartToExecID, ActiveThreadID);
       std::unique_ptr<RevThread> ActiveThread = PopThreadFromHart(HartToExecID);
-      // TODO: Maybe make a MIGRATED state?
-      // TODO: Not sure how the dependency check should work with migrating threads
-      ActiveThread->SetState(ThreadState::DONE);
+
+      // Trigger a thread migration
+      ActiveThread->SetState(ThreadState::MIGRATE);
       HartsClearToExecute[HartToExecID] = false;
       HartsClearToDecode[HartToExecID] = false;
       IdleHarts[HartToExecID] = true;

@@ -428,6 +428,9 @@ private:
   /// RevCPU: Handle FORZA Thread Migration
   void handleZOPThreadMigrate(Forza::zopEvent *zev);
 
+  /// RevCPU: Inform the ZQM that a thread is done
+  void sendZQMThreadComplete(uint32_t ThreadID);
+
   /// RevCPU: Creates a unique tag for this message
   uint8_t createTag();
 
