@@ -1,7 +1,7 @@
 #
 # Makefile
 #
-# makefile: ex6
+# makefile: amoadd_c
 #
 # Copyright (C) 2017-2023 Tactical Computing Laboratories, LLC
 # All Rights Reserved
@@ -12,13 +12,13 @@
 
 .PHONY: src
 
-EXAMPLE=ex6
+EXAMPLE=forza_send_init
 CC=${RVCC}
-ARCH=rv64imafdc
+ARCH=rv64gc
 
 all: $(EXAMPLE).exe
 $(EXAMPLE).exe: $(EXAMPLE).c
-	$(CC) -march=$(ARCH) -o $(EXAMPLE).exe $(EXAMPLE).c
+	$(CC) -march=$(ARCH) -o $(EXAMPLE).exe $(EXAMPLE).c -static
 clean:
 	rm -Rf $(EXAMPLE).exe
 

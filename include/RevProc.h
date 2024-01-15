@@ -171,6 +171,9 @@ public:
   ///< RevProc: Get pointer to Load / Store queue used to track memory operations
   std::shared_ptr<std::unordered_multimap<uint64_t, MemReq>> GetLSQueue() const { return LSQueue; }
 
+  ///< RevProc: Set the ZOP NIC handler
+  void setZNic(Forza::zopAPI *Z) { zNic = Z; }
+
   ///< RevProc: Add a co-processor to the RevProc
   void SetCoProc(RevCoProc* coproc);
 
@@ -259,6 +262,7 @@ private:
   RevMem *mem;              ///< RevProc: memory object
   RevCoProc* coProc;        ///< RevProc: attached co-processor
   RevLoader *loader;        ///< RevProc: loader object
+  Forza::zopAPI *zNic;      ///< RevProc: ZOPNic object
 
   // Function pointer to the GetNewThreadID function in RevCPU (monotonically increasing thread ID counter)
   std::function<uint32_t()> GetNewThreadID;
@@ -620,7 +624,7 @@ private:
   EcallStatus ECALL_forza_send(RevInst& inst);  // 4003, forza_send();
   EcallStatus ECALL_forza_poll(RevInst& inst);  // 4004, forza_poll();
   EcallStatus ECALL_forza_popq(RevInst& inst);  // 4005, forza_popq();
-  EcallStatus ECALL_forza_zen_init(RevInst& inst);  // 4005, forza_zen_init();
+  EcallStatus ECALL_forza_zen_init(RevInst& inst);  // 4006, forza_zen_init();
 
   /// RevProc: Table of ecall codes w/ corresponding function pointer implementations
   std::unordered_map<uint32_t, std::function<EcallStatus(RevProc*, RevInst&)>> Ecalls;

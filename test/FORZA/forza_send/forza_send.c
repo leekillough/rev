@@ -9,6 +9,7 @@
 
 int main() {
   uint64_t *addr;
+  forza_zen_init(addr, (uint64_t)512);
   addr = (uint64_t *)forza_scratchpad_alloc(1 * sizeof(uint32_t));
   uint64_t size = sizeof(uint32_t);
   uint64_t dst = 1;
