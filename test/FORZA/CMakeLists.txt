@@ -9,4 +9,4 @@ add_rev_test(forza_noc_discovery forza_noc_discovery 120 "all;memh;rv64;loader;f
 add_rev_test(forza_amoadd_c forza_amoadd_c 30 "all;memh;rv64;loader;forza" SCRIPT "run_amoadd_c.sh")
 add_rev_test(forza_recv forza_recv 30 "all;memh;rv64;loader;forza" SCRIPT "run_recv.sh")
 add_rev_test(forza_send forza_send 30 "all;memh;rv64;loader;forza" SCRIPT "run_send.sh")
-add_rev_test(forza_send_init forza_send_init 30 "all;memh;rv64;loader;forza" SCRIPT "run_send_init.sh")
+add_rev_test(forza_zen_init forza_zen_init 30 "all;memh;rv64;loader;forza" SCRIPT "run_zen_init.sh")
