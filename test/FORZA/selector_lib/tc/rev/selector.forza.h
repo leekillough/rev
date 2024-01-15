@@ -58,15 +58,23 @@ namespace hclib {
 
         void done(int mb_id, int ActorID) 
         {            
-            switch(mb_id)
-            {
-                case REQUEST:
-                    forza_done(mb_request, ActorID);
-                    break;
-                default:
-                    // call done for the respective mailboxes
-                    break;
-            }
+            // switch(mb_id)
+            // {
+            //     case REQUEST:
+                    // forza_done(mb_request, ActorID);
+                    ForzaPkt pkt;
+                    pkt.pkt.w = 0;
+                    pkt.pkt.vj = 0;
+                    pkt.mb_type = FORZA_DONE;
+                    for(int i = 0; i < THREADS; i++)
+                    {
+                        forza_send(mb_request, pkt, i, ActorID);
+                    }
+            //         break;
+            //     default:
+            //         // call done for the respective mailboxes
+            //         break;
+            // }
             print_args[0] = (void *) &ActorID;
             forza_fprintf(1, "Actor[%d]: Done Send\n", print_args);
         }
