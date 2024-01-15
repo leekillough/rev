@@ -3266,6 +3266,11 @@ EcallStatus RevProc::ECALL_forza_get_hart_id(RevInst& inst){
   return EcallStatus::SUCCESS;
 }
 
+union ECALL_forza_send_union {
+  uint64_t d;
+  char b[sizeof(uint64_t)];
+};
+
 // 4003, forza_send( uint64_t spaddr, uint64_t size, uint64_t dst );
 EcallStatus RevProc::ECALL_forza_send(RevInst& inst){
   output->verbose(CALL_INFO, 2, 0, "ECALL: forza_send called by thread %" PRIu32 " on hart %" PRIu32 "\n", GetActiveThreadID(), HartToExecID);
@@ -3279,20 +3284,36 @@ EcallStatus RevProc::ECALL_forza_send(RevInst& inst){
       " spaddr = %" PRIx64 ", size = %" PRIu64 ", dst = %" PRIu64 "\n"
       , GetActiveThreadID(), HartToExecID, spaddr, size, dst);
 
-  // uint64_t *ptraddr = (uint64_t*)(spaddr);
-
-// bool RevMem::ReadMem(unsigned Hart, uint64_t Addr, size_t Len, void *Target,
-//                      const MemReq& req, RevFlag flags){
   // NOT THIS: mem->ReadMem( uint64_t Addr, size_t Len, void *Data )
   // USE THIS: mem->ReadMem (unsigned Hart, uint64_t Addr, size_t Len, void *Target, const MemReq& req, RevFlag flags)
 
-  char dat[4];
-  MemReq req;
-  bool ReadMemSuccess = mem->ReadMem((unsigned)HartToExecID, (uint64_t)spaddr, (size_t)4, (void*)dat, req, SST::RevCPU::RevFlag::F_NONE);
+  const size_t max_data_size = 4000;
+  unsigned char dat[max_data_size];
 
-  output->verbose(CALL_INFO, 2, 0, "ECALL: forza_send called by thread %" PRIu32 " on hart %" PRIu32 
-      " ReadMemSuccess = %" PRIu8 ", dat[0]=%" PRIx8 ", dat[1]=%" PRIx8 ", dat[2]=%" PRIx8 ", dat[3]=%" PRIx8 "\n"
-      , GetActiveThreadID(), HartToExecID, ReadMemSuccess, (unsigned)dat[0], (unsigned)dat[1], (unsigned)dat[2], (unsigned)dat[3]);
+  // force programmer to make padding to uint64_t
+  if (size % sizeof(uint64_t) ) {
+    output->fatal(CALL_INFO, -1, "ECALL_forza_send: error, size (%" PRIu64 ") should be a multiple of (%" PRIu64 ")\n", (uint64_t)size, (uint64_t)(sizeof(uint64_t)));
+  }
+  if (size > max_data_size) {
+    output->fatal(CALL_INFO, 1, "ECALL_forza_send: error, size (%" PRIu64 ") > max_data_size (%" PRIu64 ")\n", (uint64_t)size, (uint64_t)max_data_size);
+  }
+
+  MemReq req;
+  bool ReadMemSuccess = mem->ReadMem((unsigned)HartToExecID, (uint64_t)spaddr, size, (void*)dat, req, SST::RevCPU::RevFlag::F_NONE);
+  if (!ReadMemSuccess) {
+    output->fatal(CALL_INFO, 1, "ECALL_forza_send: error, mem->ReadMem fails\n");
+  }
+
+  // TODO: note the endianess and fix it to be portable ...
+  ECALL_forza_send_union u;
+  for (size_t i = 0; i < sizeof(uint64_t); i++) {
+    u.b[i] = dat[i];
+  }
+
+  output->verbose(CALL_INFO, 2, 0, "ECALL: forza_send called by thread %" PRIu32 " on hart %"
+   PRIu32 ", dat[0]=%" PRIx8 ", dat[1]=%" PRIx8 ", dat[2]=%" PRIx8 ", dat[3]=%" PRIx8 
+   ", dat[4]=%" PRIx8 ", dat[5]=%" PRIx8 ", dat[6]=%" PRIx8 ", dat[7]=%" PRIx8 ", dat[0-7]=%" PRIu64 " \n",
+    GetActiveThreadID(), HartToExecID, dat[0], dat[1], dat[2], dat[3], dat[4], dat[5], dat[6], dat[7], u.d);
 
   return EcallStatus::SUCCESS;
 }
