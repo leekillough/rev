@@ -56,6 +56,8 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params )
     primaryComponentDoNotEndSim();
   }
 
+  // std::string ClockFreq = params.find<std::string>("clock", "1Ghz");
+  // printf("given Txt files : %s\n",txtFile.c_str());
   // Derive the simulation parameters
   // We must always derive the number of cores before initializing the options
   numCores = params.find<unsigned>("numCores", "1");
@@ -132,6 +134,9 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params )
     msgPerCycle = params.find<unsigned>("msgPerCycle", 1);
   }
 
+  
+
+
   // Look for the fault injection logic
   EnableFaults = params.find<bool>("enable_faults", 0);
   if( EnableFaults ){
@@ -149,6 +154,11 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params )
   // Create the memory object
   const uint64_t memSize = params.find<unsigned long>("memSize", 1073741824);
   EnableMemH = params.find<bool>("enable_memH", 0);
+
+  //Added for the security test 
+  std::string memTrafficInput = params.find<std::string>("memTrafficInput","nil");
+  std::string memTrafficOutput = params.find<std::string>("memTrafficOutput","nil");
+
   if( !EnableMemH ){
     // TODO: Use std::nothrow to return null instead of throwing std::bad_alloc
     Mem = new RevMem( memSize, Opts,  &output );
@@ -166,6 +176,15 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params )
 
     if( EnableFaults )
       output.verbose(CALL_INFO, 1, 0, "Warning: memory faults cannot be enabled with memHierarchy support\n");
+  }
+
+  if(memTrafficInput!="nil"){
+    std::cout<<"MemTraffic Input "<<memTrafficInput<<"\n";
+    Mem->updatePhysHistoryfromInput(memTrafficInput);
+  }
+  if(memTrafficOutput!="nil"){
+      Mem->setOutputFile(memTrafficOutput);
+      Mem->enablePhysHistoryLogging();
   }
 
   // FORZA: initialize scratchpad
@@ -760,7 +779,6 @@ void RevCPU::handleZOPMessage(Event *ev){
     output.fatal(CALL_INFO, -1,
                  "[FORZA][handleZOPMessage] : zopEvent is null\n");
   }
-
   if( EnableRZA ){
     // handle a FORZA ZOP Message
     handleZOPMessageRZA(zev);
@@ -768,6 +786,7 @@ void RevCPU::handleZOPMessage(Event *ev){
     // I am a ZAP device, handle the message accordingly
     handleZOPMessageZAP(zev);
   }
+
 }
 
 void RevCPU::handleMessage(Event *ev){
@@ -974,6 +993,9 @@ bool RevCPU::clockTick( SST::Cycle_t currentCycle ){
       UpdateCoreStatistics(i);
       Procs[i]->PrintStatSummary();
     }
+    Mem->updatePhysHistorytoOutput();
+    
+
     primaryComponentOKToEndSim();
     output.verbose(CALL_INFO, 5, 0, "OK to end sim at cycle: %" PRIu64 "\n", static_cast<uint64_t>(currentCycle));
   } else {

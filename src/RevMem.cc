@@ -16,6 +16,7 @@
 #include <memory>
 #include <mutex>
 #include <functional>
+#include <fstream>
 
 namespace SST::RevCPU{
 
@@ -28,6 +29,9 @@ RevMem::RevMem( uint64_t MemSize, RevOpts *Opts, RevMemCtrl *Ctrl, SST::Output *
   pageSize = 262144; //Page Size (in Bytes)
   addrShift = lg(pageSize);
   nextPage = 0;
+  PhysAddrCheck=false;
+  PhysAddrLogging=false;
+
 
   // We initialize StackTop to the size of memory minus 1024 bytes
   // This allocates 1024 bytes for program header information to contain
@@ -48,6 +52,9 @@ RevMem::RevMem( uint64_t MemSize, RevOpts *Opts, SST::Output *Output )
   pageSize = 262144; //Page Size (in Bytes)
   addrShift = lg(pageSize);
   nextPage = 0;
+  PhysAddrCheck=false;
+  PhysAddrLogging=false;
+
 
   if( !physMem )
     output->fatal(CALL_INFO, -1, "Error: could not allocate backing memory\n");
@@ -290,6 +297,17 @@ uint64_t RevMem::CalcPhysAddr(uint64_t pageNum, uint64_t vAddr){
 #endif
         }else{
           output->fatal(CALL_INFO, -1, "Error: Page allocated multiple times\n");
+        }
+
+        //updatePhysHistory for security test 
+        if(PhysAddrLogging){
+            updatePhysHistory(physAddr,0);
+        }
+        if(PhysAddrCheck){
+            auto [validate,reason]= validatePhysAddr(physAddr,0);
+            if(!validate){
+                output->fatal(CALL_INFO, -1, "Invalid Physical Address Access %lu Reason %s\n",physAddr,reason.c_str());
+            }
         }
       }
       else {
@@ -1675,6 +1693,141 @@ bool RevMem::isZRqst(uint64_t Addr){
 void RevMem::clearZRqst(uint64_t Addr){
   ZRqst.erase(Addr);
 }
+
+void RevMem::updatePhysHistoryfromInput(const std::string &InputFile){
+  if(InputFile==""){
+    return;
+  }
+  std::ifstream input(InputFile);
+  if( !input.is_open() )
+    output->fatal(CALL_INFO, -1, "Error: failed to read PhysAddrHistory InputFile");
+
+  std::string line;
+  std::getline(input,line);
+  uint64_t physAddr;
+  int appID;
+  std::string type,validStr;
+  bool valid;
+
+  while (std::getline(input, line)) {
+    std::istringstream iss(line);
+    char delim=','; 
+
+    if (!(iss >> physAddr >> delim && getline(iss, type, delim) && getline(iss, validStr, delim))) {
+        std::cerr << "Parsing error in line (missing fields): " << line << std::endl;
+        continue;
+    }
+
+    valid = (validStr == "True");
+
+    std::vector<int> appIDs;
+    if (iss.eof() || iss.fail()) {
+        std::cerr << "Parsing error in line (missing AppID): " << line << std::endl;
+        continue;
+    }
+     while (iss.peek() != std::istringstream::traits_type::eof()) {
+        if (iss >> appID) {
+            appIDs.push_back(appID);
+            if (iss.peek() == ',') iss.ignore();
+        }else{
+          break;
+        }
+     }
+
+    if (appIDs.empty()) {
+        std::cerr << "Parsing error in line (no AppIDs found): " << line << std::endl;
+        continue;
+    }
+
+    InputPhysAddrHist[physAddr] = std::make_tuple(type, valid, appIDs);
+    PhysAddrCheck=true;
+  }
+    // for (const auto &element : InputPhysAddrHist)
+    // {
+    //   std::cout << "PhysAddr: " << element.first
+    //             << ", Type: " << std::get<0>(element.second)
+    //             << ", Valid: " << std::get<1>(element.second)
+    //             << ", AppIDs: ";
+    //   for (const auto &id : std::get<2>(element.second))
+    //   {
+    //     std::cout << id << " ";
+    //   }
+    //   std::cout << std::endl;
+    // }
+  input.close();
+}
+void RevMem::updatePhysHistorytoOutput(){
+
+  if(outputFile==""){
+    return ;
+  }
+  std::ofstream outputfile(outputFile);
+  // std::cout<<"output File Name "<<outputFile<<"\n";
+  if (!outputfile.is_open())
+    output->fatal(CALL_INFO, -1, "Error: failed to write PhysAddrHistory OutputFile");
+
+  //PhysAddr,Private/Shared, True/False,appID
+  outputfile << "PhysAddr,Type,Valid,AppID\n";
+
+  for (const auto& element : OutputPhysAddrHist) {
+        outputfile << element.first << ","
+                   << std::get<0>(element.second) << ","
+                   << (std::get<1>(element.second) ? "True" : "False") << ","
+                   << std::get<2>(element.second) << "\n";
+    }
+
+
+  outputfile.close();
+}
+void RevMem::enablePhysHistoryLogging(){
+    PhysAddrLogging = true;
+}
+void RevMem::setOutputFile(std::string output){
+  outputFile=output;
+}
+void RevMem::updatePhysHistory(uint64_t pAddr,int appID){
+
+    uint64_t PhysAddrChunk = (pAddr>>addrShift) * pageSize;
+    std::string Type = "Private";
+    bool Valid = true;
+    OutputPhysAddrHist[PhysAddrChunk] = std::make_tuple(Type, Valid, appID);
+}
+std::pair<bool,std::string> RevMem::validatePhysAddr(uint64_t pAddr,int appID){
+  bool ret=true;
+  std::string reason="";
+
+  uint64_t PhysAddrChunk = (pAddr>>addrShift) * pageSize;
+  auto it = InputPhysAddrHist.find(PhysAddrChunk);
+  if(it!=InputPhysAddrHist.end()){
+    //key exists 
+      const auto& [type, valid, ownerappID] = it->second;
+
+      if(std::find(ownerappID.begin(), ownerappID.end(), appID) == ownerappID.end()){
+        // AppID is not in the ownerappID vector
+        ret = false;
+        std::string appIDstr = std::to_string(appID);
+        reason = "Invalid app " + appIDstr + " access, Owner appIDs are ";
+        for(const auto& id : ownerappID) {
+            reason += std::to_string(id) + " ";
+        }
+      }
+      // if(ownerappID!=appID){
+      //   ret= false;
+      //   std::string appIDstr = std::to_string(appID);
+      //   std::string ownerappIDstr = std::to_string(ownerappID);
+      //   reason="Invalid app "+appIDstr+" access, Owner appID is "+ownerappIDstr;
+      // }
+      if(valid==false){
+        ret= false;
+        reason="Invalid addr range access";
+      }
+  }else{
+    ret = false;
+    reason="Invalid addr range access";
+  }
+  return {ret,reason};
+}
+
 
 } // namespace SST::RevCPU
 

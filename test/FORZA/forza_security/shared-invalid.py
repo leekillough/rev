@@ -32,12 +32,13 @@ zap_cpu1.addParams({
         "machine" : "[0:RV64GC]",                      # Core:Config; RV64I for core 0
         "startAddr" : "[0:0x00000000]",               # Starting address for core 0
         "memCost" : "[0:1:10]",                       # Memory loads required 1-10 cycles
-        "program" : os.getenv("REV_EXE", "amoadd_c.exe"),  # Target executable
+        "program" : os.getenv("REV_EXE", "forza_security.exe"),  # Target executable
         "enableZoneNIC" : 1,                          # [FORZA] Enable the zone NIC
         "precinctId" : 0,                             # [FORZA] precinct ID
         "zoneId" : 0,                                 # [FORZA] zone ID
         "zapId" : 0,                                  # [FORZA] zap ID
-        "splash" : 0,                                 # Display the splash message,
+        "splash" : 0,                                  # Display the splash message
+        "memTrafficInput" : "InvalidPhysMemTrafficwithShared",
 })
 
 
@@ -52,7 +53,7 @@ rza.addParams({
         "memSize" : 1024*1024*1024,                   # Memory size in bytes
         "machine" : "[CORES:RV64G]",                  # Core:Config; RV64I for core 0
         "startAddr" : "[CORES:0x00000000]",           # Starting address for core 0
-        "program" : os.getenv("REV_EXE", "amoadd_c.exe"),  # Target executable
+        "program" : os.getenv("REV_EXE", "forza_security.exe"),  # Target executable
         "enableZoneNIC" : 1,                          # [FORZA] Enable the zone NIC
         "enableRZA" : 1,                              # [FORZA] Enable RZA functionality
         "precinctId" : 0,                             # [FORZA] precinct ID
