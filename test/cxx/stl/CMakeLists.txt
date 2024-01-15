@@ -18,3 +18,6 @@ add_rev_test(vector_int64_t vector_int64_t 30 "all;memh;rv64" SCRIPT "run_vector
 add_rev_test(vector_obj vector_obj 30 "all;memh;rv64" SCRIPT "run_vector_obj.sh")
 add_rev_test(vector_pair vector_pair 30 "all;memh;rv64" SCRIPT "run_vector_pair.sh")
 add_rev_test(vector_vector_int64_t vector_vector_int64_t 30 "all;memh;rv64" SCRIPT "run_vector_vector_int64_t.sh")
+add_rev_test(unordered_map unordered_map 30 "all;memh;rv64" SCRIPT "run_unordered_map.sh")
+add_rev_test(unordered_map_obj unordered_map_obj 30 "all;memh;rv64" SCRIPT "run_unordered_map_obj.sh")
+
