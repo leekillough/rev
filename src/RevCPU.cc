@@ -783,8 +783,8 @@ void RevCPU::handleZOPMessage(Event *ev){
     handleZOPMessageRZA(zev);
   }else{
     // I am a ZAP device, handle the message accordingly
-      handleZOPMessageZAP(zev);
-    }
+    handleZOPMessageZAP(zev);
+  }
 
 }
 
