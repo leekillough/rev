@@ -311,6 +311,6 @@ set_tests_properties(NOC_DISCOVERY
     LABELS "all;rv64;forza-required"
 )
 
-add_subdirectory(forza)
+add_subdirectory(FORZA)
 
 # EOF
