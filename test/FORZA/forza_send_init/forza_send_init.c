@@ -11,10 +11,14 @@
  *
  */
 
+#include "../../../common/syscalls/forza.h"
 #include <stdlib.h>
 #include <stdint.h>
 
 int main(int argc, char **argv){
+  uint64_t addr;
+  forza_zen_init(addr, (uint64_t)512);
+
   int i = 9;
   i = i + argc;
   return i;
