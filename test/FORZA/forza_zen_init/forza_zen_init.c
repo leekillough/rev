@@ -22,11 +22,12 @@ int main(int argc, char **argv){
 
   forza_zen_init((uint64_t)addr, 20000);
 
-  addr[0] = 365;
+  addr[0] = 3652392039328;
+  addr[1] = 3049;
 
   register uint64_t a = 0;
   if (a == 0) {
-    forza_send((uint64_t)addr, 10, 0);
+    forza_send((uint64_t)addr, 16, 0);
   }  
 
   forza_scratchpad_free(addr, 16 * sizeof(uint64_t));
