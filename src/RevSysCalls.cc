@@ -3267,14 +3267,21 @@ EcallStatus RevProc::ECALL_forza_zen_init(RevInst& inst){
   SST::Forza::zopEvent *zev = new SST::Forza::zopEvent();
 
   uint8_t msg_id = 0;
-  uint16_t int_id = 0;
+
+  uint8_t SrcZCID = (uint8_t)(zNic->getEndpointType());
+  uint8_t SrcPCID = (uint8_t)(zNic->getPCID(zNic->getZoneID()));
+  uint16_t SrcHart = (uint16_t)HartToExecID;
+  
+  output->verbose(CALL_INFO, 0, 0, "ECALL_forza_zen_init: SrcZCID = %" PRIu8 ", SrcPCID = %" PRIu8 ", SrcHart = %" PRIu16 "\n", SrcZCID, SrcPCID, SrcHart);
+
   // set all the fields : FIXME
   zev->setType(SST::Forza::zopMsgT::Z_MSG);
   zev->setID(msg_id);
   zev->setOpc(SST::Forza::zopOpc::Z_MSG_ZENSET);
-  zev->setSrcZCID(int_id);
-  zev->setSrcHart(int_id);
-  zev->setDestHart(1);
+  zev->setSrcZCID(SrcZCID);
+  zev->setSrcPCID(SrcPCID);
+  zev->setSrcHart(SrcHart);
+  // zev->setDestHart(1);
 
   // set the payload, do actual send setup thing : FIXME
   // read ZEN::processSetupMsgs
@@ -3286,11 +3293,11 @@ EcallStatus RevProc::ECALL_forza_zen_init(RevInst& inst){
   payload.push_back(522); // scratch_tail = payload[4]
   zev->setPayload(payload);
 
-  // if (!zNic) {
-    // output->fatal(CALL_INFO, -1, "Error : zNic is nullptr\n" );
-  // }
+  if (!zNic) {
+    output->fatal(CALL_INFO, -1, "Error : zNic is nullptr\n" );
+  }
   // output->fatal(CALL_INFO, -1, "Error : send not implemented\n" );
-  // zNic->send(zev, SST::Forza::zopCompID::Z_ZEN);
+  zNic->send(zev, SST::Forza::zopCompID::Z_ZEN);
 
   return EcallStatus::SUCCESS;
 }
