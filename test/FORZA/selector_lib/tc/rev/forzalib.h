@@ -50,8 +50,8 @@ typedef struct TrianglePkt {
 } TrianglePkt;
 
 typedef struct ForzaPkt_ {
-    TrianglePkt pkt;
     int mb_type;
+    TrianglePkt pkt;
 } ForzaPkt;
 
 typedef struct mailbox_t {
@@ -61,7 +61,7 @@ typedef struct mailbox_t {
     volatile int mbdone;
 } mailbox;
 
-enum MailBoxType {REQUEST, RESPONSE, FORZA_BARRIER};
+enum MailBoxType {REQUEST, RESPONSE, FORZA_DONE, FORZA_BARRIER};
 
 mailbox **mb_request;
 sparsemat_t *mat;
@@ -168,13 +168,13 @@ void forza_barrier(uint64_t TID)
     }
 }
 
-void forza_done(mailbox **mb, int src)
-{
-    for(int i = 0; i < THREADS; i++)
-    {
-        mb[i][src].mbdone = 1;
-    }
-}
+// void forza_done(mailbox **mb, int src)
+// {
+//     for(int i = 0; i < THREADS; i++)
+//     {
+//         mb[i][src].mbdone = 1;
+//     }
+// }
 
 void forza_recv_process(TrianglePkt pkg, int AID)
 {
@@ -226,6 +226,9 @@ void *forza_poll_thread(int *mytid)
                         forza_recv_process(mb_request[mythread][i].pkt[recvcnt].pkt, mythread);
                         break;
                     case RESPONSE:
+                        break;
+                    case FORZA_DONE:
+                        mb_request[mythread][i].mbdone = 1;
                         break;
                     case FORZA_BARRIER:
                         fbarriers[mythread]++;
