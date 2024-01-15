@@ -3266,10 +3266,34 @@ EcallStatus RevProc::ECALL_forza_get_hart_id(RevInst& inst){
   return EcallStatus::SUCCESS;
 }
 
-// 4003, forza_send();
+// 4003, forza_send( uint64_t spaddr, uint64_t size, uint64_t dst );
 EcallStatus RevProc::ECALL_forza_send(RevInst& inst){
   output->verbose(CALL_INFO, 2, 0, "ECALL: forza_send called by thread %" PRIu32 " on hart %" PRIu32 "\n", GetActiveThreadID(), HartToExecID);
   // TODO: Using the scratchpad addr and size, read scratrpad memory, create a ZOP and send to destination.
+
+  uint64_t spaddr = RegFile->GetX<uint64_t>(RevReg::a0);
+  uint64_t size = (uint64_t)RegFile->GetX<uint64_t>(RevReg::a1);
+  uint64_t dst = (uint64_t)RegFile->GetX<uint64_t>(RevReg::a2);
+
+  output->verbose(CALL_INFO, 2, 0, "ECALL: forza_send called by thread %" PRIu32 " on hart %" PRIu32 
+      " spaddr = %" PRIx64 ", size = %" PRIu64 ", dst = %" PRIu64 "\n"
+      , GetActiveThreadID(), HartToExecID, spaddr, size, dst);
+
+  // uint64_t *ptraddr = (uint64_t*)(spaddr);
+
+// bool RevMem::ReadMem(unsigned Hart, uint64_t Addr, size_t Len, void *Target,
+//                      const MemReq& req, RevFlag flags){
+  // NOT THIS: mem->ReadMem( uint64_t Addr, size_t Len, void *Data )
+  // USE THIS: mem->ReadMem (unsigned Hart, uint64_t Addr, size_t Len, void *Target, const MemReq& req, RevFlag flags)
+
+  char dat[4];
+  MemReq req;
+  bool ReadMemSuccess = mem->ReadMem((unsigned)HartToExecID, (uint64_t)spaddr, (size_t)4, (void*)dat, req, SST::RevCPU::RevFlag::F_NONE);
+
+  output->verbose(CALL_INFO, 2, 0, "ECALL: forza_send called by thread %" PRIu32 " on hart %" PRIu32 
+      " ReadMemSuccess = %" PRIu8 ", dat[0]=%" PRIx8 ", dat[1]=%" PRIx8 ", dat[2]=%" PRIx8 ", dat[3]=%" PRIx8 "\n"
+      , GetActiveThreadID(), HartToExecID, ReadMemSuccess, (unsigned)dat[0], (unsigned)dat[1], (unsigned)dat[2], (unsigned)dat[3]);
+
   return EcallStatus::SUCCESS;
 }
 
@@ -3305,7 +3329,7 @@ EcallStatus RevProc::ECALL_forza_zen_init(RevInst& inst){
   uint8_t SrcPCID = (uint8_t)(zNic->getPCID(zNic->getZoneID()));
   uint16_t SrcHart = (uint16_t)HartToExecID;
   
-  output->verbose(CALL_INFO, 0, 0, "ECALL_forza_zen_init: addr = %" PRIu64 ", %" PRIu64 ", SrcZCID = %" PRIu8 
+  output->verbose(CALL_INFO, 0, 0, "ECALL_forza_zen_init: addr = %" PRIx64 ", size = %" PRIu64 ", SrcZCID = %" PRIu8 
             ", SrcPCID = %" PRIu8 ", SrcHart = %" PRIu16 "\n", addr, size, SrcZCID, SrcPCID, SrcHart);
 
   // set all the fields : FIXME
