@@ -181,16 +181,6 @@ macro(add_rev_test test_name test_dir timeout labels)
 
     # Add the custom target as a test
     add_test(NAME ${test_name_lower}_script COMMAND ${CMAKE_COMMAND} --build . --target run_${test_name_lower}_script)
-
-    # # change the test pass condition If it is security test 
-    # string(FIND "${labels}" "security" security_label_index)
-
-    # if(NOT ${security_label_index} EQUAL -1)
-    #   set(passRegex "Invalid Physical Address Access")
-    # else()
-    #   set(passRegex "Simulation is complete")
-    # endif()
-
     # Set test properties for the script test
     set_tests_properties(${test_name_lower}_script
       PROPERTIES
