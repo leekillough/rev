@@ -42,7 +42,9 @@ bool RevScratchpad::ReadMem(unsigned Hart, uint64_t Addr, size_t Len, void *Targ
   // TODO: Add scratchpad stats --- memStats.bytesRead += Len;
 
   // clear the hazard
-  req.MarkLoadComplete();
+  if (req.MarkLoadCompleteFunc != nullptr) {
+    req.MarkLoadComplete();
+  }
   return true;
 }
 
