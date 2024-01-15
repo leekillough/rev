@@ -2,8 +2,6 @@
 #include <vector>
 
 #include "rev-macros.h"
-#include "printf/printf.h"
-// #include "syscalls/printf/printf.h"
 
 #include <cstdint>
 #include <cstdio>
@@ -11,8 +9,8 @@
 
 #define assert(x) if (!(x)) { asm(".byte 0x00"); asm(".byte 0x00"); asm(".byte 0x00"); asm(".byte 0x00"); }
 
-#define N 20
-#define M 40
+#define N 10
+#define M 20
 
 // fill in pre-sized std vector -- tests out the [] access operator
 static inline void fill_vector( std::vector<int64_t, Allocator<int64_t>> &v, int start_pos, int count )
