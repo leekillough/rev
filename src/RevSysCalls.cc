@@ -3306,19 +3306,15 @@ EcallStatus RevProc::ECALL_forza_zen_init(RevInst& inst){
   zev->setDestHart(1);
 
   // set the payload, do actual send setup thing : FIXME
+  // read ZEN::processSetupMsgs
   std::vector<uint64_t> payload;
+  payload.push_back(0x00ull); // acs_pair = payload[0]
+  payload.push_back(10); // mem_start_addr = payload[1]
   payload.push_back(0x00ull);
+  payload.push_back(512); // size = payload[3]
+  payload.push_back(522); // scratch_tail = payload[4]
   zev->setPayload(payload);
 
-  // output->verbose(CALL_INFO, 1, 0, "Msg send src %d\n", zev->getSrcHart());
-  // output->verbose(CALL_INFO, 1, 0, "Msg send flit %llu\n", zev->getPacket()[1]);
-  // zev->encodeEvent();
-  // output->verbose(CALL_INFO, 1, 0, "Msg send src %d\n", zev->getSrcHart());
-  // output->verbose(CALL_INFO, 1, 0, "Msg send flit %llu\n", zev->getPacket()[1]);
-  // zev->decodeEvent();
-  // output->verbose(CALL_INFO, 1, 0, "Msg send src %d\n", zev->getSrcHart());
-  // output->verbose(CALL_INFO, 1, 0, "Msg send flit %llu\n", zev->getPacket()[1]);
-  // TODO: Update with RZA id
   // if (!zNic) {
     // output->fatal(CALL_INFO, -1, "Error : zNic is nullptr\n" );
   // }
