@@ -269,7 +269,9 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params )
     // Create the processor objects
     Procs.reserve(Procs.size() + numCores);
     for( unsigned i=0; i<numCores; i++ ){
-      Procs.push_back( new RevProc( i, Opts, numHarts, Mem, Loader, this->GetNewTID(), &output ) );
+      RevProc *tmpNewRevProc = new RevProc( i, Opts, numHarts, Mem, Loader, this->GetNewTID(), &output );
+      tmpNewRevProc->setZNic(zNic);
+      Procs.push_back( tmpNewRevProc );
     }
     // Create the co-processor objects
     for( unsigned i=0; i<numCores; i++){
@@ -295,8 +297,9 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params )
 
     Procs.reserve(Procs.size() + numCores);
     for( unsigned i=0; i<numCores; i++ ){
-      Procs.push_back( new RevProc( i, Opts, numHarts, Mem,
-                                    Loader, this->GetNewTID(), &output ) );
+      RevProc *tmpNewRevProc = new RevProc( i, Opts, numHarts, Mem, Loader, this->GetNewTID(), &output );
+      tmpNewRevProc->setZNic(zNic);
+      Procs.push_back( tmpNewRevProc );
     }
 
     RevCoProc *LSProc = loadUserSubComponent<RevCoProc>("rza_ls",
@@ -327,7 +330,9 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params )
     // Create the processor objects
     Procs.reserve(Procs.size() + numCores);
     for( unsigned i=0; i<numCores; i++ ){
-      Procs.push_back( new RevProc( i, Opts, numHarts, Mem, Loader, this->GetNewTID(), &output ) );
+      RevProc *tmpNewRevProc = new RevProc( i, Opts, numHarts, Mem, Loader, this->GetNewTID(), &output );
+      tmpNewRevProc->setZNic(zNic);
+      Procs.push_back( tmpNewRevProc );
     }
   }
 
