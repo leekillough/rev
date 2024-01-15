@@ -32,6 +32,8 @@ RevMem::RevMem( uint64_t MemSize, RevOpts *Opts, RevMemCtrl *Ctrl, SST::Output *
   addrShift = lg( pageSize );
   nextPage  = 0;
   PhysAddrCheck=false;
+  PhysAddrLogging=false;
+
 
   // We initialize StackTop to the size of memory minus 1024 bytes
   // This allocates 1024 bytes for program header information to contain
@@ -52,6 +54,7 @@ RevMem::RevMem( uint64_t MemSize, RevOpts* Opts, SST::Output* Output )
   addrShift = lg( pageSize );
   nextPage  = 0;
   PhysAddrCheck=false;
+  PhysAddrLogging=false;
 
 
   if( !physMem )
@@ -1849,7 +1852,7 @@ void RevMem::updatePhysHistorytoOutput(){
     return ;
   }
   std::ofstream outputfile(outputFile);
-  std::cout<<"output File Name "<<outputFile<<"\n";
+  // std::cout<<"output File Name "<<outputFile<<"\n";
   if (!outputfile.is_open())
     output->fatal(CALL_INFO, -1, "Error: failed to write PhysAddrHistory OutputFile");
 
@@ -1874,15 +1877,18 @@ void RevMem::setOutputFile(std::string output){
 }
 void RevMem::updatePhysHistory(uint64_t pAddr,int appID){
 
+    uint64_t pagenum = (pAddr>>addrShift) * pageSize;
     std::string Type = "Private";
     bool Valid = true;
-    OutputPhysAddrHist[pAddr] = std::make_tuple(Type, Valid, appID);
+    OutputPhysAddrHist[pagenum] = std::make_tuple(Type, Valid, appID);
 }
 std::pair<bool,std::string> RevMem::validatePhysAddr(uint64_t pAddr,int appID){
   bool ret=true;
   std::string reason="";
 
-  auto it = InputPhysAddrHist.find(pAddr);
+  uint64_t PhysAddrChunk = (pAddr>>addrShift) * pageSize;
+  // std::cout << "Physical Addr " <<pAddr << " Physiacl Page Chunk "<<PhysAddrChunk<<"\n";
+  auto it = InputPhysAddrHist.find(PhysAddrChunk);
   if(it!=InputPhysAddrHist.end()){
     //key exists
       const auto& [type, valid, ownerappID] = it->second;

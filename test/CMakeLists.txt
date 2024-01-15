@@ -194,6 +194,13 @@ macro(add_rev_test test_name test_dir timeout labels)
    #   DEPENDS build_${test_name_lower}
    #   COMMENT "Running script for ${test_name_lower} test"
    # )
+    string(FIND "${labels}" "security" security_label_index)
+
+    if(NOT ${security_label_index} EQUAL -1)
+      set(passRegex "Invalid Physical Address Access")
+    else()
+      set(passRegex "Simulation is complete")
+    endif()
 
     add_custom_target(run_${test_name_lower}_script
       COMMAND ${CMAKE_COMMAND} -E echo "Executing script ${optional_script}"
@@ -205,16 +212,6 @@ macro(add_rev_test test_name test_dir timeout labels)
 
     # Add the custom target as a test
     add_test(NAME ${test_name_lower}_script COMMAND ${CMAKE_COMMAND} --build . --target run_${test_name_lower}_script)
-
-    # change the test pass condition If it is security test
-    string(FIND "${labels}" "security" security_label_index)
-
-    if(NOT ${security_label_index} EQUAL -1)
-      set(passRegex "Simulation is complete.*Test Passed")
-    else()
-      set(passRegex "Simulation is complete")
-    endif()
-
     # Set test properties for the script test
     set_tests_properties(${test_name_lower}_script
       PROPERTIES
@@ -237,16 +234,6 @@ if(RV32_Missing MATCHES "Cannot find suitable multilib set for '-march=rv32")
   message(WARNING "RV32 tests disabled because ${RVCC} does not support RV32:\n${RV32_Missing}")
 else()
   message(STATUS "RV32 tests enabled")
-endif()
-
-# -- PROCESS CTest Config Variables
-if(NOT CTEST_BLAS_REQUIRED_TESTS)
-  set_tests_properties (TEST_DOT_SINGLE PROPERTIES DISABLED True)
-  set_tests_properties (TEST_DOT_DOUBLE PROPERTIES DISABLED True)
-  message(NOTICE "   * Tests requiring BLAS headers are disabled (ie. -DCTEST_BLAS_REQUIRED_TESTS=OFF)
-    - If you'd like to still run these tests run: `ctest -L blas_required`")
-  message(VERBOSE "   TEST_DOT_SINGLE - Disabled")
-  message(VERBOSE "   TEST_DOT_DOUBLE - Disabled")
 endif()
 
 # add_rev_test(test_name test_dir timeout labels)
@@ -317,17 +304,6 @@ add_subdirectory(syscalls)
 add_subdirectory(threading)
 add_subdirectory(cxx)
 add_subdirectory(fenv)
-
-# -- FORZA TESTS
-add_test(NAME NOC_DISCOVERY COMMAND run_noc_discovery.sh WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/FORZA/noc_discovery" )
-set_tests_properties(NOC_DISCOVERY
-  PROPERTIES
-    ENVIRONMENT "RVCC=${RVCC}"
-    TIMEOUT 30
-    PASS_REGULAR_EXPRESSION "${passRegex}"
-    LABELS "all;rv64;forza-required"
-)
-
 add_subdirectory(FORZA)
 
 # EOF

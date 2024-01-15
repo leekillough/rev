@@ -186,6 +186,7 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params ) : SST::Compon
   }
   if(memTrafficOutput!="nil"){
       Mem->setOutputFile(memTrafficOutput);
+      Mem->enablePhysHistoryLogging();
   }
 
   // FORZA: initialize scratchpad

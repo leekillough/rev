@@ -39,7 +39,6 @@ zap_cpu1.addParams({
         "zapId" : 0,                                  # [FORZA] zap ID
         "splash" : 0,                                 # Display the splash message
         "memTrafficInput" : "ValidPhysMemTraffic",
-        # "memTrafficOutput" : "PhysMemTraffic",
 })
 
 
