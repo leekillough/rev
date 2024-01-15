@@ -10,7 +10,7 @@ endif
 CXX=$(shell sst-config --CXX)
 CXXFLAGS=$(shell sst-config --ELEMENT_CXXFLAGS)
 LDFLAGS=$(shell sst-config --ELEMENT_LDFLAGS)
-CPPFLAGS=-I../../include -I../../../forzarev/include
+CPPFLAGS=-I../../include -I../../../include
 # OPTIMIZE_FLAGS=-O2
 OPTIMIZE_FLAGS=-g -O0
 
