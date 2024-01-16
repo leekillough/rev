@@ -6,7 +6,286 @@
 import sys
 import sst
 import argparse
+import array as arr
 from sst.merlin.base import *
+from sst.merlin.endpoint import *
+from sst.merlin.topology import *
+from sst.merlin.interface import *
+from sst.merlin.router import *
+
+# Configurable Simulation Parameters
+# Full Scale FORZA - 4608 Precincts
+# shape="24,24:24,24:8"
+# Small system
+#shape = "2,2:4"
+HFIEndpoints = []
+shape = ""
+host_link_latency = None
+link_latency = "100ns"
+rtr_prefix="cornelis_"
+
+num_pes_per_zone = 2
+num_zaps = 2
+num_zones = 4
+
+topo_params = {
+    "routing_alg":"deterministic",
+    "adaptive_threshold":0.5
+}
+
+router_params = {
+    "flit_size" : "8B",
+    "input_buf_size" : "14kB",
+    "input_latency" : "47ns",
+    "link_bw" : "400Gb/s",
+    "num_vns" : "1",
+    "output_buf_size" : "14kB",
+    "output_latency" : "47ns",
+    "xbar_bw" : "400Gb/s",
+}
+
+precinct_params = {
+    "eg_queue_size": 0,
+    "new_scale": 11,
+    "old_scale": 11,
+}
+
+networkLinkControl_params = {
+    "input_buf_size" : "14kB",
+    "job_id" : "0",
+    "job_size" : "2",
+    "link_bw" : "400Gb/s",
+    "output_buf_size" : "14kB",
+    "use_nid_remap" : "False",
+}
+
+zone_id = 0
+zap_id = 0
+pe_id = 0
+ups=[]
+downs=[]
+routers_per_level=[]
+groups_per_level=[]
+start_ids = []
+total_hosts = 1
+
+
+def getRouterNameForId(rtr_id):
+    num_levels = len(start_ids)
+
+    # Check to make sure the index is in range
+    level = num_levels - 1
+    if rtr_id >= (start_ids[level] + routers_per_level[level]) or rtr_id < 0:
+        print("ERROR: topoFattree.getRouterNameForId: rtr_id not found: %d"%rtr_id)
+        sst.exit()
+
+    # Find the level
+    for x in range(num_levels-1,0,-1):
+        if rtr_id >= start_ids[x]:
+            break
+        level = level - 1
+
+    # Find the group
+    remainder = rtr_id - start_ids[level]
+    routers_per_group = routers_per_level[level] // groups_per_level[level]
+    group = remainder // routers_per_group
+    router = remainder % routers_per_group
+    return getRouterNameForLocation((level,group,router))
+
+def getRouterNameForLocation(location):
+    return "%srtr_l%s_g%d_r%d"%(rtr_prefix,location[0],location[1],location[2])
+
+# Construct HR_Router SST Object
+def instanciateRouter(radix, rtr_id):
+    rtr = sst.Component(getRouterNameForId(rtr_id), "merlin.hr_router")
+    rtr.addGlobalParamSet("router_params")
+    rtr.addParam("num_ports",radix)
+    rtr.addParam("id",rtr_id)
+    return rtr
+
+# Construct Endpoints
+def instanciateEndpoint(id, additionalParams={}):
+    zipComp = sst.Component("zip"+str(id), "ForzaZIP.ZIP")
+    zipComp.addParams({"precID" : id, "maxWait" : "1us"})
+
+    zipMem = zipComp.setSubComponent("memory", "ForzaZIP.ZIPBasicMemCtrl", 0)
+    zipMemIface = zipMem.setSubComponent("memIface", "memHierarchy.standardInterface", 0)
+
+    zipMemCtrl = sst.Component("zipMemCtrl"+str(id), "memHierarchy.MemController")
+    zipMemCtrl.addParams({"clock" : "2GHz", "addr_range_start" : 0, "backing" : "malloc"})
+    zipMemBackend = zipMemCtrl.setSubComponent("backend", "memHierarchy.simpleMem")
+    zipMemBackend.addParams({"access_time" : "100ns", "mem_size" : "8GB"})
+
+    zipMemLink = sst.Link("zipMemLink"+str(id))
+    zipMemLink.connect((zipMemIface, "port", "50ps"), (zipMemCtrl, "direct_link", "50ps"))
+
+    zipNIC = zipComp.setSubComponent("zopLink", "forza.zopNIC", 1)
+    zipNIC_lc = zipNIC.setSubComponent("iface", "merlin.linkcontrol", 0)
+    zipNIC_lc.addGlobalParamSet("networkLinkControl_params")
+    zipNIC.addParams({"precinctID" : id})
+
+    noc = sst.Component("precinctNOC"+str(id), "merlin.hr_router")
+    noc.addGlobalParamSet("router_params")
+    noc.addParams({"id": 4608+id, "num_ports": 2})
+    noc.setSubComponent("topology", "merlin.singlerouter", 0)
+
+    zipNICLink = sst.Link("zipNICLink"+str(id))
+    zipNICLink.connect((zipNIC_lc, "rtr_port", "1us"), (noc, "port0", "1us"))
+
+    zipHFINIC = zipComp.setSubComponent("hfiLink", "ForzaZIP.ZIPHFINIC", 2)
+    zipComp_lc = zipHFINIC.setSubComponent("iface", "merlin.linkcontrol", 0)
+    zipComp_lc.addGlobalParamSet("networkLinkControl_params")
+    zipHFINIC.addParams({"precinctID" : id})
+
+    return zipComp, zipComp_lc
+
+def findRouterByLocation(location):
+    return sst.findComponentByName(getRouterNameForLocation(location));
+
+# Process the shape
+def calculateTopo():
+    global shape
+    global ups
+    global downs
+    global routers_per_level
+    global groups_per_level
+    global start_ids
+    global total_hosts
+    levels = shape.split(":")
+
+    for l in levels:
+        links = l.split(",")
+        downs.append(int(links[0]))
+        if len(links) > 1:
+            ups.append(int(links[1]))
+
+    for i in downs:
+        total_hosts *= i
+
+    routers_per_level = [0] * len(downs)
+    routers_per_level[0] = total_hosts // downs[0]
+    for i in range(1,len(downs)):
+        routers_per_level[i] = routers_per_level[i-1] * ups[i-1] // downs[i]
+
+    start_ids = [0] * len(downs)
+    for i in range(1,len(downs)):
+        start_ids[i] = start_ids[i-1] + routers_per_level[i-1]
+
+    groups_per_level = [1] * len(downs);
+    if ups: # if ups is empty, then this is a single level and the following line will fail
+        groups_per_level[0] = total_hosts // downs[0]
+
+    for i in range(1,len(downs)-1):
+        groups_per_level[i] = groups_per_level[i-1] // downs[i]
+
+def buildTopo():
+    global host_link_latency
+    if not host_link_latency:
+        host_link_latency = link_latency
+
+    #Recursive function to build levels
+    def fattree_rb(level, group, links):
+        id = start_ids[level] + group * (routers_per_level[level]//groups_per_level[level])
+
+        host_links = []
+        if level == 0:
+            # create all the nodes
+            for i in range(downs[0]):
+                node_id = id * downs[0] + i
+                ep_lc = HFIEndpoints[node_id]
+                plink = sst.Link("precinctlink_%d"%node_id)
+                ep_lc.addLink(plink, "rtr_port", host_link_latency)
+                host_links.append(plink)
+                #(ep, ep_lc) = instanciateEndpoint(node_id)
+                #if ep:
+                #    plink = sst.Link("precinctlink_%d"%node_id)
+                #    ep_lc.addLink(plink, "rtr_port", host_link_latency)
+                #    host_links.append(plink)
+
+            # Create the edge router
+            rtr_id = id
+            rtr = instanciateRouter(ups[0] + downs[0], rtr_id)
+            topology = rtr.setSubComponent("topology","merlin.fattree")
+            topology.addParams(topo_params)
+            topology.addParams({"shape" : shape})
+            # Add links
+            for l in range(len(host_links)):
+                rtr.addLink(host_links[l],"port%d"%l, link_latency)
+            for l in range(len(links)):
+                rtr.addLink(links[l],"port%d"%(l+downs[0]), link_latency)
+            return
+
+        rtrs_in_group = routers_per_level[level] // groups_per_level[level]
+        # Create the down links for the routers
+        rtr_links = [ [] for index in range(rtrs_in_group) ]
+        for i in range(rtrs_in_group):
+            for j in range(downs[level]):
+                rtr_links[i].append(sst.Link("link_l%d_g%d_r%d_p%d"%(level,group,i,j)));
+
+        # Now create group links to pass to lower level groups from router down links
+        group_links = [ [] for index in range(downs[level]) ]
+        for i in range(downs[level]):
+            for j in range(rtrs_in_group):
+                group_links[i].append(rtr_links[j][i])
+
+        for i in range(downs[level]):
+            fattree_rb(level-1,group*downs[level]+i,group_links[i])
+
+        # Create the routers in this level.
+        # Start by adding up links to rtr_links
+        for i in range(len(links)):
+            rtr_links[i % rtrs_in_group].append(links[i])
+
+        for i in range(rtrs_in_group):
+            rtr_id = id + i
+            rtr = instanciateRouter(ups[level] + downs[level], rtr_id)
+            topology = rtr.setSubComponent("topology","merlin.fattree")
+            topology.addParams(topo_params)
+            topology.addParams({"shape" : shape})
+            # Add links
+            for l in range(len(rtr_links[i])):
+                rtr.addLink(rtr_links[i][l],"port%d"%l, link_latency)
+    #  End recursive function
+
+    level = len(ups)
+    if ups: # True for all cases except for single level
+        #  Create the router links
+        rtrs_in_group = routers_per_level[level] // groups_per_level[level]
+
+        # Create the down links for the routers
+        rtr_links = [ [] for index in range(rtrs_in_group) ]
+        for i in range(rtrs_in_group):
+            for j in range(downs[level]):
+                rtr_links[i].append(sst.Link("link_l%d_g0_r%d_p%d"%(level,i,j)));
+
+        # Now create group links to pass to lower level groups from router down links
+        group_links = [ [] for index in range(downs[level]) ]
+        for i in range(downs[level]):
+            for j in range(rtrs_in_group):
+                group_links[i].append(rtr_links[j][i])
+
+
+        for i in range(downs[len(ups)]):
+            fattree_rb(level-1,i,group_links[i])
+
+        # Create the routers in this level
+        radix = downs[level]
+        for i in range(routers_per_level[level]):
+            rtr_id = start_ids[len(ups)] + i
+            rtr = instanciateRouter(radix,rtr_id);
+
+            topology = rtr.setSubComponent("topology","merlin.fattree")
+            topology.addParams(topo_params)
+            topology.addParams({"shape" : shape})
+
+            for l in range(len(rtr_links[i])):
+                rtr.addLink(rtr_links[i][l], "port%d"%l, link_latency)
+    else: # Single level case
+        # create all the nodes
+        for i in range(downs[0]):
+            node_id = i
+
+    rtr_id = 0
 
 class FORZA:
   def __init__(self, name = "FORZA", zones = 4, precincts = 1,
@@ -14,7 +293,7 @@ class FORZA:
                program = "test.exe", memSize = 1073741823,
                memAccessTime = "100ns", reqPerCycle = 1,
                inputBufSize = "2048B", outputBufSize = "2048B",
-               linkBW = "100GB/s", flitSize = "8B", linkLatency = "1us",
+               linkBW = "100GB/s", flitSize = "8B", linkLatency = "100ns",
                xbarBW = "800GB/s", verbose = "5"):
     print("Initializing FORZA")
     self.name           = name
@@ -186,6 +465,8 @@ class FORZA:
 
   def build(self):
 
+    ZipArray = []
+
     for i in range(self.precincts):
       #-- create the precinct router
       prec_router = sst.Component("prec_router_"+str(i), "merlin.hr_router")
@@ -196,9 +477,57 @@ class FORZA:
         "link_bw" : self.linkBW,
         "xbar_bw" : self.xbarBW,
         "flit_size" : self.flitSize,
-        "num_ports" : self.zones,
+        "num_ports" : self.zones+1,
         "id" : 0
       })
+
+      #-- create the zip
+      zipComp = sst.Component("zip"+str(i), "ForzaZIP.ZIP")
+      zipComp.addParams({"precID" : i, "maxWait" : "1us"})
+
+      zipMem = zipComp.setSubComponent("memory", "ForzaZIP.ZIPBasicMemCtrl", 0)
+      zipMemIface = zipMem.setSubComponent("memIface", "memHierarchy.standardInterface", 0)
+
+      zipMemCtrl = sst.Component("zipMemCtrl_"+str(i), "memHierarchy.MemController")
+      zipMemCtrl.addParams({"clock" : "2GHz", "addr_range_start" : 0, "backing" : "malloc"})
+      zipMemBackend = zipMemCtrl.setSubComponent("backend", "memHierarchy.simpleMem")
+      zipMemBackend.addParams({"access_time" : "100ns", "mem_size" : "8GB"})
+
+      zipMemLink = sst.Link("zipMemLink_"+str(i))
+      zipMemLink.connect((zipMemIface, "port", "50ps"), (zipMemCtrl, "direct_link", "50ps"))
+
+      zipNIC = zipComp.setSubComponent("zopLink", "forza.zopNIC", 1)
+      zipNIC.addParams({"precinctID" : i})
+      zipNIC_lc = zipNIC.setSubComponent("iface", "merlin.linkcontrol", 0)
+
+      zipNIC.addParams({
+        "verbose" : self.verbose,
+        "clock" : self.clock,
+        "req_per_cycle" : self.reqPerCycle
+      })
+      zipNIC_lc.addParams({
+        "input_buf_size" : self.inputBufSize,
+        "output_buf_size" : self.outputBufSize,
+        "link_bw" : self.linkBW,
+      })
+
+      zipNICLink = sst.Link("zipNICLink_"+str(i))
+      zipNICLink.connect((zipNIC_lc, "rtr_port", "1us"), (prec_router, "port"+str(self.zones), "1us"))
+
+      zipHFINIC = zipComp.setSubComponent("hfiLink", "ForzaZIP.ZIPHFINIC", 2)
+      zipHFINIC.addParams({"precinctID" : i})
+      zipComp_lc = zipHFINIC.setSubComponent("iface", "merlin.linkcontrol", 0)
+      zipComp_lc.addParams({
+        "input_buf_size" : "14kB",
+        "job_id" : "0",
+        "job_size" : "2",
+        "link_bw" : "400Gb/s",
+        "output_buf_size" : "14kB",
+        "use_nid_remap" : "False",
+      })
+
+      #-- store off the ZIP linkcontrol object in an array for future topology connectivity
+      ZipArray.append(zipComp_lc)
 
       for j in range(self.zones):
         #-- create the zone router
@@ -403,6 +732,7 @@ class FORZA:
           zap_link.connect( (zap_iface, "rtr_port", "1us"),
                             (zone_router, "port"+str(k), "1us") )
 
+    return ZipArray
 
 if __name__ == "__main__":
   #-- parse the args
@@ -412,13 +742,23 @@ if __name__ == "__main__":
   ap.add_argument("-o", "--zones", required=True, help="sets the number of zones per precinct")
   ap.add_argument("-p", "--precincts", required=True, help="sets the number of precincts")
   ap.add_argument("-r", "--program", required=True, help="sets the target program exe")
+  ap.add_argument("-s", "--shape", required=True, help="sets the shape of the system network")
   args = vars(ap.parse_args())
 
+  #-- this argument is only used for the merlin network
+  shape = args['shape']
+
+  #-- build all the inner-precinct logic
   f = FORZA(zones=int(args['zones']), precincts=int(args['precincts']),
             zapsPerZone=int(args['zaps']), hartsPerZap=int(args['hartsperzap']),
             program=args['program'])
+  HFIEndpoints = f.build()
 
-  f.build()
+  #-- build the system network
+  sst.addGlobalParams("router_params", router_params)
+  sst.addGlobalParams("networkLinkControl_params",networkLinkControl_params)
+  calculateTopo()
+  buildTopo()
 
 #-- EOF
 
