@@ -78,7 +78,7 @@ namespace SST::Forza{
         }
 
     //private: // leave the below public for now.
-        const uint64_t ThreadLengthDblWords = 34;
+        const uint64_t ThreadLengthDblWords = 67; // Comes from RevMem::ZOP_ThreadMigrate in forzarev/src/RevMem.cc
         const uint64_t ThreadLengthBytes = (ThreadLengthDblWords * 8);
     }; // end class ZqmAidStateTableRow
 
@@ -198,8 +198,8 @@ namespace SST::Forza{
         // [num_zaps][num_harts]
         std::vector<std::vector<bool>> zap_hart_status;
 
-        uint64_t int_id; //What is this?
         uint8_t msg_id;
+        std::string my_name;
         SST::Forza::zopAPI* m_zop_iface;
         bool sent;
 
