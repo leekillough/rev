@@ -17,7 +17,8 @@
 
 int main(int argc, char **argv){
   uint64_t addr;
-  forza_zen_init(addr, (uint64_t)512);
+  uint64_t tail_ptr;
+  forza_zen_setup(addr, (uint64_t)512, tail_ptr);
 
   int i = 9;
   i = i + argc;
