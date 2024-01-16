@@ -1,6 +1,6 @@
 #include <fcntl.h>
 #include <string.h>
-#include "../../../../../common/syscalls/syscalls.h" 
+#include "../../../../../../common/syscalls/syscalls.h" 
 
 
 // #define THREADS 1
@@ -29,6 +29,12 @@ void *forza_malloc(size_t size)
           MAP_PRIVATE | MAP_ANONYMOUS, 
           -1,                   
           0);
+}
+
+void *forza_free(void *ptr, size_t size)
+{
+    std::size_t addr = reinterpret_cast<std::size_t>(ptr);
+    return (void *) rev_munmap(addr, size);
 }
 
 void* operator new(std::size_t t)
