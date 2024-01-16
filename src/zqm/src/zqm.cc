@@ -255,7 +255,7 @@ void ZQM::getThreadFromRza(uint32_t app_id)
     std::vector<uint64_t> payload;// (load_acs, addr_ptr, aid_state->ThreadLengthDblWords);
     payload.push_back(load_acs);
     payload.push_back(addr_ptr);
-    payload.push_back(aid_state->ThreadLengthDblWords);
+    payload.push_back(ThreadLengthDblWords); //TODO: Ensure that this is the proper length
     load_thread_zop->setPayload(payload);
 
     // Send Zop
