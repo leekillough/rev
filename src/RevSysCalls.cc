@@ -3315,6 +3315,46 @@ EcallStatus RevProc::ECALL_forza_send(RevInst& inst){
    ", dat[4]=%" PRIx8 ", dat[5]=%" PRIx8 ", dat[6]=%" PRIx8 ", dat[7]=%" PRIx8 ", dat[0-7]=%" PRIu64 " \n",
     GetActiveThreadID(), HartToExecID, dat[0], dat[1], dat[2], dat[3], dat[4], dat[5], dat[6], dat[7], u.d);
 
+  uint8_t SrcZCID = (uint8_t)(zNic->getEndpointType());
+  uint8_t SrcPCID = (uint8_t)(zNic->getPCID(zNic->getZoneID()));
+  uint16_t SrcHart = (uint16_t)HartToExecID;
+  
+  output->verbose(CALL_INFO, 0, 0, "ECALL_forza_send: SrcZCID = %" PRIu8 
+            ", SrcPCID = %" PRIu8 ", SrcHart = %" PRIu16 "\n", SrcZCID, SrcPCID, SrcHart);
+
+  SST::Forza::zopEvent *zev = new SST::Forza::zopEvent();
+  // set all the fields : FIXME
+  zev->setType(SST::Forza::zopMsgT::Z_MSG);
+  zev->setID(0);
+  zev->setOpc(SST::Forza::zopOpc::Z_MSG_SENDP);
+  zev->setSrcZCID(SrcZCID);
+  zev->setSrcPCID(SrcPCID);
+  zev->setSrcHart(SrcHart);
+
+  zev->setDestZCID(3);
+  zev->setDestPCID(0);
+  zev->setDestHart(0);
+
+  std::vector<uint64_t> payload;
+  for (size_t i = 0; i < size; i += sizeof(uint64_t)) {
+    for (size_t j = 0; j < sizeof(uint64_t); j++) {
+      u.b[j] = dat[i+j];
+    }
+    payload.push_back(u.d);
+  }
+  zev->setPayload(payload);
+  zev->encodeEvent();
+
+  if (!zNic) {
+    output->fatal(CALL_INFO, -1, "Error : zNic is nullptr\n" );
+  }
+  // output->fatal(CALL_INFO, -1, "Error : send not implemented\n" );
+  if (SrcZCID == 3) {
+    output->verbose(CALL_INFO, 0, 0, "ECALL_forza_send: DO ACTUAL SEND SrcZCID = %" PRIu8 
+            ", SrcPCID = %" PRIu8 ", SrcHart = %" PRIu16 "\n", SrcZCID, SrcPCID, SrcHart);
+    zNic->send(zev, SST::Forza::zopCompID::Z_ZAP3);
+  }
+
   return EcallStatus::SUCCESS;
 }
 
@@ -3360,7 +3400,6 @@ EcallStatus RevProc::ECALL_forza_zen_init(RevInst& inst){
   zev->setSrcZCID(SrcZCID);
   zev->setSrcPCID(SrcPCID);
   zev->setSrcHart(SrcHart);
-  // zev->setDestHart(1);
 
   // set the payload, do actual send setup thing : FIXME
   // read ZEN::processSetupMsgs
