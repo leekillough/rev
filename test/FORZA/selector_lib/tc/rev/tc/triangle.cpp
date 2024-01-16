@@ -1,5 +1,5 @@
 #include "stdlib.h"
-#include "selector.forza.h"
+#include "../libs/selector.forza.h"
 
 class TriangleSelector: public hclib::Selector<TrianglePkt> {
 public:
@@ -45,6 +45,7 @@ void *triangle_selector(int *mytid) {
         int64_t l_i, L_j;
 
         TrianglePkt pkg;
+
         for (l_i = 0; l_i < mat[ActorID].lnumrows; l_i++) {
             for (k = mat[ActorID].loffset[l_i]; k < mat[ActorID].loffset[l_i + 1]; k++) {
                 // L_i = l_i * THREADS + ActorID;
@@ -58,8 +59,12 @@ void *triangle_selector(int *mytid) {
                     if (pkg.w > L_j) {
                         break;
                     }
+            
+                    TrianglePkt *tpkt = (TrianglePkt *) forza_malloc(1*sizeof(TrianglePkt));
+                    tpkt->w = pkg.w;
+                    tpkt->vj = pkg.vj;
 
-                    triSelector->send(REQUEST, pkg, pe, ActorID);
+                    triSelector->send(REQUEST, tpkt, pe, ActorID);
                 }
             }
         }
@@ -138,7 +143,7 @@ int main(int argc, char *argv[]) {
 
     for(int i = 0; i < THREADS; i++)
     {
-        generate_graph(mat, i);
+        generate_graph(mat, false, i);
     }
     forza_fprintf(1, "FORZA initilize done.......\n", print_args);
     
@@ -169,10 +174,12 @@ int main(int argc, char *argv[]) {
         {
             forza_thread_join(pt[i]);
         }
-
         // print_args[0] = (void *) &mb_request[0][0].send_count;
         // print_args[1] = (void *) &mb_request[0][1].send_count;
-        // forza_fprintf(1, "Send - %l, %l\n", print_args);
+        // print_args[2] = (void *) &mb_request[1][0].send_count;
+        // print_args[3] = (void *) &mb_request[1][1].send_count;
+        // forza_fprintf(1, "Send - %l, %l %l %l\n", print_args);
+
 
         for(int i = 0; i < THREADS; i++)
         {

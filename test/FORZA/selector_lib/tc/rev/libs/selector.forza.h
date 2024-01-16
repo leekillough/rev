@@ -26,23 +26,27 @@ namespace hclib {
     template<typename T>
     class Selector {
     public:
-        Mailbox<T> mbx[1];
+        Mailbox<T> mbx[10];
         void start(int tid) 
         { 
-            print_args[0] = (void *) &tid;
-            forza_fprintf(1, "Actor[%d]: Start Send\n", print_args);
+            if(tid == 0)
+            {
+                print_args[0] = (void *) &tid;
+                forza_fprintf(1, "Actor[%d]: Start Send\n", print_args);
+            }
         }
 
-        bool send(int mb_id, T pkt, int rank, int ActorID) 
+        bool send(int mb_id, T* pkt, int rank, int ActorID) 
         { 
             // switch(mb_id)
             // {
             //     case REQUEST:
-                    ForzaPkt tpkt;
-                    tpkt.pkt.w = pkt.w;
-                    tpkt.pkt.vj = pkt.vj;
-                    tpkt.mb_type = mb_id;
-                    forza_send(mb_request, tpkt, rank, ActorID);
+                    ForzaPkt fpkt;
+                    fpkt.pkt = (void *) pkt;
+                    // tpkt.pkt.w = pkt.w;
+                    // tpkt.pkt.vj = pkt.vj;
+                    fpkt.mb_type = mb_id;
+                    forza_send(mb_request, fpkt, rank, ActorID);
                 //     break;
                 // case RESPONSE:
                 //     break;
@@ -63,8 +67,9 @@ namespace hclib {
             //     case REQUEST:
                     // forza_done(mb_request, ActorID);
                     ForzaPkt pkt;
-                    pkt.pkt.w = 0;
-                    pkt.pkt.vj = 0;
+                    pkt.pkt = NULL;
+                    // pkt.pkt.w = 0;
+                    // pkt.pkt.vj = 0;
                     pkt.mb_type = FORZA_DONE;
                     for(int i = 0; i < THREADS; i++)
                     {
@@ -75,8 +80,11 @@ namespace hclib {
             //         // call done for the respective mailboxes
             //         break;
             // }
-            print_args[0] = (void *) &ActorID;
-            forza_fprintf(1, "Actor[%d]: Done Send\n", print_args);
+            if(ActorID == 0)
+            {
+                print_args[0] = (void *) &ActorID;
+                forza_fprintf(1, "Actor[%d]: Done Send\n", print_args);
+            }
         }
     };
 }
