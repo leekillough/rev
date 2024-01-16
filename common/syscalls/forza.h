@@ -32,7 +32,7 @@ int forza_get_hart_id( ){
   );
 }
 
-int forza_send( uint64_t spaddr, uint64_t size, uint64_t dst ){
+int forza_send( uint64_t dst, uint64_t spaddr, size_t size  ){
   int rc;
   asm volatile (
     "li a7, 4003 \n\t"
@@ -41,7 +41,7 @@ int forza_send( uint64_t spaddr, uint64_t size, uint64_t dst ){
   );
 }
 
-int forza_poll(){
+int forza_zen_credit_release(size_t size){
   int rc;
   asm volatile (
     "li a7, 4004 \n\t"
@@ -50,19 +50,10 @@ int forza_poll(){
   );
 }
 
-int forza_popq(){
-  int rc;
-  asm volatile (
-    "li a7, 4005 \n\t"
-    "ecall \n\t"
-    "mv %0, a0" : "=r" (rc)
-  );
-}
-
-int forza_zen_init(uint64_t addr, uint64_t size){
+int forza_zen_setup(uint64_t addr, size_t size, uint64_t tailptr){
     int rc;
     asm volatile (
-    "li a7, 4006 \n\t"
+    "li a7, 4005 \n\t"
     "ecall \n\t"
     "mv %0, a0" : "=r" (rc)
   );
