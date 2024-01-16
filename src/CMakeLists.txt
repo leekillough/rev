@@ -4,5 +4,6 @@
 
 add_subdirectory(zen)
 add_subdirectory(zqm)
+add_subdirectory(zip)
 
 # EOF
