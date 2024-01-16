@@ -59,6 +59,9 @@ enum EXCEPTION_CAUSE : uint32_t {
   INST_PAGE_FAULT           = 12,
   LOAD_PAGE_FAULT           = 13,
   STORE_AMO_PAGE_FAULT      = 15,
+
+  // FORZA SPECIFIC
+  THREAD_MIGRATED           = 999,
 };
 
 enum RevInstF : int {    ///< Rev CPU Instruction Formats

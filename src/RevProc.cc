@@ -25,7 +25,7 @@ RevProc::RevProc( unsigned Id,
   : Halted(false), Stalled(false), SingleStep(false),
     CrackFault(false), ALUFault(false), fault_width(0),
     id(Id), HartToDecodeID(0), HartToExecID(0),
-    numHarts(NumHarts), opts(Opts), mem(Mem), coProc(nullptr), loader(Loader),
+    numHarts(NumHarts), opts(Opts), mem(Mem), coProc(nullptr), loader(Loader), zNic(nullptr),
     GetNewThreadID(std::move(GetNewTID)), output(Output), feature(nullptr),
     sfetch(nullptr), Tracer(nullptr) {
 
@@ -117,6 +117,7 @@ bool RevProc::SingleStepHart(){
 void RevProc::SetCoProc(RevCoProc* coproc){
   if(coProc == nullptr){
     coProc = coproc;
+    coProc->Reset();
   }else{
     output->fatal(CALL_INFO, -1,
                   "CONFIG ERROR: Core %u : Attempting to assign a co-processor when one is already present\n",
@@ -1815,8 +1816,22 @@ bool RevProc::ClockTick( SST::Cycle_t currentCycle ){
       * Exception Handling
       * - Currently this is only for ecall
       */
-    if( (RegFile->RV64_SCAUSE == EXCEPTION_CAUSE::ECALL_USER_MODE) ||
-        (RegFile->RV32_SCAUSE == EXCEPTION_CAUSE::ECALL_USER_MODE) ){
+    if( RegFile->RV32_SCAUSE == EXCEPTION_CAUSE::THREAD_MIGRATED ||
+        RegFile->RV64_SCAUSE == EXCEPTION_CAUSE::THREAD_MIGRATED ){
+      output->verbose(CALL_INFO, 6, 0,
+                    "Core %" PRIu32 "; Hart %" PRIu32 "; Thread %" PRIu32 " - Exception Raised: Thread migrated\n",
+                    id, HartToExecID, ActiveThreadID);
+      std::unique_ptr<RevThread> ActiveThread = PopThreadFromHart(HartToExecID);
+
+      // Trigger a thread migration
+      ActiveThread->SetState(ThreadState::MIGRATE);
+      HartsClearToExecute[HartToExecID] = false;
+      HartsClearToDecode[HartToExecID] = false;
+      IdleHarts[HartToExecID] = true;
+      AddThreadsThatChangedState(std::move(ActiveThread));
+    }
+    else if( (RegFile->RV64_SCAUSE == EXCEPTION_CAUSE::ECALL_USER_MODE) ||
+             (RegFile->RV32_SCAUSE == EXCEPTION_CAUSE::ECALL_USER_MODE) ){
       // Ecall found
       output->verbose(CALL_INFO, 6, 0,
                       "Core %" PRIu32 "; Hart %" PRIu32 "; Thread %" PRIu32 " - Exception Raised: ECALL with code = %" PRIu64 "\n",
@@ -2237,7 +2252,7 @@ void RevProc::InitEcallTable(){
     { 211, &RevProc::ECALL_sendmsg},                //  rev_sendmsg(int fd, struct user_msghdr  *msg, unsigned flags)
     { 212, &RevProc::ECALL_recvmsg},                //  rev_recvmsg(int fd, struct user_msghdr  *msg, unsigned flags)
     { 213, &RevProc::ECALL_readahead},              //  rev_readahead(int fd, loff_t offset, size_t count)
-    { 214, &RevProc::ECALL_brk},                    //  rev_brk(unsigned long brk)
+    { 214, &RevProc::ECALL_sbrk},                    //  rev_brk(unsigned long brk)
     { 215, &RevProc::ECALL_munmap},                 //  rev_munmap(unsigned long addr, size_t len)
     { 216, &RevProc::ECALL_mremap},                 //  rev_mremap(unsigned long addr, unsigned long old_len, unsigned long new_len, unsigned long flags, unsigned long new_addr)
     { 217, &RevProc::ECALL_add_key},                //  rev_add_key(const char  *_type, const char  *_description, const void  *_payload, size_t plen, key_serial_t destringid)
@@ -2339,6 +2354,16 @@ void RevProc::InitEcallTable(){
     { 501, &RevProc::ECALL_perf_stats},             //  rev_cpuinfo(struct rev_perf_stats *stats)
     { 1000, &RevProc::ECALL_pthread_create},        //
     { 1001, &RevProc::ECALL_pthread_join},          //
+
+    // FORZA
+    { 4000, &RevProc::ECALL_forza_scratchpad_alloc },
+    { 4001, &RevProc::ECALL_forza_scratchpad_free },
+    { 4002, &RevProc::ECALL_forza_get_hart_id },
+    { 4003, &RevProc::ECALL_forza_send },
+    { 4004, &RevProc::ECALL_forza_poll },
+    { 4005, &RevProc::ECALL_forza_popq },
+    { 4006, &RevProc::ECALL_forza_zen_init },
+
   };
 }
 

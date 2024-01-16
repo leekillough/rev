@@ -2003,19 +2003,19 @@ EcallStatus RevProc::ECALL_readahead(RevInst& inst){
   return EcallStatus::SUCCESS;
 }
 
-// 214, rev_brk(unsigned long brk)
-EcallStatus RevProc::ECALL_brk(RevInst& inst){
-  auto Addr = RegFile->GetX<uint64_t>(RevReg::a0);
+// 214, rev_sbrk(unsigned long brk)
+EcallStatus RevProc::ECALL_sbrk(RevInst& inst){
+  auto NumBytes = RegFile->GetX<uint64_t>(RevReg::a0);
 
-  const uint64_t heapend = mem->GetHeapEnd();
-  if( Addr > 0 && Addr > heapend ){
-    uint64_t Size = Addr - heapend;
-    mem->ExpandHeap(Size);
-  } else {
-    output->fatal(CALL_INFO, 11,
-                  "Out of memory / Unable to expand system break (brk) to "
-                  "Addr = 0x%" PRIx64 "\n", Addr);
-  }
+  // Return the current brk and then incremenet it by NumBytes
+  const uint64_t brk = mem->GetHeapEnd();
+  // FIXME: Add Error Checking
+  mem->AdjustBrk(NumBytes);
+   // output->fatal(CALL_INFO, 11,
+   //               "Out of memory / Unable to expand system break (brk) to "
+   //               "NumBytes = 0x%" PRIx64 "\n", NumBytes);
+  //}
+  RegFile->SetX(RevReg::a0, brk);
   return EcallStatus::SUCCESS;
 }
 
@@ -3199,6 +3199,100 @@ EcallStatus RevProc::ECALL_pthread_join(RevInst& inst){
     //
   }
   return rtval;
+}
+
+// 4000, forza_scratchpad_alloc(size_t size);
+EcallStatus RevProc::ECALL_forza_scratchpad_alloc(RevInst& inst){
+  output->verbose(CALL_INFO, 2, 0, "ECALL: forza_scratchpad_alloc called by thread %" PRIu32 " on hart %" PRIu32 "\n", GetActiveThreadID(), HartToExecID);
+  uint64_t size = RegFile->GetX<uint64_t>(RevReg::a0);
+
+  output->verbose(CALL_INFO, 4, 0, "ECALL: forza_scratchpad_alloc attempting to allocate %" PRIu64 " bytes\n", size);
+  uint64_t Addr = mem->ScratchpadAlloc(size);
+
+  if( Addr == _INVALID_ADDR_ ){
+    output->verbose(CALL_INFO, 2, 0, "ECALL: forza_scratchpad_alloc failed to allocate %" PRIu64 " bytes\n", size);
+    RegFile->SetX(RevReg::a0, (uint64_t)nullptr);
+  } else {
+    output->verbose(CALL_INFO, 2, 0, "ECALL: forza_scratchpad_alloc allocated %" PRIu64 " bytes at address %" PRIx64 "\n", size, Addr);
+    RegFile->SetX(RevReg::a0, Addr);
+  }
+
+  return EcallStatus::SUCCESS;
+}
+
+// 4001, forza_scratchpad_dealloc(size_t size);
+EcallStatus RevProc::ECALL_forza_scratchpad_free(RevInst& inst){
+  output->verbose(CALL_INFO, 2, 0, "ECALL: forza_scratchpad_free called by thread %" PRIu32 " on hart %" PRIu32 "\n", GetActiveThreadID(), HartToExecID);
+  uint64_t addr = RegFile->GetX<uint64_t>(RevReg::a0);
+  uint64_t size = RegFile->GetX<uint64_t>(RevReg::a1);
+  mem->ScratchpadFree(addr, size);
+
+  return EcallStatus::SUCCESS;
+}
+
+// 4002, forza_get_hart_id();
+EcallStatus RevProc::ECALL_forza_get_hart_id(RevInst& inst){
+  output->verbose(CALL_INFO, 2, 0, "ECALL: forza_get_hart_id called by thread %" PRIu32 " on hart %" PRIu32 "\n", GetActiveThreadID(), HartToExecID);
+  RegFile->SetX(RevReg::a0, HartToExecID);
+  return EcallStatus::SUCCESS;
+}
+
+// 4003, forza_send();
+EcallStatus RevProc::ECALL_forza_send(RevInst& inst){
+  output->verbose(CALL_INFO, 2, 0, "ECALL: forza_send called by thread %" PRIu32 " on hart %" PRIu32 "\n", GetActiveThreadID(), HartToExecID);
+  // TODO: Using the scratchpad addr and size, read scratrpad memory, create a ZOP and send to destination.
+  return EcallStatus::SUCCESS;
+}
+
+// 4004, forza_poll();
+EcallStatus RevProc::ECALL_forza_poll(RevInst& inst){
+  output->verbose(CALL_INFO, 2, 0, "ECALL: forza_poll called by thread %" PRIu32 " on hart %" PRIu32 "\n", GetActiveThreadID(), HartToExecID);
+  // TODO: Return the address of the head of zen queue where the packet is present.
+  RegFile->SetX(RevReg::a0, (uint64_t)nullptr);
+  return EcallStatus::SUCCESS;
+}
+
+// 4005, forza_popq();
+EcallStatus RevProc::ECALL_forza_popq(RevInst& inst){
+  output->verbose(CALL_INFO, 2, 0, "ECALL: forza_popq called by thread %" PRIu32 " on hart %" PRIu32 "\n", GetActiveThreadID(), HartToExecID);
+  // TODO: Give back a credit to the zen and update ZEN should update its head pointer to new packet.
+  return EcallStatus::SUCCESS;
+}
+
+// 4006, forza_zen_init();
+EcallStatus RevProc::ECALL_forza_zen_init(RevInst& inst){
+  output->verbose(CALL_INFO, 2, 0, "ECALL: forza_zen_init called by thread %" PRIu32 " on hart %" PRIu32 "\n", GetActiveThreadID(), HartToExecID);
+  // TODO: Forza library will pass the memory base address and size allocated by each actor to inform/initialize zen. 
+
+  SST::Forza::zopEvent *zev = new SST::Forza::zopEvent();
+
+  uint8_t msg_id = 0;
+  uint16_t int_id = 0;
+  // set all the fields : FIXME
+  zev->setType(SST::Forza::zopMsgT::Z_MSG);
+  zev->setID(msg_id);
+  zev->setOpc(SST::Forza::zopOpc::Z_MSG_ZENSET);
+  zev->setSrcZCID(int_id);
+  zev->setSrcHart(int_id);
+  zev->setDestHart(1);
+
+  // set the payload, do actual send setup thing : FIXME
+  // read ZEN::processSetupMsgs
+  std::vector<uint64_t> payload;
+  payload.push_back(0x00ull); // acs_pair = payload[0]
+  payload.push_back(10); // mem_start_addr = payload[1]
+  payload.push_back(0x00ull);
+  payload.push_back(512); // size = payload[3]
+  payload.push_back(522); // scratch_tail = payload[4]
+  zev->setPayload(payload);
+
+  // if (!zNic) {
+    // output->fatal(CALL_INFO, -1, "Error : zNic is nullptr\n" );
+  // }
+  // output->fatal(CALL_INFO, -1, "Error : send not implemented\n" );
+  // zNic->send(zev, SST::Forza::zopCompID::Z_ZEN);
+
+  return EcallStatus::SUCCESS;
 }
 
 } // namespace SST::RevCPU
