@@ -900,13 +900,7 @@ bool RevMem::ReadMem(unsigned Hart, uint64_t Addr, size_t Len, void *Target,
         }
       }
       BaseMem = &physMem[adjPhysAddr];
-      if( ctrl ){
-        unsigned Cur = (Len-span);
-        ctrl->sendREADRequest(Hart, Addr, (uint64_t)(BaseMem), Len, ((char*)Target)+Cur, req, flags);
-      }else if( zNic && !isRZA ){
-        unsigned Cur = (Len-span);
-        ZOP_READMem(Hart, Addr, Len, (void *)(((char*)Target)+Cur), req, flags);
-      }else{
+      if( !ctrl && !zNic ){
         unsigned Cur = (Len-span);
         for( unsigned i=0; i< span; i++ ){
           DataMem[Cur] = BaseMem[i];
@@ -917,6 +911,7 @@ bool RevMem::ReadMem(unsigned Hart, uint64_t Addr, size_t Len, void *Target,
           req.MarkLoadComplete();
         }
       }
+
 #ifdef _REV_DEBUG_
       std::cout << "Warning: Reading off end of page... " << std::endl;
 #endif
