@@ -69,17 +69,7 @@ namespace SST::Forza{
          */
         uint64_t getMemAddr(bool do_read, bool update_ptr);
 
-        bool validateMemBuffSize()
-        {
-            uint64_t diff = (mem_buffer_high + 1) - (mem_buffer_low);
-            if ( (diff % ThreadLengthBytes) == 0)
-                return true;
-            return false;
-        }
-
-    //private: // leave the below public for now.
-        static const uint64_t ThreadLengthDblWords = 67; // Comes from RevMem::ZOP_ThreadMigrate in forzarev/src/RevMem.cc
-        static const uint64_t ThreadLengthBytes = (ThreadLengthDblWords * 8);
+        bool validateMemBuffSize();
     }; // end class ZqmAidStateTableRow
 
 

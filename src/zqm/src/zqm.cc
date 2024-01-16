@@ -14,6 +14,9 @@
 
 using namespace SST::Forza;
 
+static const uint64_t ThreadLengthDblWords = 67; // Comes from RevMem::ZOP_ThreadMigrate in forzarev/src/RevMem.cc
+static const uint64_t ThreadLengthBytes = (ThreadLengthDblWords * 8);
+
 uint64_t ZqmAidStateTableRow::getMemAddr(bool do_read, bool update_ptr)
 {
     uint64_t addr_ptr = (do_read) ? mem_read_ptr : mem_write_ptr;
@@ -42,6 +45,15 @@ uint64_t ZqmAidStateTableRow::getMemAddr(bool do_read, bool update_ptr)
         }
     }
 }
+
+
+bool ZqmAidStateTableRow::validateMemBuffSize() {
+    uint64_t diff = (mem_buffer_high + 1) - (mem_buffer_low);
+    if ( (diff % ThreadLengthBytes) == 0)
+        return true;
+    return false;
+}
+
 
 ZQM::ZQM(ComponentId_t id, Params& params)
         : Component(id)
@@ -682,7 +694,7 @@ void ZQM::doSimpleMsg()
     payload.push_back(0x10); // min HART ID
     payload.push_back(0x11); // max HART id
     payload.push_back(0); // Mem buffer low
-    payload.push_back((16*ZqmAidStateTableRow::ThreadLengthDblWords*8)-1); // Mem buffer high
+    payload.push_back((16*ThreadLengthDblWords*8)-1); // Mem buffer high
     payload.push_back(1); // sequential_hart_loading
     dummy_zop2->setPayload(payload);
 
@@ -762,7 +774,7 @@ void ZQM::configMTApp()
     payload.push_back(0x8); // min HART ID
     payload.push_back(0x9); // max HART id
     payload.push_back(0x1000); // Mem buffer low
-    payload.push_back(0x1000+((16*ZqmAidStateTableRow::ThreadLengthDblWords*8)-1)); // Mem buffer high
+    payload.push_back(0x1000+((16*ThreadLengthDblWords*8)-1)); // Mem buffer high
     payload.push_back(0); // sequential_hart_loading
     mtconfig_pkt->setPayload(payload);
 
@@ -815,7 +827,7 @@ void ZQM::configMtAndRunQueue()
     payload.push_back(0x8); // min HART ID
     payload.push_back(0x9); // max HART id
     payload.push_back(0x1000); // Mem buffer low
-    payload.push_back(0x1000+((16*ZqmAidStateTableRow::ThreadLengthDblWords*8)-1)); // Mem buffer high
+    payload.push_back(0x1000+((16*ThreadLengthDblWords*8)-1)); // Mem buffer high
     payload.push_back(0); // sequential_hart_loading
     mtconfig_pkt->setPayload(payload);
 
