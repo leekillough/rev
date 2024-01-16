@@ -2360,9 +2360,8 @@ void RevProc::InitEcallTable(){
     { 4001, &RevProc::ECALL_forza_scratchpad_free },
     { 4002, &RevProc::ECALL_forza_get_hart_id },
     { 4003, &RevProc::ECALL_forza_send },
-    { 4004, &RevProc::ECALL_forza_poll },
-    { 4005, &RevProc::ECALL_forza_popq },
-    { 4006, &RevProc::ECALL_forza_zen_init },
+    { 4004, &RevProc::ECALL_forza_zen_credit_release },
+    { 4005, &RevProc::ECALL_forza_zen_setup },
 
   };
 }
