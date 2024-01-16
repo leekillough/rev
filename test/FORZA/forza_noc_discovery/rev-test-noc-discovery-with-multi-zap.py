@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2017-2023 Tactical Computing Laboratories, LLC
+# Copyright (C) 2017-2024 Tactical Computing Laboratories, LLC
 # All Rights Reserved
 # contact@tactcomplabs.com
 #
@@ -35,7 +35,8 @@ zen.addParams({
   "numPrecincts" : 1,         # number of precincts
   "enableDMA" : 0,            # enable the DMA?
   "zenQSizeLimit" : 100000,   # zenQ size limit
-  "processPerCycle" : 100000  # messages per cycle
+  "processPerCycle" : 100000, # messages per cycle
+  "enablePrecinctNIC": False  # enable the precinct NIC?
 })
 
 # --------------------------

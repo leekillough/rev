@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2017-2023 Tactical Computing Laboratories, LLC
+# Copyright (C) 2017-2024 Tactical Computing Laboratories, LLC
 # All Rights Reserved
 # contact@tactcomplabs.com
 #
@@ -25,7 +25,7 @@ MEM_SIZE = 1024*1024*1024-1
 # --------------------------
 zap_cpu1 = sst.Component("zap0", "revcpu.RevCPU")
 zap_cpu1.addParams({
-        "verbose" : 5,                                # Verbosity
+        "verbose" : 2,                                # Verbosity
         "numCores" : 1,                               # Number of cores
         "clock" : "1.0GHz",                           # Clock
         "memSize" : 1024*1024*1024,                   # Memory size in bytes
@@ -49,7 +49,7 @@ zap_cpu1.addParams({
 # --------------------------
 rza = sst.Component("rza", "revcpu.RevCPU")
 rza.addParams({
-        "verbose" : 5,                                # Verbosity
+        "verbose" : 2,                                # Verbosity
         "numCores" : 2,                               # Number of cores
         "clock" : "1.0GHz",                           # Clock
         "memSize" : 1024*1024*1024,                   # Memory size in bytes
@@ -67,18 +67,18 @@ rza.addParams({
 rza_lspipe = rza.setSubComponent("rza_ls","revcpu.RZALSCoProc")
 rza_lspipe.addParams({
   "clock" : "1.0GHz",
-  "verbose" : 9,
+  "verbose" : 2,
 })
 
 rza_amopipe = rza.setSubComponent("rza_amo","revcpu.RZAAMOCoProc")
 rza_amopipe.addParams({
   "clock" : "1.0GHz",
-  "verbose" : 9,
+  "verbose" : 2,
 })
 
 rza_lsq = rza.setSubComponent("memory", "revcpu.RevBasicMemCtrl");
 rza_lsq.addParams({
-      "verbose"         : "9",
+      "verbose"         : "2",
       "clock"           : "2.0Ghz",
       "max_loads"       : 16,
       "max_stores"      : 16,
@@ -116,7 +116,7 @@ memory.addParams({
 # SETUP THE NOC
 # --------------------------
 nic_params = {
-  "verbose" : 9,
+  "verbose" : 2,
   "clock" : "1GHz",
   "req_per_cycle" : 1
 }

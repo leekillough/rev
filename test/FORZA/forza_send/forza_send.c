@@ -2,18 +2,24 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-#define assert(cond)                                                           \
-  if (!(cond)) {                                                               \
-    abort();                                                                   \
+#define assert( cond ) \
+  if( !( cond ) ) {    \
+    abort();           \
   }
 
 int main() {
-  uint64_t *addr;
-  // forza_zen_init(addr, (uint64_t)512);
-  addr = (uint64_t *)forza_scratchpad_alloc(1 * sizeof(uint64_t));
+// THIS TEST IS DISABLED BECAUSE WE HAVE NOT YET CHANGED THE PYTHON CONFIG FILE TO ACTUALLY LET SEND WORK
+#if 0
+  uint64_t qaddr;
+  uint64_t tail_ptr;
+  uint64_t *pkt = (uint64_t *)forza_scratchpad_alloc(16 * sizeof(uint64_t));
+  uint64_t mbox_id = 0;
+  forza_zen_setup(qaddr, 16, tail_ptr, mbox_id);
+  forza_zen_setup((uint64_t)pkt, (uint64_t)16, (uint64_t)pkt, mbox_id);
   uint64_t size = sizeof(uint64_t);
   uint64_t dst = 1;
-  forza_send(addr, size, dst);
-  forza_scratchpad_free(addr, 1 * sizeof(uint64_t));
+  forza_send(dst, pkt, size);
+  forza_scratchpad_free(pkt, 16 * sizeof(uint64_t));
+#endif
   return 0;
 }
