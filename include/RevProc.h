@@ -171,6 +171,16 @@ public:
   ///< RevProc: Get pointer to Load / Store queue used to track memory operations
   std::shared_ptr<std::unordered_multimap<uint64_t, MemReq>> GetLSQueue() const { return LSQueue; }
 
+  ///< RevProc: retrieve the HART ID that contains the target ThreadID
+  uint32_t GetHartFromThreadID(uint32_t ThreadID){
+    for( size_t i=0; i<numHarts; i++ ){
+      if( Harts[i]->GetAssignedThreadID() == ThreadID ){
+        return i;
+      }
+    }
+    return numHarts+1;
+  }
+
   ///< RevProc: Set the ZOP NIC handler
   void setZNic(Forza::zopAPI *Z) { zNic = Z; }
 
