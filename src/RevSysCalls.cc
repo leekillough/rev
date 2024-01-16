@@ -3242,18 +3242,20 @@ union ECALL_forza_send_union {
   char b[sizeof(uint64_t)];
 };
 
-// 4003, forza_send( uint64_t spaddr, uint64_t size, uint64_t dst );
+
+// 4003 forza_send( uint64_t dst, uint64_t spaddr, size_t size  )
 EcallStatus RevProc::ECALL_forza_send(RevInst& inst){
+
   output->verbose(CALL_INFO, 2, 0, "ECALL: forza_send called by thread %" PRIu32 " on hart %" PRIu32 "\n", GetActiveThreadID(), HartToExecID);
   // TODO: Using the scratchpad addr and size, read scratrpad memory, create a ZOP and send to destination.
 
-  uint64_t spaddr = RegFile->GetX<uint64_t>(RevReg::a0);
-  uint64_t size = (uint64_t)RegFile->GetX<uint64_t>(RevReg::a1);
-  uint64_t dst = (uint64_t)RegFile->GetX<uint64_t>(RevReg::a2);
+  uint64_t dst = (uint64_t)RegFile->GetX<uint64_t>(RevReg::a0);
+  uint64_t spaddr = (uint64_t)RegFile->GetX<uint64_t>(RevReg::a1);
+  size_t size = (size_t)RegFile->GetX<size_t>(RevReg::a2);
 
   output->verbose(CALL_INFO, 2, 0, "ECALL: forza_send called by thread %" PRIu32 " on hart %" PRIu32 
-      " spaddr = %" PRIx64 ", size = %" PRIu64 ", dst = %" PRIu64 "\n"
-      , GetActiveThreadID(), HartToExecID, spaddr, size, dst);
+      " dst = %" PRIx64 ", spaddr = %" PRIu64 ", size = %" PRIu64 "\n"
+      , GetActiveThreadID(), HartToExecID, dst, spaddr, (uint64_t)size);
 
   // NOT THIS: mem->ReadMem( uint64_t Addr, size_t Len, void *Data )
   // USE THIS: mem->ReadMem (unsigned Hart, uint64_t Addr, size_t Len, void *Target, const MemReq& req, RevFlag flags)
@@ -3329,28 +3331,20 @@ EcallStatus RevProc::ECALL_forza_send(RevInst& inst){
   return EcallStatus::SUCCESS;
 }
 
-// 4004, forza_poll();
-EcallStatus RevProc::ECALL_forza_poll(RevInst& inst){
-  output->verbose(CALL_INFO, 2, 0, "ECALL: forza_poll called by thread %" PRIu32 " on hart %" PRIu32 "\n", GetActiveThreadID(), HartToExecID);
-  // TODO: Return the address of the head of zen queue where the packet is present.
-  RegFile->SetX(RevReg::a0, (uint64_t)nullptr);
-  return EcallStatus::SUCCESS;
-}
-
-// 4005, forza_popq();
-EcallStatus RevProc::ECALL_forza_popq(RevInst& inst){
-  output->verbose(CALL_INFO, 2, 0, "ECALL: forza_popq called by thread %" PRIu32 " on hart %" PRIu32 "\n", GetActiveThreadID(), HartToExecID);
+// 4004, forza_zen_credit_release();
+EcallStatus RevProc::ECALL_forza_zen_credit_release(RevInst& inst){
+  output->verbose(CALL_INFO, 2, 0, "ECALL: forza_zen_credit_release called by thread %" PRIu32 " on hart %" PRIu32 "\n", GetActiveThreadID(), HartToExecID);
   // TODO: Give back a credit to the zen and update ZEN should update its head pointer to new packet.
   return EcallStatus::SUCCESS;
 }
 
-// 4006, forza_zen_init(uint64_t addr, uint64_t size);
-EcallStatus RevProc::ECALL_forza_zen_init(RevInst& inst){
-
+// 4005, forza_zen_setup(uint64_t addr, size_t size, uint64_t tailptr);
+EcallStatus RevProc::ECALL_forza_zen_setup(RevInst& inst){
   uint64_t addr = (uint64_t)RegFile->GetX<uint64_t>(RevReg::a0);
-  uint64_t size = (uint64_t)RegFile->GetX<uint64_t>(RevReg::a1);
+  size_t size = (size_t)RegFile->GetX<size_t>(RevReg::a1);
+  uint64_t tailptr = (uint64_t)RegFile->GetX<uint64_t>(RevReg::a2);
+  output->verbose(CALL_INFO, 2, 0, "ECALL: forza_zen_setup called by thread %" PRIu32 " on hart %" PRIu32 "\n", GetActiveThreadID(), HartToExecID);
 
-  output->verbose(CALL_INFO, 2, 0, "ECALL: forza_zen_init called by thread %" PRIu32 " on hart %" PRIu32 "\n", GetActiveThreadID(), HartToExecID);
   // TODO: Forza library will pass the memory base address and size allocated by each actor to inform/initialize zen. 
 
   SST::Forza::zopEvent *zev = new SST::Forza::zopEvent();
@@ -3361,8 +3355,8 @@ EcallStatus RevProc::ECALL_forza_zen_init(RevInst& inst){
   uint8_t SrcPCID = (uint8_t)(zNic->getPCID(zNic->getZoneID()));
   uint16_t SrcHart = (uint16_t)HartToExecID;
   
-  output->verbose(CALL_INFO, 0, 0, "ECALL_forza_zen_init: addr = %" PRIx64 ", size = %" PRIu64 ", SrcZCID = %" PRIu8 
-            ", SrcPCID = %" PRIu8 ", SrcHart = %" PRIu16 "\n", addr, size, SrcZCID, SrcPCID, SrcHart);
+  output->verbose(CALL_INFO, 0, 0, "ECALL_forza_zen_init: addr = %" PRIx64 ", size = %" PRIu64 ", tailptr = %" PRIu64 ", SrcZCID = %" PRIu8 
+            ", SrcPCID = %" PRIu8 ", SrcHart = %" PRIu16 "\n", addr, (uint64_t)size, tailptr, SrcZCID, SrcPCID, SrcHart);
 
   // set all the fields : FIXME
   zev->setType(SST::Forza::zopMsgT::Z_MSG);

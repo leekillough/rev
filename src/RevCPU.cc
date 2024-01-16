@@ -34,8 +34,8 @@ const char splash_msg[] = "\
 RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params )
   : SST::Component(id), testStage(0), PrivTag(0), address(-1), EnableNIC(false),
     EnableMemH(false), EnableCoProc(false),
-    EnableRZA(false), EnableZopNIC(false), DisableCoprocClock(false),
-    Precinct(0), Zone(0),
+    EnableRZA(false), EnableZopNIC(false), EnableForzaSecurity(false),
+    DisableCoprocClock(false), Precinct(0), Zone(0),
     Nic(nullptr), Ctrl(nullptr), zNic(nullptr), ClockHandler(nullptr) {
 
   const int Verbosity = params.find<int>("verbose", 0);
@@ -56,6 +56,8 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params )
     primaryComponentDoNotEndSim();
   }
 
+  // std::string ClockFreq = params.find<std::string>("clock", "1Ghz");
+  // printf("given Txt files : %s\n",txtFile.c_str());
   // Derive the simulation parameters
   // We must always derive the number of cores before initializing the options
   numCores = params.find<unsigned>("numCores", "1");
@@ -149,6 +151,15 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params )
   // Create the memory object
   const uint64_t memSize = params.find<unsigned long>("memSize", 1073741824);
   EnableMemH = params.find<bool>("enable_memH", 0);
+
+  // Added for the security test
+  EnableForzaSecurity = params.find<bool>("enableForzaSecurity", false);
+
+  if( EnableForzaSecurity ){
+    memTrafficInput = params.find<std::string>("memTrafficInput","");
+    memTrafficOutput = params.find<std::string>("memTrafficOutput","");
+  }
+
   if( !EnableMemH ){
     // TODO: Use std::nothrow to return null instead of throwing std::bad_alloc
     Mem = new RevMem( memSize, Opts,  &output );
@@ -166,6 +177,19 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params )
 
     if( EnableFaults )
       output.verbose(CALL_INFO, 1, 0, "Warning: memory faults cannot be enabled with memHierarchy support\n");
+  }
+
+  // if the forza security models are enabled, inform RevMem that logging as been enabled
+  if( EnableForzaSecurity ){
+    if(memTrafficInput!="nil"){
+      output.verbose(CALL_INFO, 1, 0, "Enabling MemTrafficInput : %s\n", memTrafficInput.c_str());
+      Mem->updatePhysHistoryfromInput(memTrafficInput);
+    }
+    if(memTrafficOutput!="nil"){
+      output.verbose(CALL_INFO, 1, 0, "Enabling MemTrafficOutput : %s\n", memTrafficOutput.c_str());
+      Mem->setOutputFile(memTrafficOutput);
+      Mem->enablePhysHistoryLogging();
+    }
   }
 
   // FORZA: initialize scratchpad
@@ -666,6 +690,39 @@ void RevCPU::processZOPQ(){
   }
 }
 
+void RevCPU::sendZQMThreadComplete(uint32_t ThreadID, uint32_t HartID){
+  output.verbose(CALL_INFO, 9, 0,
+                 "[FORZA][ZAP] Informing ZQM of completed thread: %d\n",
+                 ThreadID);
+#if 0
+  SST::Forza::zopEvent *zev = new SST::Forza::zopEvent();
+
+  // set all the fields
+  zev->setType(SST::Forza::zopMsgT::Z_TMIG);  // what is the message type?
+  zev->setNB(0);
+  zev->setID(HartID);
+  zev->setCredit(0);
+  zev->setOpc(SST::Forza::zopOpc::Z_TMIG_SELECT); // what is the opcode?
+  zev->setAppID(0);
+  zev->setDestZCID((uint8_t)(SST::Forza::zopCompID::Z_ZQM));
+  zev->setDestPCID((uint8_t)(zNic->getPCID(Zone)));
+  zev->setDestPrec((uint8_t)(Precinct));
+  zev->setSrcHart(HartID);
+  zev->setSrcZCID((uint8_t)(zNic->getEndpointType()));
+  zev->setSrcPCID((uint8_t)(zNic->getPCID(zNic->getZoneID())));
+  zev->setSrcPrec((uint8_t)(zNic->getPrecinctID()));
+
+  // build the payload
+  std::vector<uint64_t> Payload;
+  Payload.push_back((uint64_t)(ThreadID));
+
+  zev->setPayload(Payload);
+
+  zNic->send(zev, SST::Forza::zopCompID::Z_ZQM,
+             zNic->getPCID(Zone), Precinct);
+#endif
+}
+
 void RevCPU::handleZOPMessageRZA(Forza::zopEvent *zev){
   output.verbose(CALL_INFO, 9, 0, "[FORZA][RZA] Injecting ZOP Message into ZIQ\n");
   if( zev == nullptr ){
@@ -760,7 +817,6 @@ void RevCPU::handleZOPMessage(Event *ev){
     output.fatal(CALL_INFO, -1,
                  "[FORZA][handleZOPMessage] : zopEvent is null\n");
   }
-
   if( EnableRZA ){
     // handle a FORZA ZOP Message
     handleZOPMessageRZA(zev);
@@ -768,6 +824,7 @@ void RevCPU::handleZOPMessage(Event *ev){
     // I am a ZAP device, handle the message accordingly
     handleZOPMessageZAP(zev);
   }
+
 }
 
 void RevCPU::handleMessage(Event *ev){
@@ -974,6 +1031,9 @@ bool RevCPU::clockTick( SST::Cycle_t currentCycle ){
       UpdateCoreStatistics(i);
       Procs[i]->PrintStatSummary();
     }
+    Mem->updatePhysHistorytoOutput();
+    
+
     primaryComponentOKToEndSim();
     output.verbose(CALL_INFO, 5, 0, "OK to end sim at cycle: %" PRIu64 "\n", static_cast<uint64_t>(currentCycle));
   } else {
@@ -1098,9 +1158,18 @@ void RevCPU::HandleThreadStateChangesForProc(uint32_t ProcID){
     uint32_t ThreadID = Thread->GetID();
     // Handle the thread that changed state based on the new state
     switch ( Thread->GetState() ) {
+    case ThreadState::MIGRATE:
+      // This thread has been migrated
+      output.verbose(CALL_INFO, 8, 0, "Thread %" PRIu32 " on Core %" PRIu32 " is MIGRATED\n", ThreadID, ProcID);
+      CompletedThreads.emplace(ThreadID, std::move(Thread));
+      break;
     case ThreadState::DONE:
       // This thread has completed execution
       output.verbose(CALL_INFO, 8, 0, "Thread %" PRIu32 " on Core %" PRIu32 " is DONE\n", ThreadID, ProcID);
+      if( zNic ){
+        sendZQMThreadComplete(ThreadID,
+                              Procs[ProcID]->GetHartFromThreadID(ThreadID));
+      }
       CompletedThreads.emplace(ThreadID, std::move(Thread));
       break;
 

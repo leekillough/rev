@@ -418,6 +418,25 @@ RevMemStats GetMemStatsTotal() const {
   bool ZOP_ThreadMigrate(unsigned Hart, std::vector<uint64_t> Payload,
                          unsigned Zone, unsigned Precinct);
 
+  // Add Physical Addresss Information
+  /// FORZA: update the physical history from the input file
+  void updatePhysHistoryfromInput(const std::string &InputFile);
+
+  /// FORZA: update history to the output file
+  void updatePhysHistorytoOutput();
+
+  /// FORZA: enable physical history logging
+  void enablePhysHistoryLogging();
+
+  /// FORZA: validate a physical address
+  std::pair<bool,std::string> validatePhysAddr(uint64_t pAddr,int appID);
+
+  /// FORZA: update physical history
+  void updatePhysHistory(uint64_t pAddr,int appID);
+
+  /// FORZA: set the output file name
+  void setOutputFile(std::string name);
+
 private:
   /// FORZA: convert a standard RISC-V AMO opcode to a ZOP opcode
   Forza::zopOpc flagToZOP(uint32_t flags, size_t Len);
@@ -515,6 +534,16 @@ private:
 
   // -- FORZA
   std::map<uint64_t,Forza::zopEvent *> ZRqst; ///< RevMem: zop request address map
+
+  // FORZA Security Test 
+  std::map<uint64_t, std::tuple<std::string,bool, int>> OutputPhysAddrHist; //History to Output file 
+  std::map<uint64_t,std::tuple<std::string,bool,std::vector<int>>> InputPhysAddrHist; //Read from Input file 
+  bool PhysAddrCheck;
+  bool PhysAddrLogging;
+  std::string outputFile;
+  // std::ofstream output_file;
+  // std::ofstream input_file;
+
 
 }; // class RevMem
 

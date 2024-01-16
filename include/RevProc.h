@@ -171,6 +171,16 @@ public:
   ///< RevProc: Get pointer to Load / Store queue used to track memory operations
   std::shared_ptr<std::unordered_multimap<uint64_t, MemReq>> GetLSQueue() const { return LSQueue; }
 
+  ///< RevProc: retrieve the HART ID that contains the target ThreadID
+  uint32_t GetHartFromThreadID(uint32_t ThreadID){
+    for( size_t i=0; i<numHarts; i++ ){
+      if( Harts[i]->GetAssignedThreadID() == ThreadID ){
+        return i;
+      }
+    }
+    return numHarts+1;
+  }
+
   ///< RevProc: Set the ZOP NIC handler
   void setZNic(Forza::zopAPI *Z) { zNic = Z; }
 
@@ -622,9 +632,8 @@ private:
   EcallStatus ECALL_forza_scratchpad_free(RevInst& inst);  // 4001, forza_scratchpad_free(size_t size);
   EcallStatus ECALL_forza_get_hart_id(RevInst& inst);  // 4002, forza_get_hart_id();
   EcallStatus ECALL_forza_send(RevInst& inst);  // 4003, forza_send();
-  EcallStatus ECALL_forza_poll(RevInst& inst);  // 4004, forza_poll();
-  EcallStatus ECALL_forza_popq(RevInst& inst);  // 4005, forza_popq();
-  EcallStatus ECALL_forza_zen_init(RevInst& inst);  // 4006, forza_zen_init();
+  EcallStatus ECALL_forza_zen_credit_release(RevInst& inst);  // 4004, forza_popq();
+  EcallStatus ECALL_forza_zen_setup(RevInst& inst);  // 4005, forza_zen_setup();
 
   /// RevProc: Table of ecall codes w/ corresponding function pointer implementations
   std::unordered_map<uint32_t, std::function<EcallStatus(RevProc*, RevInst&)>> Ecalls;

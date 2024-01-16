@@ -120,6 +120,9 @@ public:
     {"trcStartCycle",   "Starting tracer cycle (disables trcOp)",       "0"},
     {"splash",          "Display the splash logo",                      "0"},
     {"independentCoprocClock",  "Enables each coprocessor to register its own clock handler", "0"},
+    {"memTrafficInput",         "[FORZA] Input txt file for memory addres traffic",           "Input_MemTraffic"},
+    {"memTrafficOutput",        "[FORZA] Output txt file for memory addres traffic",          "Output_MemTraffic"},
+    {"enableForzaSecurity",     "[FORZA] Enables Forza memory security logic",                "0"},
     )
 
   // -------------------------------------------------------
@@ -205,7 +208,6 @@ public:
     {"FloatsExec",          "Total SP or DP float instructions executed",           "count",  1},
     {"TLBHitsPerCore",      "TLB hits per core",                                    "count",  1},
     {"TLBMissesPerCore",    "TLB misses per core",                                  "count",  1},
-
     {"TLBHits",             "TLB hits",                                             "count",  1},
     {"TLBMisses",           "TLB misses",                                           "count",  1},
     )
@@ -289,6 +291,9 @@ private:
   bool EnableCoProc;                  ///< RevCPU: Enable a co-processor attached to all cores
   bool EnableRZA;                     ///< RevCPU: Enables the RZA functionality
   bool EnableZopNIC;                  ///< RevCPU: Enables the ZONE/ZOP NIC functionality
+  bool EnableForzaSecurity;           ///< RevCPU: Enables the FORZA memory security
+  std::string memTrafficInput;        ///< RevCPU: Memory traffic input
+  std::string memTrafficOutput;       ///< RevCPU: Memory traffic output
 
   bool EnableFaults;                  ///< RevCPU: Enable fault injection logic
   bool EnableCrackFaults;             ///< RevCPU: Enable Crack+Decode Faults
@@ -395,6 +400,9 @@ private:
   std::vector<Statistic<uint64_t>*> TLBMissesPerCore;
   std::vector<Statistic<uint64_t>*> TLBHitsPerCore;
 
+
+
+
   //-------------------------------------------------------
   // -- FUNCTIONS
   //-------------------------------------------------------
@@ -419,6 +427,9 @@ private:
 
   /// RevCPU: Handle FORZA Thread Migration
   void handleZOPThreadMigrate(Forza::zopEvent *zev);
+
+  /// RevCPU: Inform the ZQM that a thread is done
+  void sendZQMThreadComplete(uint32_t ThreadID, uint32_t HartID);
 
   /// RevCPU: Creates a unique tag for this message
   uint8_t createTag();
