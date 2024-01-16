@@ -304,7 +304,7 @@ void zopNIC::send(zopEvent *ev, zopCompID dest, zopPrecID zone, unsigned prec){
   }
   for( auto i : hostMap ){
     auto t = i.second;
-    if( (std::get<_HM_ENDP_T>(t) == dest) &&
+    if( (std::get<_HM_ENDP_T>(t) == TmpDest) &&
         (std::get<_HM_ZID>(t) == zone) &&
         (std::get<_HM_PID>(t) == prec) ){
       realDest = i.first;
