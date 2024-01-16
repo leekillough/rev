@@ -1,9 +1,20 @@
 import sst
+import argparse
 
-NUM_PRECINCTS = 2
-NUM_ZONES = 1
+parser = argparse.ArgumentParser()
 
-sst.setProgramOption("verbose", "1")
+parser.add_argument("-p", "--precincts",  help="Number of precincts",                               default=2, type=int)
+parser.add_argument("-z", "--zones",      help="Number of zones per precinct",                      default=1, type=int)
+parser.add_argument("-w", "--max_wait",   help="Maximum number of microseconds before aggregation", default=10, type=float)
+parser.add_argument("-n", "--num_zops",   help="Number of ZOPs to send per ZOPgen per cycle",       default=1, type=int)
+parser.add_argument("-c", "--num_cycles", help="Number of cycles to send ZOPs from ZOPgens",        default=1, type=int)
+parser.add_argument("-i", "--interval",   help="Number of cycles to wait between sending ZOPs",     default=1, type=int)
+parser.add_argument("-t", "--test",       help="Which test setup to run",                           default=0, type=int)
+
+args = parser.parse_args()
+
+NUM_PRECINCTS = args.precincts
+NUM_ZONES = args.zones
 
 sst.addGlobalParams("zopNIC_params", {
     "link_bw" : "100Gb/s",
@@ -72,17 +83,17 @@ class ZIP:
         self.memory = self.memctrl.setSubComponent("backend", "memHierarchy.simpleMem")
         self.memory.addParams({"access_time" : "100ns", "mem_size" : "8GB"})
 
-        self.zip.addParams({"tests" : 1, "verbose" : 9, "precID" : precinct_id, "maxWait" : "1us"})
+        self.zip.addParams({"tests" : 1, "verbose" : 9, "precID" : precinct_id, "maxWait" : "{}us".format(args.max_wait)})
 
         self.nic = self.zip.setSubComponent("zopLink", "forza.zopNIC", 1)
         self.linkcontrol = self.nic.setSubComponent("iface", "merlin.linkcontrol", 0)
         self.linkcontrol.addGlobalParamSet("zopNIC_params")
-        self.nic.addParams({"verbose" : 1, "precinctID" : precinct_id})
+        self.nic.addParams({"verbose" : 0, "precinctID" : precinct_id})
 
         self.hfinic = self.zip.setSubComponent("hfiLink", "ForzaZIP.ZIPHFINIC", 2)
         self.hfilinkcontrol = self.hfinic.setSubComponent("iface", "merlin.linkcontrol", 0)
         self.hfilinkcontrol.addGlobalParamSet("zopNIC_params")
-        self.hfinic.addParams({"verbose" : 1, "precinctID" : precinct_id})
+        self.hfinic.addParams({"verbose" : 0, "precinctID" : precinct_id})
 
         self.memlink = sst.Link("link_zip_mem_{}".format(precinct_id))
         self.memlink.connect((self.memiface, "port", "50ps"), (self.memctrl, "direct_link", "50ps"))
@@ -101,17 +112,17 @@ class Zone:
         self.xbar.setSubComponent("topology", "merlin.singlerouter", 0)
 
         self.zen = sst.Component("zen_{}".format(self), "forzazen.ZEN");
-        self.zen.addParams({"precinctId" : precinct_id, "zoneId" : zone_id, "verbose" : 9})
+        self.zen.addParams({"precinctId" : precinct_id, "zoneId" : zone_id, "verbose" : 0})
 
         self.zone_nic = self.zen.setSubComponent("zone_nic", "forza.zopNIC", 0)
         self.zone_linkcontrol = self.zone_nic.setSubComponent("iface", "merlin.linkcontrol", 0)
         self.zone_linkcontrol.addGlobalParamSet("zopNIC_params")
-        self.zone_nic.addParams({"verbose" : 1})
+        self.zone_nic.addParams({"verbose" : 0})
 
         self.prec_nic = self.zen.setSubComponent("precinct_nic", "forza.zopNIC", 0)
         self.prec_linkcontrol = self.prec_nic.setSubComponent("iface", "merlin.linkcontrol", 0)
         self.prec_linkcontrol.addGlobalParamSet("zopNIC_params")
-        self.prec_nic.addParams({"verbose" : 1})
+        self.prec_nic.addParams({"verbose" : 0})
 
         self.noc_link = sst.Link("noc_zen_link_{}".format(self))
         self.noc_link.connect((self.prec_linkcontrol, "rtr_port", "1us"), (noc, "port{}".format(zone_id+1), "1us"))
@@ -120,12 +131,12 @@ class Zone:
         self.xbar_link.connect((self.zone_linkcontrol, "rtr_port", "1us"), (self.xbar, "port0", "1us"))
 
         self.zopgen = sst.Component("zopgen_{}".format(self), "forzazen.ZOPGen_prec")
-        self.zopgen.addParams({"int_id": precinct_id})
+        self.zopgen.addParams({"zone_id" : zone_id, "int_id" : precinct_id, "num_ZOPs" : args.num_zops, "num_cycles" : args.num_cycles, "interval" : args.interval, "test" : args.test})
 
         self.zopgen_nic = self.zopgen.setSubComponent("m_zop_iface", "forza.zopNIC", 0)
         self.zopgen_linkcontrol = self.zopgen_nic.setSubComponent("iface", "merlin.linkcontrol", 0)
         self.zopgen_linkcontrol.addGlobalParamSet("zopNIC_params")
-        self.zopgen_nic.addParams({"verbose" : 1})
+        self.zopgen_nic.addParams({"verbose" : 0})
 
         self.zopgen_link = sst.Link("zopgen_link_{}".format(self))
         self.zopgen_link.connect((self.zopgen_linkcontrol, "rtr_port", "1us"), (self.xbar, "port1", "1us"))

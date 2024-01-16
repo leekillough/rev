@@ -8,7 +8,7 @@ ZOPGen_prec::ZOPGen_prec(ComponentId_t id, Params& params)
   : Component(id) {
 
   // Init the output handler
-  const int Verbosity = params.find<int>("verbose", 7);
+  const int Verbosity = params.find<int>("verbose", 0);
   output.init("ZOPGen_prec[" + getName() + ":@p:@t]: ",
               Verbosity, 0, SST::Output::STDOUT);
 
@@ -16,9 +16,18 @@ ZOPGen_prec::ZOPGen_prec(ComponentId_t id, Params& params)
   const std::string cpuFreq = params.find<std::string>("clockFreq", "1GHz");
 
   int_id = params.find<uint64_t>("int_id", 0);
+  p_zone_id = params.find<uint64_t>("zone_id", 1);
+  p_numZOPs = params.find<uint64_t>("num_ZOPs", 1);
+  p_numCycles = params.find<uint64_t>("num_cycles", 1);
+  p_interval = params.find<uint64_t>("interval", 1);
+  p_test = params.find<uint64_t>("test", 0);
 
   // register the clock handler
-  registerClock(cpuFreq, new Clock::Handler<ZOPGen_prec>(this, &ZOPGen_prec::clock));
+  if (p_test) {
+    registerClock(cpuFreq, new Clock::Handler<ZOPGen_prec>(this, &ZOPGen_prec::clock2));
+  } else {
+    registerClock(cpuFreq, new Clock::Handler<ZOPGen_prec>(this, &ZOPGen_prec::clock));
+  }
   output.output("ZOPGen_prec[%s] Registering clock with frequency=%s\n",
                 getName().c_str(), cpuFreq.c_str());
 
@@ -67,23 +76,43 @@ void ZOPGen_prec::finish() {
 }
 
 bool ZOPGen_prec::clock(Cycle_t cycle){
-  if ((cycle > 0) && (cycle <= 10) && (int_id == 0)) {
-    for (unsigned i=0; i<10; i++) {
+  if ((0 < cycle) && (cycle % p_interval == 0) && (cycle <= p_interval*p_numCycles) && (int_id > 0)) {
+    for (unsigned i=0; i<p_numZOPs; i++) {
       std::vector<uint64_t> payload;
       SST::Forza::zopEvent* zop = new SST::Forza::zopEvent(zopMsgT::Z_MSG, zopOpc::Z_MSG_SENDP);
       zop->setSrcHart(0);
       zop->setSrcZCID(zopCompID::Z_ZAP0);
       zop->setSrcPCID((uint8_t)zopPrecID::Z_ZONE0);
-      zop->setSrcPrec(0);
+      zop->setSrcPrec(int_id);
       zop->setDestHart(0);
       zop->setDestZCID(zopCompID::Z_ZAP0);
-      zop->setDestPCID((uint8_t)zopPrecID::Z_ZONE0);
-      zop->setDestPrec(1);
+      zop->setDestPCID((uint8_t)p_zone_id);
+      zop->setDestPrec(0);
       payload.push_back(100);
       zop->setPayload(payload);
       zop->encodeEvent();
       m_zop_iface->send(zop, zopCompID::Z_ZEN, zopPrecID::Z_ZONE0, 0);
     }
+  }
+  return false;
+}
+
+bool ZOPGen_prec::clock2(Cycle_t cycle) {
+  if ((cycle == 1) && (int_id == 0)) {
+    std::vector<uint64_t> payload;
+    SST::Forza::zopEvent* zop = new SST::Forza::zopEvent(zopMsgT::Z_MSG, zopOpc::Z_MSG_SENDP);
+    zop->setSrcHart(0);
+    zop->setSrcZCID(zopCompID::Z_ZAP0);
+    zop->setSrcPCID(p_zone_id);
+    zop->setSrcPrec(0);
+    zop->setDestHart(0);
+    zop->setDestZCID(zopCompID::Z_ZAP0);
+    zop->setDestPCID((uint8_t)zopPrecID::Z_ZONE0);
+    zop->setDestPrec(p_zone_id+1);
+    payload.push_back(100);
+    zop->setPayload(payload);
+    zop->encodeEvent();
+    m_zop_iface->send(zop, zopCompID::Z_ZEN, (zopPrecID)p_zone_id, 0);
   }
   return false;
 }

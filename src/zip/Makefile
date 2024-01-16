@@ -11,8 +11,8 @@ CXX=$(shell sst-config --CXX)
 CXXFLAGS=$(shell sst-config --ELEMENT_CXXFLAGS)
 LDFLAGS=$(shell sst-config --ELEMENT_LDFLAGS)
 CPPFLAGS=-I../../include -I../../../include
-# OPTIMIZE_FLAGS=-O2
-OPTIMIZE_FLAGS=-g -O0
+OPTIMIZE_FLAGS=-O2
+# OPTIMIZE_FLAGS=-g -O0
 
 COMPONENT_LIB=libforzazip.so
 

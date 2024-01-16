@@ -16,11 +16,11 @@
 // hard-coded parameters
 //
 // number of precincts
-#define MAX_PREC 8
+#define MAX_PREC 16
 // maximum buffer size in bytes
-#define MAX_BUFF 100
+#define MAX_BUFF 128
 // maximum zopEvent size in bytes
-#define MAX_ZOP 50
+#define MAX_ZOP 24
 // starting address of incoming buffer for precinct p
 #define FIRST_IN_ADDR(p) ((2*p)*MAX_BUFF)
 // starting address of outgoing buffer for precinct p
@@ -28,7 +28,7 @@
 // number of ZENs
 #define MAX_ZEN 8
 // maximum ZEN buffer size in bytes
-#define MAX_ZEN_BUFF 100
+#define MAX_ZEN_BUFF 64
 
 namespace SST::Forza{
   class ZIP : public SST::Component{
@@ -141,6 +141,8 @@ namespace SST::Forza{
     std::vector<uint64_t> bufOutSize; // bytes contained in the outgoing buffer for given destination precinct
     std::vector<uint64_t> bufInSize;  // bytes contained in the incoming buffer for given source precinct
 
+    std::vector<bool> bufOutLock;
+
     // credits indexed by precinct/ZEN
     // These credit vectors keep track of how many bytes are available in the receiving buffers of external ZIPs and the local ZENs.
     // Credits are replenished once we receive credit events, indicating that the receiving buffers have been emptied.
@@ -172,6 +174,13 @@ namespace SST::Forza{
     Statistic<uint64_t>* s_numSentPackets;
     Statistic<uint64_t>* s_numRecvPackets;
     Statistic<uint64_t>* s_numWaitCycles;
+
+    // correctness tests
+    bool t_c1;
+    bool t_c2;
+    bool t_c3;
+    bool t_c4;
+    bool t_c5;
   }; // class SST::ZIP
 } // namespace SST::Forza
 

@@ -18,7 +18,13 @@ namespace SST::Forza{
     // describe the parameters
     SST_ELI_DOCUMENT_PARAMS(
       { "clockFreq",  "ZOPGen core clock frequency", "1GHz" },
-      { "verbose",    "Sets the output verbsoity", 0 }
+      { "verbose",    "Sets the output verbosity", "0" },
+      { "int_id",    "Precinct ID", "0" },
+      { "zone_id",    "Zone ID", "0" },
+      { "num_ZOPs",   "Number of ZOPs to send per cycle", "1" },
+      { "num_cycles", "Number of cycles to send ZOPs", "1" },
+      { "interval", "Number of cycles to wait between sending ZOPs", "1" },
+      { "test", "Which test configuration to run", "0" }
     )
 
     // describe the ports
@@ -49,9 +55,15 @@ namespace SST::Forza{
     // private class members
 
     uint64_t int_id;
+    uint64_t p_zone_id;
+    uint64_t p_numZOPs;
+    uint64_t p_numCycles;
+    uint64_t p_interval;
+    uint64_t p_test;
 
     /// ZOPGen: clock handler
     bool clock(SST::Cycle_t cycle);
+    bool clock2(SST::Cycle_t cycle);
 
     void handleIncomingZOP(SST::Event* event);
 
