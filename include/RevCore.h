@@ -183,11 +183,21 @@ public:
   ///< RevCore: Get pointer to Load / Store queue used to track memory operations
   std::shared_ptr<std::unordered_multimap<uint64_t, MemReq>> GetLSQueue() const { return LSQueue; }
 
-  ///< RevCore: Add a co-processor to the RevCore
-  void SetCoProc( RevCoProc* coproc );
+  ///< RevProc: retrieve the HART ID that contains the target ThreadID
+  uint32_t GetHartFromThreadID(uint32_t ThreadID){
+    for( size_t i=0; i<numHarts; i++ ){
+      if( Harts[i]->GetAssignedThreadID() == ThreadID ){
+        return i;
+      }
+    }
+    return numHarts+1;
+  }
 
   ///< RevProc: Set the ZOP NIC handler
   void setZNic(Forza::zopAPI *Z) { zNic = Z; }
+
+  ///< RevCore: Add a co-processor to the RevCore
+  void SetCoProc( RevCoProc* coproc );
 
   //--------------- External Interface for use with Co-Processor -------------------------
   ///< RevCore: Allow a co-processor to query the bits in scoreboard. Note the RevCorePassKey may only

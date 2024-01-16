@@ -451,7 +451,7 @@ private:
   void handleZOPThreadMigrate(Forza::zopEvent *zev);
 
   /// RevCPU: Inform the ZQM that a thread is done
-  void sendZQMThreadComplete(uint32_t ThreadID);
+  void sendZQMThreadComplete(uint32_t ThreadID, uint32_t HartID);
 
   /// RevCPU: Creates a unique tag for this message
   uint8_t createTag();
