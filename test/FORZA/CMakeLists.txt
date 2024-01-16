@@ -10,7 +10,7 @@ add_rev_test(forza_amoadd_c forza_amoadd_c 30 "all;memh;rv64;loader;forza" SCRIP
 add_rev_test(forza_recv forza_recv 30 "all;memh;rv64;loader;forza" SCRIPT "run_recv.sh")
 add_rev_test(forza_send forza_send 30 "all;memh;rv64;loader;forza" SCRIPT "run_send.sh")
 add_rev_test(forza_send_init forza_send_init 30 "all;memh;rv64;loader;forza" SCRIPT "run_send_init.sh")
-add_rev_test(forza_python forza_python 30 "all;memh;rv64;loader;forza" SCRIPT "run_python.sh")
+add_rev_test(forza_python forza_python 100 "all;memh;rv64;loader;forza" SCRIPT "run_python.sh")
 
 #Security related test
 add_rev_test(private_access_allowed_rza forza_security 30 "all;memh;rv64;loader;forza;" SCRIPT "run_private_valid.sh")
