@@ -306,7 +306,7 @@ void ZQM::processRzaMsgs() {
 // TODO: This needs further testing with actual data.
 void ZQM::processRzaThreadDataReturn(SST::Forza::zopEvent *ev)
 {
-    output.output("[WARNING] %s: need to fix thread repackaging in %s\n", my_name.c_str(), __LINE__);
+    output.output("[WARNING] %s: need to fix thread repackaging in %s\n", my_name.c_str(), __func__);
     // Have to convert load data return to a thread zop
     SST::Forza::zopEvent *thread = new SST::Forza::zopEvent(zopMsgT::Z_TMIG, zopOpc::Z_TMIG_FIXED);
     std::vector rd_payload = ev->getPayload();

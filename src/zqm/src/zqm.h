@@ -78,8 +78,8 @@ namespace SST::Forza{
         }
 
     //private: // leave the below public for now.
-        const uint64_t ThreadLengthDblWords = 67; // Comes from RevMem::ZOP_ThreadMigrate in forzarev/src/RevMem.cc
-        const uint64_t ThreadLengthBytes = (ThreadLengthDblWords * 8);
+        static const uint64_t ThreadLengthDblWords = 67; // Comes from RevMem::ZOP_ThreadMigrate in forzarev/src/RevMem.cc
+        static const uint64_t ThreadLengthBytes = (ThreadLengthDblWords * 8);
     }; // end class ZqmAidStateTableRow
 
 
