@@ -3327,7 +3327,7 @@ EcallStatus RevProc::ECALL_forza_send(RevInst& inst){
   // output->fatal(CALL_INFO, -1, "Error : send not implemented\n" );
   if (SrcZCID == 0) {
     output->verbose(CALL_INFO, 0, 0, "ECALL_forza_send: DO ACTUAL SEND SrcZCID = %" PRIu8 
-            ", SrcPCID = %" PRIu8 ", SrcHart = %" PRIu16 "\n", SrcZCID, SrcPCID, SrcHart);
+            ", SrcPCID = %" PRIu8 ", SrcHart = %" PRIu16 ", opc=%" PRIu16 "\n", SrcZCID, SrcPCID, SrcHart, (uint16_t)zev->getOpc());
     zNic->send(zev, SST::Forza::zopCompID::Z_ZAP3);
   }
 
