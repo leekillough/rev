@@ -69,17 +69,7 @@ namespace SST::Forza{
          */
         uint64_t getMemAddr(bool do_read, bool update_ptr);
 
-        bool validateMemBuffSize()
-        {
-            uint64_t diff = (mem_buffer_high + 1) - (mem_buffer_low);
-            if ( (diff % ThreadLengthBytes) == 0)
-                return true;
-            return false;
-        }
-
-    //private: // leave the below public for now.
-        const uint64_t ThreadLengthDblWords = 34;
-        const uint64_t ThreadLengthBytes = (ThreadLengthDblWords * 8);
+        bool validateMemBuffSize();
     }; // end class ZqmAidStateTableRow
 
 
@@ -198,8 +188,8 @@ namespace SST::Forza{
         // [num_zaps][num_harts]
         std::vector<std::vector<bool>> zap_hart_status;
 
-        uint64_t int_id; //What is this?
         uint8_t msg_id;
+        std::string my_name;
         SST::Forza::zopAPI* m_zop_iface;
         bool sent;
 
