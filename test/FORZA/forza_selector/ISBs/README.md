@@ -21,5 +21,5 @@ WHAT DO THE TESTS RUN?
 
 TEST EXTENSION:
 
-To run your own tests, the generated graph files can be placed in the <test_folder> and the parameters in rev-test.py
-can be modified to reflect the number of actors.
+To run your own tests, the generated graph test files need to be placed in the respective <test_folder> and to change
+the number of actors, it can be modified in the params field of rev-test.py.
