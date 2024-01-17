@@ -27,7 +27,7 @@ ZEN::ZEN(ComponentId_t id, Params& params)
   dma_enabled = params.find<bool>("enableDMA", false);
   zen_queue_size_limit = params.find<uint64_t>("zenQSizeLimit", 100000);
   process_per_cycle = params.find<uint64_t>("processPerCycle", 100000);
-  precinct_nic_enabled = params.find<bool>("enablePrecinctNIC", false);
+  precinct_nic_enabled = params.find<bool>("enablePrecinctNIC", true);
 
   // register the clock handler
   registerClock(cpuFreq, new Clock::Handler<ZEN>(this, &ZEN::clock));
@@ -792,9 +792,9 @@ void ZEN::processSetupMsgs() {
     // TODO: Specify payload format
     uint64_t acs_pair = payload[0];
     uint64_t mem_start_addr = payload[1];
-    uint64_t size = payload[3];
+    uint64_t size = payload[2];
     uint64_t mem_end_addr = mem_start_addr + size - 1;
-    uint64_t scratch_tail = payload[4];
+    uint64_t scratch_tail = payload[3];
     hart_tables[hart_zap_id] = new ZENTableRow(acs_pair, mem_start_addr, mem_end_addr, size, scratch_tail, 500);
     sendACKToZAP(hart_id, zap_id, setup_reqs[i]->getID());
     output.verbose(CALL_INFO, 9, 0, "setup hart table %" PRIu64 ", start addr %" PRIu64 ", end addr %" PRIu64 "\n", hart_id, mem_start_addr, mem_end_addr);
