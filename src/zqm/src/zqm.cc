@@ -14,7 +14,9 @@
 
 using namespace SST::Forza;
 
-static const uint64_t ThreadLengthDblWords = 67; // Comes from RevMem::ZOP_ThreadMigrate in forzarev/src/RevMem.cc
+// Comes from RevMem::ZOP_ThreadMigrate in forzarev/src/RevMem.cc
+// Want to keep an even number of words "just because"
+static const uint64_t ThreadLengthDblWords = 68;
 static const uint64_t ThreadLengthBytes = (ThreadLengthDblWords * 8);
 
 uint64_t ZqmAidStateTableRow::getMemAddr(bool do_read, bool update_ptr)
@@ -390,7 +392,9 @@ void ZQM::processMessagingZqmSet(SST::Forza::zopEvent *event)
 
     auto it = aid_state_table.find(app_id);
     if (it != aid_state_table.end()) {
-        output.fatal(CALL_INFO, 1, "%s: Received a second setup packet for aid=%u\n", my_name.c_str(), app_id);
+        output.verbose(CALL_INFO, 1, 0, "%s: Received an additional setup packet for aid=%u; will be ignored\n",
+                       my_name.c_str(), app_id);
+        return;
     }
 
     ZqmAidStateTableRow *aid_state_row = new ZqmAidStateTableRow(min_zap_hart,
@@ -415,7 +419,7 @@ void ZQM::processMessagingHartDone(SST::Forza::zopEvent *event)
     uint8_t src_zap = event->getSrcZCID(); // this will be the zap
     uint16_t src_hart = event->getSrcHart();
 
-    output.verbose(CALL_INFO, 1, 0, "%s: process SetupMsgHartDone, appID=%u, zap=%u, hart=%u\n",
+    output.verbose(CALL_INFO, 1, 0, "%s: process MsgHartDone, appID=%u, zap=%u, hart=%u\n",
                    my_name.c_str(), event->getAppID(), src_zap, src_hart);
 
     if (zap_hart_status.at(src_zap).at(src_hart)) {
