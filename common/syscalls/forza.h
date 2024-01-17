@@ -5,7 +5,7 @@
 #include <limits.h>
 #include <stdarg.h>
 
-int forza_scratchpad_alloc( size_t size ){
+static int forza_scratchpad_alloc( size_t size ){
   int rc;
   asm volatile (
     "li a7, 4000 \n\t"
@@ -14,7 +14,7 @@ int forza_scratchpad_alloc( size_t size ){
   );
 }
 
-int forza_scratchpad_free( uint64_t addr, size_t size ){
+static int forza_scratchpad_free( uint64_t addr, size_t size ){
   int rc;
   asm volatile (
     "li a7, 4001 \n\t"
@@ -23,7 +23,7 @@ int forza_scratchpad_free( uint64_t addr, size_t size ){
   );
 }
 
-int forza_get_hart_id( ){
+static int forza_get_hart_id( ){
   int rc;
   asm volatile (
     "li a7, 4002 \n\t"
@@ -32,7 +32,7 @@ int forza_get_hart_id( ){
   );
 }
 
-int forza_send( uint64_t dst, uint64_t spaddr, size_t size  ){
+static int forza_send( uint64_t dst, uint64_t spaddr, size_t size  ){
   int rc;
   asm volatile (
     "li a7, 4003 \n\t"
@@ -41,7 +41,7 @@ int forza_send( uint64_t dst, uint64_t spaddr, size_t size  ){
   );
 }
 
-int forza_zen_credit_release(size_t size){
+static int forza_zen_credit_release(size_t size){
   int rc;
   asm volatile (
     "li a7, 4004 \n\t"
@@ -50,7 +50,7 @@ int forza_zen_credit_release(size_t size){
   );
 }
 
-int forza_zen_setup(uint64_t addr, size_t size, uint64_t tailptr){
+static int forza_zen_setup(uint64_t addr, size_t size, uint64_t tailptr){
     int rc;
     asm volatile (
     "li a7, 4005 \n\t"
