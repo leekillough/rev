@@ -1,7 +1,6 @@
 ISB TESTING:
 
-This folder contains the SST implementation of the ISBs using forza specific libraries. To run the tests make sure 
-the **forza** library is installed. 
+This folder contains the SST implementation of the ISBs using forza specific libraries. To run the tests make sure the **forza** library is installed. 
 
 STEPS TO RUN TEST:
 -  cd <test_folder>
@@ -21,5 +20,4 @@ WHAT DO THE TESTS RUN?
 
 TEST EXTENSION:
 
-To run your own tests, the generated graph test files need to be placed in the respective <test_folder> and to change
-the number of actors, it can be modified in the params field of rev-test.py.
+To run your own tests, the generated graph test files need to be placed in the respective <test_folder> and to change the number of actors, it can be modified in the params field of rev-test.py.
