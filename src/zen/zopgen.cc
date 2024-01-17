@@ -41,7 +41,6 @@ ZOPGen::ZOPGen(ComponentId_t id, Params& params)
   cnt = 0;
   sent = false;
   all_sent = false;
-  all_sent2 = false;
   setup_done = false;
   //mem_acks.push_back(0);
   //mem_acks.push_back(1);
@@ -53,8 +52,14 @@ ZOPGen::ZOPGen(ComponentId_t id, Params& params)
   m_zop_iface->setPrecinctID(0);
   m_zop_iface->setZoneID(params.find<unsigned>("zoneId", 0));
 
+  num_loops1 = 0;
+  num_loops2 = 0;
+
   t_c1 = false;
   t_c3 = false;
+  t_c5 = false;
+  t_p1 = UnitAlgebra("0b");
+  t_p2 = UnitAlgebra("0b");
   t_p4 = 0;
   t_p5 = 0;
 }
@@ -78,12 +83,31 @@ void ZOPGen::complete(unsigned int phase) {
 
 void ZOPGen::finish() {
   output.verbose(CALL_INFO, 1, 0, "Finish()\n");
+  t_p1 /= t_p4;
+  t_p1 /= zgTime->getPeriod();
+  t_p1 *= num_loops1;
+  t_p2 /= t_p5;
+  t_p2 /= zgTime->getPeriod();
+  t_p2 *= num_loops2;
   if (t_c1) output.verbose(CALL_INFO, 1, 1, "[TEST ZEN_C1] pass\n");
   if (t_c3) output.verbose(CALL_INFO, 1, 1, "[TEST ZEN_C3] pass\n");
+  if (t_c5) output.verbose(CALL_INFO, 1, 1, "[TEST ZEN_C5] pass\n");
   if (t_p4) output.verbose(CALL_INFO, 1, 1, "[TEST ZEN_P1] %s\n", t_p1.toStringBestSI().c_str());
   if (t_p5) output.verbose(CALL_INFO, 1, 1, "[TEST ZEN_P2] %s\n", t_p2.toStringBestSI().c_str());
-  if (t_p4) output.verbose(CALL_INFO, 1, 1, "[TEST ZEN_P4] %d cycles\n", t_p4);
-  if (t_p5) output.verbose(CALL_INFO, 1, 1, "[TEST ZEN_P5] %d cycles\n", t_p5);
+  if (t_p4) output.verbose(CALL_INFO, 1, 1, "[TEST ZEN_P4] %f cycles\n", 1.0*t_p4/num_loops1);
+  // if (t_p5) output.verbose(CALL_INFO, 1, 1, "[TEST ZEN_P5] %f cycles\n", 1.0*t_p5/num_loops2);
+  if (t_p4) {
+    t_p3 = UnitAlgebra(std::to_string(2*num_loops1)+"events");
+    t_p3 /= t_p4;
+    t_p3 /= zgTime->getPeriod();
+    output.verbose(CALL_INFO, 1, 1, "[TEST ZEN_P3] %s\n", t_p3.toStringBestSI().c_str());
+  } else if (t_p5) {
+    t_p3 = UnitAlgebra(std::to_string(2*num_loops2)+"events");
+    t_p3 /= t_p5;
+    t_p3 /= zgTime->getPeriod();
+    output.verbose(CALL_INFO, 1, 1, "[TEST ZEN_P3] %s\n", t_p3.toStringBestSI().c_str());
+  }
+  // output.verbose(CALL_INFO, 1, 1, "num_loops1: %d, num_loops2: %d\n", num_loops1, num_loops2);
 }
 
 void ZOPGen::handleIncomingZOP(SST::Event *event) {
@@ -107,19 +131,19 @@ void ZOPGen::handleIncomingZOP(SST::Event *event) {
     }
     if (payload[1] == 77) t_c1 = true;
     if (payload[1] == 88) t_c3 = true;
-    if (t_c1) {
-      t_p1 = UnitAlgebra(std::to_string(payload.size()*64)+"b");
-      t_p4 = getNextClockCycle(zgTime)-payload[1];
-      t_p1 /= t_p4;
-      t_p1 /= zgTime->getPeriod();
+    if (t_c1 && (payload[1] > 100)) {
+      t_p1 += UnitAlgebra(std::to_string(payload.size()*64)+"b");
+      t_p4 += getNextClockCycle(zgTime)-payload[1];
+      num_loops1++;
     }
-    if (t_c3) {
-      t_p2 = UnitAlgebra(std::to_string(payload.size()*64)+"b");
-      t_p5 = getNextClockCycle(zgTime)-payload[1];
-      t_p2 /= t_p5;
-      t_p2 /= zgTime->getPeriod();
+    if (t_c3 && (payload[1] > 100)) {
+      t_p2 += UnitAlgebra(std::to_string(payload.size()*64)+"b");
+      t_p5 += getNextClockCycle(zgTime)-payload[1];
+      num_loops2++;
     }
     sendCreditsToZEN(++cnt);
+  } else if ((ev->getType() == SST::Forza::zopMsgT::Z_MSG) && (ev->getOpc() == SST::Forza::zopOpc::Z_MSG_EXCP)) {
+    t_c5 = true;
   }
 }
 
@@ -261,7 +285,7 @@ void ZOPGen::sendSetupToZOPGen() {
   zopgenMsg->setDestHart(1);
   payload.push_back(100);
   payload.push_back(1000);
-  payload.push_back(20);
+  payload.push_back(100);
   payload.push_back(100);
   zopgenMsg->setPayload(payload);
   output.verbose(CALL_INFO, 1, 0, "Msg send src %d\n", zopgenMsg->getSrcHart());
@@ -365,9 +389,11 @@ bool ZOPGen::clock(Cycle_t cycle){
     all_sent = true;
   }
   if (!all_sent2 && sent && int_id == 0 && m_zop_iface->getZoneID() == 0) {
-    output.verbose(CALL_INFO, 1, 0, "Msg send to zen%" PRIu64 "\n", cycle);
-    sendMsgToZOPGen(getNextClockCycle(zgTime));
-    sendMsgToZOPGen2(getNextClockCycle(zgTime));
+    for (unsigned j=0; j<40; j++) {
+      output.verbose(CALL_INFO, 1, 0, "Msg send to zen%" PRIu64 "\n", cycle);
+      sendMsgToZOPGen(getNextClockCycle(zgTime));
+      sendMsgToZOPGen2(getNextClockCycle(zgTime));
+    }
     all_sent2 = true;
   }
   return false;

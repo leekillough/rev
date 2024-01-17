@@ -129,11 +129,15 @@ namespace SST::Forza{
     std::unordered_map<uint64_t, uint64_t> mem_map;
     bool sent, setup_done, all_sent, all_sent2;
 
+    unsigned int num_loops1, num_loops2;
+
     // tests
     bool t_c1;
     bool t_c3;
+    bool t_c5;
     UnitAlgebra t_p1;
     UnitAlgebra t_p2;
+    UnitAlgebra t_p3;
     unsigned int t_p4;
     unsigned int t_p5;
 

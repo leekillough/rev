@@ -26,4 +26,12 @@ This command sets up 1 precinct with 2 zones, each of which contains a ZEN, 2 ZA
 to test HART-to-HART communication by sending payloads between ZAPs in the same zone and in different zones.
 
 The output should show that tests **ZEN_C1** and **ZEN_C3** pass because `zap0_0` is able to successfully send a payload to `zap0_1` (same zone) and `zap1_1`
-(different zone).
+(different zone). **ZEN_C5** passes because `zap0_0` receives a `NACK` when the destination HART is out of memory and the message stalls. In terms of performance,
+**ZEN_P1** and **ZEN_P2** show that the ZEN achieves bandwidth of 111 Mb/s and 95 Mb/s when sending payloads in scratchpad
+between HARTS within and across zones, respectively (compare to the configured network link bandwidth of 100 Gb/s). **ZEN_P3** shows that
+the ZEN can achieve between 135 and 158 KIOps (thousands of input/output operations per second). **ZEN_P4** shows that sending a payload in scratchpad between
+HARTs within one zone takes about 12700 ZAP clock cycles.
+
+### Future tests
+The opcode `Z_MSG_SENDAS` for sending with address and size (rather than with payload) is not yet implemented, so we cannot currently perform tests
+**ZEN_P5**, **ZEN_C2**, or **ZEN_C4**.

@@ -26,7 +26,7 @@ sst.addGlobalParams("topology_params", {
 net_params = {
   "input_buf_size" : "2048B",
   "output_buf_size" : "2048B",
-  "link_bw" : "100GB/s"
+  "link_bw" : "100Gb/s"
 }
 nic_params = {
   "verbose" : 9,
@@ -77,12 +77,12 @@ topo0.addGlobalParamSet("topology_params")
 # SETUP THE ZOPGen, ZEN
 # --------------------------
 zap0_0 = sst.Component("zap0_0", "forzazen.ZOPGen")
-zap0_0.addParams({"int_id" : 0, "zoneId" : 0})
+zap0_0.addParams({"int_id" : 0, "tests" : 1, "zoneId" : 0})
 zap0_0_lc = zap0_0.setSubComponent("m_zop_iface", "forza.zopNIC", 0)
 zap0_0_lc.addGlobalParamSet("networkLinkControl_params")
 zap0_0_zopapi_lc = zap0_0_lc.setSubComponent("iface", "merlin.linkcontrol", 0)
 zap0_0_zopapi_lc.addGlobalParamSet("networkLinkControl_params")
-zap0_0_lc.addParams({"verbose": 10})
+zap0_0_lc.addParams({"verbose": 10, "enableTestHarness": True})
 zap0_0_link0 = sst.Link("zap0_0_link")
 zap0_0_link0.connect( (zap0_0_zopapi_lc, "rtr_port", "1us"), (router0, "port2", "1us") )
 
@@ -92,7 +92,7 @@ zap0_1_lc = zap0_1.setSubComponent("m_zop_iface", "forza.zopNIC", 0)
 zap0_1_lc.addGlobalParamSet("networkLinkControl_params")
 zap0_1_zopapi_lc = zap0_1_lc.setSubComponent("iface", "merlin.linkcontrol", 0)
 zap0_1_zopapi_lc.addGlobalParamSet("networkLinkControl_params")
-zap0_1_lc.addParams({"verbose": 10})
+zap0_1_lc.addParams({"verbose": 10, "enableTestHarness": True})
 zap0_1_link0 = sst.Link("zap0_1_link")
 zap0_1_link0.connect( (zap0_1_zopapi_lc, "rtr_port", "1us"), (router0, "port3", "1us") )
 
@@ -234,7 +234,7 @@ zap1_0_lc = zap1_0.setSubComponent("m_zop_iface", "forza.zopNIC", 0)
 zap1_0_lc.addGlobalParamSet("networkLinkControl_params")
 zap1_0_zopapi_lc = zap1_0_lc.setSubComponent("iface", "merlin.linkcontrol", 0)
 zap1_0_zopapi_lc.addGlobalParamSet("networkLinkControl_params")
-zap1_0_lc.addParams({"verbose": 10})
+zap1_0_lc.addParams({"verbose": 10, "enableTestHarness": True})
 zap1_0_link0 = sst.Link("zap1_0_link")
 zap1_0_link0.connect( (zap1_0_zopapi_lc, "rtr_port", "1us"), (router1, "port2", "1us") )
 
@@ -244,7 +244,7 @@ zap1_1_lc = zap1_1.setSubComponent("m_zop_iface", "forza.zopNIC", 0)
 zap1_1_lc.addGlobalParamSet("networkLinkControl_params")
 zap1_1_zopapi_lc = zap1_1_lc.setSubComponent("iface", "merlin.linkcontrol", 0)
 zap1_1_zopapi_lc.addGlobalParamSet("networkLinkControl_params")
-zap1_1_lc.addParams({"verbose": 10})
+zap1_1_lc.addParams({"verbose": 10, "enableTestHarness": True})
 zap1_1_link0 = sst.Link("zap1_1_link")
 zap1_1_link0.connect( (zap1_1_zopapi_lc, "rtr_port", "1us"), (router1, "port3", "1us") )
 
