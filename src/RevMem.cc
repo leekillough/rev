@@ -1735,7 +1735,7 @@ bool RevMem::ZOP_ThreadMigrate(unsigned Hart, std::vector<uint64_t> Payload,
 }
 
 bool RevMem::isLocalAddr(uint64_t vAddr, unsigned &Zone, unsigned &Precinct){
-  return true;  // this is temporarily disabling thread migration
+
   if( !zNic ){
     // no ZOPNET NIC interface loaded, probably not FORZA
     return true;
