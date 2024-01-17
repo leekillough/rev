@@ -1,13 +1,14 @@
 import sst
-import pandas
+import pandas as pd
+import argparse
+import re
+import math
 
-
-base_tooling_dir = ""
-csv_topology = base_tooling_dir+"/src/fattree/Ftree_topo.csv"
+base_tooling_dir = "/Users/afreund/sst-tooling"
+csv_topology = base_tooling_dir+"/src/fattree/R48-8Pods/SSTFMT/Ftree_topo.csv"
 topology="CSV-Fattree"
 
 urts_dir=base_tooling_dir+"/src/fattree/"
-host_link_latency = None
 link_latency = "100ns"
 rtr_prefix="cornelis_"
 core_switch_idx = 384
@@ -135,11 +136,11 @@ def getRouterNameForId(rtr_id):
 
 def getRouterNameForLocation(group,rtr):
     if topology == "CSV-Fattree":
-        return "%srtr_%d"%(_prefix, rtr)
+        return "%srtr_%d"%(rtr_prefix, rtr)
     elif topology == "CSV-Dragonfly":
-        return "%srtr_%d"%(_prefix, rtr)
+        return "%srtr_%d"%(rtr_prefix, rtr)
     elif topology == "CSV-Megafly":
-        return "%srtr_%d"%(_prefix, rtr)
+        return "%srtr_%d"%(rtr_prefix, rtr)
 
 def findRouterByLocation(location, rtr):
     return sst.findComponentByName(getRouterNameForLocation(location,rtr))
@@ -210,8 +211,8 @@ def buildTopo():
         # df.columns = df.columns.str.strip().str.lower().str.replace(' ', '_').str.replace('(', '').str.replace(')','').str.replace('.', '')
         df.columns = ["guid", "port", "type", "description", "guid1", "port1", "type1", "description1"]
 
-        if host_link_latency is None:
-            host_link_latency = link_latency
+        # if host_link_latency is None:
+        host_link_latency = link_latency
 
         max_port = int(df.port.max())
         print("Max Port is: " + str(max_port))
@@ -233,8 +234,8 @@ def buildTopo():
         for switch in df[df.type=="SW"].description.unique():
                 router_num = int(re.findall(r'\d+', switch)[0])
                 rtr = instanciateRouter(max_port+1, router_num)
-                sub = rtr.setSubComponent(router.getTopologySlotName(),"cornelis.topoOpa400", 0)
-                sub.addParams(topoOpa400)
+                sub = rtr.setSubComponent("topology","cornelis.topoOpa400", 0)
+                sub.addParams(topo_params)
                 sub.addParam("urt0", urts_dir+"/Ftree_"+switch+"_urt0.csv")
                 sub.addParam("urt1", urts_dir+"/Ftree_"+switch+"_urt1.csv")
                 sub.addParam("urt2", urts_dir+"/Ftree_"+switch+"_urt2.csv")
@@ -243,7 +244,7 @@ def buildTopo():
                 if(router_num < int(core_switch_idx)):
                     sub.addParam("switch_personality", (math.floor(router_num/8) % 2))
                 else:   
-                    sub.addParam("switch_personality", CORE_SWITCH)
+                    sub.addParam("switch_personality", 2)
 
                 unconnected = list()
                 links_list = list()
@@ -258,7 +259,8 @@ def buildTopo():
                             ep_lc = HFIEndpoints[node_id]
                             plink = sst.Link("precinctlink_%d"%node_id)
                             ep_lc.addLink(plink, "rtr_port", host_link_latency)
-                            host_links.append(plink)
+                            rtr.addLink(plink,"port%d"%port, host_link_latency)
+                            # host_links.append(plink)
                             ep_list.append(port)
                             nic_num = nic_num + 1
                         else:
