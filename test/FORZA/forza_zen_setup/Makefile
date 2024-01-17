@@ -1,7 +1,7 @@
 #
 # Makefile
 #
-# makefile: amoadd_c
+# makefile: forza_zen_setup_c
 #
 # Copyright (C) 2017-2023 Tactical Computing Laboratories, LLC
 # All Rights Reserved
@@ -12,7 +12,7 @@
 
 .PHONY: src
 
-EXAMPLE=forza_send_init
+EXAMPLE=forza_zen_setup
 CC=${RVCC}
 ARCH=rv64gc
 

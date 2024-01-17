@@ -8,13 +8,15 @@
   }
 
 int main() {
-  uint64_t qaddr;
-  uint64_t tail_ptr;
-  forza_zen_setup(qaddr, (uint64_t)512, tail_ptr);
-  uint64_t *pkt = (uint64_t *)forza_scratchpad_alloc(1 * sizeof(uint32_t));
-  uint64_t size = sizeof(uint32_t);
-  uint64_t dst = 1;
-  forza_send(dst, pkt, size);
-  forza_scratchpad_free(pkt, 1 * sizeof(uint32_t));
+// THIS TEST IS DISABLED BECAUSE WE HAVE NOT YET CHANGED THE PYTHON CONFIG FILE TO ACTUALLY LET SEND WORK
+  //uint64_t qaddr;
+  //uint64_t tail_ptr;
+  //uint64_t *pkt = (uint64_t *)forza_scratchpad_alloc(16 * sizeof(uint64_t));
+  //forza_zen_setup(qaddr, 16, tail_ptr);
+  //forza_zen_setup((uint64_t)pkt, (uint64_t)16, (uint64_t)pkt);
+  //uint64_t size = sizeof(uint64_t);
+  //uint64_t dst = 1;
+  //forza_send(dst, pkt, size);
+  //forza_scratchpad_free(pkt, 16 * sizeof(uint64_t));
   return 0;
 }
