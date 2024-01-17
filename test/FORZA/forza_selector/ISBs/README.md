@@ -4,7 +4,7 @@ This folder contains the SST implementation of the ISBs using forza specific lib
 To run the tests make sure the **forza** library is installed. 
 
 STEPS TO RUN TEST:
--  cd <test folder>
+-  cd <test_folder>
 -  make
 -  sst rev-test.py
 
@@ -20,5 +20,5 @@ WHAT DO THE TESTS RUN?
         If algorithm fails, it will print the nodes that have not been visited.
 
 TEST EXTENSION:
-To run your own tests, the generated graph files can be placed in the <test folder> and the parameters in rev-test.py
+To run your own tests, the generated graph files can be placed in the <test_folder> and the parameters in rev-test.py
 can be modified to reflect the number of actors.
