@@ -286,11 +286,13 @@ void ZOPGen::sendMsgToZOPGen(int i) {
         zopgenMsg->setDestHart(1);
         zopgenMsg->setSrcZCID((uint8_t)zopCompID::Z_ZAP0);
         zopgenMsg->setDestZCID((uint8_t)zopCompID::Z_ZAP1);
+        zopgenMsg->setDestPCID(0);
     } else {
         zopgenMsg->setSrcHart(int_id);
         zopgenMsg->setDestHart(0);
         zopgenMsg->setSrcZCID((uint8_t)zopCompID::Z_ZAP1);
         zopgenMsg->setDestZCID((uint8_t)zopCompID::Z_ZAP0);
+        zopgenMsg->setDestPCID(0);
     }
   payload.push_back(100+i);
 //  payload.push_back(10);

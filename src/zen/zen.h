@@ -83,17 +83,18 @@ namespace SST::Forza{
 
     // describe the parameters
     SST_ELI_DOCUMENT_PARAMS(
-      { "clockFreq",      "ZEN core clock frequency",                     "1GHz" },
-      { "verbose",        "Sets the output verbsoity",                    0 },
-      { "precinctId",     "[FORZA] The precinct ID of the local device",  "0"},
-      { "zoneId",         "[FORZA] The zone ID of the local device",      "0"},
-      { "numHarts",       "[FORZA] Number of Harts",                      "512"},
-      { "numZaps",        "[FORZA] Number of ZAPS",                       "4"},
-      { "numZones",       "[FORZA] Number of Zones",                      "8"},
-      { "numPrecincts",   "[FORZA] Number of Precincts",                  "4"},
-      { "enableDMA",      "[FORZA] Enable DMA operations",                "0"},
-      { "zenQSizeLimit",  "[FORZA] ZEN Queue Size Limit",                 "100000"},
-      { "processPerCycle","[FORZA] Messages to process per cycle",        "100000"},
+      { "clockFreq",         "ZEN core clock frequency",                     "1GHz" },
+      { "verbose",           "Sets the output verbsoity",                    0 },
+      { "precinctId",        "[FORZA] The precinct ID of the local device",  "0"},
+      { "zoneId",            "[FORZA] The zone ID of the local device",      "0"},
+      { "numHarts",          "[FORZA] Number of Harts",                      "512"},
+      { "numZaps",           "[FORZA] Number of ZAPS",                       "4"},
+      { "numZones",          "[FORZA] Number of Zones",                      "8"},
+      { "numPrecincts",      "[FORZA] Number of Precincts",                  "4"},
+      { "enableDMA",         "[FORZA] Enable DMA operations",                "0"},
+      { "enablePrecinctNIC", "[FORZA] Enable Precinct NIC",                  "0"},
+      { "zenQSizeLimit",     "[FORZA] ZEN Queue Size Limit",                 "100000"},
+      { "processPerCycle",   "[FORZA] Messages to process per cycle",        "100000"},
     )
 
     // describe the ports
@@ -191,11 +192,11 @@ namespace SST::Forza{
     bool dma_enabled;               ///< ZEN: enable DMA operations
     uint64_t zen_queue_size_limit;  ///< ZEN: zen queue size limit
     uint64_t process_per_cycle;     ///< ZEN: messages to process per cycle
+    bool precinct_nic_enabled;      ///< ZEN: enable precinct NIC
     // ----- END SST PARAMETERS
 
     std::bitset<256> msg_id;
     bool sent;
-
     std::map<std::pair<uint64_t, uint64_t>, ZENTableRow*> hart_tables;
     std::map<uint64_t, ZENTableRow*> zone_tables;
     std::map<uint64_t, ZENTableRow*> precinct_tables;

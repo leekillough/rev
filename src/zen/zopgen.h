@@ -66,7 +66,7 @@ namespace SST::Forza{
 
     // describe the subcomponent slots
     SST_ELI_DOCUMENT_SUBCOMPONENT_SLOTS(
-      {"m_zop_iface","[FORZA] Zone NIC", "SST::Forza::zenZopNIC"},
+      {"m_zop_iface","[FORZA] Zone NIC", "SST::Forza::zopNIC"},
     )
 
     // public class members

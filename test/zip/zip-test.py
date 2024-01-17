@@ -112,7 +112,7 @@ class Zone:
         self.xbar.setSubComponent("topology", "merlin.singlerouter", 0)
 
         self.zen = sst.Component("zen_{}".format(self), "forzazen.ZEN");
-        self.zen.addParams({"precinctId" : precinct_id, "zoneId" : zone_id, "verbose" : 0})
+        self.zen.addParams({"precinctId" : precinct_id, "zoneId" : zone_id, "verbose" : 0, "enablePrecinctNIC": True})
 
         self.zone_nic = self.zen.setSubComponent("zone_nic", "forza.zopNIC", 0)
         self.zone_linkcontrol = self.zone_nic.setSubComponent("iface", "merlin.linkcontrol", 0)

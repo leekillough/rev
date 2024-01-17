@@ -16,7 +16,6 @@ ZEN::ZEN(ComponentId_t id, Params& params)
   const int Verbosity = params.find<int>("verbose", 7);
   output.init("ZEN[" + getName() + ":@p:@t]: ",
               Verbosity, 0, SST::Output::STDOUT);
-
   // read the remaining parameters
   const std::string cpuFreq = params.find<std::string>("clockFreq", "1GHz");
   Precinct = params.find<unsigned>("precinctId", 0);
@@ -28,6 +27,7 @@ ZEN::ZEN(ComponentId_t id, Params& params)
   dma_enabled = params.find<bool>("enableDMA", false);
   zen_queue_size_limit = params.find<uint64_t>("zenQSizeLimit", 100000);
   process_per_cycle = params.find<uint64_t>("processPerCycle", 100000);
+  precinct_nic_enabled = params.find<bool>("enablePrecinctNIC", false);
 
   // register the clock handler
   registerClock(cpuFreq, new Clock::Handler<ZEN>(this, &ZEN::clock));
@@ -43,13 +43,15 @@ ZEN::ZEN(ComponentId_t id, Params& params)
   m_zop_iface->setZoneID(Zone);
 
   // setup the precinct network
-  m_prec_iface = loadUserSubComponent<SST::Forza::zopAPI>( "precinct_nic" );
-  m_prec_iface->setMsgHandler(new Event::Handler<ZEN>(this, &ZEN::handleIncomingPrecZOP));
-  m_prec_iface->setEndpointType(zopCompID::Z_ZEN);
-  m_prec_iface->setNumHarts(m_num_harts);  // TODO: why do we use 3 here?
-  m_prec_iface->setPrecinctID(Precinct);
-  m_prec_iface->setZoneID(Zone);
 
+  if (precinct_nic_enabled) {
+    m_prec_iface = loadUserSubComponent<SST::Forza::zopAPI>( "precinct_nic" );
+    m_prec_iface->setMsgHandler(new Event::Handler<ZEN>(this, &ZEN::handleIncomingPrecZOP));
+    m_prec_iface->setEndpointType(zopCompID::Z_ZEN);
+    m_prec_iface->setNumHarts(m_num_harts);  // TODO: why do we use 3 here?
+    m_prec_iface->setPrecinctID(Precinct);
+    m_prec_iface->setZoneID(Zone);
+  }
   // complete SST registration
   registerAsPrimaryComponent();
 
@@ -79,12 +81,16 @@ uint64_t ZEN::getReadACS(uint64_t acs_pair) {
 void ZEN::init(unsigned int phase) {
   output.verbose(CALL_INFO, 1, 0, "ZEN ID %d\n", Zone);
   m_zop_iface->init(phase);
-  m_prec_iface->init(phase);
+  if (precinct_nic_enabled) {
+    m_prec_iface->init(phase);
+  }
 }
 
 void ZEN::setup() {
   m_zop_iface->setup();
-  m_prec_iface->setup();
+  if (precinct_nic_enabled) {
+    m_prec_iface->setup();
+  }
 }
 
 void ZEN::complete(unsigned int phase) {

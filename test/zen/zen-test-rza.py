@@ -23,6 +23,11 @@ MEM_SIZE = 1024*1024*1024-1
 sst.addGlobalParams("topology_params", {
     "num_ports" : "3"
 })
+net_params = {
+  "input_buf_size" : "2048B",
+  "output_buf_size" : "2048B",
+  "link_bw" : "100GB/s"
+}
 nic_params = {
   "verbose" : 9,
   "clock" : "1GHz",
@@ -59,11 +64,11 @@ topo.addGlobalParamSet("topology_params")
 # --------------------------
 # SETUP THE ZOPGen, ZEN
 # --------------------------
-zap0 = sst.Component("zap0", "Forza.ZOPGen")
+zap0 = sst.Component("zap0", "forzazen.ZOPGen")
 #zen0.addGlobalParamSet("zen_params")
 zap0.addParams({"int_id" : 0})
 
-zap0_lc = zap0.setSubComponent("m_zop_iface", "Forza.zenZopNIC", 0)
+zap0_lc = zap0.setSubComponent("m_zop_iface", "forza.zopNIC", 0)
 zap0_lc.addGlobalParamSet("networkLinkControl_params")
 zap0_zopapi_lc = zap0_lc.setSubComponent("iface", "merlin.linkcontrol", 0)
 zap0_zopapi_lc.addGlobalParamSet("networkLinkControl_params")
@@ -75,13 +80,13 @@ zap0_lc.addParams({"verbose": 10})
 #zen0_lc.addLink(zen0_rtrlink, "network", "5 ns")
 zap0_link0 = sst.Link("zap0_link")
 zap0_link0.connect( (zap0_zopapi_lc, "rtr_port", "1us"), (router, "port2", "1us") )
-zap1 = sst.Component("zap1", "Forza.ZOPGen")
+zap1 = sst.Component("zap1", "forzazen.ZOPGen")
 #zen0.addGlobalParamSet("zen_params")
 zap1.addParams({"int_id" : 1})
 
 
 
-zap1_lc = zap1.setSubComponent("m_zop_iface", "Forza.zenZopNIC", 0)
+zap1_lc = zap1.setSubComponent("m_zop_iface", "forza.zopNIC", 0)
 zap1_lc.addGlobalParamSet("networkLinkControl_params")
 zap1_zopapi_lc = zap1_lc.setSubComponent("iface", "merlin.linkcontrol", 0)
 zap1_zopapi_lc.addGlobalParamSet("networkLinkControl_params")
@@ -93,11 +98,24 @@ zap1_lc.addParams({"verbose": 10})
 #zen0_lc.addLink(zen0_rtrlink, "network", "5 ns")
 zap1_link0 = sst.Link("zap1_link")
 zap1_link0.connect( (zap1_zopapi_lc, "rtr_port", "1us"), (router, "port3", "1us") )
-zen1 = sst.Component("zen1", "Forza.ZEN")
+zen1 = sst.Component("zen1", "forzazen.ZEN")
 #zen0.addGlobalParamSet("zen_params")
-zen1.addParams({"int_id" : 1, "dma_enabled": 1})
+zen1.addParams({
+  "verbose" : 10,              # Verbosity
+  "clockFreq" : "1.0GHz",     # Clock Frequency
+  "precinctId" : 0,           # precinct Id
+  "zoneId" : 0,               # zone Id
+  "numHarts" : 2,             # number of harts
+  "numZaps" : 2,              # number of zaps
+  "numZones" : 1,             # number of zones
+  "numPrecincts" : 1,         # number of precincts
+  "enableDMA" : 1,            # enable the DMA?
+  "zenQSizeLimit" : 100000,   # zenQ size limit
+  "processPerCycle" : 100000  # messages per cycle
+})
 
-zen1_lc = zen1.setSubComponent("m_zop_iface", "Forza.zenZopNIC", 0)
+
+zen1_lc = zen1.setSubComponent("zone_nic", "forza.zopNIC", 0)
 zen1_lc.addGlobalParamSet("networkLinkControl_params")
 zen1_zopapi_lc = zen1_lc.setSubComponent("iface", "merlin.linkcontrol", 0)
 zen1_zopapi_lc.addGlobalParamSet("networkLinkControl_params")
@@ -176,12 +194,12 @@ memory.addParams({
 # --------------------------
 # SETUP THE NOC
 # --------------------------
-rza_nic = rza.setSubComponent("zone_nic", "Forza.zopNIC")
+rza_nic = rza.setSubComponent("zone_nic", "forza.zopNIC")
 rza_iface = rza_nic.setSubComponent("iface", "merlin.linkcontrol")
 
 rza_iface.addGlobalParamSet("networkLinkControl_params")
 rza_nic.addParams(nic_params)
-#rza_iface.addParams(net_params)
+rza_iface.addParams(net_params)
 
 # --------------------------
 # LINK THE VARIOUS COMPONENTS

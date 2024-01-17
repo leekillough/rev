@@ -5,6 +5,10 @@
 set(ZENSrcs
 zen.cc
 zen.h
+zopgen.cc
+zopgen.h
+zopgen_prec.cc
+zopgen_prec.h
 zen_sst.h
 )
 
