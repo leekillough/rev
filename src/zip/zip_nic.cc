@@ -67,7 +67,7 @@ void ZIPHFINIC::init(unsigned int phase){
   }
 
   while( SST::Interfaces::SimpleNetwork::Request * req = iFace->recvUntimedData() ) {
-    ZIPEvent *ev = static_cast<ZIPEvent*>(req->takePayload());
+    // ZIPEvent *ev = static_cast<ZIPEvent*>(req->takePayload());
     numDest++;
     output->verbose(CALL_INFO, 1, 0, "received init message phase %d\n", phase);
   }

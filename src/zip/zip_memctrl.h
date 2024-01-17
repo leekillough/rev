@@ -295,10 +295,10 @@ namespace SST::Forza{
     std::map<StandardMem::Request::id_t, ZIPMemOp *> outstanding;    ///< map of outstanding requests
 
     // Statistics
-    Statistic<uint64_t>* TotalReads;          ///< total number of reads
-    Statistic<uint64_t>* TotalWrites;         ///< total number of writes
-    Statistic<uint64_t>* OutReads;            ///< number of outstanding reads
-    Statistic<uint64_t>* OutWrites;           ///< number of outstanding writes
+    // Statistic<uint64_t>* TotalReads;          ///< total number of reads
+    // Statistic<uint64_t>* TotalWrites;         ///< total number of writes
+    // Statistic<uint64_t>* OutReads;            ///< number of outstanding reads
+    // Statistic<uint64_t>* OutWrites;           ///< number of outstanding writes
 
   }; // class ZIPBasicMemCtrl
 } // namespace SST::ZIP

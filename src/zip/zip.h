@@ -86,8 +86,8 @@ namespace SST::Forza{
     void setup();
     void complete(unsigned phase);
     void finish();
-    void emergencyShutdown(SST::Output& out);
-    void printStatus();
+    // void emergencyShutdown(SST::Output& out);
+    // void printStatus();
 
   private:
     /// ZIP: event handlers

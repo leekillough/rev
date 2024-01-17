@@ -102,11 +102,11 @@ void ZIP::finish() {
   if (dynamic_cast<AccumulatorStatistic<uint64_t>*>(s_numSentPackets)->getSum() > 0) output.verbose(CALL_INFO, 1, 1, "[TEST ZIP_P{2,3,4}] %f cycles/packet\n", 1.0*dynamic_cast<AccumulatorStatistic<uint64_t>*>(s_numWaitCycles)->getSum()/dynamic_cast<AccumulatorStatistic<uint64_t>*>(s_numSentPackets)->getSum());
 }
 
-void ZIP::emergencyShutdown(SST::Output& out) {
-}
-
-void ZIP::printStatus() {
-}
+// void ZIP::emergencyShutdown(SST::Output& out) {
+// }
+// 
+// void ZIP::printStatus() {
+// }
 
 // try to send out data from the outgoing buffer for DestPrec if we have enough credits and return true if succesful
 bool ZIP::aggregatePackets(uint16_t DestPrec, ZIPMemTarget* Target, bool* hasStalled) {
