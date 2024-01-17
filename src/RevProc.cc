@@ -1660,6 +1660,9 @@ unsigned RevProc::GetNextHartToDecodeID() const {
     return nextID;
   }
  }
+ // Nothing else was clear, return original
+ return originalHartID;
+}
  
 void RevProc::MarkLoadComplete(const MemReq& req){
 

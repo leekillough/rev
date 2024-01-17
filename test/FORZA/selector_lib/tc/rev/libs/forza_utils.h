@@ -43,10 +43,10 @@ void* operator new(std::size_t t)
     return p;
 }
 
-// void operator delete(void * p)
-// {
-//     forza_free(p);
-// }
+void operator delete(void * p)
+{
+    forza_free(p, 2);
+}
 
 
 void forza_putc(fd_t fd, char c)
