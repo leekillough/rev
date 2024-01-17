@@ -53,7 +53,9 @@ namespace SST::Forza{
     // describe the parameters
     SST_ELI_DOCUMENT_PARAMS(
       { "clockFreq",  "ZOPGen core clock frequency", "1GHz" },
-      { "verbose",    "Sets the output verbsoity", 0 }
+      { "verbose",    "Sets the output verbosity", "0" },
+      { "tests",      "Show test output", "0" },
+      { "zoneId",     "Set zone ID", "0" }
     )
 
     // describe the ports
@@ -90,6 +92,7 @@ namespace SST::Forza{
     void processSetupMsgs();
     void processZAPCredits();
     void sendMsgToZOPGen(int i);
+    void sendMsgToZOPGen2(int i);
     void sendSetupToZOPGen();
     uint64_t getRZATailQueue(uint64_t harts, uint64_t size);
     void sendMZOPAckToZOPGen(SST::Forza::zopEvent *ev);
@@ -124,7 +127,17 @@ namespace SST::Forza{
     uint64_t m_num_harts;
     SST::Forza::zopAPI* m_zop_iface;
     std::unordered_map<uint64_t, uint64_t> mem_map;
-    bool sent, setup_done, all_sent;
+    bool sent, setup_done, all_sent, all_sent2;
+
+    // tests
+    bool t_c1;
+    bool t_c3;
+    UnitAlgebra t_p1;
+    UnitAlgebra t_p2;
+    unsigned int t_p4;
+    unsigned int t_p5;
+
+    TimeConverter* zgTime;
   }; // class SST::ZOPGen
 } // namespace SST::Forza
 
