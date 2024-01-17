@@ -3300,10 +3300,14 @@ EcallStatus RevProc::ECALL_forza_send(RevInst& inst){
   zev->setType(SST::Forza::zopMsgT::Z_MSG);
   zev->setID(0);
   zev->setOpc(SST::Forza::zopOpc::Z_MSG_SENDP);
+
   zev->setSrcZCID(SrcZCID);
   zev->setSrcPCID(SrcPCID);
   zev->setSrcHart(SrcHart);
 
+  // zev->setDestZCID((uint8_t)zopCompID::Z_ZAP3);
+  // zev->setDestPCID(m_zop_iface->getZoneID());
+  // zev->setDestHart(0);
   zev->setDestZCID(3);
   zev->setDestPCID(0);
   zev->setDestHart(0);
@@ -3316,15 +3320,14 @@ EcallStatus RevProc::ECALL_forza_send(RevInst& inst){
     payload.push_back(u.d);
   }
   zev->setPayload(payload);
-  zev->encodeEvent();
 
   if (!zNic) {
     output->fatal(CALL_INFO, -1, "Error : zNic is nullptr\n" );
   }
   // output->fatal(CALL_INFO, -1, "Error : send not implemented\n" );
-  if (SrcZCID == 3) {
+  if (SrcZCID == 0) {
     output->verbose(CALL_INFO, 0, 0, "ECALL_forza_send: DO ACTUAL SEND SrcZCID = %" PRIu8 
-            ", SrcPCID = %" PRIu8 ", SrcHart = %" PRIu16 "\n", SrcZCID, SrcPCID, SrcHart);
+            ", SrcPCID = %" PRIu8 ", SrcHart = %" PRIu16 ", opc=%" PRIu16 "\n", SrcZCID, SrcPCID, SrcHart, (uint16_t)zev->getOpc());
     zNic->send(zev, SST::Forza::zopCompID::Z_ZAP3);
   }
 
