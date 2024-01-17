@@ -1,5 +1,5 @@
 #include "stdlib.h"
-#include "../libs/selector.forza.h"
+#include "../../libs/selector.forza.h"
 
 class BFSSelector: public hclib::Selector<visitmsg> {
     std::vector<int64_t> *nextFrontier;

@@ -1,5 +1,5 @@
 #include "stdlib.h"
-#include "../libs/selector.forza.h"
+#include "../../libs/selector.forza.h"
 
 class JaccardSelector: public hclib::Selector<JaccardPkt> {
 public:
@@ -89,7 +89,6 @@ void *jaccard_selector(int *mytid) {
 
     JaccardSelector* jacSelector = new JaccardSelector(&kmer_mat[ActorID], &mat[ActorID]);
 
-    // get_edge_degrees(mat[ActorID], kmer_mat[ActorID]);
     sparsemat_t *A2 = &kmer_mat[ActorID];
 
     hclib::finish([=]() {
@@ -121,7 +120,6 @@ void *jaccard_selector(int *mytid) {
         jacSelector->done(REQUEST, ActorID);
     });
 
-    // lgp_barrier();
 
     return NULL;
 }
@@ -132,17 +130,14 @@ int main(int argc, char* argv[]) {
 
     forza_fprintf(1, "Initialize FORZA.......\n", print_args);
 
-    // int total_pe = atoi(argv[1]);
     void *ptr0 = (void *) argv[0];
     print_args[0] = &ptr0;
     forza_fprintf(1, "argv[0] address - %p\n", print_args);
-    // forza_fprintf(1, "AJ:got argv[0] string - %s\n", print_args);
 
 
     void *ptr = (void *) argv[1];
     print_args[0] = &ptr;
     forza_fprintf(1, "argv[1] address - %p\n", print_args);
-    // forza_fprintf(1, "AJ:got argv[1] string - %s\n", print_args);
 
     int TOTAL_PEs = atoi(argv[1]);
     print_args[0] = (void *) &TOTAL_PEs;
@@ -264,19 +259,8 @@ int main(int argc, char* argv[]) {
     for (int64_t v = 0; v < Jaccard_mat->lnumrows; v++) {
         int64_t deg_v = Atest->loffset[v+1] - Atest->loffset[v];
         for (int64_t k = Jaccard_mat->loffset[v]; k < Jaccard_mat->loffset[v+1]; k++) {
-            // double tr1 = (double)1/(double)2;
-            // print_args[0] = (void *) &Jaccard_mat->lvalue[k];
-            // forza_fprintf(1,"BEFORE: lval:%f\n", print_args);
 
             Jaccard_mat->lvalue[k] = (double)Jaccard_mat->lvalue[k] / ((double)Jaccard_mat->lnonzero[k] + (double)deg_v - (double)Jaccard_mat->lvalue[k]);
-                
-                // print_args[0] = (void *) &testID;
-                // print_args[1] = (void *) &Jaccard_mat->lvalue[k];
-                // print_args[2] = (void *) &Jaccard_mat->lnonzero[k];
-                // print_args[3] = (void *) &deg_v;
-                // // print_args[4] = (void *) &tr1;
-                // forza_fprintf(1,"CHECKING: [%d] Values: lval:%f lnonzero:%l deg_v:%l\n", print_args);
-
 
             if(Jaccard_mat->lvalue[k])
             {
@@ -284,7 +268,6 @@ int main(int argc, char* argv[]) {
                 print_args[1] = (void *) &v;
                 print_args[2] = (void *) &Jaccard_mat->lnonzero[k];
                 print_args[3] = (void *) &Jaccard_mat->lvalue[k];
-                // print_args[4] = (void *) &tr1;
                 forza_fprintf(1,"LVAL: [%d] S(%l, %l) = %f\n", print_args);
             }
         }

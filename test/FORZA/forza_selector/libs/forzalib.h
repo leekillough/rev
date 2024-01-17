@@ -46,12 +46,9 @@ typedef struct sparsemat_t_ {
 typedef struct TrianglePkt {
     int64_t w;
     int64_t vj;
-    // volatile int64_t valid;
 } TrianglePkt;
 
 typedef struct JaccardPkt {
-    // int type;
-    // volatile int64_t valid;
     int64_t sender_pe;
     int64_t x;
     int64_t pos_row;
@@ -60,18 +57,14 @@ typedef struct JaccardPkt {
 } JaccardPkt;
 
 typedef struct DegreePkt {
-    // int type;
-    // volatile int64_t valid;
     int64_t sender_pe;
     int64_t i;
     int64_t src_idx;
 } DegreePkt;
 
 typedef struct visitmsg {
-	// int type;
 	int64_t vloc;
 	int64_t vfrom;
-    // int valid;
 } visitmsg;
 
 typedef struct ForzaPkt_ {
@@ -211,8 +204,6 @@ void generate_graph(sparsemat_t *mmfile, bool iskmer, bool isbfs, int mynode)
 void forza_send(mailbox **mb, ForzaPkt pkt, int dest, int src)
 {
     uint64_t sendcnt = mb[dest][src].send_count;
-    // mb[dest][src].pkt[sendcnt].pkt.w = pkt.pkt.w;
-    // mb[dest][src].pkt[sendcnt].pkt.vj = pkt.pkt.vj;
     mb[dest][src].pkt[sendcnt].pkt = pkt.pkt;
     mb[dest][src].pkt[sendcnt].mb_type = pkt.mb_type;
     mb[dest][src].pkt[sendcnt].valid = 1;
@@ -244,14 +235,6 @@ void forza_barrier(uint64_t TID)
         }
     }
 }
-
-// void forza_done(mailbox **mb, int src)
-// {
-//     for(int i = 0; i < THREADS; i++)
-//     {
-//         mb[i][src].mbdone = 1;
-//     }
-// }
 
 void forza_recv_process(void *pkt, int AID)
 {
@@ -324,11 +307,11 @@ void *forza_poll_thread(int *mytid)
 
         if(done_flag)
         {
-            // if(mythread == 0)
-            // {
+            if(mythread == 0)
+            {
                 print_args[0] = (void *) &mythread;
                 forza_fprintf(1, "Actor[%d]: Done recv handler\n", print_args);
-            // }
+            }
             break;
         }
     }
@@ -341,26 +324,18 @@ void jaccard_phase1_recv(void *pkt, int AID)
 {
     DegreePkt *pkg2 = (DegreePkt *) pkt;
     DegreePkt *dpkt = (DegreePkt *) forza_malloc(1*sizeof(DegreePkt));
-
     dpkt->src_idx = pkg2->src_idx;
     dpkt->i = kmer_mat[AID].loffset[pkg2->i + 1] - kmer_mat[AID].loffset[pkg2->i];
-    // send(RESPONSE, dpkt, pkg2->sender_pe, AID);
     ForzaPkt fpkt;
     fpkt.pkt = (void *) dpkt;
     fpkt.mb_type = RESPONSE;
     mb_request[pkg2->sender_pe][AID].expected_resp++;
     forza_send(mb_request, fpkt, pkg2->sender_pe, AID);
-
-    // print_args[0] = (void *) &AID;
-    // print_args[1] = (void *) &pkg2->sender_pe;
-    // forza_fprintf(1, "[%d] sent packet to %d\n", print_args);
     forza_free(pkt, sizeof(DegreePkt));
 }
 
 void jaccard_phase1_resp(void *pkt, int AID)
 {
-    // forza_fprintf(1, "executing response \n", print_args);
-
     DegreePkt *pkg = (DegreePkt *) pkt;
     mat[AID].lnonzero[pkg->src_idx] = pkg->i;
 }
@@ -398,24 +373,10 @@ void *jaccard_phase1_poll(int *mytid)
                 {
                     case REQUEST:
                         jaccard_phase1_recv(mb_request[mythread][i].pkt[recvcnt].pkt, mythread);
-                        if(mythread == 0)
-                        {
-                            // print_args[0] = (void *) &mythread;
-                            // print_args[1] = (void *) &i;
-                            // print_args[2] =  (void *) &mb_request[mythread][i].expected_resp;
-                            // forza_fprintf(1, "[%d][%d] sending request packet - %d \n", print_args);
-                        }
                         break;
                     case RESPONSE:
                         jaccard_phase1_resp(mb_request[mythread][i].pkt[recvcnt].pkt, mythread);
                         mb_request[mythread][i].expected_resp--;
-                        if(mythread == 0)
-                        {
-                        // print_args[0] = (void *) &mythread;
-                        // print_args[1] = (void *) &i;
-                        // print_args[2] = (void *) &mb_request[mythread][i].expected_resp;
-                        // forza_fprintf(1, "[%d][%d] Expected resp is decreased-%d\n", print_args);
-                        }
                         if(mb_request[mythread][i].expected_resp == 0)
                         {
                             ForzaPkt fpkt;
@@ -427,20 +388,11 @@ void *jaccard_phase1_poll(int *mytid)
                                 print_args[1] = (void *) &i;
                                 forza_fprintf(1, "[%d][%d] sending done\n", print_args);
                             }
-                            // for(int i = 0; i < THREADS; i++)
-                            // {
-                                forza_send(mb_request, fpkt, i, mythread);
-                            // }÷
+                            forza_send(mb_request, fpkt, i, mythread);
                         }
                         break;
                     case FORZA_DONE:
                         mb_request[mythread][i].mbdone++;
-        
-                        // print_args[0] = (void *) &mythread;
-                        // print_args[1] = (void *) &i;
-                        // print_args[2] = (void *) &mb_request[mythread][i].mbdone;
-                        // print_args[3] = (void *) &mb_request[mythread][i].expected_resp;
-                        // forza_fprintf(1, "[%d][%d] Got done - %d and expected- %d\n", print_args);
                         break;
                     case FORZA_BARRIER:
                         fbarriers[mythread]++;

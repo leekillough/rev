@@ -1,6 +1,6 @@
 #include <fcntl.h>
 #include <string.h>
-#include "../../../../../../common/syscalls/syscalls.h" 
+#include "../../../../common/syscalls/syscalls.h" 
 
 
 // #define THREADS 1
