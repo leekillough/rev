@@ -184,13 +184,13 @@ bool ZIP::disaggregatePackets(uint16_t SrcPrec, ZIPMemTarget* Target) {
     // iterate over zopEvents received from HFI
     for (zopEvent receivedZop : event.getZOPs()) {
       // if the ZEN has enough credits to accept the zopEvent, add it to zenZOPs
-      if (inCreditCopy[receivedZop.getDestPCID()] >= receivedZop.getLength()+Z_NUM_HEADER_FLITS) {
+      if (inCreditCopy[receivedZop.getDestPCID()] >= (long unsigned int)(receivedZop.getLength()+Z_NUM_HEADER_FLITS)) {
         // update copy of credits to make sure each ZEN can receive all of the disaggregated ZOPs
         inCreditCopy[receivedZop.getDestPCID()] -= receivedZop.getLength()+Z_NUM_HEADER_FLITS;
         zenZOPs.push_back(dynamic_cast<zopEvent*>(receivedZop.clone()));
       // if any ZEN doesn't have enough credits, disaggregatePackets returns false
       } else{
-        output.verbose(CALL_INFO, 10, 0, "disaggregatePackets: need %d credits for %d and only have %llu\n", receivedZop.getLength()+Z_NUM_HEADER_FLITS, receivedZop.getDestPCID(), inCreditCopy[receivedZop.getDestPCID()]);
+        output.verbose(CALL_INFO, 10, 0, "disaggregatePackets: need %d credits for %d and only have %lu\n", receivedZop.getLength()+Z_NUM_HEADER_FLITS, receivedZop.getDestPCID(), inCreditCopy[receivedZop.getDestPCID()]);
         t_c2 = true;
         return false;
       }
@@ -199,7 +199,7 @@ bool ZIP::disaggregatePackets(uint16_t SrcPrec, ZIPMemTarget* Target) {
     // all ZENs have enough credits, so go through and send all of them to the NOC
     for (zopEvent* disaggZop : zenZOPs) {
       link_NOC->send(disaggZop, zopCompID::Z_ZEN, (zopPrecID)disaggZop->getDestPCID(), link_NOC->getPrecinctID());
-      output.verbose(CALL_INFO, 9, 0, "disaggregatePackets: Type %hhu, SrcHart %d, SrcZCID %d, SrcPCID %d, SrcPrec %d, DestHart %d, DestZCID %d, DestPCID %d, DestPrec %d\n", disaggZop->getType(), disaggZop->getSrcHart(), disaggZop->getSrcZCID(), disaggZop->getSrcPCID(), disaggZop->getSrcPrec(), disaggZop->getDestHart(), disaggZop->getDestZCID(), disaggZop->getDestPCID(), disaggZop->getDestPrec());
+      output.verbose(CALL_INFO, 9, 0, "disaggregatePackets: Type %hhu, SrcHart %d, SrcZCID %d, SrcPCID %d, SrcPrec %d, DestHart %d, DestZCID %d, DestPCID %d, DestPrec %d\n", (uint8_t)(disaggZop->getType()), disaggZop->getSrcHart(), disaggZop->getSrcZCID(), disaggZop->getSrcPCID(), disaggZop->getSrcPrec(), disaggZop->getDestHart(), disaggZop->getDestZCID(), disaggZop->getDestPCID(), (int)(disaggZop->getDestPrec()));
       // update actual credits
       inCredit[disaggZop->getDestPCID()] -= disaggZop->getLength()+Z_NUM_HEADER_FLITS;
     }
@@ -242,12 +242,12 @@ void ZIP::handleNOCEvent(SST::Event* ev) {
   // if zopEvent was received from NOC
   if (event) {
     event->decodeEvent();
-    output.verbose(CALL_INFO, 9, 0, "handleNOCEvent: Type %hhu, SrcHart %d, SrcZCID %d, SrcPCID %d, SrcPrec %d, DestHart %d, DestZCID %d, DestPCID %d, DestPrec %d\n", event->getType(), event->getSrcHart(), event->getSrcZCID(), event->getSrcPCID(), event->getSrcPrec(), event->getDestHart(), event->getDestZCID(), event->getDestPCID(), event->getDestPrec());
+    output.verbose(CALL_INFO, 9, 0, "handleNOCEvent: Type %hhu, SrcHart %d, SrcZCID %d, SrcPCID %d, SrcPrec %d, DestHart %d, DestZCID %d, DestPCID %d, DestPrec %d\n", (uint8_t)(event->getType()), event->getSrcHart(), event->getSrcZCID(), event->getSrcPCID(), event->getSrcPrec(), event->getDestHart(), event->getDestZCID(), event->getDestPCID(), event->getDestPrec());
 
     // if the zopEvent is a Z_MSG_CREDIT, update credits for the source ZEN
     if (event->getOpc() == zopOpc::Z_MSG_CREDIT) {
       inCredit[event->getSrcPCID()] += event->getCredit();
-      output.verbose(CALL_INFO, 9, 0, "handleNOCEvent: received %d credits for %d, now at %llu\n", event->getCredit(), event->getSrcPCID(), inCredit[event->getSrcPCID()]);
+      output.verbose(CALL_INFO, 9, 0, "handleNOCEvent: received %d credits for %d, now at %lu\n", event->getCredit(), event->getSrcPCID(), inCredit[event->getSrcPCID()]);
     // otherwise add the zopEvent to the outgoing buffer for the destination precinct
     } else {
       uint16_t DestPrec = event->getDestPrec();
@@ -278,7 +278,7 @@ void ZIP::handleHFIEvent(SST::Event* ev) {
   ZIPCreditEvent* cEvent = dynamic_cast<ZIPCreditEvent*>(event);
   if (cEvent) {
     outCredit[SrcPrec] += cEvent->getCredits();
-    output.verbose(CALL_INFO, 9, 0, "handleHFIEvent: received %d credits for %d, now at %llu\n", cEvent->getCredits(), SrcPrec, outCredit[SrcPrec]);
+    output.verbose(CALL_INFO, 9, 0, "handleHFIEvent: received %d credits for %d, now at %lu\n", cEvent->getCredits(), SrcPrec, outCredit[SrcPrec]);
     delete ev;
     return;
   }

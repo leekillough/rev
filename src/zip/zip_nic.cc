@@ -65,11 +65,13 @@ void ZIPHFINIC::init(unsigned int phase){
       output->verbose(CALL_INFO, 1, 0, "sent init message phase %d\n", phase);
     }
   }
-
-  while( SST::Interfaces::SimpleNetwork::Request * req = iFace->recvUntimedData() ) {
+  
+  while (SST::Interfaces::SimpleNetwork::Request * req = iFace->recvUntimedData() ) {
     // ZIPEvent *ev = static_cast<ZIPEvent*>(req->takePayload());
     numDest++;
-    output->verbose(CALL_INFO, 1, 0, "received init message phase %d\n", phase);
+    /netscratch/jyoung9/forza/forza-sst-deliverables/forzarev/forza-elts/src/zip/zip_nic.cc:69:52: error: unused variable ‘req’ [-Werror=unused-variable]                                             
+   69 |   while (SST::Interfaces::SimpleNetwork::Request * req = (iFace->recvUntimedData() ) {                                                                                                    
+      |                                                    ^~~             
   }
 }
 
