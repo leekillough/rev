@@ -20,5 +20,6 @@ WHAT DO THE TESTS RUN?
         If algorithm fails, it will print the nodes that have not been visited.
 
 TEST EXTENSION:
+
 To run your own tests, the generated graph files can be placed in the <test_folder> and the parameters in rev-test.py
 can be modified to reflect the number of actors.
