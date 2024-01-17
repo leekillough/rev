@@ -17,13 +17,16 @@ zopNIC::zopNIC(ComponentId_t id, Params& params)
   : zopAPI(id, params), iFace(nullptr), msgHandler(nullptr),
     initBroadcastSent(false), numDest(0), numHarts(0),
     Precinct(0), Zone(0),
-    Type(zopCompID::Z_ZAP0), msgId(nullptr), HARTFence(nullptr){
+    Type(zopCompID::Z_ZAP0), enableTestHarness(false),
+    msgId(nullptr), HARTFence(nullptr){
 
   // read the parameters
   int verbosity = params.find<int>("verbose", 0);
   output.init("zopNIC[" + getName() + ":@p:@t]: ",
               verbosity, 0, SST::Output::STDOUT);
   ReqPerCycle = params.find<unsigned>("req_per_cycle", 1);
+
+  enableTestHarness = params.find<bool>("enableTestHarness", false);
 
   // register the stats
   registerStats();
@@ -509,6 +512,13 @@ bool zopNIC::msgNotify(int vn){
                  getName().c_str(),
                  endPToStr(getEndpointType()).c_str(),
                  msgTToStr(ev->getType()).c_str());
+
+  // check to see if the test harness has been enabled
+  // if so, immediately call the message handler
+  if( enableTestHarness ){
+    (*msgHandler)(ev);
+    return true;
+  }
 
   // if this is an RZA device, marshall it through to the ZIQ
   // if this is a ZEN, forward it in the incoming queue

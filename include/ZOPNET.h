@@ -930,6 +930,7 @@ public:
     {"req_per_cycle", "Max requests to dispatch per cycle", "1"},
     {"port", "Port to use, if loaded as an anonymous subcomponent", "network"},
     {"verbose", "Verbosity for output (0 = nothing)", "0"},
+    {"enableTestHarness", "Enables the message notification for the ZOPGen test harness", "0"},
   )
 
   SST_ELI_DOCUMENT_PORTS(
@@ -1061,6 +1062,7 @@ private:
   unsigned Precinct;                        ///< zopNIC: precinct ID
   unsigned Zone;                            ///< zopNIC: zone ID
   zopCompID Type;                           ///< zopNIC: endpoint type
+  bool enableTestHarness;                   ///< zopNIC: enable the test harness
 
   SST::Forza::zopMsgID *msgId;              ///< zopNIC: per hart message ID objects
   unsigned *HARTFence;                      ///< zopNIC: per hart fence counters
