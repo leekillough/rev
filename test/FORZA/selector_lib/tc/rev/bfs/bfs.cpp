@@ -1,20 +1,12 @@
 #include "stdlib.h"
 #include "../libs/selector.forza.h"
 
-// bool *visited;
-// int64_t visited_size;
-
-// int64_t *pred_glob;
-
 class BFSSelector: public hclib::Selector<visitmsg> {
     std::vector<int64_t> *nextFrontier;
     int64_t *pred_glob;
     void process(visitmsg m, int sender_rank) {
-        // if (!visited[m.vloc]) {
-        //     visited[m.vloc] = true;
-        //     nextFrontier->push_back(m.vloc);
-        //     pred_glob[m.vloc] = sender_rank * THREADS + m.vfrom;
-        // }
+        // code ported to forzalib and not keeping a version here for ease of
+        // compilation.
     }
 
 public:
@@ -26,42 +18,21 @@ BFSSelector() {
 void *bfs_selector(int *mytid) {
     int ActorID = *(mytid);
 
-    int root = 0;
-
-    // int64_t nvisited;
-    // long sum = 1;
-    // unsigned int i,j,k,lvl=1;
-
-    // resp_fileprint(A2);
+    int root = ActorID;
 
     sparsemat_t *A2 = &mat[ActorID];
-    // visited_size = A2->lnumrows;
-    // visited = (bool*)forza_malloc(visited_size*sizeof(bool));
 
-    // int64_t *pred = (int64_t*)forza_malloc(visited_size*sizeof(int64_t));
-	// for(i=0;i<visited_size[ActorID];i++) pred[i]=-1;
-
-    // std::vector<int64_t> frontier,nextFrontier;
-    // pred_glob=pred;
-
-    //CLEAN_VISITED();
-    // memset(visited, 0, visited_size*sizeof(bool));
-
-    // nvisited=0;
     if(root % THREADS == ActorID) {
-        // pred[root/THREADS]=root;
         visited[ActorID][root/THREADS] = true;
         frontier[ActorID][frontierTail[ActorID]] = root/THREADS;
         frontierTail[ActorID]++;
         nvisited[ActorID]++;
     }
 
-    // While there are vertices in current level
     while (nvisited[ActorID] < visited_size[ActorID]) {
         BFSSelector *bfss_ptr = new BFSSelector();
         hclib::finish([=]() {
                 bfss_ptr->start(ActorID);
-                //for all vertices in current level send visit AMs to all neighbours
                 for(int64_t i=0;i<frontierTail[ActorID];i++) {
                     for(int j=A2->loffset[frontier[ActorID][i]];j<A2->loffset[frontier[ActorID][i]+1];j++) {
                         int column = A2->lnonzero[j];
@@ -70,7 +41,6 @@ void *bfs_selector(int *mytid) {
                         visitmsg *m = (visitmsg *) forza_malloc(1*sizeof(visitmsg));
                         m->vloc = column / THREADS;
                         m->vfrom = frontier[ActorID][i];
-                        // visitmsg m = {column / THREADS, frontier[i]};
 
 
 
@@ -81,9 +51,6 @@ void *bfs_selector(int *mytid) {
                 
             });
 
-        // lgp_barrier();
-        // delete bfss_ptr;
-        // forza_fprintf(1, "AJ1\n", print_args);
         int lsum = nextFrontierTail[ActorID] + 1;
         nvisited[ActorID]+=lsum;
 
@@ -98,18 +65,6 @@ void *bfs_selector(int *mytid) {
 
 
     }
-
-    // sanity check
-    // if(ActorID == 0)
-    // {
-    // for (i = 0; i < visited_size[0]; i++) {
-    //     if (visited[0][i] != true) {
-    //         print_args[0] = (void *) &i;
-    //         print_args[1] = (void *) &ActorID;
-    //         forza_fprintf(1, "%d is not visited on PE%d\n", print_args);
-    //     }
-    // }
-    // }
     
     return NULL;
 }
@@ -118,17 +73,14 @@ int main(int argc, char* argv[]) {
 
     forza_fprintf(1, "Initialize FORZA.......\n", print_args);
 
-    // int total_pe = atoi(argv[1]);
     void *ptr0 = (void *) argv[0];
     print_args[0] = &ptr0;
     forza_fprintf(1, "argv[0] address - %p\n", print_args);
-    // forza_fprintf(1, "AJ:got argv[0] string - %s\n", print_args);
 
 
     void *ptr = (void *) argv[1];
     print_args[0] = &ptr;
     forza_fprintf(1, "argv[1] address - %p\n", print_args);
-    // forza_fprintf(1, "AJ:got argv[1] string - %s\n", print_args);
 
     int TOTAL_PEs = atoi(argv[1]);
     print_args[0] = (void *) &TOTAL_PEs;
@@ -149,6 +101,26 @@ int main(int argc, char* argv[]) {
     }
 
     mat = (sparsemat_t *) forza_malloc(TOTAL_PEs*sizeof(sparsemat_t));
+    
+    frontier = (int64_t **) forza_malloc(TOTAL_PEs*sizeof(int64_t *));
+    nextFrontier = (int64_t **) forza_malloc(TOTAL_PEs*sizeof(int64_t *));
+    for(int i = 0; i < TOTAL_PEs; i++)
+    {
+        frontier[i] = (int64_t *) forza_malloc(BFS_FRONTIER_SIZE*sizeof(int64_t));
+        nextFrontier[i] = (int64_t *) forza_malloc(BFS_FRONTIER_SIZE*sizeof(int64_t));
+    }
+    nvisited = (int64_t *) forza_malloc(TOTAL_PEs*sizeof(int64_t));
+    visited_size = (int64_t *) forza_malloc(TOTAL_PEs*sizeof(int64_t));
+    frontierTail = (int64_t *) forza_malloc(TOTAL_PEs*sizeof(int64_t));
+    nextFrontierTail = (int64_t *) forza_malloc(TOTAL_PEs*sizeof(int64_t));
+
+    for(int i = 0; i < TOTAL_PEs; i++)
+    {
+        nvisited[i] = 0;
+        visited_size[i] = 0;
+        frontierTail[i] = 0;
+        nextFrontierTail[i] = 0;
+    }
 
     // for(int i = 0; i < THREADS; i++)
     // {
@@ -185,8 +157,6 @@ int main(int argc, char* argv[]) {
 
         for(int i = 0; i < THREADS; i++)
         {
-            print_args[0] = (void *) &i;
-            forza_fprintf(1, "Create thread - %d\n", print_args);
             forza_thread_create(&pt[i], (void*)bfs_selector, &tid[i]);
         }
 
@@ -194,8 +164,6 @@ int main(int argc, char* argv[]) {
         {
             forza_thread_join(pt[i]);
         }
-
-        forza_fprintf(1, "Done joining1\n", print_args);
 
         for(int i = 0; i < THREADS; i++)
         {
@@ -207,20 +175,24 @@ int main(int argc, char* argv[]) {
         {
             forza_thread_join(pt[i+ THREADS]);
         }
-        forza_fprintf(1, "Done joining2\n", print_args);
 
-
-        // if(ActorID == 0)
-        // {
-        int test = 1;
-        for (int i = 0; i < visited_size[1]; i++) {
-        if (visited[1][i] != true) {
-            print_args[0] = (void *) &i;
-            print_args[1] = (void *) &test;
-            forza_fprintf(1, "%d is not visited on PE%d\n", print_args);
+        int test = 0;
+        bool testvisited = true;
+        for (int i = 0; i < visited_size[test]; i++) 
+        {
+            if (visited[test][i] != true) 
+            {
+                print_args[0] = (void *) &i;
+                print_args[1] = (void *) &test;
+                forza_fprintf(1, "%d is not visited on PE%d\n", print_args);
+                testvisited = false;
+            }
         }
-    // }
-    }
+
+        if(testvisited)
+        {
+            forza_fprintf(1, "All nodes visited\n", print_args);
+        }
 
     
     });

@@ -95,12 +95,13 @@ sparsemat_t *mat;
 sparsemat_t *kmer_mat;
 int64_t *cnt;
 
-int64_t nvisited[2] = {0, 0};
-int64_t visited_size[2] = {0, 0};
-int64_t frontier[2][4096];
-int64_t nextFrontier[2][4096];
-int64_t frontierTail[2] = {0, 0};
-int64_t nextFrontierTail[2] = {0, 0};
+int64_t **frontier;
+int64_t **nextFrontier;
+
+int64_t *nvisited;
+int64_t *visited_size;
+int64_t *frontierTail;
+int64_t *nextFrontierTail;
 bool *visited[2];
 
 void generate_graph(sparsemat_t *mmfile, bool iskmer, bool isbfs, int mynode)
@@ -118,6 +119,12 @@ void generate_graph(sparsemat_t *mmfile, bool iskmer, bool isbfs, int mynode)
                 break;
             case 1:
                 strcpy(path,"kmer1.dat");
+                break;
+            case 2:
+                strcpy(path,"kmer2.dat");
+                break;
+            case 3:
+                strcpy(path,"kmer3.dat");
                 break;
             default:
                 break;
@@ -341,7 +348,9 @@ void jaccard_phase1_recv(void *pkt, int AID)
     ForzaPkt fpkt;
     fpkt.pkt = (void *) dpkt;
     fpkt.mb_type = RESPONSE;
+    mb_request[pkg2->sender_pe][AID].expected_resp++;
     forza_send(mb_request, fpkt, pkg2->sender_pe, AID);
+
     // print_args[0] = (void *) &AID;
     // print_args[1] = (void *) &pkg2->sender_pe;
     // forza_fprintf(1, "[%d] sent packet to %d\n", print_args);
@@ -389,25 +398,35 @@ void *jaccard_phase1_poll(int *mytid)
                 {
                     case REQUEST:
                         jaccard_phase1_recv(mb_request[mythread][i].pkt[recvcnt].pkt, mythread);
-                        mb_request[mythread][i].expected_resp++;
-                        // print_args[0] = (void *) &mythread;
-                        // print_args[1] = (void *) &i;
-                        // forza_fprintf(1, "[%d][%d] sending packet \n", print_args);
+                        if(mythread == 0)
+                        {
+                            // print_args[0] = (void *) &mythread;
+                            // print_args[1] = (void *) &i;
+                            // print_args[2] =  (void *) &mb_request[mythread][i].expected_resp;
+                            // forza_fprintf(1, "[%d][%d] sending request packet - %d \n", print_args);
+                        }
                         break;
                     case RESPONSE:
                         jaccard_phase1_resp(mb_request[mythread][i].pkt[recvcnt].pkt, mythread);
                         mb_request[mythread][i].expected_resp--;
-
+                        if(mythread == 0)
+                        {
                         // print_args[0] = (void *) &mythread;
                         // print_args[1] = (void *) &i;
                         // print_args[2] = (void *) &mb_request[mythread][i].expected_resp;
                         // forza_fprintf(1, "[%d][%d] Expected resp is decreased-%d\n", print_args);
-
+                        }
                         if(mb_request[mythread][i].expected_resp == 0)
                         {
                             ForzaPkt fpkt;
                             fpkt.pkt = NULL;
                             fpkt.mb_type = FORZA_DONE;
+                            if(mythread == 0)
+                            {
+                                print_args[0] = (void *) &mythread;
+                                print_args[1] = (void *) &i;
+                                forza_fprintf(1, "[%d][%d] sending done\n", print_args);
+                            }
                             // for(int i = 0; i < THREADS; i++)
                             // {
                                 forza_send(mb_request, fpkt, i, mythread);
@@ -545,8 +564,6 @@ void bfs_recv_process(void *pkt, int AID)
         visited[AID][m->vloc] = true;
         nextFrontier[AID][nextFrontierTail[AID]] = m->vloc;
         nextFrontierTail[AID]++;
-        // nextFrontier->push_back(m->vloc);
-        // pred_glob[m.vloc] = sender_rank * THREADS + m.vfrom;
     }
 
     forza_free(pkt, sizeof(TrianglePkt));

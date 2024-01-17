@@ -10,6 +10,7 @@ volatile int *fbarriers;
 #define BUF_SIZE 50000
 #define MAX_PRINT_ARGS 5
 #define PKT_QUEUE_SIZE 100000
+#define BFS_FRONTIER_SIZE 10000
 
 typedef unsigned long int forza_thread_t;
 typedef int fd_t;

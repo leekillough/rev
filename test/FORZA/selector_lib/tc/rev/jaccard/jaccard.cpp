@@ -122,14 +122,6 @@ void *jaccard_selector(int *mytid) {
     });
 
     // lgp_barrier();
-    sparsemat_t *Jaccard_mat = &mat[ActorID];
-
-    for (int64_t v = 0; v < Jaccard_mat->lnumrows; v++) {
-        int64_t deg_v = A2->loffset[v+1] - A2->loffset[v];
-        for (int64_t k = Jaccard_mat->loffset[v]; k < Jaccard_mat->loffset[v+1]; k++) {
-            Jaccard_mat->lvalue[k] = (double)Jaccard_mat->lvalue[k] / ((double)Jaccard_mat->lnonzero[k] + (double)deg_v - (double)Jaccard_mat->lvalue[k]);
-        }
-    }
 
     return NULL;
 }
@@ -262,6 +254,41 @@ int main(int argc, char* argv[]) {
         }
 
     });
+
+    int testID = 0;
+
+    sparsemat_t *Jaccard_mat = &mat[testID];
+    sparsemat_t *Atest = &kmer_mat[testID];
+
+
+    for (int64_t v = 0; v < Jaccard_mat->lnumrows; v++) {
+        int64_t deg_v = Atest->loffset[v+1] - Atest->loffset[v];
+        for (int64_t k = Jaccard_mat->loffset[v]; k < Jaccard_mat->loffset[v+1]; k++) {
+            // double tr1 = (double)1/(double)2;
+            // print_args[0] = (void *) &Jaccard_mat->lvalue[k];
+            // forza_fprintf(1,"BEFORE: lval:%f\n", print_args);
+
+            Jaccard_mat->lvalue[k] = (double)Jaccard_mat->lvalue[k] / ((double)Jaccard_mat->lnonzero[k] + (double)deg_v - (double)Jaccard_mat->lvalue[k]);
+                
+                // print_args[0] = (void *) &testID;
+                // print_args[1] = (void *) &Jaccard_mat->lvalue[k];
+                // print_args[2] = (void *) &Jaccard_mat->lnonzero[k];
+                // print_args[3] = (void *) &deg_v;
+                // // print_args[4] = (void *) &tr1;
+                // forza_fprintf(1,"CHECKING: [%d] Values: lval:%f lnonzero:%l deg_v:%l\n", print_args);
+
+
+            if(Jaccard_mat->lvalue[k])
+            {
+                print_args[0] = (void *) &testID;
+                print_args[1] = (void *) &v;
+                print_args[2] = (void *) &Jaccard_mat->lnonzero[k];
+                print_args[3] = (void *) &Jaccard_mat->lvalue[k];
+                // print_args[4] = (void *) &tr1;
+                forza_fprintf(1,"LVAL: [%d] S(%l, %l) = %f\n", print_args);
+            }
+        }
+    }
 
     return 0;
 }
