@@ -143,7 +143,7 @@ int main(int argc, char *argv[]) {
 
     for(int i = 0; i < THREADS; i++)
     {
-        generate_graph(mat, false, i);
+        generate_graph(mat, false, false, i);
     }
     forza_fprintf(1, "FORZA initilize done.......\n", print_args);
     

@@ -67,6 +67,13 @@ typedef struct DegreePkt {
     int64_t src_idx;
 } DegreePkt;
 
+typedef struct visitmsg {
+	// int type;
+	int64_t vloc;
+	int64_t vfrom;
+    // int valid;
+} visitmsg;
+
 typedef struct ForzaPkt_ {
     volatile int valid;
     int mb_type;
@@ -88,7 +95,15 @@ sparsemat_t *mat;
 sparsemat_t *kmer_mat;
 int64_t *cnt;
 
-void generate_graph(sparsemat_t *mmfile, bool iskmer, int mynode)
+int64_t nvisited[2] = {0, 0};
+int64_t visited_size[2] = {0, 0};
+int64_t frontier[2][4096];
+int64_t nextFrontier[2][4096];
+int64_t frontierTail[2] = {0, 0};
+int64_t nextFrontierTail[2] = {0, 0};
+bool *visited[2];
+
+void generate_graph(sparsemat_t *mmfile, bool iskmer, bool isbfs, int mynode)
 {
     char buffer1[BUF_SIZE];
     char buffer2[BUF_SIZE][10];
@@ -171,6 +186,16 @@ void generate_graph(sparsemat_t *mmfile, bool iskmer, int mynode)
     for(int lval = 0 ; lval < mat[mynode].lnnz; lval++)
     {
         mmfile[mynode].lvalue[lval] = 0;
+    }
+
+    if(isbfs)
+    {
+        visited_size[mynode] = mat[mynode].lnumrows; 
+        visited[mynode] = (bool*)forza_malloc(visited_size[mynode] * sizeof(bool));
+        for(int tt = 0; tt < visited_size[mynode]; tt++)
+        {
+            visited[mynode][tt] = 0;
+        }
     }
 
     return;
@@ -292,11 +317,11 @@ void *forza_poll_thread(int *mytid)
 
         if(done_flag)
         {
-            if(mythread == 0)
-            {
+            // if(mythread == 0)
+            // {
                 print_args[0] = (void *) &mythread;
                 forza_fprintf(1, "Actor[%d]: Done recv handler\n", print_args);
-            }
+            // }
             break;
         }
     }
@@ -512,3 +537,83 @@ void *jaccard_phase2_poll(int *mytid)
     return NULL;
 
 }
+
+void bfs_recv_process(void *pkt, int AID)
+{
+    visitmsg *m = (visitmsg *) pkt;
+    if (!visited[AID][m->vloc]) {
+        visited[AID][m->vloc] = true;
+        nextFrontier[AID][nextFrontierTail[AID]] = m->vloc;
+        nextFrontierTail[AID]++;
+        // nextFrontier->push_back(m->vloc);
+        // pred_glob[m.vloc] = sender_rank * THREADS + m.vfrom;
+    }
+
+    forza_free(pkt, sizeof(TrianglePkt));
+}
+
+void *bfs_poll_thread(int *mytid)
+{
+    int mythread = *mytid;
+
+    if(mythread == 0)
+    {
+        print_args[0] = (void *) &mythread;
+        forza_fprintf(1, "Actor[%d]: Start recv handler\n", print_args);
+    }
+
+    volatile int done_flag = 1;
+    
+    while(1)
+    {
+        done_flag = 1;
+        for(int i = 0; i < THREADS; i++)
+        {
+            if(mb_request[mythread][i].mbdone == 0)
+            {
+                done_flag = 0;
+                break;
+            }
+        }
+
+        for(int i = 0; i < THREADS; i++)
+        {
+            uint64_t recvcnt = mb_request[mythread][i].recv_count;
+
+            while(mb_request[mythread][i].pkt[recvcnt].valid)
+            {
+                switch(mb_request[mythread][i].pkt[recvcnt].mb_type)
+                {
+                    case REQUEST:
+                        bfs_recv_process(mb_request[mythread][i].pkt[recvcnt].pkt, mythread);
+                        break;
+                    case RESPONSE:
+                        break;
+                    case FORZA_DONE:
+                        mb_request[mythread][i].mbdone = 1;
+                        break;
+                    case FORZA_BARRIER:
+                        fbarriers[mythread]++;
+                        break;
+                }
+                mb_request[mythread][i].pkt[recvcnt].valid = 0;
+                mb_request[mythread][i].recv_count++;
+                recvcnt++;
+            }
+        }
+
+        if(done_flag)
+        {
+            if(mythread == 0)
+            {
+                print_args[0] = (void *) &mythread;
+                forza_fprintf(1, "Actor[%d]: Done recv handler\n", print_args);
+            }
+            break;
+        }
+    }
+
+    return NULL;
+
+}
+

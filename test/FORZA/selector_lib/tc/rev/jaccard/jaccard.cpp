@@ -42,10 +42,10 @@ private:
     sparsemat_t* kmer_mat_;
 
     void req_process(DegreePkt pkg, int sender_rank) {
-        // DegreePkt pkg2;
-        // pkg2.src_idx = pkg.src_idx;
-        // pkg2.i = kmer_mat_->loffset[pkg.i + 1] - kmer_mat_->loffset[pkg.i];
-        // send(RESPONSE, pkg2, sender_rank); 
+        DegreePkt pkg2;
+        pkg2.src_idx = pkg.src_idx;
+        pkg2.i = kmer_mat_->loffset[pkg.i + 1] - kmer_mat_->loffset[pkg.i];
+        send(RESPONSE, &pkg2, sender_rank, 0); // dummy send
     }
 
     void resp_process(DegreePkt pkg, int sender_rank) {
@@ -189,8 +189,8 @@ int main(int argc, char* argv[]) {
     }
     for(int i = 0; i < THREADS; i++)
     {
-        generate_graph(mat, false, i);
-        generate_graph(kmer_mat, true, i);
+        generate_graph(mat, false, false, i);
+        generate_graph(kmer_mat, true, false, i);
     }
 
     forza_fprintf(1, "FORZA initilize done.......\n", print_args);
@@ -226,19 +226,20 @@ int main(int argc, char* argv[]) {
             forza_thread_join(pt[i+THREADS]);
         }
 
-        for(int i = 0; i < THREADS; i++)
-        {
-            for(int j = 0; j < THREADS; j++)
-            {
-                mb_request[i][j].send_count = 0;
-                mb_request[i][j].recv_count = 0;
-                mb_request[i][j].mbdone = 0;
-                for(int k = 0; k < PKT_QUEUE_SIZE; k++)
-                {
-                    mb_request[i][j].pkt[k].valid = 0;
-                }
-            }
-        }
+        // for(int i = 0; i < THREADS; i++)
+        // {
+        //     for(int j = 0; j < THREADS; j++)
+        //     {
+        //         mb_request[i][j].send_count = 0;
+        //         mb_request[i][j].recv_count = 0;
+        //         mb_request[i][j].mbdone = 0;
+        //         for(int k = 0; k < PKT_QUEUE_SIZE; k++)
+        //         {
+        //             mb_request[i][j].pkt[k].valid = 0;
+        //         }
+        //     }
+        // }
+        forza_fprintf(1, "Phase 2\n", print_args);
 
         for(int i = 0; i < THREADS; i++)
         {

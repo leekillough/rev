@@ -1609,6 +1609,9 @@ unsigned RevProc::GetNextHartToDecodeID() const {
   return nextID;
   }
  }
+ // Nothing else was clear, return original
+ return originalHartID;
+}
 
 void RevCore::MarkLoadComplete( const MemReq& req ) {
   // Iterate over all outstanding loads for this reg (if any)
