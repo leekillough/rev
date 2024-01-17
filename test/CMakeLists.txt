@@ -39,6 +39,16 @@ else()
   message(FATAL_ERROR "RVCXX environment varible is not set.")
 endif()
 
+if(NOT RVOBJDUMP)
+  file(GLOB RVOBJDUMP_FILES "${RISCV_BIN_PATH}/*objdump")
+  list(GET RVOBJDUMP_FILES 0 RVOBJDUMP)
+endif()
+if(RVOBJDUMP)
+  message(STATUS "RVOBJDUMP set to ${RVOBJDUMP}")
+else()
+  message(FATAL_ERROR "RVOBJDUMP environment varible is not set.")
+endif()
+
 set (passRegex "Simulation is complete")
 
 
