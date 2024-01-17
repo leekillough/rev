@@ -365,7 +365,7 @@ bool ZOPGen::clock(Cycle_t cycle){
     all_sent = true;
   }
   if (!all_sent2 && sent && int_id == 0 && m_zop_iface->getZoneID() == 0) {
-    output.verbose(CALL_INFO, 1, 0, "Msg send to zen%llu\n", cycle);
+    output.verbose(CALL_INFO, 1, 0, "Msg send to zen%" PRIu64 "\n", cycle);
     sendMsgToZOPGen(getNextClockCycle(zgTime));
     sendMsgToZOPGen2(getNextClockCycle(zgTime));
     all_sent2 = true;
