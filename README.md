@@ -29,3 +29,8 @@ git clone https://github.gatech.edu/FORZA/sst-forza-elements.git forza-elts
 cd forza-elts
 git checkout <branch_name; devel is the stable branch>
 ```
+
+## Primary Contributors
+- Andreas Freund - ZIP
+- Prachatos Mitra - ZEN
+- Tim Dysart - ZQM
