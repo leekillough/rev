@@ -1648,12 +1648,15 @@ bool RevMem::isLocalAddr(uint64_t vAddr, unsigned &Zone, unsigned &Precinct){
 
   unsigned TmpZone = 0x00;
   unsigned TmpPrecinct = 0x00;
+  unsigned TmpLocalBit  = 0x00;
 
   TmpZone = (unsigned)((vAddr >> Z_ZONE_SHIFT) & Z_ZONE_MASK);
   TmpPrecinct = (unsigned)((vAddr >> Z_PREC_SHIFT) & Z_PREC_MASK);
+  TmpLocalBit = (unsigned)((vAddr >> Z_VIEW_SHIFT) & Z_VIEW_MASK);
 
-  if( (TmpZone != zNic->getZoneID()) ||
-      (TmpPrecinct != zNic->getPrecinctID()) ){
+  if( ((TmpZone != zNic->getZoneID()) ||          // non local zone
+      (TmpPrecinct != zNic->getPrecinctID())) &&  // non local precinct
+      (TmpLocalBit != 0) ){                       // view bit set to 1
     Zone = TmpZone;
     Precinct = TmpPrecinct;
     output->verbose(CALL_INFO, 7, 0,
