@@ -53,12 +53,16 @@
 
 #define Z_ADDR_MASK   0xFFFFFFFFFF
 #define Z_ZONE_MASK   0b111
-#define Z_PREC_MASK   0xFFF
+#define Z_PREC_MASK   0x1FFF
+#define Z_SP_MASK     0b01
+#define Z_VIEW_MASK   0b01
 #define Z_SEG_MASK    0x3F
 #define Z_ADDR_SHIFT  0x00
 #define Z_ZONE_SHIFT  40
 #define Z_PREC_SHIFT  43
-#define Z_SEG_SHIFT   57
+#define Z_SP_SHIFT    56
+#define Z_VIEW_SHIFT  57
+#define Z_SEG_SHIFT   58
 
 namespace SST::RevCPU {
 
