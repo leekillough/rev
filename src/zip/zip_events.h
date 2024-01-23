@@ -13,7 +13,7 @@
 
 namespace SST::Forza{
   // generic event class for the HFI
-  // will either send aggregated ZOPs or credits
+  // will either send aggregated ZOPs or credits or rendezvous ack
   class ZIPEvent : public SST::Event {
     public:
       ZIPEvent() : SST::Event() {}
@@ -61,6 +61,47 @@ namespace SST::Forza{
       int credits;
 
       ImplementSerializable(SST::Forza::ZIPCreditEvent);
+  };
+
+  // event class for rendezvous RTS and CTS
+  class ZIPRVEvent : public ZIPEvent {
+    public:
+      ZIPRVEvent() : ZIPEvent(), size(), CTS(false) {}
+      ZIPRVEvent(uint64_t size) : ZIPEvent(), size(size), CTS(false) {}
+      ZIPRVEvent(bool CTS) : ZIPEvent(), size(), CTS(CTS) {}
+
+      uint64_t getSize();
+
+      bool isCTS();
+
+      void serialize_order(SST::Core::Serialization::serializer& _serializer) override;
+
+    private:
+      uint64_t size;
+
+      bool CTS;
+
+      ImplementSerializable(SST::Forza::ZIPRVEvent);
+  };
+
+  // event class for sending collection of ZOPs over the HFI with rendezvous
+  class ZIPAggRVEvent : public ZIPEvent {
+    public:
+      ZIPAggRVEvent() : ZIPEvent(), num(), payload() {}
+      ZIPAggRVEvent(uint64_t num, std::vector<uint64_t> payload) : ZIPEvent(), num(num), payload(payload) {}
+
+      uint64_t getNum();
+
+      std::vector<uint64_t> getPayload();
+
+      void serialize_order(SST::Core::Serialization::serializer& _serializer) override;
+
+    private:
+      uint64_t num;
+
+      std::vector<uint64_t> payload;
+
+      ImplementSerializable(SST::Forza::ZIPAggRVEvent);
   };
 }
 

@@ -29,6 +29,14 @@
 #define MAX_ZEN 8
 // maximum ZEN buffer size in bytes
 #define MAX_ZEN_BUFF 64
+// starting address of rendezvous buffer
+#define FIRST_RV_ADDR 32*MAX_BUFF
+// maximum rendezvous buffer size in bytes
+#define MAX_RV_BUFF 4096
+// MTU in bytes
+#define MTU 64
+// rendezvous threshold in bytes
+#define RV_THRESH 100
 
 namespace SST::Forza{
   class ZIP : public SST::Component{
@@ -121,6 +129,11 @@ namespace SST::Forza{
     bool disaggregatePackets(uint16_t SrcPrec, ZIPMemTarget* Target);                    // try to send zopEvents to the local NOC from the incoming
 								                         // buffer for precinct SrcPrec
 
+    bool aggregateRVPackets(uint16_t DestPrec, ZIPMemTarget* Target);
+    bool disaggregateRVPackets(uint16_t SrcPrec, ZIPMemTarget* Target);
+
+    void addToOutQ(uint16_t);
+
     /// ZIP: vector conversion
     /// These help translate between 8-bit and 64-bit vectors.
     std::vector<uint8_t>  vec64to8(std::vector<uint64_t> oldvec); // zopEvent -> memory
@@ -143,6 +156,11 @@ namespace SST::Forza{
 
     std::vector<bool> bufOutLock;
 
+    uint64_t RVBufInSize;
+    uint64_t RVBufInRecv;
+
+    std::vector<bool> RVBufOutCTS;
+
     // credits indexed by precinct/ZEN
     // These credit vectors keep track of how many bytes are available in the receiving buffers of external ZIPs and the local ZENs.
     // Credits are replenished once we receive credit events, indicating that the receiving buffers have been emptied.
@@ -157,6 +175,10 @@ namespace SST::Forza{
     // the clock cycle when the packet was added to the queue and whether it was stalled due to lack of credits.
     std::queue<std::tuple<uint16_t, ZIPMemTarget*, SimTime_t, bool*>> outQ; // contains destination precinct IDs that must be sent their aggregated outgoing buffers
     std::queue<std::tuple<uint16_t, ZIPMemTarget*>>                   inQ;  // contains source precinct IDs whose incoming buffers must be disaggregated and sent to the NOC
+
+    std::queue<std::tuple<uint16_t, ZIPMemTarget*>> outRVQ;
+    std::queue<std::tuple<uint16_t, ZIPMemTarget*>> inRVQ;
+    std::queue<std::tuple<uint16_t, uint64_t>> recvRVQ;
  
     // maximum number of cycles to wait for outgoing buffers to be cleared
     unsigned int waitCycles;

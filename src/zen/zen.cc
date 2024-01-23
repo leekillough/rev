@@ -816,7 +816,8 @@ void ZEN::processSetupMsgs() {
 void ZEN::processZIPQueue() {
   uint64_t cur_processed = 0;
 
-  for (unsigned i=0; i<zipQ.size(); i++) {
+  unsigned loop_size = zipQ.size();
+  for (unsigned i=0; i<loop_size; i++) {
     SST::Forza::zopEvent* ev = zipQ.front();
     // bool success = false; // commented out this line to fix compiler error: unused variable ‘success’ [-Werror=unused-variable]
     std::pair<uint64_t, uint64_t> hart_zap_id = std::make_pair(ev->getDestZCID(), ev->getDestHart());

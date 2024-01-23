@@ -52,6 +52,10 @@ ZIP::ZIP(ComponentId_t id, Params& params)
 
   bufOutLock.assign(MAX_PREC, false);
 
+  RVBufInSize = 0;
+
+  RVBufOutCTS.assign(MAX_PREC, false);
+
   // initialize vectors tracking credits by starting with maximum buffer size 
   outCredit.assign(MAX_PREC, MAX_BUFF);
   inCredit.assign(MAX_ZEN, MAX_ZEN_BUFF);
@@ -169,6 +173,52 @@ bool ZIP::aggregatePackets(uint16_t DestPrec, ZIPMemTarget* Target, bool* hasSta
   }
 }
 
+bool ZIP::aggregateRVPackets(uint16_t DestPrec, ZIPMemTarget* Target) {
+  if ( (Target->isDone()) && (RVBufOutCTS[DestPrec]) ) {
+    std::vector<uint64_t> payload = vec8to64(Target->getTarget());
+
+    uint64_t num = 0;
+    uint64_t sentFlits = 0;
+    while (sentFlits < payload.size()) {
+      uint64_t toSend = std::min(MTU, (int)payload.size());
+      ZIPAggRVEvent* event = new ZIPAggRVEvent(num, std::vector<uint64_t>(payload.begin()+sentFlits, payload.begin()+sentFlits+toSend+1));
+
+      event->dest = DestPrec;
+      event->src = p_precID;
+
+      link_HFI->send(event, DestPrec);
+
+      num++;
+      sentFlits += toSend;
+    }
+
+    bufOutSize[DestPrec] = 0;
+
+    for (zopEvent sentZop : ZIPAggEvent(payload).getZOPs()) {
+        // construct new Z_MSG_CREDIT zopEvent with credits equal to the total number of flits to go to the source ZEN of sentZop
+        zopEvent* creditZop = new zopEvent();
+        creditZop->setType(zopMsgT::Z_MSG);
+        creditZop->setOpc(zopOpc::Z_MSG_CREDIT);
+        creditZop->setSrcZCID(zopCompID::Z_PREC_ZIP);
+        creditZop->setSrcPCID((uint8_t)zopPrecID::Z_ZIP);
+        creditZop->setSrcPrec(link_NOC->getPrecinctID());
+        creditZop->setCredit(sentZop.getLength()+Z_NUM_HEADER_FLITS);
+
+        // send credits back to source ZEN
+        creditZop->encodeEvent();
+        link_NOC->send(creditZop, zopCompID::Z_ZEN, (zopPrecID)sentZop.getSrcPCID(), link_NOC->getPrecinctID());
+    }
+
+    delete Target;
+
+    RVBufOutCTS[DestPrec] = false;
+
+    return true;
+  } else {
+    return false;
+  }
+}
+
 // try to send out data from the incoming buffer for SrcPrec if we have enough credits and return true if succesful
 bool ZIP::disaggregatePackets(uint16_t SrcPrec, ZIPMemTarget* Target) {
   // check if read operation is done
@@ -222,6 +272,48 @@ bool ZIP::disaggregatePackets(uint16_t SrcPrec, ZIPMemTarget* Target) {
   }
 }
 
+bool ZIP::disaggregateRVPackets(uint16_t SrcPrec, ZIPMemTarget* Target) {
+  // check if read operation is done
+  if (Target->isDone()) {
+    // read incoming buffer for the source precinct
+    ZIPAggEvent event(vec8to64(Target->getTarget()));
+
+    // track the zopEvents we will need to send to ZENs if they have enough credits
+    std::vector<zopEvent*> zenZOPs;
+    // make copy of inCredits to track how many credits it'll take to send zopEvents to ZENs
+    std::vector<uint64_t> inCreditCopy = inCredit;
+
+    // iterate over zopEvents received from HFI
+    for (zopEvent receivedZop : event.getZOPs()) {
+      // if the ZEN has enough credits to accept the zopEvent, add it to zenZOPs
+      if (inCreditCopy[receivedZop.getDestPCID()] >= (long unsigned int)(receivedZop.getLength()+Z_NUM_HEADER_FLITS)) {
+        // update copy of credits to make sure each ZEN can receive all of the disaggregated ZOPs
+        inCreditCopy[receivedZop.getDestPCID()] -= receivedZop.getLength()+Z_NUM_HEADER_FLITS;
+        zenZOPs.push_back(dynamic_cast<zopEvent*>(receivedZop.clone()));
+      // if any ZEN doesn't have enough credits, disaggregatePackets returns false
+      } else{
+        return false;
+      }
+    }
+
+    // all ZENs have enough credits, so go through and send all of them to the NOC
+    for (zopEvent* disaggZop : zenZOPs) {
+      link_NOC->send(disaggZop, zopCompID::Z_ZEN, (zopPrecID)disaggZop->getDestPCID(), link_NOC->getPrecinctID());
+      // update actual credits
+      inCredit[disaggZop->getDestPCID()] -= disaggZop->getLength()+Z_NUM_HEADER_FLITS;
+    }
+
+    RVBufInRecv = 0;
+    RVBufInSize = 0;
+
+    delete Target;
+
+    return true;
+  } else {
+    return false;
+  }
+}
+
 // write Buf to memory
 void ZIP::waitMemWriteComplete(uint64_t Addr, uint32_t Size, std::vector<uint8_t> Buf) {
   ZIPMemTarget* Target = new ZIPMemTarget(Buf);
@@ -261,8 +353,7 @@ void ZIP::handleNOCEvent(SST::Event* ev) {
       // if remaining buffer space can no longer fit a zopEvent of maximum size, add the destination precinct to the outgoing queue
       if (MAX_BUFF-bufOutSize[DestPrec] < MAX_ZOP) {
         output.verbose(CALL_INFO, 9, 0, "handleNOCEvent: DestPrec %d buffer out of space, aggregating packet\n", DestPrec);
-        outQ.push(std::tuple<uint16_t, ZIPMemTarget*, Cycle_t, bool*>(DestPrec, waitMemReadComplete(FIRST_OUT_ADDR(DestPrec), bufOutSize[DestPrec]), getNextClockCycle(zipTime), new bool(false)));
-        s_numPackets->addData(1);
+        addToOutQ(DestPrec);
       }
     }
   }
@@ -283,6 +374,17 @@ void ZIP::handleHFIEvent(SST::Event* ev) {
     return;
   }
   
+  ZIPRVEvent* RVEvent = dynamic_cast<ZIPRVEvent*>(event);
+  if (RVEvent) {
+    if (RVEvent->isCTS()) {
+      RVBufOutCTS[RVEvent->src] = true;
+    } else {
+      recvRVQ.push(std::tuple<uint16_t, uint64_t>(RVEvent->src, RVEvent->getSize()));
+    }
+    delete ev;
+    return;
+  }
+
   // check if event is ZIPEvent containing many zopEvents
   ZIPAggEvent* aggEvent = dynamic_cast<ZIPAggEvent*>(event);
   if (aggEvent) {
@@ -297,24 +399,68 @@ void ZIP::handleHFIEvent(SST::Event* ev) {
     s_numRecvPackets->addData(1);
 
     delete ev;
+    return;
+  }
+
+  ZIPAggRVEvent* aggRVEvent = dynamic_cast<ZIPAggRVEvent*>(event);
+  if (aggRVEvent) {
+    std::vector<uint8_t> packet8 = vec64to8(aggRVEvent->getPayload());
+
+    waitMemWriteComplete(FIRST_RV_ADDR+aggRVEvent->getNum()*MTU*8, packet8.size(), packet8);
+    RVBufInRecv += packet8.size();
+
+    if (RVBufInRecv >= RVBufInSize) {
+      inRVQ.push(std::tuple<uint16_t, ZIPMemTarget*>(SrcPrec, waitMemReadComplete(FIRST_RV_ADDR, RVBufInSize)));
+    }
+
+    delete ev;
+    return;
+  }
+}
+
+void ZIP::addToOutQ(uint16_t DestPrec) {
+  if (bufOutSize[DestPrec] < RV_THRESH) {
+    outQ.push(std::tuple<uint16_t, ZIPMemTarget*, Cycle_t, bool*>(DestPrec, waitMemReadComplete(FIRST_OUT_ADDR(DestPrec), bufOutSize[DestPrec]), getNextClockCycle(zipTime), new bool(false)));
+    s_numPackets->addData(1);
+  } else {
+    ZIPRVEvent* RVEvent = new ZIPRVEvent(bufOutSize[DestPrec]);
+    RVEvent->dest = DestPrec;
+    RVEvent->src = p_precID;
+    link_HFI->send(RVEvent, DestPrec);
+
+    outRVQ.push(std::tuple<uint16_t, ZIPMemTarget*>(DestPrec, waitMemReadComplete(FIRST_OUT_ADDR(DestPrec), bufOutSize[DestPrec])));
   }
 }
 
 // clock handler, called on each clock cycle
 bool ZIP::clock(Cycle_t cycle){
+  // send out rendezvous CTS
+  if ( (RVBufInSize == 0) && (!recvRVQ.empty()) ) {
+    ZIPRVEvent* RVEvent = new ZIPRVEvent(true);
+    RVEvent->dest = std::get<0>(recvRVQ.front());
+    RVEvent->src = p_precID;
+    link_HFI->send(RVEvent, std::get<0>(recvRVQ.front()));
+
+    RVBufInSize = std::get<1>(recvRVQ.front());
+
+    recvRVQ.pop();
+  }
+
   // every waitCycles cycles, send out all nonempty outgoing buffers to external ZIPs
   if ( cycle % waitCycles == 0 ) {
     for (int DestPrec=0; DestPrec<MAX_PREC; DestPrec++) {
       if (bufOutSize[DestPrec] && (!bufOutLock[DestPrec])) {
         bufOutLock[DestPrec] = true;
-        outQ.push(std::tuple<uint16_t, ZIPMemTarget*, Cycle_t, bool*>(DestPrec, waitMemReadComplete(FIRST_OUT_ADDR(DestPrec), bufOutSize[DestPrec]), getNextClockCycle(zipTime), new bool(false)));
-        s_numPackets->addData(1);
+        addToOutQ(DestPrec);
       }
     }
   }
 
+  unsigned loop_size;
+
   // loop over outgoing queue
-  for (unsigned i=0; i<outQ.size(); i++) {
+  loop_size = outQ.size();
+  for (unsigned i=0; i<loop_size; i++) {
     std::tuple<uint16_t, ZIPMemTarget*, Cycle_t, bool*> memReq = outQ.front();
     // try to send aggregated zopEvents to the destination precinct
     if (aggregatePackets(std::get<0>(memReq), std::get<1>(memReq), std::get<3>(memReq))) {
@@ -328,8 +474,22 @@ bool ZIP::clock(Cycle_t cycle){
     }
   }
 
+  // loop over outgoing rendezvous queue
+  loop_size = outRVQ.size();
+  for (unsigned i=0; i<loop_size; i++) {
+    std::tuple<uint16_t, ZIPMemTarget*> memReq = outRVQ.front();
+    if (aggregateRVPackets(std::get<0>(memReq), std::get<1>(memReq))) {
+      bufOutLock[std::get<0>(memReq)] = false;
+      outRVQ.pop();
+    } else {
+      outRVQ.pop();
+      outRVQ.push(memReq);
+    }
+  }
+
   // loop over incoming queue
-  for (unsigned i=0; i<inQ.size(); i++) {
+  loop_size = inQ.size();
+  for (unsigned i=0; i<loop_size; i++) {
     std::tuple<uint16_t, ZIPMemTarget*> memReq = inQ.front();
     // try to send disaggregated zopEvents to the local ZENs
     if (disaggregatePackets(std::get<0>(memReq), std::get<1>(memReq))) {
@@ -338,6 +498,18 @@ bool ZIP::clock(Cycle_t cycle){
     } else {
       inQ.pop();
       inQ.push(memReq);
+    }
+  }
+
+  // loop over incoming rendezvous queue
+  loop_size = inRVQ.size();
+  for (unsigned i=0; i<loop_size; i++) {
+    std::tuple<uint16_t, ZIPMemTarget*> memReq = inRVQ.front();
+    if (disaggregateRVPackets(std::get<0>(memReq), std::get<1>(memReq))) {
+      inRVQ.pop();
+    } else {
+      inRVQ.pop();
+      inRVQ.push(memReq);
     }
   }
 
