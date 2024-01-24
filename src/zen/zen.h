@@ -135,7 +135,7 @@ namespace SST::Forza{
     // private class members
 
     void sendMsgToRZADMA(uint64_t acs, uint64_t addr,
-                         std::vector<uint64_t> src_payload, uint8_t msg_id,
+                         std::vector<uint64_t> src_payload, uint8_t cur_msg_id,
                          uint64_t hart_id, uint64_t queue_loc);
     void sendMsgToRZANonDMA(uint64_t acs, uint64_t addr, uint64_t src_payload,
                             uint8_t cur_msg_id, uint64_t hart_id,
@@ -150,10 +150,10 @@ namespace SST::Forza{
     void handleIncomingRZAMsg();
     void handleIncomingZOP(SST::Event *ev);
     void handleIncomingPrecZOP(SST::Event *ev);
-    void sendNACKToZAP(uint64_t hart_id, uint64_t zcid, uint8_t msg_id);
-    void sendACKToZAP(uint64_t hart_id, uint64_t zcid, uint8_t msg_id);
-    void sendNACKToZIP(uint64_t hart_id, uint64_t zcid, uint8_t msg_id);
-    void sendACKToZIP(uint64_t hart_id, uint64_t zcid, uint8_t msg_id);
+    void sendNACKToZAP(uint64_t hart_id, uint64_t zcid, uint8_t cur_msg_id);
+    void sendACKToZAP(uint64_t hart_id, uint64_t zcid, uint8_t cur_msg_id);
+    void sendNACKToZIP(uint64_t hart_id, uint64_t zcid, uint8_t cur_msg_id);
+    void sendACKToZIP(uint64_t hart_id, uint64_t zcid, uint8_t cur_msg_id);
     void processSetupMsgs();
     void processZAPCredits();
     void sendMsgToZEN();
