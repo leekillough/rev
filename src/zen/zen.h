@@ -150,10 +150,10 @@ namespace SST::Forza{
     void handleIncomingRZAMsg();
     void handleIncomingZOP(SST::Event *ev);
     void handleIncomingPrecZOP(SST::Event *ev);
-    void sendNACKToZAP(uint64_t hart_id, uint64_t zcid, uint8_t msg_id);
-    void sendACKToZAP(uint64_t hart_id, uint64_t zcid, uint8_t msg_id);
-    void sendNACKToZIP(uint64_t hart_id, uint64_t zcid, uint8_t msg_id);
-    void sendACKToZIP(uint64_t hart_id, uint64_t zcid, uint8_t msg_id);
+    void sendNACKToZAP(uint64_t hart_id, uint64_t zcid, uint8_t cur_msg_id);
+    void sendACKToZAP(uint64_t hart_id, uint64_t zcid, uint8_t cur_msg_id);
+    void sendNACKToZIP(uint64_t hart_id, uint64_t zcid, uint8_t cur_msg_id);
+    void sendACKToZIP(uint64_t hart_id, uint64_t zcid, uint8_t cur_msg_id);
     void processSetupMsgs();
     void processZAPCredits();
     void sendMsgToZEN();
