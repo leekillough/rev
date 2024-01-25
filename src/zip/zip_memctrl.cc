@@ -37,10 +37,10 @@ ZIPBasicMemCtrl::ZIPBasicMemCtrl(ComponentId_t id, const Params& params)
       this, &ZIPBasicMemCtrl::processMemEvent));
 
   // register the statistics
-  // TotalReads = registerStatistic<uint64_t>("TotalReads");
-  // TotalWrites = registerStatistic<uint64_t>("TotalWrites");
-  // OutReads = registerStatistic<uint64_t>("OutstandingReads");
-  // OutWrites = registerStatistic<uint64_t>("OutstandingWrites");
+  TotalReads = registerStatistic<uint64_t>("TotalReads");
+  TotalWrites = registerStatistic<uint64_t>("TotalWrites");
+  OutReads = registerStatistic<uint64_t>("OutstandingReads");
+  OutWrites = registerStatistic<uint64_t>("OutstandingWrites");
 
   // register the clock
   registerClock(ClockFreq,
@@ -106,7 +106,7 @@ void ZIPBasicMemCtrl::handleReadResp(StandardMem::ReadResp* ev){
     }
 
     // copy the data to the target buffer
-    op->getTarget()->setTarget(ev->data);
+    op->getTarget()->setTarget8(ev->data);
     op->getTarget()->setDone();
 
     delete op;
@@ -194,20 +194,20 @@ bool ZIPBasicMemCtrl::buildStandardMemRqst(ZIPMemOp *op,
     outstanding[rqst->getID()] = op;
     memIface->send(rqst);
     OutstandingReads++;
-    //TotalReads->addData(1);
+    TotalReads->addData(1);
     success = true;
     return true;
     break;
   case ZIPMemOp::MemOp::ZIP_MemOpWRITE:
     rqst = new Interfaces::StandardMem::Write(op->getAddr(),
                                              static_cast<uint64_t>(op->getSize()),
-                                             op->getBuf(),
+                                             op->getTarget()->getTarget8(),
                                              0);
     requests.push_back(rqst->getID());
     outstanding[rqst->getID()] = op;
     memIface->send(rqst);
     OutstandingWrites++;
-    //TotalWrites->addData(1);
+    TotalWrites->addData(1);
     success = true;
     return true;
     break;
@@ -275,8 +275,8 @@ bool ZIPBasicMemCtrl::clock(Cycle_t cycle){
   }
 
   // record the outstanding operation statistics
-  //OutReads->addData(OutstandingReads);
-  //OutWrites->addData(OutstandingWrites);
+  OutReads->addData(OutstandingReads);
+  OutWrites->addData(OutstandingWrites);
 
   return false;
 }

@@ -21,18 +21,53 @@ namespace SST::Forza{
   class ZIPMemTarget {
     public:
       ZIPMemTarget() : done(false) {}
-      ZIPMemTarget(std::vector<uint8_t> target) : done(false), target(target) {}
       ~ZIPMemTarget() {}
 
       bool isDone() { return done; }
       void setDone() { done = true; }
 
-      std::vector<uint8_t> getTarget() { return target; };
-      void setTarget(std::vector<uint8_t> t) { target = t; };
+      std::vector<uint64_t> getTarget64() {
+        return target;
+      };
+
+      std::vector<uint8_t> getTarget8() {
+        std::vector<uint8_t> newTarget;
+
+        for (uint64_t elem : target) {
+          newTarget.push_back((uint8_t)(elem >> 56));
+          newTarget.push_back((uint8_t)(elem >> 48));
+          newTarget.push_back((uint8_t)(elem >> 40));
+          newTarget.push_back((uint8_t)(elem >> 32));
+          newTarget.push_back((uint8_t)(elem >> 24));
+          newTarget.push_back((uint8_t)(elem >> 16));
+          newTarget.push_back((uint8_t)(elem >>  8));
+          newTarget.push_back((uint8_t)(elem >>  0));
+        }
+
+        return newTarget;
+      };
+
+      void setTarget64(std::vector<uint64_t> t) {
+        target = t;
+      };
+
+      void setTarget8(std::vector<uint8_t> t) {
+        target.clear();
+        for (unsigned i=0; i<t.size(); i+=8) {
+          target.push_back(((uint64_t) t[i+0] << 56) |
+                           ((uint64_t) t[i+1] << 48) |
+                           ((uint64_t) t[i+2] << 40) |
+                           ((uint64_t) t[i+3] << 32) |
+                           ((uint64_t) t[i+4] << 24) |
+                           ((uint64_t) t[i+5] << 16) |
+                           ((uint64_t) t[i+6] <<  8) |
+                           ((uint64_t) t[i+7] <<  0));
+        }
+      };
 
     private:
       bool done;
-      std::vector<uint8_t> target;
+      std::vector<uint64_t> target;
   };
 
   // ------------------------------------------------------------
@@ -60,9 +95,6 @@ namespace SST::Forza{
 
     /// ZIPMemOp: retrieve the size
     uint32_t getSize() const { return Size; }
-
-    /// ZIPMemOp: retrieve the buffer
-    std::vector<uint8_t> getBuf() const { return Target->getTarget(); }
 
     /// ZIPMemOp: retrieve the target
     ZIPMemTarget* getTarget() const { return Target; }
@@ -171,8 +203,8 @@ namespace SST::Forza{
     SST_ELI_DOCUMENT_PORTS()
 
     SST_ELI_DOCUMENT_STATISTICS(
-      {"TotalNumReads",     "Total number of read operations",        "count", 1},
-      {"TotalNumWrites",    "Total number of write operations",       "count", 1},
+      {"TotalReads",        "Total number of read operations",        "count", 1},
+      {"TotalWrites",       "Total number of write operations",       "count", 1},
       {"OutstandingReads",  "Number of oustanding write operations",  "count", 1},
       {"OutstandingWrites", "Number of outstanding write operations", "count", 1}
     )
@@ -295,10 +327,10 @@ namespace SST::Forza{
     std::map<StandardMem::Request::id_t, ZIPMemOp *> outstanding;    ///< map of outstanding requests
 
     // Statistics
-    // Statistic<uint64_t>* TotalReads;          ///< total number of reads
-    // Statistic<uint64_t>* TotalWrites;         ///< total number of writes
-    // Statistic<uint64_t>* OutReads;            ///< number of outstanding reads
-    // Statistic<uint64_t>* OutWrites;           ///< number of outstanding writes
+    Statistic<uint64_t>* TotalReads;          ///< total number of reads
+    Statistic<uint64_t>* TotalWrites;         ///< total number of writes
+    Statistic<uint64_t>* OutReads;            ///< number of outstanding reads
+    Statistic<uint64_t>* OutWrites;           ///< number of outstanding writes
 
   }; // class ZIPBasicMemCtrl
 } // namespace SST::ZIP
