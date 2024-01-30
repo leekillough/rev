@@ -425,8 +425,14 @@ private:
   /// RevCPU: Handle FORZA ZOP Message for ZAP devices
   void handleZOPMessageZAP(Forza::zopEvent *zev);
 
+  /// RevCPU: Handle FORZA MZOP requests
+  void handleZOPMZOP(Forza::zopEvent *zev);
+
   /// RevCPU: Handle FORZA Thread Migration
   void handleZOPThreadMigrate(Forza::zopEvent *zev);
+
+  /// RevCPU: Handle FORZA scratchpad request responses
+  void MarkLoadCompleteDummy(const MemReq& req);
 
   /// RevCPU: Inform the ZQM that a thread is done
   void sendZQMThreadComplete(uint32_t ThreadID, uint32_t HartID);

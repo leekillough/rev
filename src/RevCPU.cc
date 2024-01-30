@@ -714,6 +714,197 @@ void RevCPU::handleZOPMessageRZA(Forza::zopEvent *zev){
   ZIQ.push_back(zev);
 }
 
+void RevCPU::MarkLoadCompleteDummy(const MemReq& req){
+  // Note: this is a placeholder MarkLoadComplete hazard
+  // function that is ONLY used for scratchpad loads
+  // These loads should return immediately.  If they don't,
+  // then the user has specified an erroneous address and YMMV
+}
+
+void RevCPU::handleZOPMZOP(Forza::zopEvent *zev){
+  output.verbose(CALL_INFO, 9, 0, "[FORZA][RZA] Handling MZOP\n");
+
+  if( zev == nullptr ){
+    output.fatal(CALL_INFO, -1,
+                 "[FORZA][ZAP]: Cannot handle null MZOP\n");
+  }
+
+  uint64_t addr = 0x00ull;
+  uint64_t data = 0x00ull;
+  bool isLoad = false;
+
+  // used only for load operations
+  std::function<void(const MemReq&)>LocalMarkLoadCompleteFunc =
+    [=](const MemReq& req){this->MarkLoadCompleteDummy(req); };
+  MemReq req{addr, 0x00, RevRegClass::RegGPR, zev->getSrcHart(),
+             MemOp::MemOpREAD, true, LocalMarkLoadCompleteFunc};
+
+  // retrieve the address
+  if( !zev->getFLIT(Z_FLIT_ADDR, &addr) ){
+    output.fatal(CALL_INFO, -1,
+                 "[FORZA][ZAP]: MZOP packet has no address FLIT: Type=%s, ID=%d\n",
+                 zNic->msgTToStr(zev->getType()).c_str(),
+                 zev->getID());
+  }
+
+  switch(zev->getOpc()){
+  case Forza::zopOpc::Z_MZOP_SCLB:
+    Mem->ReadVal(zev->getSrcHart(), addr,
+                 reinterpret_cast<uint8_t *>(&data),
+                 req, RevFlag::F_SEXT64);
+    isLoad = true;
+    break;
+  case Forza::zopOpc::Z_MZOP_SCLH:
+    Mem->ReadVal(zev->getSrcHart(), addr,
+                 reinterpret_cast<uint16_t *>(&data),
+                 req, RevFlag::F_SEXT64);
+    isLoad = true;
+    break;
+  case Forza::zopOpc::Z_MZOP_SCLW:
+    Mem->ReadVal(zev->getSrcHart(), addr,
+                 reinterpret_cast<uint32_t *>(&data),
+                 req, RevFlag::F_SEXT64);
+    isLoad = true;
+    break;
+  case Forza::zopOpc::Z_MZOP_SCLD:
+    Mem->ReadVal(zev->getSrcHart(), addr,
+                 reinterpret_cast<uint64_t *>(&data),
+                 req, RevFlag::F_SEXT64);
+    isLoad = true;
+    break;
+  case Forza::zopOpc::Z_MZOP_SCLSB:
+    Mem->ReadVal(zev->getSrcHart(), addr,
+                 reinterpret_cast<int8_t *>(&data),
+                 req, RevFlag::F_SEXT64);
+    isLoad = true;
+    break;
+  case Forza::zopOpc::Z_MZOP_SCLSH:
+    Mem->ReadVal(zev->getSrcHart(), addr,
+                 reinterpret_cast<int16_t *>(&data),
+                 req, RevFlag::F_SEXT64);
+    isLoad = true;
+    break;
+  case Forza::zopOpc::Z_MZOP_SCLSW:
+    Mem->ReadVal(zev->getSrcHart(), addr,
+                 reinterpret_cast<int32_t *>(&data),
+                 req, RevFlag::F_SEXT64);
+    isLoad = true;
+    break;
+  case Forza::zopOpc::Z_MZOP_SCSB:
+    if( !zev->getFLIT(Z_FLIT_DATA, &data) ){
+      output.fatal(CALL_INFO, -1,
+                   "[FORZA][ZAP]: MZOP packet has no data FLIT: Type=%s, ID=%d\n",
+                   zNic->msgTToStr(zev->getType()).c_str(),
+                   zev->getID());
+    }
+    Mem->Write(zev->getSrcHart(), addr,
+               static_cast<uint8_t>(data));
+    break;
+  case Forza::zopOpc::Z_MZOP_SCSH:
+    if( !zev->getFLIT(Z_FLIT_DATA, &data) ){
+      output.fatal(CALL_INFO, -1,
+                   "[FORZA][ZAP]: MZOP packet has no data FLIT: Type=%s, ID=%d\n",
+                   zNic->msgTToStr(zev->getType()).c_str(),
+                   zev->getID());
+    }
+    Mem->Write(zev->getSrcHart(), addr,
+               static_cast<uint16_t>(data));
+    break;
+  case Forza::zopOpc::Z_MZOP_SCSW:
+    if( !zev->getFLIT(Z_FLIT_DATA, &data) ){
+      output.fatal(CALL_INFO, -1,
+                   "[FORZA][ZAP]: MZOP packet has no data FLIT: Type=%s, ID=%d\n",
+                   zNic->msgTToStr(zev->getType()).c_str(),
+                   zev->getID());
+    }
+    Mem->Write(zev->getSrcHart(), addr,
+               static_cast<uint32_t>(data));
+    break;
+  case Forza::zopOpc::Z_MZOP_SCSD:
+    if( !zev->getFLIT(Z_FLIT_DATA, &data) ){
+      output.fatal(CALL_INFO, -1,
+                   "[FORZA][ZAP]: MZOP packet has no data FLIT: Type=%s, ID=%d\n",
+                   zNic->msgTToStr(zev->getType()).c_str(),
+                   zev->getID());
+    }
+    Mem->Write(zev->getSrcHart(), addr,
+               static_cast<uint64_t>(data));
+    break;
+  case Forza::zopOpc::Z_MZOP_SCSSB:
+    if( !zev->getFLIT(Z_FLIT_DATA, &data) ){
+      output.fatal(CALL_INFO, -1,
+                   "[FORZA][ZAP]: MZOP packet has no data FLIT: Type=%s, ID=%d\n",
+                   zNic->msgTToStr(zev->getType()).c_str(),
+                   zev->getID());
+    }
+    Mem->Write(zev->getSrcHart(), addr,
+               static_cast<int8_t>(data));
+    break;
+  case Forza::zopOpc::Z_MZOP_SCSSH:
+    if( !zev->getFLIT(Z_FLIT_DATA, &data) ){
+      output.fatal(CALL_INFO, -1,
+                   "[FORZA][ZAP]: MZOP packet has no data FLIT: Type=%s, ID=%d\n",
+                   zNic->msgTToStr(zev->getType()).c_str(),
+                   zev->getID());
+    }
+    Mem->Write(zev->getSrcHart(), addr,
+               static_cast<int16_t>(data));
+    break;
+  case Forza::zopOpc::Z_MZOP_SCSSW:
+    if( !zev->getFLIT(Z_FLIT_DATA, &data) ){
+      output.fatal(CALL_INFO, -1,
+                   "[FORZA][ZAP]: MZOP packet has no data FLIT: Type=%s, ID=%d\n",
+                   zNic->msgTToStr(zev->getType()).c_str(),
+                   zev->getID());
+    }
+    Mem->Write(zev->getSrcHart(), addr,
+               static_cast<int32_t>(data));
+    break;
+  default:
+    output.fatal(CALL_INFO, -1,
+                 "[FORZA][ZAP]: MZOP packet with erroneous opcode: Type=%s, ID=%d\n",
+                 zNic->msgTToStr(zev->getType()).c_str(),
+                 zev->getID());
+    break;
+  }
+
+  if( isLoad ){
+    // create a response packet with the data
+    output.verbose(CALL_INFO, 9, 0,
+                   "[FORZA][ZAP]: Build LOAD response for MSG @ ID=%d\n",
+                   (unsigned)(zev->getID()));
+    SST::Forza::zopEvent *rsp_zev = new SST::Forza::zopEvent();
+
+    // set all the fields
+    rsp_zev->setType(SST::Forza::zopMsgT::Z_RESP);
+    rsp_zev->setNB(0);
+    rsp_zev->setID(zev->getID());
+    rsp_zev->setCredit(0);
+    rsp_zev->setOpc(SST::Forza::zopOpc::Z_RESP_LR);
+    rsp_zev->setAppID(0);
+    rsp_zev->setDestHart(zev->getSrcHart());
+    rsp_zev->setDestZCID(zev->getSrcZCID());
+    rsp_zev->setDestPCID(zev->getSrcPCID());
+    rsp_zev->setDestPrec(zev->getSrcPrec());
+    rsp_zev->setSrcHart(zev->getDestHart());
+    rsp_zev->setSrcZCID((uint8_t)(zNic->getEndpointType()));
+    rsp_zev->setSrcPCID((uint8_t)(zNic->getPCID(zNic->getZoneID())));
+    rsp_zev->setSrcPrec((uint8_t)(zNic->getPrecinctID()));
+
+    // set the payload
+    std::vector<uint64_t> payload;
+    payload.push_back(0x00ull); // ACS
+    payload.push_back(data);    // load response data
+    rsp_zev->setPayload(payload);
+
+    // inject the packet
+    zNic->send(rsp_zev, (SST::Forza::zopCompID)(zev->getSrcZCID()));
+  }
+
+  // delete the event
+  delete zev;
+}
+
 void RevCPU::handleZOPThreadMigrate(Forza::zopEvent *zev){
   output.verbose(CALL_INFO, 9, 0, "[FORZA][RZA] Handling thread migration\n");
 
@@ -780,6 +971,9 @@ void RevCPU::handleZOPMessageZAP(Forza::zopEvent *zev){
     break;
   case Forza::zopMsgT::Z_TMIG:
     handleZOPThreadMigrate(zev);
+    break;
+  case Forza::zopMsgT::Z_MZOP:
+    handleZOPMZOP(zev);
     break;
   default:
     output.fatal(CALL_INFO, -1,
