@@ -899,6 +899,36 @@ void RevCPU::handleZOPMZOP(Forza::zopEvent *zev){
 
     // inject the packet
     zNic->send(rsp_zev, (SST::Forza::zopCompID)(zev->getSrcZCID()));
+  }else{
+    // create a response packet with the data
+    output.verbose(CALL_INFO, 9, 0,
+                   "[FORZA][ZAP]: Build STORE response for MSG @ ID=%d\n",
+                   (unsigned)(zev->getID()));
+    SST::Forza::zopEvent *rsp_zev = new SST::Forza::zopEvent();
+
+    // set all the fields
+    rsp_zev->setType(SST::Forza::zopMsgT::Z_RESP);
+    rsp_zev->setNB(0);
+    rsp_zev->setID(zev->getID());
+    rsp_zev->setCredit(0);
+    rsp_zev->setOpc(SST::Forza::zopOpc::Z_RESP_SACK);
+    rsp_zev->setAppID(0);
+    rsp_zev->setDestHart(zev->getSrcHart());
+    rsp_zev->setDestZCID(zev->getSrcZCID());
+    rsp_zev->setDestPCID(zev->getSrcPCID());
+    rsp_zev->setDestPrec(zev->getSrcPrec());
+    rsp_zev->setSrcHart(zev->getDestHart());
+    rsp_zev->setSrcZCID((uint8_t)(zNic->getEndpointType()));
+    rsp_zev->setSrcPCID((uint8_t)(zNic->getPCID(zNic->getZoneID())));
+    rsp_zev->setSrcPrec((uint8_t)(zNic->getPrecinctID()));
+
+    // set the payload
+    std::vector<uint64_t> payload;
+    payload.push_back(0x00ull); // ACS
+    rsp_zev->setPayload(payload);
+
+    // inject the packet
+    zNic->send(rsp_zev, (SST::Forza::zopCompID)(zev->getSrcZCID()));
   }
 
   // delete the event
