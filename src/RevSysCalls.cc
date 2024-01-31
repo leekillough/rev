@@ -3387,51 +3387,57 @@ EcallStatus RevProc::ECALL_forza_zen_setup(RevInst& inst){
 
 // 4007, forza_get_harts_per_zap  
 EcallStatus RevProc::ECALL_forza_get_harts_per_zap(RevInst& inst){
-  output->verbose(CALL_INFO, 2, 0, "ECALL: forza_get_harts_per_zap called by thread %" PRIu32 " on hart %" PRIu32 "\n",
-		  GetActiveThreadID(), HartToExecID);
   RegFile->SetX(RevReg::a0, this->numHarts);
+  output->verbose(CALL_INFO, 2, 0, "ECALL: forza_get_harts_per_zap called by thread %" PRIu32 " on hart %" PRIu32 ", val=%" PRIu32 "\n",
+		  GetActiveThreadID(), HartToExecID, this->numHarts);
   return EcallStatus::SUCCESS;
 }
   
 // 4008, forza_get_zaps_per_zone();
 EcallStatus RevProc::ECALL_forza_get_zaps_per_zone(RevInst& inst){
-  output->verbose(CALL_INFO, 2, 0, "ECALL: forza_get_zaps_per_zone called by thread %" PRIu32 " on hart %" PRIu32 "\n", GetActiveThreadID(), HartToExecID);
   RegFile->SetX(RevReg::a0, (uint8_t)zNic->getNumZaps());
+  output->verbose(CALL_INFO, 2, 0, "ECALL: forza_get_zaps_per_zone called by thread %" PRIu32 " on hart %" PRIu32 ", val=%" PRIu32 "\n",
+		  GetActiveThreadID(), HartToExecID, zNic->getNumZaps());
   return EcallStatus::SUCCESS;
 }
 
 // 4009, forza_get_zones_per_precinct();
 EcallStatus RevProc::ECALL_forza_get_zones_per_precinct(RevInst& inst){
-  output->verbose(CALL_INFO, 2, 0, "ECALL: forza_get_zones_per_precinct called by thread %" PRIu32 " on hart %" PRIu32 "\n", GetActiveThreadID(), HartToExecID);
   RegFile->SetX(RevReg::a0, zNic->getNumZones());
+  output->verbose(CALL_INFO, 2, 0, "ECALL: forza_get_zones_per_precinct called by thread %" PRIu32 " on hart %" PRIu32 ", val=%" PRIu32 "\n",
+		  GetActiveThreadID(), HartToExecID, zNic->getNumZones());
   return EcallStatus::SUCCESS;
 }
 
 // 4010, forza_get_num_precincts();
 EcallStatus RevProc::ECALL_forza_get_num_precincts(RevInst& inst){
-  output->verbose(CALL_INFO, 2, 0, "ECALL: forza_get_num_precincts called by thread %" PRIu32 " on hart %" PRIu32 "\n", GetActiveThreadID(), HartToExecID);
   RegFile->SetX(RevReg::a0, zNic->getNumPrecincts());
+  output->verbose(CALL_INFO, 2, 0, "ECALL: forza_get_num_precincts called by thread %" PRIu32 " on hart %" PRIu32 ", val=%" PRIu32 "\n",
+		  GetActiveThreadID(), HartToExecID, zNic->getNumPrecincts());
   return EcallStatus::SUCCESS;
 }
 
 // 4011, forza_get_my_zap();
 EcallStatus RevProc::ECALL_forza_get_my_zap(RevInst& inst){
-  output->verbose(CALL_INFO, 2, 0, "ECALL: forza_get_my_zap called by thread %" PRIu32 " on hart %" PRIu32 "\n", GetActiveThreadID(), HartToExecID);
   RegFile->SetX(RevReg::a0, (uint8_t)zNic->getEndpointType());
+  output->verbose(CALL_INFO, 2, 0, "ECALL: forza_get_my_zap called by thread %" PRIu32 " on hart %" PRIu32 ", val=%" PRIu32 "\n",
+		  GetActiveThreadID(), HartToExecID, (unsigned)zNic->getEndpointType());
   return EcallStatus::SUCCESS;
 }
 
 // 4012, forza_get_my_zone();
 EcallStatus RevProc::ECALL_forza_get_my_zone(RevInst& inst){
-  output->verbose(CALL_INFO, 2, 0, "ECALL: forza_get_my_zone called by thread %" PRIu32 " on hart %" PRIu32 "\n", GetActiveThreadID(), HartToExecID);
   RegFile->SetX(RevReg::a0, zNic->getZoneID());
+  output->verbose(CALL_INFO, 2, 0, "ECALL: forza_get_my_zone called by thread %" PRIu32 " on hart %" PRIu32 ", val=%" PRIu32 "\n",
+		  GetActiveThreadID(), HartToExecID, zNic->getZoneID());
   return EcallStatus::SUCCESS;
 }
 
 // 4013, forza_get_my_precinct();
 EcallStatus RevProc::ECALL_forza_get_my_precinct(RevInst& inst){
-  output->verbose(CALL_INFO, 2, 0, "ECALL: forza_get_my_precinct called by thread %" PRIu32 " on hart %" PRIu32 "\n", GetActiveThreadID(), HartToExecID);
   RegFile->SetX(RevReg::a0, zNic->getPrecinctID());
+  output->verbose(CALL_INFO, 2, 0, "ECALL: forza_get_my_precinct called by thread %" PRIu32 " on hart %" PRIu32 ", val=%" PRIu32 "\n",
+		  GetActiveThreadID(), HartToExecID, zNic->getPrecinctID());
   return EcallStatus::SUCCESS;
 }
   
