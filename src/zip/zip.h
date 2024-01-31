@@ -13,9 +13,6 @@
 
 #include "ZOPNET.h"
 
-#define FIRST_IN_ADDR(p) ((2*p)*p_maxBuff)
-#define FIRST_OUT_ADDR(p) ((2*p+1)*p_maxBuff)
-
 namespace SST::Forza{
   class ZIP : public SST::Component{
   public:
@@ -41,7 +38,7 @@ namespace SST::Forza{
       { "maxZOP",     "Maximum ZOP size in flits",                     "24" },
       { "numZone",    "Number of zones",                               "8" },
       { "maxZENBuff", "Maximum ZEN buffer size in flits",              "64" },
-      { "maxRVBuff",  "Maximum rAndezvous buffer size in flits",       "0" },
+      { "maxRVBuff",  "Maximum rendezvous buffer size in flits",       "0" },
       { "MTU",        "MTU in flits",                                  "0" },
       { "RVThresh",   "Rendezvous threshold in flits",                 "10000000" }
     )
@@ -112,11 +109,10 @@ namespace SST::Forza{
     /// They require a pointer to a target to check if the read operation has completed.
     bool    aggregatePackets(uint16_t DestPrec, ZIPMemTarget* Target, bool* hasStalled); // try to send a ZIPAggEvent to HFI containing aggregated
 								                         // zopEvents stored in outgoing buffer for precinct DestPrec
-    bool disaggregatePackets(uint16_t SrcPrec, ZIPMemTarget* Target);                    // try to send zopEvents to the local NOC from the incoming
+    bool disaggregatePackets(uint16_t SrcPrec, ZIPMemTarget* Target, bool RV);           // try to send zopEvents to the local NOC from the incoming
 								                         // buffer for precinct SrcPrec
 
     bool aggregateRVPackets(uint16_t DestPrec, ZIPMemTarget* Target);
-    bool disaggregateRVPackets(uint16_t SrcPrec, ZIPMemTarget* Target);
 
     void addToOutQ(uint16_t);
 

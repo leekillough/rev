@@ -84,6 +84,7 @@ class ZIP:
         self.memory.addParams({"access_time" : "100ns", "mem_size" : "8GB"})
 
         self.zip.addParams({"tests" : 1, "verbose" : 9, "precID" : precinct_id, "maxWait" : "{}us".format(args.max_wait)})
+        # self.zip.addParams({"maxRVBuff" : 20, "MTU" : 5, "RVThresh" : 0, "tests" : 1, "verbose" : 9, "precID" : precinct_id, "maxWait" : "{}us".format(args.max_wait)})
 
         self.nic = self.zip.setSubComponent("zopLink", "forza.zopNIC", 1)
         self.linkcontrol = self.nic.setSubComponent("iface", "merlin.linkcontrol", 0)
