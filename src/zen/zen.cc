@@ -262,6 +262,10 @@ void ZEN::sendMsgToRZADMA(uint64_t acs, uint64_t addr,
   rzaMsg->setSrcPCID((uint8_t)(m_zop_iface->getPCID(m_zop_iface->getZoneID())));
   rzaMsg->setSrcPrec((uint8_t)(m_zop_iface->getPrecinctID()));
   rzaMsg->setDestHart(Z_MZOP_PIPE_HART);
+  rzaMsg->setDestZCID((uint8_t)(SST::Forza::zopCompID::Z_RZA));
+  rzaMsg->setDestPCID((uint8_t)(m_zop_iface->getPCID(m_zop_iface->getZoneID())));
+  rzaMsg->setDestPrec((uint8_t)(m_zop_iface->getPrecinctID()));
+
   payload.push_back(acs);
   payload.push_back(addr);
   payload.insert(std::end(payload),
@@ -293,14 +297,17 @@ void ZEN::sendHZOPToRZA(uint64_t acs, uint64_t addr, uint64_t src_addr,
   rzaMsg->setID(cur_msg_id);
   // TODO: Update with HZOP for memcpy
   rzaMsg->setOpc(SST::Forza::zopOpc::Z_MZOP_SD);
-  rzaMsg->setSrcHart((uint16_t)zopCompID::Z_ZEN); //FIXME
-  rzaMsg->setSrcZCID((uint8_t)m_zop_iface->getEndpointType());  //FIXME
-  rzaMsg->setSrcPCID((uint8_t)m_zop_iface->getPCID(m_zop_iface->getZoneID()));   //FIXME
+  rzaMsg->setSrcHart((uint16_t)zopCompID::Z_ZEN);
+  rzaMsg->setSrcZCID((uint8_t)m_zop_iface->getEndpointType());
+  rzaMsg->setSrcPCID((uint8_t)m_zop_iface->getPCID(m_zop_iface->getZoneID()));
   rzaMsg->setSrcPrec((uint8_t)m_zop_iface->getPrecinctID());
-  // Likely to be used later for extended msg ids
-  rzaMsg->setDestHart(3);     //FIXME
+  rzaMsg->setDestHart(Z_MZOP_PIPE_HART);
+  rzaMsg->setDestZCID((uint8_t)(SST::Forza::zopCompID::Z_RZA));
+  rzaMsg->setDestPCID((uint8_t)(m_zop_iface->getPCID(m_zop_iface->getZoneID())));
+  rzaMsg->setDestPrec((uint8_t)(m_zop_iface->getPrecinctID()));
   rzaMsg->setPayload(payload);
   rzaMsg->encodeEvent();
+
   m_zop_iface->send(rzaMsg, zopCompID::Z_RZA);
 }
 
@@ -323,6 +330,9 @@ void ZEN::sendMsgToRZANonDMA(uint64_t acs, uint64_t addr, uint64_t src_payload,
   rzaMsg->setSrcPCID((uint8_t)(m_zop_iface->getPCID(m_zop_iface->getZoneID())));
   rzaMsg->setSrcPrec((uint8_t)(m_zop_iface->getPrecinctID()));
   rzaMsg->setDestHart(Z_MZOP_PIPE_HART);
+  rzaMsg->setDestZCID((uint8_t)(SST::Forza::zopCompID::Z_RZA));
+  rzaMsg->setDestPCID((uint8_t)(m_zop_iface->getPCID(m_zop_iface->getZoneID())));
+  rzaMsg->setDestPrec((uint8_t)(m_zop_iface->getPrecinctID()));
   rzaMsg->setPayload(payload);
   rzaMsg->encodeEvent();
   m_zop_iface->send(rzaMsg, zopCompID::Z_RZA);
@@ -765,7 +775,6 @@ void ZEN::processEgressQueue() {
                              (uint64_t)zen_queue[hart_zap_id][i]->msg->getPayload().size() * DW_OFFSET,
                              &rza_addr) == -1) {
             if( !zen_queue[hart_zap_id][i]->from_zip ){
-              // FIXME
               auto *ev = zen_queue[hart_zap_id][i]->msg;
               sendNACK(ev->getSrcHart(),
                        ev->getSrcZCID(),
@@ -1064,6 +1073,10 @@ void ZEN::processZIPQueue() {
       creditZop->setSrcPCID(m_zop_iface->getZoneID());
       creditZop->setSrcPrec(m_zop_iface->getPrecinctID());
       creditZop->setCredit(ev->getLength()+Z_NUM_HEADER_FLITS);
+      creditZop->setDestHart(0);    // going to the ZIP, only one hart
+      creditZop->setDestZCID((uint8_t)(SST::Forza::zopCompID::Z_PREC_ZIP));
+      creditZop->setDestPCID((uint8_t)(SST::Forza::zopPrecID::Z_ZIP));
+      creditZop->setDestPrec((uint8_t)(m_zop_iface->getPrecinctID()));
 
       creditZop->encodeEvent();
 
