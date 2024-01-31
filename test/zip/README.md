@@ -27,10 +27,10 @@ ZIPs to not send disaggregated ZOPs to zones until the ZENs can receive them.
 
 The output of this command should show that `zip_1`, `zip_2`, and `zip_3` pass test **ZIP_C1** because aggregated packets stall once receiving ZIPs
 lack credits. `zip_0` passes test **ZIP_C2** because the disaggregated ZOPs stall while waiting for the receiving ZENs to process ZOPs. `zip_1`,
-`zip_2`, and `zip_3` pass tests **ZIP_C3** and **ZIP_C4** because ZOPs from the connected zondes are successfully stored in ZIP memory and retreived
+`zip_2`, and `zip_3` pass tests **ZIP_C3** and **ZIP_C4** because ZOPs from the connected zones are successfully stored in ZIP memory and retreived
 and then aggregated according to specifications (once the buffer is full or a maximum wait time of $10\mu\mathrm s$ has been reached). And `zip_0`
 passes test **ZIP_C5** because it is able to disaggregate the packet into individual concatenated ZOPs. Also note that test **ZIP_P1** shows the
-percentage of packets the were stalled before they could be sent by `zip_1`, `zip_2`, and `zip_3`. (This value, 22%, was made artificially high
+percentage of packets the were stalled before they could be sent by `zip_1`, `zip_2`, and `zip_3`. (This value, over 50%, was made artificially high
 due to a low allocation of credits for testing.)
 
 ### `sst --stop-at=15us zip-test.py -- --test=1 --precincts=2 --zones=1 --num_zops=1 --max_wait=0`

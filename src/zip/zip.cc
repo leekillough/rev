@@ -18,10 +18,10 @@ ZIP::ZIP(ComponentId_t id, Params& params)
   p_tests      = params.find<unsigned int>("tests",      0);
 
   p_numPrec    = params.find<unsigned int>("numPrec",    16);
-  p_maxBuff    = params.find<unsigned int>("maxBuff",    128);
-  p_maxZOP     = params.find<unsigned int>("maxZOP",     24);
+  p_maxBuff    = params.find<unsigned int>("maxBuff",    16);
+  p_maxZOP     = params.find<unsigned int>("maxZOP",     3);
   p_numZone    = params.find<unsigned int>("numZone",    8);
-  p_maxZENBuff = params.find<unsigned int>("maxZENBuff", 64);
+  p_maxZENBuff = params.find<unsigned int>("maxZENBuff", 8);
   p_maxRVBuff  = params.find<unsigned int>("maxRVBuff",  0);
   p_MTU        = params.find<unsigned int>("MTU",        0);
   p_RVThresh   = params.find<unsigned int>("RVThresh",   10000000);

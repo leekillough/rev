@@ -34,10 +34,10 @@ namespace SST::Forza{
       { "verbose",    "Sets the output verbosity.",                    "0" },
       { "tests",      "Output flag, set to 1 for testing.",            "0" },
       { "numPrec",    "Number of precincts",                           "16" },
-      { "maxBuff",    "Maximum buffer size in flits",                  "128" },
-      { "maxZOP",     "Maximum ZOP size in flits",                     "24" },
+      { "maxBuff",    "Maximum buffer size in flits",                  "16" },
+      { "maxZOP",     "Maximum ZOP size in flits",                     "3" },
       { "numZone",    "Number of zones",                               "8" },
-      { "maxZENBuff", "Maximum ZEN buffer size in flits",              "64" },
+      { "maxZENBuff", "Maximum ZEN buffer size in flits",              "8" },
       { "maxRVBuff",  "Maximum rendezvous buffer size in flits",       "0" },
       { "MTU",        "MTU in flits",                                  "0" },
       { "RVThresh",   "Rendezvous threshold in flits",                 "10000000" }
