@@ -690,6 +690,12 @@ private:
   EcallStatus ECALL_forza_zen_credit_release(RevInst& inst);  // 4004, forza_popq();
   EcallStatus ECALL_forza_zen_setup(RevInst& inst);  // 4005, forza_zen_setup();
   EcallStatus ECALL_forza_get_harts_per_zap(RevInst& inst); // 4007, forza_get_harts_per_zap
+  EcallStatus ECALL_forza_get_zaps_per_zone(RevInst& inst); // 4008, forza_get_zaps_per_zone();
+  EcallStatus ECALL_forza_get_zones_per_precinct(RevInst& inst); // 4009, forza_get_zones_per_precinct();
+  EcallStatus ECALL_forza_get_num_precincts(RevInst& inst); // 4010, forza_get_num_precincts();
+  EcallStatus ECALL_forza_get_my_zap(RevInst& inst); // 4011, forza_get_my_zap();
+  EcallStatus ECALL_forza_get_my_zone(RevInst& inst); // 4012, forza_get_my_zone();
+  EcallStatus ECALL_forza_get_my_precinct(RevInst& inst); // 4013, forza_get_my_precinct();
 
   EcallStatus ECALL_dump_valid_mem();         // 9004, dump_valid_mem()
   EcallStatus ECALL_dump_valid_mem_to_file(); // 9005, dump_valid_mem_to_file(const char* outputFile)
