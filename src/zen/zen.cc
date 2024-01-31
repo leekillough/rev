@@ -137,6 +137,7 @@ void ZEN::handleIncomingPrecZOP(SST::Event *event) {
         output.verbose(CALL_INFO, 7, 0,
                        "Destination %d queue full\n",
                        ev->getDestHart());
+        // is this dead code as well?
         // sendNACKToZIP(ev->getSrcHart(), ev->getSrcZCID(), ev->getID());
         return;
       }
@@ -166,13 +167,6 @@ void ZEN::handleIncomingZOP(SST::Event *event) {
              ev->getSrcPrec(),
              ev->getID(),
              m_zop_iface);
-#if 0
-    if (m_zop_iface->getPCID(ev->getSrcPCID()) == zopPrecID::Z_ZIP) {
-      sendNACKToZAP(ev->getSrcHart(), ev->getSrcZCID(), ev->getID());
-    } else {
-      // sendNACKToZIP(ev->getSrcHart(), ev->getSrcZCID(), ev->getID());
-    }
-#endif
     return;
   }
 
@@ -193,7 +187,6 @@ void ZEN::handleIncomingZOP(SST::Event *event) {
                  ev->getSrcPrec(),
                  ev->getID(),
                  m_zop_iface);
-        //sendNACKToZAP(ev->getSrcHart(), ev->getSrcZCID(), ev->getID());
         return;
       }
     }else if( ev->getDestPrec() != m_zop_iface->getPrecinctID() ){
@@ -209,7 +202,6 @@ void ZEN::handleIncomingZOP(SST::Event *event) {
                  ev->getSrcPrec(),
                  ev->getID(),
                  m_zop_iface);
-        //sendNACKToZAP(ev->getSrcHart(), ev->getSrcZCID(), ev->getID());
         return;
       }
     }else{
@@ -231,7 +223,6 @@ void ZEN::handleIncomingZOP(SST::Event *event) {
                  ev->getSrcPrec(),
                  ev->getID(),
                  m_zop_iface);
-        //sendNACKToZAP(ev->getSrcHart(), ev->getSrcZCID(), ev->getID());
         return;
       }
     }
@@ -284,19 +275,17 @@ void ZEN::sendHZOPToRZA(uint64_t acs, uint64_t addr, uint64_t src_addr,
   // This method is 100% wrong
   // !!! Make this an LDMA request
   // -------------------------------
-  output.fatal(CALL_INFO, -1, "This operation is badly broken.  Enjoy!");
+  //output.fatal(CALL_INFO, -1, "This operation is badly broken.  Enjoy!");
   output.verbose(CALL_INFO, 9, 0, "Msg tgt %" PRIu64 ", msg id %" PRIu8 "\n", addr, cur_msg_id);
 
-  // TODO: Fix HZOP format
   std::vector<uint64_t> payload;
   payload.push_back(acs);
   payload.push_back(src_addr);
   payload.push_back(addr);
-  payload.push_back(size);
+  //payload.push_back(size);
   SST::Forza::zopEvent *rzaMsg = new SST::Forza::zopEvent();
-  rzaMsg->setType(SST::Forza::zopMsgT::Z_HZOPV);
+  rzaMsg->setType(SST::Forza::zopMsgT::Z_MZOP);
   rzaMsg->setID(cur_msg_id);
-  // TODO: Update with HZOP for memcpy
   rzaMsg->setOpc(SST::Forza::zopOpc::Z_MZOP_SD);
   rzaMsg->setSrcHart((uint16_t)zopCompID::Z_ZEN);
   rzaMsg->setSrcZCID((uint8_t)m_zop_iface->getEndpointType());
@@ -480,7 +469,6 @@ void ZEN::handleIncomingRZAMsg() {
         if( !zqloc->from_zip ){
           output.verbose(CALL_INFO, 9, 0, "Send ACK to ZCID, HARTID %d %d\n",
                          zqloc->msg->getSrcHart(), zqloc->msg->getSrcZCID());
-          //sendACKToZAP(zqloc->msg->getSrcHart(), zqloc->msg->getSrcZCID(), zqloc->msg->getID());
           sendACK(zqloc->msg->getSrcHart(),
                    zqloc->msg->getSrcZCID(),
                    zqloc->msg->getSrcPCID(),
@@ -488,6 +476,7 @@ void ZEN::handleIncomingRZAMsg() {
                    zqloc->msg->getID(),
                    m_zop_iface);
         } else {
+          // why is this here?
           // sendACKToZIP(zqloc->msg->getSrcHart(), zqloc->msg->getSrcZCID(), zqloc->msg->getID());
         }
       }
@@ -553,86 +542,6 @@ void ZEN::sendNACK(uint16_t hart, uint8_t zcid,
               iface->getPCID(pcid),
               prec);
 }
-
-#if 0
-void ZEN::sendNACKToZIP(uint64_t hart_id, uint64_t zcid, uint8_t cur_msg_id) {
-  std::vector<uint32_t> payload;
-  // TODO: Update with precinct NW ZOP call
-  SST::Forza::zopEvent *nackMsg = new SST::Forza::zopEvent();
-  nackMsg->setType(SST::Forza::zopMsgT::Z_MSG);
-  nackMsg->setOpc(SST::Forza::zopOpc::Z_MSG_EXCP);
-  // This should not matter, we could use this later to augment msg_id
-  nackMsg->setSrcHart((uint16_t)zopCompID::Z_ZEN);
-  nackMsg->setSrcZCID((uint8_t)m_zop_iface->getEndpointType());  //FIXME
-  nackMsg->setSrcPCID((uint8_t)m_zop_iface->getPCID(m_zop_iface->getZoneID()));   //FIXME
-  nackMsg->setSrcPrec((uint8_t)m_zop_iface->getPrecinctID());
-  nackMsg->setDestHart(hart_id);
-  nackMsg->setDestZCID(zcid);
-  nackMsg->setDestPCID((uint8_t)zopPrecID::Z_ZIP);
-  nackMsg->setDestPrec(m_zop_iface->getPrecinctID());
-  nackMsg->setID(cur_msg_id);
-  nackMsg->encodeEvent();
-  m_prec_iface->send(nackMsg, zopCompID::Z_PREC_ZIP, zopPrecID::Z_ZIP, m_prec_iface->getPrecinctID());
-}
-
-void ZEN::sendACKToZIP(uint64_t hart_id, uint64_t zcid, uint8_t cur_msg_id) {
-  std::vector<uint32_t> payload;
-  // TODO: Update with precinct NW ZOP call
-  SST::Forza::zopEvent *ackMsg = new SST::Forza::zopEvent();
-  ackMsg->setType(SST::Forza::zopMsgT::Z_MSG);
-  ackMsg->setOpc(SST::Forza::zopOpc::Z_MSG_ACK);
-  ackMsg->setSrcHart((uint16_t)zopCompID::Z_ZEN);    //FIXME
-  ackMsg->setSrcZCID((uint8_t)m_zop_iface->getEndpointType());  //FIXME
-  ackMsg->setSrcPCID((uint8_t)m_zop_iface->getPCID(m_zop_iface->getZoneID()));   //FIXME
-  ackMsg->setSrcPrec((uint8_t)m_zop_iface->getPrecinctID());
-  ackMsg->setDestHart(hart_id);
-  ackMsg->setDestZCID(zcid);
-  ackMsg->setDestPCID((uint8_t)zopPrecID::Z_ZIP);
-  ackMsg->setDestPrec(m_zop_iface->getPrecinctID());
-  ackMsg->setID(cur_msg_id);
-  ackMsg->encodeEvent();
-  m_prec_iface->send(ackMsg, zopCompID::Z_PREC_ZIP, zopPrecID::Z_ZIP, m_prec_iface->getPrecinctID());
-}
-
-void ZEN::sendNACKToZAP(uint64_t hart_id, uint64_t zcid, uint8_t cur_msg_id) {
-  std::vector<uint32_t> payload;
-  SST::Forza::zopEvent *nackMsg = new SST::Forza::zopEvent();
-  nackMsg->setType(SST::Forza::zopMsgT::Z_MSG);
-  nackMsg->setOpc(SST::Forza::zopOpc::Z_MSG_EXCP);
-  // Match source and destination hart id
-  nackMsg->setSrcHart(hart_id);    //FIXME: all of these!!
-  nackMsg->setSrcZCID((uint8_t)m_zop_iface->getEndpointType());  //FIXME
-  nackMsg->setSrcPCID((uint8_t)m_zop_iface->getPCID(m_zop_iface->getZoneID()));   //FIXME
-  nackMsg->setSrcPrec((uint8_t)m_zop_iface->getPrecinctID());
-  nackMsg->setDestHart(hart_id);
-  nackMsg->setDestZCID(zcid);
-  nackMsg->setDestPCID((uint8_t)m_zop_iface->getPCID(m_zop_iface->getZoneID()));
-  nackMsg->setDestPrec((uint8_t)m_zop_iface->getPrecinctID());
-  nackMsg->setID(cur_msg_id);
-  nackMsg->encodeEvent();
-  m_zop_iface->send(nackMsg, (zopCompID)zcid);
-}
-
-void ZEN::sendACKToZAP(uint64_t hart_id, uint64_t zcid, uint8_t cur_msg_id) {
-  std::vector<uint32_t> payload;
-  // TODO: Update with ZAP id
-  SST::Forza::zopEvent *ackMsg = new SST::Forza::zopEvent();
-  ackMsg->setType(SST::Forza::zopMsgT::Z_MSG);
-  ackMsg->setOpc(SST::Forza::zopOpc::Z_MSG_ACK);
-  ackMsg->setSrcHart(hart_id);
-  ackMsg->setSrcZCID((uint8_t)m_zop_iface->getEndpointType());  //FIXME
-  ackMsg->setSrcPCID((uint8_t)m_zop_iface->getPCID(m_zop_iface->getZoneID()));   //FIXME
-  ackMsg->setSrcPrec((uint8_t)m_zop_iface->getPrecinctID());
-  ackMsg->setDestHart(hart_id);
-  ackMsg->setDestZCID(zcid);
-  ackMsg->setDestPCID((uint8_t)m_zop_iface->getPCID(m_zop_iface->getZoneID()));
-  ackMsg->setDestPrec((uint8_t)m_zop_iface->getPrecinctID());
-  ackMsg->setDestPrec(0);
-  ackMsg->setID(cur_msg_id);
-  ackMsg->encodeEvent();
-  m_zop_iface->send(ackMsg, (zopCompID)zcid);
-}
-#endif
 
 int ZEN::getRZATailQueue(uint64_t zap_id,
                          uint64_t hart_id,
@@ -783,8 +692,6 @@ void ZEN::processEgressQueue() {
                        ev->getSrcPrec(),
                        ev->getID(),
                        m_zop_iface);
-              //sendNACKToZAP(zen_queue[hart_zap_id][i]->msg->getSrcHart(), zen_queue[hart_zap_id][i]->msg->getSrcZCID(),
-              //              zen_queue[hart_zap_id][i]->msg->getID());
             }else{
               // FIXME: What are we doing here?  Is this just dead code?
               // sendNACKToZIP(zen_queue[hart_zap_id][i]->msg->getSrcHart(), zen_queue[hart_zap_id][i]->msg->getSrcZCID(),
@@ -1008,7 +915,6 @@ void ZEN::processSetupMsgs(){
     if( (setup_reqs[i]->getPayload().size() < 4) ||
         (hart_tables.find(hart_zap_id) != hart_tables.end()) ){
       // From ZIP setup is assumed to be validated at ZIP
-      //sendNACKToZAP(hart_id, zap_id, setup_reqs[i]->getID());
       sendNACK(ev->getSrcHart(),
                ev->getSrcZCID(),
                ev->getSrcPCID(),
@@ -1026,7 +932,6 @@ void ZEN::processSetupMsgs(){
     hart_tables[hart_zap_id] = new ZENTableRow(acs_pair, mem_start_addr,
                                                mem_end_addr, size,
                                                scratch_tail, 500);
-    //sendACKToZAP(hart_id, zap_id, setup_reqs[i]->getID());
     sendACK(ev->getSrcHart(),
             ev->getSrcZCID(),
             ev->getSrcPCID(),
