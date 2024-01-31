@@ -1371,7 +1371,9 @@ bool RevMem::ZOP_WRITEMem(unsigned Hart, uint64_t Addr, size_t Len,
     size_t CurLen = Len;
     size_t BytesWritten = 0;
 
-    if( CurLen >= 4 ){
+    if( CurLen == 8 ){
+      CurLen = 8;
+    }else if( CurLen >= 4 ){
       CurLen = 4;
     }else if( CurLen >= 2 ){
       CurLen = 2;
