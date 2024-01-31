@@ -284,6 +284,7 @@ void ZEN::sendHZOPToRZA(uint64_t acs, uint64_t addr, uint64_t src_addr,
   // This method is 100% wrong
   // !!! Make this an LDMA request
   // -------------------------------
+  output.fatal(CALL_INFO, -1, "This operation is badly broken.  Enjoy!");
   output.verbose(CALL_INFO, 9, 0, "Msg tgt %" PRIu64 ", msg id %" PRIu8 "\n", addr, cur_msg_id);
 
   // TODO: Fix HZOP format
