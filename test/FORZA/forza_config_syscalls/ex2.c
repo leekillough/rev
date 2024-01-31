@@ -23,8 +23,8 @@
 
 int main(int argc, char **argv){
 
-  int harts_per_zap = 128;//atoi(argv[1]); //should pass
-  //int harts_per_zap = 16;//atoi(argv[1]); //will fail
+  int harts_per_zap = 128; // Works
+  //int harts_per_zap = atoi(argv[1]); // crashes with segfault
   assert(harts_per_zap == forza_get_harts_per_zap());
 
   return 0;
