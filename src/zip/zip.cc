@@ -71,7 +71,7 @@ ZIP::ZIP(ComponentId_t id, Params& params)
 
   // configure links
   link_NOC = loadUserSubComponent<SST::Forza::zopAPI>("zopLink");
-  link_NOC->setNumHarts(3);
+  link_NOC->setNumHarts(1);
   link_NOC->setPrecinctID(p_precID);
   // link_NOC->setZoneID((uint8_t)zopPrecID::Z_ZIP);
   link_NOC->setZoneID(9);

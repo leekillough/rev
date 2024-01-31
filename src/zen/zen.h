@@ -11,6 +11,8 @@
 #include <string>
 #include <bitset>
 
+#define _ZEN_DEFAULT_ZIP_CREDITS_   100
+
 namespace SST::Forza{
 
   // --------------------------------------------
@@ -134,48 +136,98 @@ namespace SST::Forza{
   private:
     // private class members
 
+    /// ZEN: Send a NACK message back to the to target device
+    void sendNACK(uint16_t hart, uint8_t zcid,
+                  uint8_t pcid, uint16_t prec, uint8_t id,
+                  SST::Forza::zopAPI *iface);
+
+    /// ZEN: Send an ACK message back to the to target device
+    void sendACK(uint16_t hart, uint8_t zcid,
+                  uint8_t pcid, uint16_t prec, uint8_t id,
+                  SST::Forza::zopAPI *iface);
+
+    /// ZEN: send a DMA store to the zone's RZA
     void sendMsgToRZADMA(uint64_t acs, uint64_t addr,
-                         std::vector<uint64_t> src_payload, uint8_t msg_id,
+                         std::vector<uint64_t> src_payload, uint8_t cur_msg_id,
                          uint64_t hart_id, uint64_t queue_loc);
+
+    /// ZEN: send a normal store operation to the zone's RZA
     void sendMsgToRZANonDMA(uint64_t acs, uint64_t addr, uint64_t src_payload,
                             uint8_t cur_msg_id, uint64_t hart_id,
                             uint64_t queue_loc);
+
+    /// ZEN: sends a scratchpad WRITE to the target ZAP device
     void sendMsgToScratchpad(uint64_t dest, uint64_t zcid,
                              uint64_t scratch_addr, uint64_t size,
                              uint64_t addr);
+
+    /// ZEN: processes the egress queue
     void processEgressQueue();
+
+    /// ZEN: process the precinct egress queue
     void processPrecinctEgressQueue();
+
+    /// ZEN: process the zone egress queue
     void processZoneEgressQueue();
+
+    /// ZEN: processes messages to perform writes to a ZAP:HART Scratchpad
     void notifyHARTScratchpad();
+
+    /// ZEN: handle incoming RZA messages
     void handleIncomingRZAMsg();
+
+    /// ZEN: handle incoming ZOP messages
     void handleIncomingZOP(SST::Event *ev);
+
+    /// ZEN: handle incoming precinct ZOP messages
     void handleIncomingPrecZOP(SST::Event *ev);
-    void sendNACKToZAP(uint64_t hart_id, uint64_t zcid, uint8_t msg_id);
-    void sendACKToZAP(uint64_t hart_id, uint64_t zcid, uint8_t msg_id);
-    void sendNACKToZIP(uint64_t hart_id, uint64_t zcid, uint8_t msg_id);
-    void sendACKToZIP(uint64_t hart_id, uint64_t zcid, uint8_t msg_id);
+
+#if 0
+    // DEPRECATED
+    void sendNACKToZAP(uint64_t hart_id, uint64_t zcid, uint8_t cur_msg_id);  // deprecate me
+    void sendACKToZAP(uint64_t hart_id, uint64_t zcid, uint8_t cur_msg_id);   // deprecate me
+    void sendNACKToZIP(uint64_t hart_id, uint64_t zcid, uint8_t cur_msg_id);  // deprecate me
+    void sendACKToZIP(uint64_t hart_id, uint64_t zcid, uint8_t cur_msg_id);   // deprecate me
+#endif
+
+    /// ZEN: processes incoming setup messages
     void processSetupMsgs();
+
+    /// ZEN: process the ZEN credits
     void processZAPCredits();
-    void sendMsgToZEN();
-    void sendSetupToZEN();
-    int getRZATailQueue(uint64_t zap_id, uint64_t harts, uint64_t size);
-    void sendMZOPAckToZEN(SST::Forza::zopEvent *ev);
+
+    /// ZEN: retrieves an RZA tail queue address
+    int getRZATailQueue(uint64_t zap_id, uint64_t harts,
+                        uint64_t size, uint64_t *taddr);
+
+    /// ZEN: retrieve the read ACS
     uint64_t  getReadACS(uint64_t);
+
+    /// ZEN: retrieve the write ACS
     uint64_t  getWriteACS(uint64_t);
-    void printZenQueue();
-    uint64_t findFirstUnsetBit(const std::bitset<256>& bv);
+
+    /// ZEN: find the first unused bit
+    bool findFirstUnsetBit(const std::bitset<256>& bv, uint8_t *bit);
+
+    /// ZEN: preps to send the RZA an HZOP (really, a DMA MZOP)
     void prepSendRZAHZOP();
+
+    /// ZEN: preps to send the RZA a STORE
     void prepSendRZAStore();
+
+    /// ZEN: send HZOPs to the RZA
     void sendHZOPToRZA(uint64_t acs, uint64_t addr, uint64_t src_addr,
                        uint64_t size, uint8_t cur_msg_id,
                        uint64_t hart_id, uint64_t queue_loc);
+
+    /// ZEN: forwards a packet to the precinct ZIP device
     void forwardPktToZIP(Forza::zopEvent *ev);
+
+    /// ZEN: forwards a packet to a remote ZEN device
     void forwardPktToExtZEN(Forza::zopEvent *ev);
+
+    /// ZEN: processes the zip message queue
     void processZIPQueue();
-
-
-    /// ZEN: handle a network event
-    bool handleNetworkEvent(int i);
 
     // private data members
     SST::Output output;                   ///< ZEN: SST output handler
@@ -195,17 +247,17 @@ namespace SST::Forza{
     bool precinct_nic_enabled;      ///< ZEN: enable precinct NIC
     // ----- END SST PARAMETERS
 
+    //bool sent;
+    uint64_t zip_credits;
     std::bitset<256> msg_id;
-    bool sent;
     std::map<std::pair<uint64_t, uint64_t>, ZENTableRow*> hart_tables;
     std::map<uint64_t, ZENTableRow*> zone_tables;
     std::map<uint64_t, ZENTableRow*> precinct_tables;
-    std::map<std::pair<uint64_t, uint64_t>, std::vector<ZENEntry*> > zen_queue;
+    std::map<std::pair<uint64_t, uint64_t>, std::vector<ZENEntry*>> zen_queue;
     std::map<uint64_t, std::vector<ZENEntry*> > zone_queue;
     std::map<uint64_t, std::vector<ZENEntry*> > precinct_queue;
     std::vector<SST::Forza::zopEvent*> mem_acks;
     std::vector<SST::Forza::zopEvent*> setup_reqs;
-    uint64_t zip_credits;
     std::vector<SST::Forza::zopEvent*> zap_credits;
     std::map<uint8_t, ZENEntry*> outstanding_mem_req;
 
