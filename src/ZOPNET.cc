@@ -27,7 +27,9 @@ zopNIC::zopNIC(ComponentId_t id, Params& params)
   ReqPerCycle = params.find<unsigned>("req_per_cycle", 1);
 
   enableTestHarness = params.find<bool>("enableTestHarness", false);
-
+  numZones = params.find<unsigned>("numZones", 8);
+  numPrecincts = params.find<unsigned>("numPrecincts", 1);
+  
   // register the stats
   registerStats();
 
@@ -643,6 +645,28 @@ unsigned zopNIC::getNumDestinations(){
 
 SST::Interfaces::SimpleNetwork::nid_t zopNIC::getAddress(){
   return iFace->getEndpointID();
+}
+
+unsigned zopNIC::getNumZaps()
+{
+  unsigned count = 0;
+  for (auto i : hostMap){
+    auto t = i.second;
+    if ( ((unsigned)std::get<_HM_ZID>(t) != Zone) ||
+         (std::get<_HM_PID>(t) != Precinct) )
+      continue;
+    zopCompID zc = std::get<_HM_ENDP_T>(t);
+    if ( (zc == zopCompID::Z_ZAP0) ||
+         (zc == zopCompID::Z_ZAP1) ||
+         (zc == zopCompID::Z_ZAP2) ||
+         (zc == zopCompID::Z_ZAP3) ||
+         (zc == zopCompID::Z_ZAP4) ||
+         (zc == zopCompID::Z_ZAP5) ||
+         (zc == zopCompID::Z_ZAP6) ||
+         (zc == zopCompID::Z_ZAP7) )
+      count++;
+  }
+  return count;
 }
 
 bool zopNIC::clockTick(SST::Cycle_t cycle){

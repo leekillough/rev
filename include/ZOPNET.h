@@ -750,6 +750,15 @@ public:
   /// zopAPI: get the zone ID
   virtual unsigned getZoneID() = 0;
 
+  /// zopAPI: get the number of ZAPs
+  virtual unsigned getNumZaps() = 0;
+
+  /// zopAPI: get the number of zones in this precinct
+  virtual unsigned getNumZones() = 0;
+
+  /// zopAPI: get the number of precincts
+  virtual unsigned getNumPrecincts() = 0;
+  
   /// zopAPI: clear the message Id hazard
   virtual void clearMsgID(unsigned Hart, uint8_t Id) = 0;
 
@@ -931,6 +940,8 @@ public:
     {"port", "Port to use, if loaded as an anonymous subcomponent", "network"},
     {"verbose", "Verbosity for output (0 = nothing)", "0"},
     {"enableTestHarness", "Enables the message notification for the ZOPGen test harness", "0"},
+    {"numZones", "Number of zones per precinct", "8"},
+    {"numPrecincts", "Number of precincts in the system", "1"}
   )
 
   SST_ELI_DOCUMENT_PORTS(
@@ -1031,6 +1042,15 @@ public:
   /// zopNIC: get the zone ID
   virtual unsigned getZoneID() { return Zone; }
 
+  /// zopNIC: get the number of ZAPs
+  virtual unsigned getNumZaps();
+
+  /// zopNIC: get the number of zones in this precinct
+  virtual unsigned getNumZones() { return numZones; }
+
+  /// zopNIC: get the number of precincts
+  virtual unsigned getNumPrecincts() { return numPrecincts; }
+
   /// zopNIC: clear the message Id hazard
   virtual void clearMsgID(unsigned Hart, uint8_t Id){
     msgId[Hart].clearMsgId(Id);
@@ -1062,6 +1082,8 @@ private:
   unsigned Precinct;                        ///< zopNIC: precinct ID
   unsigned Zone;                            ///< zopNIC: zone ID
   zopCompID Type;                           ///< zopNIC: endpoint type
+  unsigned numZones;                        ///< zopNIC: number of zones per precinct
+  unsigned numPrecincts;                    ///< zopNIC: number of precincts
   bool enableTestHarness;                   ///< zopNIC: enable the test harness
 
   SST::Forza::zopMsgID *msgId;              ///< zopNIC: per hart message ID objects
