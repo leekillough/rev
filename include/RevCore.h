@@ -689,6 +689,7 @@ private:
   EcallStatus ECALL_forza_send(RevInst& inst);  // 4003, forza_send();
   EcallStatus ECALL_forza_zen_credit_release(RevInst& inst);  // 4004, forza_popq();
   EcallStatus ECALL_forza_zen_setup(RevInst& inst);  // 4005, forza_zen_setup();
+  EcallStatus ECALL_forza_get_harts_per_zap(RevInst& inst); // 4007, forza_get_harts_per_zap
 
   EcallStatus ECALL_dump_valid_mem();         // 9004, dump_valid_mem()
   EcallStatus ECALL_dump_valid_mem_to_file(); // 9005, dump_valid_mem_to_file(const char* outputFile)

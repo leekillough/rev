@@ -58,3 +58,13 @@ static int forza_zen_setup(uint64_t addr, size_t size, uint64_t tailptr){
     "mv %0, a0" : "=r" (rc)
   );
 }
+
+// Reserve 4006 for forza_zqm_setup
+static int forza_get_harts_per_zap(){
+  int rc;
+  asm volatile (
+		"li a7, 4007 \n\t"
+		"ecall \n\t"
+		"mv %0, a0" : "=r" (rc)
+		);
+}
