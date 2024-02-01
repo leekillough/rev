@@ -5,8 +5,7 @@
 #
 # See LICENSE in the top level directory for licensing details
 #
-# rev-test-harts-per-zap.py
-# Minimal differences from test/FORZA/forza_noc_discovery/rev-test-noc-discovery.py
+# rev-test-ex1.py
 #
 
 import os
@@ -28,14 +27,13 @@ zap_cpu1 = sst.Component("zap0", "revcpu.RevCPU")
 zap_cpu1.addParams({
         "verbose" : 5,                                # Verbosity
         "numCores" : 1,                               # Number of cores
-        "numHarts" : 128,                             # Number of harts
         "clock" : "1.0GHz",                           # Clock
         "memSize" : 1024*1024*1024,                   # Memory size in bytes
         "machine" : "[0:RV64GC]",                     # Core:Config; RV64I for core 0
         "startAddr" : "[0:0x00000000]",               # Starting address for core 0
         "memCost" : "[0:1:10]",                       # Memory loads required 1-10 cycles
-        "program" : os.getenv("REV_EXE", "ex2.exe"),  # Target executable
-        "args" : "128",                               # Executable arguments
+        "args" : "one",
+        "program" : os.getenv("REV_EXE", "forza_argc.exe"),  # Target executable
         "enableZoneNIC" : 1,                          # [FORZA] Enable the zone NIC
         "precinctId" : 0,                             # [FORZA] precinct ID
         "zoneId" : 0,                                 # [FORZA] zone ID
@@ -55,7 +53,8 @@ rza.addParams({
         "memSize" : 1024*1024*1024,                   # Memory size in bytes
         "machine" : "[CORES:RV64G]",                  # Core:Config; RV64I for core 0
         "startAddr" : "[CORES:0x00000000]",           # Starting address for core 0
-        "program" : os.getenv("REV_EXE", "ex2.exe"),  # Target executable
+        "args" : "one",
+        "program" : os.getenv("REV_EXE", "forza_argc.exe"),  # Target executable
         "enableZoneNIC" : 1,                          # [FORZA] Enable the zone NIC
         "enableRZA" : 1,                              # [FORZA] Enable RZA functionality
         "precinctId" : 0,                             # [FORZA] precinct ID
