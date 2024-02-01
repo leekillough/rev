@@ -35,7 +35,7 @@ zap_cpu1.addParams({
         "startAddr" : "[0:0x00000000]",               # Starting address for core 0
         "memCost" : "[0:1:10]",                       # Memory loads required 1-10 cycles
         "program" : os.getenv("REV_EXE", "ex2.exe"),  # Target executable
-#        "args" : "128",                               # Executable arguments -- not used; exe crashes
+        "args" : "128",                               # Executable arguments
         "enableZoneNIC" : 1,                          # [FORZA] Enable the zone NIC
         "precinctId" : 0,                             # [FORZA] precinct ID
         "zoneId" : 0,                                 # [FORZA] zone ID
