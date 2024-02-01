@@ -939,9 +939,9 @@ void ZEN::processSetupMsgs(){
             ev->getID(),
             m_zop_iface);
 
-    output.verbose(CALL_INFO, 9, 0, "setup hart table %" PRIu64 ", start addr %" PRIu64 ", end addr %" PRIu64 "\n",
+    output.verbose(CALL_INFO, 9, 0, "setup hart table %" PRIu64 ", start addr 0x%" PRIx64 ", end addr 0x%" PRIx64 "\n",
                    hart_id, mem_start_addr, mem_end_addr);
-    output.verbose(CALL_INFO, 9, 0, "setup hart table %" PRIu64 ", start addr %" PRIu64 ", end addr %" PRIu64 "\n",
+    output.verbose(CALL_INFO, 9, 0, "setup hart table %" PRIu64 ", start addr 0x%" PRIx64 ", end addr 0x%" PRIx64 "\n",
                    hart_id, hart_tables[hart_zap_id]->mem_head,
                    hart_tables[hart_zap_id]->mem_tail);
     delete setup_reqs[i];
