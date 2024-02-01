@@ -3343,7 +3343,9 @@ EcallStatus RevProc::ECALL_forza_zen_setup(RevInst& inst){
   uint64_t addr = (uint64_t)RegFile->GetX<uint64_t>(RevReg::a0);
   size_t size = (size_t)RegFile->GetX<size_t>(RevReg::a1);
   uint64_t tailptr = (uint64_t)RegFile->GetX<uint64_t>(RevReg::a2);
-  output->verbose(CALL_INFO, 2, 0, "ECALL: forza_zen_setup called by thread %" PRIu32 " on hart %" PRIu32 "\n", GetActiveThreadID(), HartToExecID);
+  output->verbose(CALL_INFO, 2, 0,
+                  "ECALL: forza_zen_setup called by thread %" PRIu32 " on hart %" PRIu32 "\n",
+                  GetActiveThreadID(), HartToExecID);
 
   // TODO: Forza library will pass the memory base address and size allocated by each actor to inform/initialize zen. 
 
@@ -3355,8 +3357,10 @@ EcallStatus RevProc::ECALL_forza_zen_setup(RevInst& inst){
   uint8_t SrcPCID = (uint8_t)(zNic->getPCID(zNic->getZoneID()));
   uint16_t SrcHart = (uint16_t)HartToExecID;
   
-  output->verbose(CALL_INFO, 0, 0, "ECALL_forza_zen_init: addr = %" PRIx64 ", size = %" PRIu64 ", tailptr = %" PRIu64 ", SrcZCID = %" PRIu8 
-            ", SrcPCID = %" PRIu8 ", SrcHart = %" PRIu16 "\n", addr, (uint64_t)size, tailptr, SrcZCID, SrcPCID, SrcHart);
+  output->verbose(CALL_INFO, 0, 0,
+                  "ECALL_forza_zen_init: addr = 0x%" PRIx64 ", size = %" PRIu64 ", tailptr = 0x%" PRIx64 ", SrcZCID = %" PRIu8 
+                  ", SrcPCID = %" PRIu8 ", SrcHart = %" PRIu16 "\n",
+                  addr, (uint64_t)size, tailptr, SrcZCID, SrcPCID, SrcHart);
 
   // set all the fields : FIXME
   zev->setType(SST::Forza::zopMsgT::Z_MSG);
@@ -3371,9 +3375,8 @@ EcallStatus RevProc::ECALL_forza_zen_setup(RevInst& inst){
   std::vector<uint64_t> payload;
   payload.push_back(0x00ull); // acs_pair = payload[0]
   payload.push_back(addr); // mem_start_addr = payload[1]
-  payload.push_back(0x00ull);
   payload.push_back(size); // size = payload[3]
-  payload.push_back(addr + size); // TODO: FIXME scratch_tail = payload[4]
+  payload.push_back(addr + size-1); // TODO: FIXME scratch_tail = payload[4]
   zev->setPayload(payload);
 
   if (!zNic) {
