@@ -342,7 +342,7 @@ void zopNIC::handleLoadResponse(zopEvent *ev,
     // this request is a response from an MZOP RZA pipe
     switch( Opc ){
     case SST::Forza::zopOpc::Z_MZOP_LB:
-      *(reinterpret_cast<uint8_t *>(*Target)) = static_cast<uint8_t>(tmp);
+      *(reinterpret_cast<uint8_t *>(Target)) = static_cast<uint8_t>(tmp);
       break;
     case SST::Forza::zopOpc::Z_MZOP_LH:
       *(reinterpret_cast<uint16_t *>(Target)) = static_cast<uint16_t>(tmp);
