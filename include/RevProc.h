@@ -663,6 +663,7 @@ private:
   EcallStatus ECALL_forza_send(RevInst& inst);  // 4003, forza_send();
   EcallStatus ECALL_forza_zen_credit_release(RevInst& inst);  // 4004, forza_popq();
   EcallStatus ECALL_forza_zen_setup(RevInst& inst);  // 4005, forza_zen_setup();
+  EcallStatus ECALL_forza_get_harts_per_zap(RevInst& inst); // 4007, forza_get_harts_per_zap
 
   /// RevProc: Table of ecall codes w/ corresponding function pointer implementations
   std::unordered_map<uint32_t, std::function<EcallStatus(RevProc*, RevInst&)>> Ecalls;

@@ -3385,4 +3385,13 @@ EcallStatus RevProc::ECALL_forza_zen_setup(RevInst& inst){
   return EcallStatus::SUCCESS;
 }
 
+// 4007, forza_get_harts_per_zap  
+EcallStatus RevProc::ECALL_forza_get_harts_per_zap(RevInst& inst){
+  output->verbose(CALL_INFO, 2, 0, "ECALL: forza_get_harts_per_zap called by thread %" PRIu32 " on hart %" PRIu32 "\n",
+		  GetActiveThreadID(), HartToExecID);
+  RegFile->SetX(RevReg::a0, this->numHarts);
+  return EcallStatus::SUCCESS;
+}
+  
+
 } // namespace SST::RevCPU

@@ -2376,6 +2376,7 @@ void RevProc::InitEcallTable(){
     { 4003, &RevProc::ECALL_forza_send },
     { 4004, &RevProc::ECALL_forza_zen_credit_release },
     { 4005, &RevProc::ECALL_forza_zen_setup },
+    { 4007, &RevProc::ECALL_forza_get_harts_per_zap },
 
   };
 }
