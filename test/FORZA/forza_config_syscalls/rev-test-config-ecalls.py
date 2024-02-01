@@ -5,7 +5,8 @@
 #
 # See LICENSE in the top level directory for licensing details
 #
-# rev-test-ex1.py
+# rev-test-config-ecalls.py
+#   Based on test/FORZA/forza_noc_discovery/rev-test-noc-discovery-with-zen.py
 #
 
 import os
@@ -41,17 +42,28 @@ zen.addParams({
 
 # --------------------------
 # SETUP THE ZAP
+# Arguments for config_ecalls.exe:
+# argv[1] = harts_per_zap
+# argv[2] = zaps_per_zone
+# argv[3] = zones_per_precinct: must set in zone NIC
+# argv[4] = num_precincts: must set in zone NIC
+# argv[5] = my_zap
+# argv[6] = my_zone
+# argv[7] = my_precinct
+# 
 # --------------------------
 zap_cpu1 = sst.Component("zap0", "revcpu.RevCPU")
 zap_cpu1.addParams({
         "verbose" : 5,                                # Verbosity
         "numCores" : 1,                               # Number of cores
+        "numHarts" : 64,                              # Number of harts
         "clock" : "1.0GHz",                           # Clock
         "memSize" : 1024*1024*1024,                   # Memory size in bytes
         "machine" : "[0:RV64GC]",                     # Core:Config; RV64I for core 0
         "startAddr" : "[0:0x00000000]",               # Starting address for core 0
         "memCost" : "[0:1:10]",                       # Memory loads required 1-10 cycles
-        "program" : os.getenv("REV_EXE", "ex2.exe"),  # Target executable
+        "program" : os.getenv("REV_EXE", "config_ecalls.exe"),  # Target executable
+        "args" : "128 1 1 3 0 0 0",                   # Program arguments.
         "enableZoneNIC" : 1,                          # [FORZA] Enable the zone NIC
         "precinctId" : 0,                             # [FORZA] precinct ID
         "zoneId" : 0,                                 # [FORZA] zone ID
@@ -71,7 +83,7 @@ rza.addParams({
         "memSize" : 1024*1024*1024,                   # Memory size in bytes
         "machine" : "[CORES:RV64G]",                  # Core:Config; RV64I for core 0
         "startAddr" : "[CORES:0x00000000]",           # Starting address for core 0
-        "program" : os.getenv("REV_EXE", "ex2.exe"),  # Target executable
+        "program" : os.getenv("REV_EXE", "config_ecalls.exe"),  # Target executable
         "enableZoneNIC" : 1,                          # [FORZA] Enable the zone NIC
         "enableRZA" : 1,                              # [FORZA] Enable RZA functionality
         "precinctId" : 0,                             # [FORZA] precinct ID
@@ -136,7 +148,7 @@ nic_params = {
   "clock" : "1GHz",
   "req_per_cycle" : 1,
   "numZones" : 8,
-  "numPrecincts" : 1
+  "numPrecincts" : 3
 }
 net_params = {
   "input_buf_size" : "2048B",
