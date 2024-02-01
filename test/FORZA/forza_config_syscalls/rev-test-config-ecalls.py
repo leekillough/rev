@@ -30,7 +30,7 @@ zen.addParams({
   "clockFreq" : "1.0GHz",     # Clock Frequency
   "precinctId" : 0,           # precinct Id
   "zoneId" : 0,               # zone Id
-  "numHarts" : 0,             # number of harts
+  "numHarts" : 64,             # number of harts
   "numZaps" : 1,              # number of zaps
   "numZones" : 1,             # number of zones
   "numPrecincts" : 1,         # number of precincts
