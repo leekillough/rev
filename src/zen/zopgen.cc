@@ -35,7 +35,7 @@ ZOPGen::ZOPGen(ComponentId_t id, Params& params)
   }
 
   //m_linkControl = loadUserSubComponent<SST::Interfaces::SimpleNetwork>( "rtrLink", ComponentInfo::SHARE_NONE, 1 );
-  m_num_harts = params.find<uint64_t>("num_harts", 4);
+  m_num_harts = params.find<uint64_t>("num_harts", 3);
   //assert( m_linkControl );
   msg_id = 0;
   cnt = 0;
@@ -48,7 +48,7 @@ ZOPGen::ZOPGen(ComponentId_t id, Params& params)
   //m_linkControl->setNotifyOnReceive( new SST::Interfaces::SimpleNetwork::Handler<ZOPGen>(this,&ZOPGen::handleNetworkEvent) );
   // register with SST
   registerAsPrimaryComponent();
-  m_zop_iface->setNumHarts(3);
+  m_zop_iface->setNumHarts(m_num_harts);
   m_zop_iface->setPrecinctID(0);
   m_zop_iface->setZoneID(params.find<unsigned>("zoneId", 0));
 
@@ -120,8 +120,8 @@ void ZOPGen::handleIncomingZOP(SST::Event *event) {
   } else if (ev->getType() == SST::Forza::zopMsgT::Z_MZOP && ev->getOpc() == SST::Forza::zopOpc::Z_MZOP_SD) {
     processMZOP(ev);
   } else if (ev->getType() == SST::Forza::zopMsgT::Z_MZOP && ev->getOpc() == SST::Forza::zopOpc::Z_MZOP_SCSD) {
-    output.verbose(CALL_INFO, 1, 0, "Dest %lu notified, scratch addr: %lu, addr: %lu, size: %lu\n", int_id, ev->getPayload()[0], ev->getPayload()[1],  ev->getPayload()[2]);
-    sendLoadToRZA(ev->getPayload()[1], ev->getPayload()[2]);
+    output.verbose(CALL_INFO, 1, 0, "Dest %lu notified, scratch addr: %lu, addr: %lu, size: %lu\n", int_id, ev->getPayload()[0], ev->getPayload()[2],  ev->getPayload()[1]);
+    sendLoadToRZA(ev->getPayload()[2], ev->getPayload()[1]);
   } else if (ev->getType() == SST::Forza::zopMsgT::Z_MZOP && ev->getOpc() == SST::Forza::zopOpc::Z_MZOP_LD) {
     processLoad(ev);
   } else if (ev->getType() == SST::Forza::zopMsgT::Z_RESP) {
@@ -175,30 +175,8 @@ void ZOPGen::sendLoadToRZA(uint64_t addr, uint64_t size) {
   //rzaMsg->setMsgId(4);
   // fake acs
   payload.push_back(getReadACS(100));
-  payload.push_back(addr-size+1);
- // payload.push_back(size);
-  rzaMsg->setPayload(payload);
-  rzaMsg->encodeEvent();
-  m_zop_iface->send(rzaMsg, zopCompID::Z_RZA);
-  // TODO: Update with RZA id
-}
-
-void ZOPGen::sendMsgToRZA(uint64_t addr, uint64_t size) {
-  output.verbose(CALL_INFO, 1, 0, "Msg tgt %lu, msg id %" PRIu8 "\n", addr, msg_id);
-  std::vector<uint64_t> payload;
-  // TODO: Update with RZA id
-  SST::Forza::zopEvent *rzaMsg = new SST::Forza::zopEvent();
-  rzaMsg->setType(SST::Forza::zopMsgT::Z_MZOP);
-  rzaMsg->setOpc(SST::Forza::zopOpc::Z_MZOP_SD);
-  rzaMsg->setSrcHart(1);
-  rzaMsg->setSrcZCID(int_id);
-  rzaMsg->setSrcPCID(0);
-  rzaMsg->setSrcPrec(0);
-  // TODO: Update with RZA id
-  rzaMsg->setDestHart(3);
-  payload.push_back(size);
   payload.push_back(addr);
-  // payload.push_back(value);
+ // payload.push_back(size);
   rzaMsg->setPayload(payload);
   rzaMsg->encodeEvent();
   m_zop_iface->send(rzaMsg, zopCompID::Z_RZA);
@@ -265,12 +243,13 @@ void ZOPGen::sendMZOPAckToZOPGen(SST::Forza::zopEvent *ev) {
   m_zop_iface->send(zopgenMsg, zopCompID::Z_ZEN);
 
 }
+
 uint64_t ZOPGen::getWriteACS(uint64_t acs_pair) {
-  return acs_pair & 0xFFFFFFFF00000000ULL;
+	  return acs_pair & Z_ACS_WRITE;
 }
 
 uint64_t ZOPGen::getReadACS(uint64_t acs_pair) {
-  return (acs_pair & 0xFFFFFFFFFFFFFFFFULL) >> 32;
+	  return (acs_pair & Z_ACS_READ) >> 32;
 }
 
 void ZOPGen::sendSetupToZOPGen() {
