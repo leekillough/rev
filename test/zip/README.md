@@ -44,3 +44,15 @@ in precinct 0 to quickly send packets from different sources to different destin
 The outputs of these commands should show that `zip_0` is able to dequeue single packets from one, two, or eight senders within 102 to 106
 clock cycles per packet according to tests **ZIP_P2**, **ZIP_P3**, and **ZIP_P4**. This cycle count includes the overhead of writing to and reading from memory
 and shows that the peformance of the ZIP is able to scale with the number of senders.
+
+### Rendezvous messaging
+The ZIP includes functionality to employ rendezvous messaging when aggregated packet sizes are above a given threshold.
+Rather than sending the entire packet once there are enough credits for the receiving ZIP, the sending ZIP will first
+send a request and wait for a response to signal that there is enough space in the receiving ZIP's incoming rendezvous
+buffer. Then packets are sent in MTU-sized chunks.
+
+To test rendezvous messaging, simply add the `--rendezvous` flag to any of the above commands, which will force all ZOPs
+to be sent with this method (by setting the threshold to 0 bytes). The tests should run similarly as before with some
+differences. **ZIP_P1** and **ZIP_C1** now ensure that the ZIP waits for an acknowledgement rather than for credits. As
+a result, **ZIP_P1** shows that 100% of packets are stalled because getting that response always takes nonzero cycles.
+**ZIP_P2**, **ZIP_P3**, and **ZIP_P4** have also increased up to 4004 to 4006 clock cycles per packet.

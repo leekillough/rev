@@ -10,6 +10,7 @@ parser.add_argument("-n", "--num_zops",   help="Number of ZOPs to send per ZOPge
 parser.add_argument("-c", "--num_cycles", help="Number of cycles to send ZOPs from ZOPgens",        default=1, type=int)
 parser.add_argument("-i", "--interval",   help="Number of cycles to wait between sending ZOPs",     default=1, type=int)
 parser.add_argument("-t", "--test",       help="Which test setup to run",                           default=0, type=int)
+parser.add_argument("-r", "--rendezvous", help="Switch to rendezvous messaging between ZIPs",       action='store_true')
 
 args = parser.parse_args()
 
@@ -83,8 +84,10 @@ class ZIP:
         self.memory = self.memctrl.setSubComponent("backend", "memHierarchy.simpleMem")
         self.memory.addParams({"access_time" : "100ns", "mem_size" : "8GB"})
 
-        self.zip.addParams({"tests" : 1, "verbose" : 9, "precID" : precinct_id, "maxWait" : "{}us".format(args.max_wait)})
-        # self.zip.addParams({"maxRVBuff" : 20, "MTU" : 5, "RVThresh" : 0, "tests" : 1, "verbose" : 9, "precID" : precinct_id, "maxWait" : "{}us".format(args.max_wait)})
+        if args.rendezvous:
+            self.zip.addParams({"maxRVBuff" : 20, "MTU" : 5, "RVThresh" : 0, "tests" : 1, "verbose" : 9, "precID" : precinct_id, "maxWait" : "{}us".format(args.max_wait)})
+        else:
+            self.zip.addParams({"tests" : 1, "verbose" : 9, "precID" : precinct_id, "maxWait" : "{}us".format(args.max_wait)})
 
         self.nic = self.zip.setSubComponent("zopLink", "forza.zopNIC", 1)
         self.linkcontrol = self.nic.setSubComponent("iface", "merlin.linkcontrol", 0)

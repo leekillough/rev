@@ -112,7 +112,7 @@ namespace SST::Forza{
     bool disaggregatePackets(uint16_t SrcPrec, ZIPMemTarget* Target, bool RV);           // try to send zopEvents to the local NOC from the incoming
 								                         // buffer for precinct SrcPrec
 
-    bool aggregateRVPackets(uint16_t DestPrec, ZIPMemTarget* Target);
+    bool  aggregateRVPackets(uint16_t DestPrec, ZIPMemTarget* Target, bool* hasStalled);
 
     void addToOutQ(uint16_t);
 
@@ -153,7 +153,7 @@ namespace SST::Forza{
     std::queue<std::tuple<uint16_t, ZIPMemTarget*, SimTime_t, bool*>> outQ; // contains destination precinct IDs that must be sent their aggregated outgoing buffers
     std::queue<std::tuple<uint16_t, ZIPMemTarget*>>                   inQ;  // contains source precinct IDs whose incoming buffers must be disaggregated and sent to the NOC
 
-    std::queue<std::tuple<uint16_t, ZIPMemTarget*>> outRVQ;
+    std::queue<std::tuple<uint16_t, ZIPMemTarget*, SimTime_t, bool*>> outRVQ;
     std::queue<std::tuple<uint16_t, ZIPMemTarget*>> inRVQ;
     std::queue<std::tuple<uint16_t, uint64_t>> recvRVQ;
  
