@@ -10,3 +10,10 @@ else
 	echo "Test FORZA test_config_syscalls: ex2.exe not Found - likely build failed"
 	exit 1
 fi
+
+if [ -f config_ecalls.exe ]; then
+	sst --add-lib-path=../../build/src/ ./rev-test-config-ecalls.py
+else
+	echo "Test FORZA test_config_syscalls: ex2.exe not Found - likely build failed"
+	exit 1
+fi

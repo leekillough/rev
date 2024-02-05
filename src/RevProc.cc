@@ -2377,7 +2377,12 @@ void RevProc::InitEcallTable(){
     { 4004, &RevProc::ECALL_forza_zen_credit_release },
     { 4005, &RevProc::ECALL_forza_zen_setup },
     { 4007, &RevProc::ECALL_forza_get_harts_per_zap },
-
+    { 4008, &RevProc::ECALL_forza_get_zaps_per_zone },
+    { 4009, &RevProc::ECALL_forza_get_zones_per_precinct },
+    { 4010, &RevProc::ECALL_forza_get_num_precincts },
+    { 4011, &RevProc::ECALL_forza_get_my_zap },
+    { 4012, &RevProc::ECALL_forza_get_my_zone },
+    { 4013, &RevProc::ECALL_forza_get_my_precinct },
   };
 }
 
