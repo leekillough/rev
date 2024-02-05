@@ -56,3 +56,15 @@ to be sent with this method (by setting the threshold to 0 bytes). The tests sho
 differences. **ZIP_P1** and **ZIP_C1** now ensure that the ZIP waits for an acknowledgement rather than for credits. As
 a result, **ZIP_P1** shows that 100% of packets are stalled because getting that response always takes nonzero cycles.
 **ZIP_P2**, **ZIP_P3**, and **ZIP_P4** have also increased up to 4004 to 4006 clock cycles per packet.
+
+```
+$ sst --stop-at=15us zip-test.py -- --test=1 --rendezvous --precincts=2 --zones=1 --num_zops=1 --max_wait=0
+
+ZIP[zip_0:ZIP:0]: Registering clock with frequency=1 GHz
+zopNIC[zip_0:zopLink] Registering clock with frequency=1GHz
+... output elided ...
+ZIP[zip_0:finish:15000000]: [TEST ZIP_P1] 0.000000%
+ZIP[zip_0:finish:15000000]: [TEST ZIP_P{2,3,4}] 102.000000 cycles/packet
+... output elided ...
+```
+
