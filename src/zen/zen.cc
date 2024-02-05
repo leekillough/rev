@@ -400,6 +400,7 @@ void ZEN::notifyHARTScratchpad() {
             break;
           }else{
             next_tail = zen_queue[hart_zap_id][i]->tail;
+            next_tail = next_tail + payload.size()*sizeof(uint64_t);
             sendMsgToScratchpad(hart,
                                 zen_queue[hart_zap_id][i]->msg->getDestZCID(),
                                 hart_tables[hart_zap_id]->scratch_tail,
@@ -927,11 +928,12 @@ void ZEN::processSetupMsgs(){
     uint64_t acs_pair = payload[0];
     uint64_t mem_start_addr = payload[1];
     uint64_t size = payload[2];
-    uint64_t mem_end_addr = mem_start_addr + size - 1;
+    // uint64_t mem_end_addr = mem_start_addr + size - 1;
+    uint64_t mem_end_addr = mem_start_addr + size;
     uint64_t scratch_tail = payload[3];
     hart_tables[hart_zap_id] = new ZENTableRow(acs_pair, mem_start_addr,
                                                mem_end_addr, size,
-                                               scratch_tail, 500);
+                                               scratch_tail, 1000);
     sendACK(ev->getSrcHart(),
             ev->getSrcZCID(),
             ev->getSrcPCID(),
