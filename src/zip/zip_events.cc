@@ -57,3 +57,32 @@ void ZIPCreditEvent::serialize_order(SST::Core::Serialization::serializer& _seri
   SST::Event::serialize_order(_serializer);
   _serializer& credits;
 }
+
+uint64_t ZIPRVEvent::getSize() {
+  return size;
+}
+
+bool ZIPRVEvent::isCTS() {
+  return CTS;
+}
+
+
+void ZIPRVEvent::serialize_order(SST::Core::Serialization::serializer& _serializer) {
+  SST::Event::serialize_order(_serializer);
+  _serializer& size;
+  _serializer& CTS;
+}
+
+uint64_t ZIPAggRVEvent::getNum() {
+  return num;
+}
+
+std::vector<uint64_t> ZIPAggRVEvent::getPayload() {
+  return payload;
+}
+
+void ZIPAggRVEvent::serialize_order(SST::Core::Serialization::serializer& _serializer) {
+  SST::Event::serialize_order(_serializer);
+  _serializer& num;
+  _serializer& payload;
+}

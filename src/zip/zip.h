@@ -13,23 +13,6 @@
 
 #include "ZOPNET.h"
 
-// hard-coded parameters
-//
-// number of precincts
-#define MAX_PREC 16
-// maximum buffer size in bytes
-#define MAX_BUFF 128
-// maximum zopEvent size in bytes
-#define MAX_ZOP 24
-// starting address of incoming buffer for precinct p
-#define FIRST_IN_ADDR(p) ((2*p)*MAX_BUFF)
-// starting address of outgoing buffer for precinct p
-#define FIRST_OUT_ADDR(p) ((2*p+1)*MAX_BUFF)
-// number of ZENs
-#define MAX_ZEN 8
-// maximum ZEN buffer size in bytes
-#define MAX_ZEN_BUFF 64
-
 namespace SST::Forza{
   class ZIP : public SST::Component{
   public:
@@ -45,11 +28,19 @@ namespace SST::Forza{
 
     // describe the parameters
     SST_ELI_DOCUMENT_PARAMS(
-      { "precID",    "Precinct ID.",                                  "0" },
-      { "clockFreq", "ZIP core clock frequency.",                     "1GHz" },
-      { "maxWait",   "Maximum time for a ZOP to wait in ZIP buffer.", "1ms" },
-      { "verbose",   "Sets the output verbosity.",                    "0" },
-      { "tests",     "Output flag, set to 1 for testing.",            "0" }
+      { "precID",     "Precinct ID.",                                  "0" },
+      { "clockFreq",  "ZIP core clock frequency.",                     "1GHz" },
+      { "maxWait",    "Maximum time for a ZOP to wait in ZIP buffer.", "1ms" },
+      { "verbose",    "Sets the output verbosity.",                    "0" },
+      { "tests",      "Output flag, set to 1 for testing.",            "0" },
+      { "numPrec",    "Number of precincts",                           "16" },
+      { "maxBuff",    "Maximum buffer size in flits",                  "16" },
+      { "maxZOP",     "Maximum ZOP size in flits",                     "3" },
+      { "numZone",    "Number of zones",                               "8" },
+      { "maxZENBuff", "Maximum ZEN buffer size in flits",              "8" },
+      { "maxRVBuff",  "Maximum rendezvous buffer size in flits",       "0" },
+      { "MTU",        "MTU in flits",                                  "0" },
+      { "RVThresh",   "Rendezvous threshold in flits",                 "10000000" }
     )
 
     // describe the ports
@@ -109,7 +100,7 @@ namespace SST::Forza{
     /// The read operation returns a pointer to a target that we can check to see if the operation is finished and pull the retrieved
     /// data. The thinking is that memory operations should happen linearly, so writes will finish before the read, so reads will act
     /// as a barrier.
-    void          waitMemWriteComplete(uint64_t Addr, uint32_t Size, std::vector<uint8_t> Buf);
+    void          waitMemWriteComplete(uint64_t Addr, uint32_t Size, std::vector<uint64_t> Buf);
     ZIPMemTarget*  waitMemReadComplete(uint64_t Addr, uint32_t Size);
 
     /// ZIP: sending memory
@@ -118,13 +109,12 @@ namespace SST::Forza{
     /// They require a pointer to a target to check if the read operation has completed.
     bool    aggregatePackets(uint16_t DestPrec, ZIPMemTarget* Target, bool* hasStalled); // try to send a ZIPAggEvent to HFI containing aggregated
 								                         // zopEvents stored in outgoing buffer for precinct DestPrec
-    bool disaggregatePackets(uint16_t SrcPrec, ZIPMemTarget* Target);                    // try to send zopEvents to the local NOC from the incoming
+    bool disaggregatePackets(uint16_t SrcPrec, ZIPMemTarget* Target, bool RV);           // try to send zopEvents to the local NOC from the incoming
 								                         // buffer for precinct SrcPrec
 
-    /// ZIP: vector conversion
-    /// These help translate between 8-bit and 64-bit vectors.
-    std::vector<uint8_t>  vec64to8(std::vector<uint64_t> oldvec); // zopEvent -> memory
-    std::vector<uint64_t> vec8to64(std::vector<uint8_t>  oldvec); // memory   -> zopEvent
+    bool  aggregateRVPackets(uint16_t DestPrec, ZIPMemTarget* Target, bool* hasStalled);
+
+    void addToOutQ(uint16_t);
 
     // private data members
     SST::Output output;         ///< ZIP: SST output handler
@@ -143,6 +133,11 @@ namespace SST::Forza{
 
     std::vector<bool> bufOutLock;
 
+    uint64_t RVBufInSize;
+    uint64_t RVBufInRecv;
+
+    std::vector<bool> RVBufOutCTS;
+
     // credits indexed by precinct/ZEN
     // These credit vectors keep track of how many bytes are available in the receiving buffers of external ZIPs and the local ZENs.
     // Credits are replenished once we receive credit events, indicating that the receiving buffers have been emptied.
@@ -157,6 +152,10 @@ namespace SST::Forza{
     // the clock cycle when the packet was added to the queue and whether it was stalled due to lack of credits.
     std::queue<std::tuple<uint16_t, ZIPMemTarget*, SimTime_t, bool*>> outQ; // contains destination precinct IDs that must be sent their aggregated outgoing buffers
     std::queue<std::tuple<uint16_t, ZIPMemTarget*>>                   inQ;  // contains source precinct IDs whose incoming buffers must be disaggregated and sent to the NOC
+
+    std::queue<std::tuple<uint16_t, ZIPMemTarget*, SimTime_t, bool*>> outRVQ;
+    std::queue<std::tuple<uint16_t, ZIPMemTarget*>> inRVQ;
+    std::queue<std::tuple<uint16_t, uint64_t>> recvRVQ;
  
     // maximum number of cycles to wait for outgoing buffers to be cleared
     unsigned int waitCycles;
@@ -167,6 +166,15 @@ namespace SST::Forza{
     UnitAlgebra  p_maxWait;
     unsigned int p_verbose;
     unsigned int p_tests;
+
+    unsigned int p_numPrec;
+    unsigned int p_maxBuff;
+    unsigned int p_maxZOP;
+    unsigned int p_numZone;
+    unsigned int p_maxZENBuff;
+    unsigned int p_maxRVBuff;
+    unsigned int p_MTU;
+    unsigned int p_RVThresh;
 
     // statistics
     Statistic<uint64_t>* s_numPackets;

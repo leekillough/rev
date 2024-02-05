@@ -23,14 +23,14 @@ ZIP test output using different command-line arguments, which are explained in g
 This command sets up 4 precincts that each contain 4 zones. Every zone contains a ZEN and a dummy ZOP generator. The zones in precincts 1–4
 will each generate 64 ZOPs and send them via their respective ZIPs to the corresponding zones in precinct 0. The scenario is designed to test
 the credit system, ensuring that aggregated packets are not sent until the destination ZIPs have available buffer space and also ensuring that
-ZIPs to not send disaggregated ZOPs to zones until the ZENs can receive them.
+ZIPs do not send disaggregated ZOPs to zones until the ZENs can receive them.
 
 The output of this command should show that `zip_1`, `zip_2`, and `zip_3` pass test **ZIP_C1** because aggregated packets stall once receiving ZIPs
 lack credits. `zip_0` passes test **ZIP_C2** because the disaggregated ZOPs stall while waiting for the receiving ZENs to process ZOPs. `zip_1`,
-`zip_2`, and `zip_3` pass tests **ZIP_C3** and **ZIP_C4** because ZOPs from the connected zondes are successfully stored in ZIP memory and retreived
+`zip_2`, and `zip_3` pass tests **ZIP_C3** and **ZIP_C4** because ZOPs from the connected zones are successfully stored in ZIP memory and retreived
 and then aggregated according to specifications (once the buffer is full or a maximum wait time of $10\mu\mathrm s$ has been reached). And `zip_0`
 passes test **ZIP_C5** because it is able to disaggregate the packet into individual concatenated ZOPs. Also note that test **ZIP_P1** shows the
-percentage of packets the were stalled before they could be sent by `zip_1`, `zip_2`, and `zip_3`. (This value, 22%, was made artificially high
+percentage of packets the were stalled before they could be sent by `zip_1`, `zip_2`, and `zip_3`. (This value, 67%, was made artificially high
 due to a low allocation of credits for testing.)
 
 ### `sst --stop-at=15us zip-test.py -- --test=1 --precincts=2 --zones=1 --num_zops=1 --max_wait=0`
@@ -44,3 +44,27 @@ in precinct 0 to quickly send packets from different sources to different destin
 The outputs of these commands should show that `zip_0` is able to dequeue single packets from one, two, or eight senders within 102 to 106
 clock cycles per packet according to tests **ZIP_P2**, **ZIP_P3**, and **ZIP_P4**. This cycle count includes the overhead of writing to and reading from memory
 and shows that the peformance of the ZIP is able to scale with the number of senders.
+
+### Rendezvous messaging
+The ZIP includes functionality to employ rendezvous messaging when aggregated packet sizes are above a given threshold.
+Rather than sending the entire packet once there are enough credits for the receiving ZIP, the sending ZIP will first
+send a request and wait for a response to signal that there is enough space in the receiving ZIP's incoming rendezvous
+buffer. Then packets are sent in MTU-sized chunks.
+
+To test rendezvous messaging, simply add the `--rendezvous` flag to any of the above commands, which will force all ZOPs
+to be sent with this method (by setting the threshold to 0 bytes). The tests should run similarly as before with some
+differences. **ZIP_P1** and **ZIP_C1** now ensure that the ZIP waits for an acknowledgement rather than for credits. As
+a result, **ZIP_P1** shows that 100% of packets are stalled because getting that response always takes nonzero cycles.
+**ZIP_P2**, **ZIP_P3**, and **ZIP_P4** have also increased up to 4004 to 4006 clock cycles per packet.
+
+```
+$ sst --stop-at=15us zip-test.py -- --test=1 --rendezvous --precincts=2 --zones=1 --num_zops=1 --max_wait=0
+
+ZIP[zip_0:ZIP:0]: Registering clock with frequency=1 GHz
+zopNIC[zip_0:zopLink] Registering clock with frequency=1GHz
+... output elided ...
+ZIP[zip_0:finish:15000000]: [TEST ZIP_P1] 0.000000%
+ZIP[zip_0:finish:15000000]: [TEST ZIP_P{2,3,4}] 102.000000 cycles/packet
+... output elided ...
+```
+
