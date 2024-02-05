@@ -3686,6 +3686,78 @@ EcallStatus RevCore::ECALL_forza_zqm_setup() {
   return EcallStatus::SUCCESS;
 }
 
+// 4006, forza_zqm_setup(uint64_t addr, uint64_t size, uint64_t min_hart, uint64_t max_hart, uint64_t seq_ld_flag);
+EcallStatus RevProc::ECALL_forza_zqm_setup(RevInst& inst){
+  uint64_t low_addr = (uint64_t)RegFile->GetX<uint64_t>(RevReg::a0);
+  uint64_t size = (uint64_t)RegFile->GetX<uint64_t>(RevReg::a1);
+  uint64_t high_addr = low_addr + size - 1;
+  uint64_t min_hart = (uint64_t)RegFile->GetX<uint64_t>(RevReg::a2);
+  uint64_t max_hart = (uint64_t)RegFile->GetX<uint64_t>(RevReg::a3);
+  uint64_t seq_ld_flag = (uint64_t)RegFile->GetX<uint64_t>(RevReg::a4);
+
+  output->verbose(CALL_INFO, 2, 0, "ECALL: forza_zqm_init called by thread %" PRIu32 " on hart %" PRIu32 "\n",
+                  GetActiveThreadID(), HartToExecID);
+  output->verbose(CALL_INFO, 5, 0, "Arguments: low_addr=0x%lx, size=0x%lx, high_addr=0x%lx,"
+                                   " min_hart=0x%lx, max_hart=0x%lx, seq_ld_flag=0x%lx\n",
+                                   low_addr, size, high_addr,
+                                   min_hart, max_hart, seq_ld_flag);
+
+  // TODO: If this initialization is being executed by a single thread, then one of two things has to happen:
+  // A. This function sends a zop to all ZQMs in the system (so a double for-loop should be written)
+  // or
+  // B. The application itself has to send this to all ZQMs in the system (and the function itself may
+  //    need to have more arguments to support this.
+  // As currently written, this will send the ZQM setup packet to Precinct 0, Zone 0, ZQM.
+
+  SST::Forza::zopEvent *zev = new SST::Forza::zopEvent();
+
+  uint8_t msg_id = 0;
+  zev->setType(SST::Forza::zopMsgT::Z_MSG);
+  zev->setID(msg_id);
+  zev->setOpc(SST::Forza::zopOpc::Z_MSG_ZQMSET);
+  zev->setAppID(0); // FIXME: Pull this from the executing thread; for now, just use 0
+
+  // src info
+  zev->setSrcHart(HartToExecID);
+  zev->setSrcZCID(zNic->getEndpointType());
+  zev->setSrcPCID(zNic->getZoneID());
+  zev->setSrcPrec(zNic->getPrecinctID());
+
+  // Dest info is the ZQM
+  zev->setDestHart(0);
+  zev->setDestZCID(SST::Forza::zopCompID::Z_ZQM);
+  zev->setDestPCID(zNic->getZoneID());
+  zev->setDestPrec(zNic->getPrecinctID());
+
+  /*
+   * payload[0] = minimum ZAP hart for this AppID
+   * payload[1] = maximum ZAP hart for this AppID (inclusive)
+   * payload[2] = run queue low memory address (cannot be 0)
+   * payload[3] = run queue high memory address (cannot be 0)
+   * payload[4] = sequential fill flag (1 for actor programs, 0 otherwise)
+   *
+   * Note: For actor programs (e.g, payload[4] == 1), it's generally expected that no run queue is
+   * necessary, thus, payload[2] can equal payload[3]. For migrating thread programs, the buffer should
+   * be equal to the following (( (num_threads_to_store+1) * bytes_per_thread_stored) - 1); there isn't a "full"
+   * flag to in the ZQM to denote if the buffer is full/empty if the read and write pointers match, thus there
+   * is always space for "one extra thread" hence the +1.  The -1 just ensures that the high address ends with
+   * 0x7 or 0xF (since we're dealing with 8byte storage chunks)
+   */
+
+  std::vector<uint64_t> payload;
+  payload.push_back(min_hart);
+  payload.push_back(max_hart);
+  payload.push_back(low_addr);
+  payload.push_back(high_addr);
+  payload.push_back(seq_ld_flag);
+  zev->setPayload(payload);
+
+  // Let's send the message
+  zNic->send(zev, SST::Forza::zopCompID::Z_ZQM, zNic->getPCID(zev->getDestPCID()), zev->getDestPrec());
+
+  return EcallStatus::SUCCESS;
+}
+  
 // 4007, forza_get_harts_per_zap
 EcallStatus RevCore::ECALL_forza_get_harts_per_zap() {
   RegFile->SetX( RevReg::a0, this->numHarts );
