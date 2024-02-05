@@ -544,7 +544,8 @@ bool zopNIC::msgNotify(int vn){
       Type == Forza::zopCompID::Z_ZAP5 ||
       Type == Forza::zopCompID::Z_ZAP6 ||
       Type == Forza::zopCompID::Z_ZAP7) &&
-     (ev->getType() == Forza::zopMsgT::Z_TMIG) ){
+     (ev->getType() == Forza::zopMsgT::Z_TMIG ||
+      ev->getType() == Forza::zopMsgT::Z_MZOP) ){
     (*msgHandler)(ev);
     return true;
   }
