@@ -3283,17 +3283,12 @@ EcallStatus RevProc::ECALL_forza_send(RevInst& inst){
     u.b[i] = dat[i];
   }
 
-  output->verbose(CALL_INFO, 2, 0, "ECALL: forza_send called by thread %" PRIu32 " on hart %"
-   PRIu32 ", dat[0]=%" PRIx8 ", dat[1]=%" PRIx8 ", dat[2]=%" PRIx8 ", dat[3]=%" PRIx8 
-   ", dat[4]=%" PRIx8 ", dat[5]=%" PRIx8 ", dat[6]=%" PRIx8 ", dat[7]=%" PRIx8 ", dat[0-7]=%" PRIu64 " \n",
-    GetActiveThreadID(), HartToExecID, dat[0], dat[1], dat[2], dat[3], dat[4], dat[5], dat[6], dat[7], u.d);
-
   uint8_t SrcZCID = (uint8_t)(zNic->getEndpointType());
   uint8_t SrcPCID = (uint8_t)(zNic->getPCID(zNic->getZoneID()));
   uint16_t SrcHart = (uint16_t)HartToExecID;
   
-  output->verbose(CALL_INFO, 0, 0, "ECALL_forza_send: SrcZCID = %" PRIu8 
-            ", SrcPCID = %" PRIu8 ", SrcHart = %" PRIu16 "\n", SrcZCID, SrcPCID, SrcHart);
+  // output->verbose(CALL_INFO, 0, 0, "ECALL_forza_send: SrcZCID = %" PRIu8 
+  //           ", SrcPCID = %" PRIu8 ", SrcHart = %" PRIu16 "\n", SrcZCID, SrcPCID, SrcHart);
 
   SST::Forza::zopEvent *zev = new SST::Forza::zopEvent();
   // set all the fields : FIXME
@@ -3304,9 +3299,13 @@ EcallStatus RevProc::ECALL_forza_send(RevInst& inst){
   zev->setSrcPCID(SrcPCID);
   zev->setSrcHart(SrcHart);
 
-  zev->setDestZCID(3);
-  zev->setDestPCID(0);
-  zev->setDestHart(0);
+  //TODO: Currently assuming alignement is 0, with a total of 512 threads per ZAP.
+  uint16_t DstHart = dst%opts->GetNumHarts();
+  uint8_t DstPCID = 0;
+  uint8_t DstZCID = dst/opts->GetNumHarts();
+  zev->setDestZCID(DstZCID);
+  zev->setDestPCID(DstPCID);
+  zev->setDestHart(DstHart);
 
   std::vector<uint64_t> payload;
   for (size_t i = 0; i < size; i += sizeof(uint64_t)) {
@@ -3314,6 +3313,10 @@ EcallStatus RevProc::ECALL_forza_send(RevInst& inst){
       u.b[j] = dat[i+j];
     }
     payload.push_back(u.d);
+    output->verbose(CALL_INFO, 2, 0, "ECALL: forza_send called by thread %" PRIu32 " on hart %"
+    PRIu32 ", dat[0]=%" PRIx8 ", dat[1]=%" PRIx8 ", dat[2]=%" PRIx8 ", dat[3]=%" PRIx8 
+    ", dat[4]=%" PRIx8 ", dat[5]=%" PRIx8 ", dat[6]=%" PRIx8 ", dat[7]=%" PRIx8 ", dat[0-7]=%" PRIu64 " \n",
+    GetActiveThreadID(), HartToExecID, dat[0], dat[1], dat[2], dat[3], dat[4], dat[5], dat[6], dat[7], u.d);
   }
   zev->setPayload(payload);
   zev->encodeEvent();
@@ -3321,11 +3324,28 @@ EcallStatus RevProc::ECALL_forza_send(RevInst& inst){
   if (!zNic) {
     output->fatal(CALL_INFO, -1, "Error : zNic is nullptr\n" );
   }
-  // output->fatal(CALL_INFO, -1, "Error : send not implemented\n" );
-  if (SrcZCID == 3) {
-    output->verbose(CALL_INFO, 0, 0, "ECALL_forza_send: DO ACTUAL SEND SrcZCID = %" PRIu8 
-            ", SrcPCID = %" PRIu8 ", SrcHart = %" PRIu16 "\n", SrcZCID, SrcPCID, SrcHart);
-    zNic->send(zev, SST::Forza::zopCompID::Z_ZAP3);
+
+  output->verbose(CALL_INFO, 0, 0, "ECALL_forza_send: SrcZCID = %" PRIu8 
+            ", SrcPCID = %" PRIu8 ", SrcHart = %" PRIu16 ", DstZCID = %" PRIu8 
+            ", DstPCID = %" PRIu8 ", DstHart = %" PRIu16 "\n", SrcZCID, SrcPCID, SrcHart, DstZCID, DstPCID, DstHart);
+
+  switch(DstZCID)
+  {
+    case 0:
+      zNic->send(zev, SST::Forza::zopCompID::Z_ZAP0);
+      break;
+    case 1:
+      zNic->send(zev, SST::Forza::zopCompID::Z_ZAP1);
+      break;
+    case 2: 
+      zNic->send(zev, SST::Forza::zopCompID::Z_ZAP2);
+      break;
+    case 3:
+      zNic->send(zev, SST::Forza::zopCompID::Z_ZAP3);
+      break;
+    default:
+      output->fatal(CALL_INFO, -1, "Error : DstZCID[%" PRIu8 "] doesnt exist\n", DstZCID);
+      break;
   }
 
   return EcallStatus::SUCCESS;
@@ -3335,6 +3355,34 @@ EcallStatus RevProc::ECALL_forza_send(RevInst& inst){
 EcallStatus RevProc::ECALL_forza_zen_credit_release(RevInst& inst){
   output->verbose(CALL_INFO, 2, 0, "ECALL: forza_zen_credit_release called by thread %" PRIu32 " on hart %" PRIu32 "\n", GetActiveThreadID(), HartToExecID);
   // TODO: Give back a credit to the zen and update ZEN should update its head pointer to new packet.
+  uint64_t num_creds = (uint64_t)RegFile->GetX<uint64_t>(RevReg::a0);
+
+  SST::Forza::zopEvent *zev = new SST::Forza::zopEvent();
+
+  uint8_t msg_id = 0;
+
+  uint8_t SrcZCID = (uint8_t)(zNic->getEndpointType());
+  uint8_t SrcPCID = (uint8_t)(zNic->getPCID(zNic->getZoneID()));
+  uint16_t SrcHart = (uint16_t)HartToExecID;
+  
+  // set all the fields : FIXME
+  zev->setType(SST::Forza::zopMsgT::Z_MSG);
+  zev->setID(msg_id);
+  zev->setOpc(SST::Forza::zopOpc::Z_MSG_CREDIT);
+  zev->setSrcZCID(SrcZCID);
+  zev->setSrcPCID(SrcPCID);
+  zev->setSrcHart(SrcHart);
+
+  // set the payload, do actual send setup thing : FIXME
+  // read ZEN::processSetupMsgs
+  std::vector<uint64_t> payload;
+  payload.push_back(num_creds); // acs_pair = payload[0]
+  zev->setPayload(payload);
+
+  if (!zNic) {
+    output->fatal(CALL_INFO, -1, "Error : zNic is nullptr\n" );
+  }
+  zNic->send(zev, SST::Forza::zopCompID::Z_ZEN);
   return EcallStatus::SUCCESS;
 }
 
@@ -3376,7 +3424,7 @@ EcallStatus RevProc::ECALL_forza_zen_setup(RevInst& inst){
   payload.push_back(0x00ull); // acs_pair = payload[0]
   payload.push_back(addr); // mem_start_addr = payload[1]
   payload.push_back(size); // size = payload[3]
-  payload.push_back(addr + size-1); // TODO: FIXME scratch_tail = payload[4]
+  payload.push_back(tailptr); // TODO: FIXME scratch_tail = payload[4]
   zev->setPayload(payload);
 
   if (!zNic) {
