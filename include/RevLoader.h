@@ -278,7 +278,7 @@ struct ElfInfo{
 class RevLoader {
 public:
   /// RevLoader: standard constructor
-  RevLoader( std::string Exe, std::string Args, RevMem *Mem, SST::Output *Output );
+  RevLoader( std::string Exe, std::string Args, RevMem *Mem, SST::Output *Output, bool isRZA );
 
   /// RevLoader: standard destructor
   ~RevLoader();
@@ -299,7 +299,7 @@ public:
   ElfInfo GetInfo() { return elfinfo; }
 
   ///  RevLoader: symbol lookup for tracer
-  std::map<uint64_t,std::string>* GetTraceSymbols(); 
+  std::map<uint64_t,std::string>* GetTraceSymbols();
 
   /// RevLoader: Gets TLS base address
   const uint64_t& GetTLSBaseAddr() { return TLSBaseAddr; }
@@ -317,6 +317,8 @@ private:
 
   uint32_t RV32Entry;       ///< RevLoader: RV32 entry
   uint64_t RV64Entry;       ///< RevLoader: RV64 entry
+
+  bool isRZA;               ///< RevLoader: is this device an RZA?
 
   uint64_t TLSBaseAddr = 0;
   uint64_t TLSSize = 0;

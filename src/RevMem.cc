@@ -717,7 +717,15 @@ bool RevMem::WriteMem( unsigned Hart, uint64_t Addr, size_t Len, const void *Dat
 
 bool RevMem::WriteMem( unsigned Hart, uint64_t Addr, size_t Len, const void *Data ){
 #ifdef _REV_DEBUG_
-  std::cout << "Writing " << Len << " Bytes Starting at 0x" << std::hex << Addr << std::dec << std::endl;
+  if( !isRZA ){
+    std::cout << "Writing " << Len << " Bytes Starting at 0x" << std::hex << Addr << std::dec << std::endl;
+  }else{
+    std::cout << "RZA Writing " << Len << " Bytes Starting at 0x" << std::hex << Addr << std::dec << std::endl;
+    const char *bytearray = static_cast<const char *>(Data);
+    for( size_t i = 0; i<Len; i++ ){
+      std::cout << "Byte[ " << i << "] = " << std::hex << bytearray[i] << std::dec << std::endl;
+    }
+  }
 #endif
 
   TRACE_MEM_WRITE(Addr, Len, Data);
@@ -1475,7 +1483,8 @@ bool RevMem::__ZOP_WRITEMemBase(unsigned Hart, uint64_t Addr, size_t Len,
                                 SST::Forza::zopOpc opc ){
 #ifdef _REV_DEBUG_
   std::cout << "ZOP_WRITEMemBase of " << Len << " Bytes Starting at 0x"
-            << std::hex << Addr << std::dec << std::endl;
+            << std::hex << Addr << std::dec << " with opc="
+            << (unsigned)(opc) << std::endl;
 #endif
 
   // create a new event
@@ -1509,15 +1518,19 @@ bool RevMem::__ZOP_WRITEMemBase(unsigned Hart, uint64_t Addr, size_t Len,
   if( Len == 1 ){
     // standard write
     uint8_t *Tmp = reinterpret_cast<uint8_t *>(Data);
+    //std::cout << "1-Byte = 0x" << std::hex << Tmp[0] << std::dec << std::endl;
     payload.push_back((uint64_t)(Tmp[0]));
   }else if( Len == 2 ){
     uint16_t *Tmp = reinterpret_cast<uint16_t *>(Data);
+    //std::cout << "2-Byte = 0x" << std::hex << Tmp[0] << std::dec << std::endl;
     payload.push_back((uint64_t)(Tmp[0]));
   }else if( Len == 4 ){
     uint32_t *Tmp = reinterpret_cast<uint32_t *>(Data);
+    //std::cout << "4-Byte = 0x" << std::hex << Tmp[0] << std::dec << std::endl;
     payload.push_back((uint64_t)(Tmp[0]));
   }else if( Len == 8 ){
     uint64_t *Tmp = reinterpret_cast<uint64_t *>(Data);
+    //std::cout << "8-Byte = 0x" << std::hex << Tmp[0] << std::dec << std::endl;
     payload.push_back(Tmp[0]);
   }else{
     // large write

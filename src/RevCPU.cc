@@ -261,9 +261,16 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params )
 
   // Load the binary into memory
   // TODO: Use std::nothrow to return null instead of throwing std::bad_alloc
-  Loader = new RevLoader( Exe, Args, Mem, &output );
-  if( !Loader ){
-    output.fatal(CALL_INFO, -1, "Error: failed to initialize the RISC-V loader\n" );
+  if( EnableZopNIC ){
+    Loader = new RevLoader( Exe, Args, Mem, &output, EnableRZA );
+    if( !Loader ){
+      output.fatal(CALL_INFO, -1, "Error: failed to initialize the RISC-V loader\n" );
+    }
+  }else{
+    Loader = new RevLoader( Exe, Args, Mem, &output, true );
+    if( !Loader ){
+      output.fatal(CALL_INFO, -1, "Error: failed to initialize the RISC-V loader\n" );
+    }
   }
 
   Opts->SetArgs(Loader->GetArgv());

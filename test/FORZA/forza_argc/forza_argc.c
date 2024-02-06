@@ -34,11 +34,8 @@ int main(int argc, char **argv) {
   assert(argv[0][9] == 'c');
   assert(argv[0][10] == '.');
   assert(argv[0][11] == 'e');
-#if 0
-  assert(argv[0][12] == 'x');
   assert(argv[0][12] == 'x');
   assert(argv[0][13] == 'e');
-#endif
   assert(argv[1][0] == 'o');
   assert(argv[1][1] == 'n');
   assert(argv[1][2] == 'e');
