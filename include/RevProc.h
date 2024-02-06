@@ -663,6 +663,7 @@ private:
   EcallStatus ECALL_forza_send(RevInst& inst);  // 4003, forza_send();
   EcallStatus ECALL_forza_zen_credit_release(RevInst& inst);  // 4004, forza_popq();
   EcallStatus ECALL_forza_zen_setup(RevInst& inst);  // 4005, forza_zen_setup();
+  EcallStatus ECALL_forza_zqm_setup(RevInst& inst); // 4006, forza_zqm_setup();
   EcallStatus ECALL_forza_get_harts_per_zap(RevInst& inst); // 4007, forza_get_harts_per_zap
   EcallStatus ECALL_forza_get_zaps_per_zone(RevInst& inst); // 4008, forza_get_zaps_per_zone();
   EcallStatus ECALL_forza_get_zones_per_precinct(RevInst& inst); // 4009, forza_get_zones_per_precinct();

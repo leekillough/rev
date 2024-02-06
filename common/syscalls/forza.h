@@ -59,7 +59,24 @@ static int forza_zen_setup(uint64_t addr, size_t size, uint64_t tailptr){
   );
 }
 
-// Reserve 4006 for forza_zqm_setup
+/**
+ * @param addr - start of application zone run queue - should be 8byte aligned
+ * @param size - num bytes of application zone run queue; can be 0
+ * @param min_hart - low HART number for this application
+ * @param max_hart - top HART number for this application (inclusive)
+ * @param seq_ld_flag - set to 1 if actor program, 0 for migr thread program
+ * @return
+ *
+ */
+static int forza_zqm_setup(uint64_t addr, uint64_t size, uint64_t min_hart, uint64_t max_hart, uint64_t seq_ld_flag){
+    int rc;
+    asm volatile (
+            "li a7, 4006 \n\t"
+            "ecall \n\t"
+            "mv %0, a0" : "=r" (rc)
+            );
+}
+
 static int forza_get_harts_per_zap(){
   int rc;
   asm volatile (
