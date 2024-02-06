@@ -15,8 +15,21 @@ namespace SST::RevCPU {
 
 using MemSegment = RevMem::MemSegment;
 
-bool RevLoader::IsElf( const Elf64_Ehdr eh64 ) {
-  if( ( eh64 ).e_ident[0] == 0x7f && ( eh64 ).e_ident[1] == 'E' && ( eh64 ).e_ident[2] == 'L' && ( eh64 ).e_ident[3] == 'F' )
+RevLoader::RevLoader( const std::string& exe, const std::vector<std::string>& args, RevMem* mem, SST::Output* output, bool isRZA )
+  : mem( mem ), output( output ), isRZA( isRZA ) {
+  if( isRZA ) {
+    output->verbose( CALL_INFO, 4, 0, "RZA device: Executing the full loader\n" );
+  }
+  if( !LoadElf( exe, args ) ) {
+    output->fatal( CALL_INFO, -1, "Error: failed to load executable into memory\n" );
+  }
+}
+
+bool RevLoader::IsElf( const Elf64_Ehdr eh64 ){
+  if( (eh64).e_ident[0] == 0x7f &&
+      (eh64).e_ident[1] == 'E'  &&
+      (eh64).e_ident[2] == 'L'  &&
+      (eh64).e_ident[3] == 'F' )
     return true;
 
   return false;
@@ -48,7 +61,7 @@ bool RevLoader::IsRVBig( const Elf64_Ehdr eh64 ) {
 
 // breaks the write into cache line chunks
 bool RevLoader::WriteCacheLine( uint64_t Addr, size_t Len, const void* Data ) {
-  if( Len == 0 ) {
+  if( (Len == 0) || (!isRZA) ){
     // nothing to do here, move along
     return true;
   }

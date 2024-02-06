@@ -265,9 +265,9 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params ) : SST::Compon
   Mem->SetMaxHeapSize( maxHeapSize );
 
   // Load the binary into memory
-  Loader = new( std::nothrow ) RevLoader( Exe, Opts->GetArgv(), Mem, &output, !EnableZopNIC || EnableRZA );
-  if( !Loader ) {
-    output.fatal( CALL_INFO, -1, "Error: failed to initialize the RISC-V loader\n" );
+  Loader = new( std::nothrow ) RevLoader( Exe, Args, Mem, &output, !EnableZopNIC || EnableRZA );
+  if( !Loader ){
+    output.fatal(CALL_INFO, -1, "Error: failed to initialize the RISC-V loader\n" );
   }
 
   EnableCoProc = params.find<bool>( "enableCoProc", 0 );

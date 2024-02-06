@@ -276,11 +276,7 @@ struct ElfInfo {
 class RevLoader {
 public:
   /// RevLoader: standard constructor
-  RevLoader( const std::string& exe, const std::vector<std::string>& args, RevMem* mem, SST::Output* output )
-    : mem( mem ), output( output ) {
-    if( !LoadElf( exe, args ) )
-      output->fatal( CALL_INFO, -1, "Error: failed to load executable into memory\n" );
-  }
+  RevLoader( std::string Exe, std::string Args, RevMem *Mem, SST::Output *Output, bool isRZA );
 
   /// RevLoader: standard destructor
   ~RevLoader()                             = default;
@@ -315,6 +311,8 @@ private:
 
   uint64_t TLSBaseAddr{};
   uint64_t TLSSize{};
+
+  bool isRZA{};          ///< RevLoader: is this device an RZA?
 
   ElfInfo                         elfinfo{};         ///< RevLoader: elf info from the loaded program
   std::map<std::string, uint64_t> symtable{};        ///< RevLoader: loaded symbol table
