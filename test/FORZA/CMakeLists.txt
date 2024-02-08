@@ -12,6 +12,7 @@ add_rev_test(forza_send forza_send 30 "all;memh;rv64;loader;forza" SCRIPT "run_s
 add_rev_test(forza_zen_setup forza_zen_setup 30 "all;memh;rv64;loader;forza" SCRIPT "run_zen_setup.sh")
 add_rev_test(forza_zqm_setup forza_zqm_setup 30 "all;memh;rv64;loader;forza" SCRIPT "run_zqm_setup.sh")
 add_rev_test(forza_python forza_python 100 "all;memh;rv64;loader;forza" SCRIPT "run_python.sh")
+add_rev_test(forza_harts_per_zap forza_config_syscalls 30 "all;memh;rv64;loader;forza" SCRIPT "run_harts_per_zap.sh")
 add_rev_test(forza_config_syscalls forza_config_syscalls 60 "all;memh;rv64;loader;forza" SCRIPT "run_test_config_syscalls.sh")
 add_rev_test(forza_argc forza_argc 30 "all;memh;rv64;loader;forza" SCRIPT "run_forza_argc.sh")
 

@@ -84,6 +84,7 @@ rza.addParams({
         "machine" : "[CORES:RV64G]",                  # Core:Config; RV64I for core 0
         "startAddr" : "[CORES:0x00000000]",           # Starting address for core 0
         "program" : os.getenv("REV_EXE", "config_ecalls.exe"),  # Target executable
+        "args" : "64 1 8 3 0 0 0",
         "enableZoneNIC" : 1,                          # [FORZA] Enable the zone NIC
         "enableRZA" : 1,                              # [FORZA] Enable RZA functionality
         "precinctId" : 0,                             # [FORZA] precinct ID
