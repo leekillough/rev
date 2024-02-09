@@ -27,10 +27,10 @@ int main(int argc, char **argv){
 
   int a = argc;
   assert(a == 8);
-#if 0
+#if 1 
   for (int i = 0; i < a; i++){
-    char buf[64];
-    int buf_sz = snprintf(buf, 64, "argv[%d]=%s\n", i, argv[i]);
+    char buf[128];
+    int buf_sz = snprintf(buf, 128, "argv[%d]=%s\n", i, argv[i]);
     rev_write(STDOUT_FILENO, buf, buf_sz);
   }
 #endif
