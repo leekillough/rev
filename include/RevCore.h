@@ -697,6 +697,7 @@ private:
   EcallStatus ECALL_forza_get_my_zap(RevInst& inst); // 4011, forza_get_my_zap();
   EcallStatus ECALL_forza_get_my_zone(RevInst& inst); // 4012, forza_get_my_zone();
   EcallStatus ECALL_forza_get_my_precinct(RevInst& inst); // 4013, forza_get_my_precinct();
+  EcallStatus ECALL_forza_zone_barrier(RevInst& inst); // 4014, forza_zone_barrier();
 
   EcallStatus ECALL_dump_valid_mem();         // 9004, dump_valid_mem()
   EcallStatus ECALL_dump_valid_mem_to_file(); // 9005, dump_valid_mem_to_file(const char* outputFile)

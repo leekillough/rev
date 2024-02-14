@@ -18,7 +18,7 @@ zopNIC::zopNIC(ComponentId_t id, Params& params)
     initBroadcastSent(false), numDest(0), numHarts(0),
     Precinct(0), Zone(0),
     Type(zopCompID::Z_ZAP0), enableTestHarness(false),
-    msgId(nullptr), HARTFence(nullptr){
+    msgId(nullptr), HARTFence(nullptr), barrierSense(nullptr){
 
   // read the parameters
   int verbosity = params.find<int>("verbose", 0);
@@ -29,7 +29,7 @@ zopNIC::zopNIC(ComponentId_t id, Params& params)
   enableTestHarness = params.find<bool>("enableTestHarness", false);
   numZones = params.find<unsigned>("numZones", 8);
   numPrecincts = params.find<unsigned>("numPrecincts", 1);
-  
+
   // register the stats
   registerStats();
 
@@ -68,14 +68,34 @@ zopNIC::~zopNIC(){
     delete[] msgId;
   if( HARTFence )
     delete[] HARTFence;
+  if( barrierSense )
+    delete [] barrierSense;
+  for( unsigned i=0; i<2; i++ ){
+    if( zoneBarrier[i] ){
+      delete [] zoneBarrier[i];
+    }
+    if( barrierEndpoints[i] ){
+      delete [] barrierEndpoints[i];
+    }
+  }
 }
 
 void zopNIC::setNumHarts(unsigned H){
   numHarts = H;
   msgId = new SST::Forza::zopMsgID [numHarts];
   HARTFence = new unsigned [numHarts];
+  barrierSense = new unsigned [numHarts];
+  zoneBarrier.push_back( new unsigned [numHarts] );
+  zoneBarrier.push_back( new unsigned [numHarts] );
+  barrierEndpoints.push_back( new unsigned [numHarts] );
+  barrierEndpoints.push_back( new unsigned [numHarts] );
   for( unsigned i=0; i<numHarts; i++ ){
     HARTFence[i] = 0;
+    barrierSense[i] = 0;
+    zoneBarrier[0][i] = 0;
+    zoneBarrier[1][i] = 0;
+    barrierEndpoints[0][i] = 0;
+    barrierEndpoints[1][i] = 0;
   }
 }
 
@@ -262,9 +282,90 @@ void zopNIC::init(unsigned int phase){
   // --- end print out the host mapping table
 }
 
+bool zopNIC::hasBarrier(unsigned Hart){
+  if( barrierEndpoints[barrierSense[Hart]][Hart] > 0 ){
+    return true;
+  }
+  return false;
+}
+
+bool zopNIC::isBarrierComplete(unsigned Hart){
+  if( zoneBarrier[barrierSense[Hart]][Hart] ==
+      barrierEndpoints[barrierSense[Hart]][Hart] ){
+    // completed the barrier, switch the sense
+    zoneBarrier[barrierSense[Hart]][Hart] = 0;
+    barrierEndpoints[barrierSense[Hart]][Hart] = 0;
+    if( barrierSense[Hart] == 0 ){
+      barrierSense[Hart] = 1;
+    }else{
+      barrierSense[Hart] = 0;
+    }
+    return true;
+  }
+
+  // barrier not complete
+  return false;
+}
+
 void zopNIC::send(zopEvent *ev, zopCompID dest){
   // assuming we are sending within a zone+precinct
   send(ev, dest, getPCID(getZoneID()), getPrecinctID());
+}
+
+void zopNIC::send_zone_barrier(unsigned Hart, unsigned endpoints){
+  output.verbose(CALL_INFO, 9, 0,
+                 "Injecting zone barrier with sense=%u\n",
+                 barrierSense[Hart]);
+  // setup the barrier
+  barrierEndpoints[barrierSense[Hart]][Hart] = endpoints;
+
+  // walk the zone network destinations and send a packet to every ZAP
+  for( auto i : hostMap ){
+    auto t = i.second;
+    if( ((uint8_t)(std::get<_HM_ENDP_T>(t)) < (uint8_t)(SST::Forza::zopCompID::Z_RZA)) &&
+        ((unsigned)(std::get<_HM_ZID>(t)) == Zone) &&
+        (std::get<_HM_PID>(t) == Precinct) ){
+      // found a candidate target
+      auto realDest = i.first;
+
+      // create the packet
+      zopEvent *ev = new zopEvent();
+      ev->setType(SST::Forza::zopMsgT::Z_MSG);
+      ev->setNB(0);
+      ev->setCredit(0);
+      ev->setOpc(SST::Forza::zopOpc::Z_MSG_ZBAR);
+      ev->setAppID(0);
+      ev->setDestHart(0);   // ignored
+      ev->setDestZCID((uint8_t)(SST::Forza::zopCompID::Z_ZAP0));  // ignored
+      ev->setDestPCID((uint8_t)(getPCID(getZoneID())));
+      ev->setDestPrec((uint8_t)(getPrecinctID()));
+      ev->setSrcHart(Hart);
+      ev->setSrcZCID((uint8_t)(getEndpointType()));
+      ev->setSrcPCID((uint8_t)(getPCID(getZoneID())));
+      ev->setSrcPrec((uint8_t)(getPrecinctID()));
+
+      std::vector<uint64_t> payload;
+      payload.push_back((uint64_t)(barrierSense[Hart]));
+      ev->setPayload(payload);
+      ev->encodeEvent();
+
+      // create the request
+      // this may be broken... send individual requests to every other ZAP
+      SST::Interfaces::SimpleNetwork::Request * req =
+        new SST::Interfaces::SimpleNetwork::Request();
+      req->dest = realDest;
+      req->src = iFace->getEndpointID();
+      req->givePayload(ev);
+
+      // inject the request
+      sendQ.push_back(req);
+    }
+  }
+
+  // signal my local barrier
+  for( unsigned i=0; i<numHarts; i++ ){
+    zoneBarrier[barrierSense[Hart]][i]++;
+  }
 }
 
 void zopNIC::send(zopEvent *ev, zopCompID dest, zopPrecID zone, unsigned prec){
@@ -522,6 +623,28 @@ bool zopNIC::msgNotify(int vn){
     return true;
   }
 
+  // check to see if this is a broadcast packet
+  // if so, make sure the local device is a ZAP
+  // if the local device is a ZAP, handle the broadcast
+  // otherwise, ignore the packet
+  if( (ev->getType() == Forza::zopMsgT::Z_MSG) &&
+      (ev->getOpc() == Forza::zopOpc::Z_MSG_ZBAR) ){
+    if( Type == Forza::zopCompID::Z_ZAP0 ||
+        Type == Forza::zopCompID::Z_ZAP1 ||
+        Type == Forza::zopCompID::Z_ZAP2 ||
+        Type == Forza::zopCompID::Z_ZAP3 ||
+        Type == Forza::zopCompID::Z_ZAP4 ||
+        Type == Forza::zopCompID::Z_ZAP5 ||
+        Type == Forza::zopCompID::Z_ZAP6 ||
+        Type == Forza::zopCompID::Z_ZAP7 ) {
+      return handleBarrier(ev);
+    }else{
+      // not a ZAP device, ignore the packet
+      delete ev;
+      return true;
+    }
+  }
+
   // if this is an RZA device, marshall it through to the ZIQ
   // if this is a ZEN, forward it in the incoming queue
   if( Type == Forza::zopCompID::Z_RZA ||
@@ -592,6 +715,30 @@ bool zopNIC::msgNotify(int vn){
 #endif
   // we didn't find a matching request, return false
   return false;
+}
+
+bool zopNIC::handleBarrier(zopEvent *ev){
+  uint64_t tmp = 0x00ull;
+  if( !ev->getFLIT(Z_FLIT_SENSE, &tmp) ){
+    output.fatal(CALL_INFO, -1,
+                 "%s, Error: zopEvent on zopNIC failed to read sense FLIT; OPC=%d, LENGTH=%d, ID=%d\n",
+                 getName().c_str(), (unsigned)(ev->getOpc()),
+                 (unsigned)(ev->getLength()), ev->getID() );
+  }
+  unsigned sense = static_cast<unsigned>(tmp);
+
+  if( sense > 1 ){
+    output.fatal(CALL_INFO, -1,
+                 "%s, Error: received zone barrier with sense > 1; SENSE=%u\n",
+                 getName().c_str(), sense);
+  }
+
+  for( unsigned i=0; i<numHarts; i++ ){
+    zoneBarrier[sense][i]++;
+  }
+
+  delete ev;
+  return true;
 }
 
 bool zopNIC::handleFence(zopEvent *ev){
@@ -713,11 +860,15 @@ bool zopNIC::clockTick(SST::Cycle_t cycle){
         auto P = ev->getPacket();
         if( iFace->spaceToSend(0, P.size()*64) ){
           // we have space to send
-          ev->setID( msgId[Hart].getMsgId() );
-          auto V = std::make_tuple(Hart, ev->getID(), ev->isRead(),
-                                   ev->getTarget(), ev->getOpc(),
-                                   ev->getMemReq());
-          outstanding.push_back(V);
+          // bypass this process if we're sending a zone barrier
+          // zone barriers require no msg id and/or response
+          if( ev->getOpc() != SST::Forza::zopOpc::Z_MSG_ZBAR ){
+            ev->setID( msgId[Hart].getMsgId() );
+            auto V = std::make_tuple(Hart, ev->getID(), ev->isRead(),
+                                    ev->getTarget(), ev->getOpc(),
+                                    ev->getMemReq());
+            outstanding.push_back(V);
+          }
           ev->encodeEvent();
           recordStat( getStatFromPacket(ev), 1 );
           recordStat( zopStats::BytesSent, P.size()*64 );

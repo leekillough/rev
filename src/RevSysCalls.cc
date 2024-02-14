@@ -3757,7 +3757,7 @@ EcallStatus RevProc::ECALL_forza_zqm_setup(RevInst& inst){
 
   return EcallStatus::SUCCESS;
 }
-  
+
 // 4007, forza_get_harts_per_zap
 EcallStatus RevCore::ECALL_forza_get_harts_per_zap() {
   RegFile->SetX( RevReg::a0, this->numHarts );

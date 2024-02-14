@@ -68,6 +68,7 @@ namespace SST::Forza{
 #define Z_FLIT_ADDR         3
 #define Z_FLIT_DATA         4
 #define Z_FLIT_DATA_RESP    3
+#define Z_FLIT_SENSE        2
 
 #define Z_MZOP_PIPE_HART    0
 #define Z_HZOP_PIPE_HART    1
@@ -257,14 +258,15 @@ enum class zopOpc : uint8_t {
   Z_HAC_64_MS_FRSUB   = 0b01101111, /// zopOpc: HZOP-AC 64bit MS AMO FRSUB
 
   // -- MESSAGING --
-  Z_MSG_SENDP   = 0b00000000,   /// zopOpc: MESSAGING Send with payload
-  Z_MSG_SENDAS  = 0b00000001,   /// zopOpc: MESSAGING Send with address and size
-  Z_MSG_CREDIT  = 0b11110000,   /// zopOpc: MESSAGING Credit replenishment
-  Z_MSG_ZENSET  = 0b11110001,   /// zopOpc: MESSAGING ZEN Setup
-  Z_MSG_ZQMSET  = 0b11110100,   /// zopOpc: MESSAGING ZQM Setup
+  Z_MSG_SENDP   = 0b00000000,     /// zopOpc: MESSAGING Send with payload
+  Z_MSG_SENDAS  = 0b00000001,     /// zopOpc: MESSAGING Send with address and size
+  Z_MSG_CREDIT  = 0b11110000,     /// zopOpc: MESSAGING Credit replenishment
+  Z_MSG_ZENSET  = 0b11110001,     /// zopOpc: MESSAGING ZEN Setup
+  Z_MSG_ZQMSET  = 0b11110100,     /// zopOpc: MESSAGING ZQM Setup
   Z_MSG_ZQMHARTDONE = 0b11110101, /// zopOpc: MESSAGING ZQM Notify HART completion
-  Z_MSG_ACK     = 0b11110010,   /// zopOpc: MESSAGING Send Ack
-  Z_MSG_EXCP    = 0b11110011,   /// zopOpc: MESSAGING Send exception
+  Z_MSG_ACK     = 0b11110010,     /// zopOpc: MESSAGING Send Ack
+  Z_MSG_EXCP    = 0b11110011,     /// zopOpc: MESSAGING Send exception
+  Z_MSG_ZBAR    = 0b11111001,     /// zopOpc: MESSAGING Zone Barrier Request
 
   // -- THREAD MIGRATION --
   Z_TMIG_SELECT = 0b00000000,   /// zopOpc: THREAD MIGRATION ZQM choose HART
@@ -723,6 +725,15 @@ public:
   virtual void send(zopEvent *ev, zopCompID dest,
                     zopPrecID zone, unsigned precinct) = 0;
 
+  /// zopAPI : send a zone barrier request
+  virtual void send_zone_barrier(unsigned hart, unsigned endpoints) = 0;
+
+  /// zopAPI: query the nic to see if the barrier is complete
+  virtual bool isBarrierComplete(unsigned Hart) = 0;
+
+  /// zopAPI: query the NIC to see if it already exists in a barrier state
+  virtual bool hasBarrier(unsigned Hart) = 0;
+
   /// zopAPI : retrieve the number of potential endpoints
   virtual unsigned getNumDestinations() = 0;
 
@@ -1004,6 +1015,15 @@ public:
   virtual void send(zopEvent *ev, zopCompID dest,
                     zopPrecID zone, unsigned precinct);
 
+  /// zopNIC: send a zone barrier request
+  virtual void send_zone_barrier(unsigned hart, unsigned endpoints);
+
+  /// zopNIC: query the nic to see if the barrier is complete
+  virtual bool isBarrierComplete(unsigned Hart);
+
+  /// zopNIC: query the NIC to see if it already exists in a barrier state
+  virtual bool hasBarrier(unsigned Hart);
+
   /// zopNIC: get the number of destinations
   virtual unsigned getNumDestinations();
 
@@ -1072,6 +1092,9 @@ private:
   /// zopNIC: test the fence condition
   bool handleFence(zopEvent *ev);
 
+  /// zopNIC: handle the barrier packet
+  bool handleBarrier(zopEvent *ev);
+
   SST::Output output;                       ///< zopNIC: SST output object
   SST::Interfaces::SimpleNetwork * iFace;   ///< zopNIC: SST network interface
   SST::Event::HandlerBase *msgHandler;      ///< zopNIC: SST message handler
@@ -1088,6 +1111,10 @@ private:
 
   SST::Forza::zopMsgID *msgId;              ///< zopNIC: per hart message ID objects
   unsigned *HARTFence;                      ///< zopNIC: per hart fence counters
+
+  unsigned *barrierSense;                       ///< zopNIC: barrier sense flags for A & B
+  std::vector <unsigned *> zoneBarrier;         ///< zopNIC: Zone Barrier counters for A & B
+  std::vector <unsigned *> barrierEndpoints;    ///< zopNIC: Number of endpoints to wait for A & B barriers
 
   std::vector<std::pair<zopEvent *, zopCompID>> preInitQ;             ///< zopNIC: holds buffered requests before the network boots
   std::vector<SST::Interfaces::SimpleNetwork::Request*> sendQ;        ///< zopNIC: buffered send queue

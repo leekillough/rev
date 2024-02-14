@@ -143,3 +143,12 @@ static int forza_get_my_precinct(){
           "mv %0, a0" : "=r" (rc)
           );
 }
+
+static void forza_zone_barrier(uint32_t num_harts){
+  int rc;
+  asm volatile (
+          "li a7, 4014 \n\t"
+          "ecall \n\t"
+          "mv %0, a0" : "=r" (rc)
+          );
+}
