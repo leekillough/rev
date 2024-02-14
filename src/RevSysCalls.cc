@@ -3563,5 +3563,23 @@ EcallStatus RevProc::ECALL_forza_get_my_precinct(RevInst& inst){
 		  GetActiveThreadID(), HartToExecID, zNic->getPrecinctID());
   return EcallStatus::SUCCESS;
 }
-  
+
+// 4014, forza_zone_barrier()
+EcallStatus RevProc::ECALL_forza_zone_barrier(RevInst& inst){
+  unsigned num_harts = (unsigned)RegFile->GetX<uint32_t>(RevReg::a0);
+  if( !zNic->hasBarrier(HartToExecID) ){
+    zNic->send_zone_barrier(HartToExecID, num_harts);
+    output->verbose(CALL_INFO,
+                    2, 0,
+                    "ECALL: forza_zone_barrier called by thread %" PRIu32 " on hart %" PRIu32 ", val=%" PRIu32 "\n",
+		    GetActiveThreadID(), HartToExecID, zNic->getPrecinctID());
+  }
+
+  if( zNic->isBarrierComplete(HartToExecID) ){
+    return EcallStatus::SUCCESS;
+  }
+
+  return EcallStatus::CONTINUE;
+}
+
 } // namespace SST::RevCPU

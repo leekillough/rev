@@ -2384,6 +2384,7 @@ void RevProc::InitEcallTable(){
     { 4011, &RevProc::ECALL_forza_get_my_zap },
     { 4012, &RevProc::ECALL_forza_get_my_zone },
     { 4013, &RevProc::ECALL_forza_get_my_precinct },
+    { 4014, &RevProc::ECALL_forza_zone_barrier },
   };
 }
 
