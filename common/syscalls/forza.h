@@ -69,12 +69,13 @@ static int forza_zen_setup(uint64_t addr, size_t size, uint64_t tailptr){
  *
  */
 static int forza_zqm_setup(uint64_t addr, uint64_t size, uint64_t min_hart, uint64_t max_hart, uint64_t seq_ld_flag){
-    int rc;
-    asm volatile (
-            "li a7, 4006 \n\t"
-            "ecall \n\t"
-            "mv %0, a0" : "=r" (rc)
-            );
+  int rc;
+  asm volatile (
+          "li a7, 4006 \n\t"
+          "ecall \n\t"
+          "mv %0, a0" : "=r" (rc)
+          );
+  return rc;
 }
 
 static int forza_get_harts_per_zap(){
@@ -84,6 +85,7 @@ static int forza_get_harts_per_zap(){
 		"ecall \n\t"
 		"mv %0, a0" : "=r" (rc)
 		);
+  return rc;
 }
 
 
@@ -94,6 +96,7 @@ static int forza_get_zaps_per_zone(){
           "ecall \n\t"
           "mv %0, a0" : "=r" (rc)
           );
+  return rc;
 }
 
 static int forza_get_zones_per_precinct(){
@@ -103,6 +106,7 @@ static int forza_get_zones_per_precinct(){
           "ecall \n\t"
           "mv %0, a0" : "=r" (rc)
           );
+  return rc;
 }
 
 static int forza_get_num_precincts(){
@@ -112,6 +116,7 @@ static int forza_get_num_precincts(){
           "ecall \n\t"
           "mv %0, a0" : "=r" (rc)
           );
+  return rc;
 }
 
 
@@ -122,6 +127,7 @@ static int forza_get_my_zap(){
           "ecall \n\t"
           "mv %0, a0" : "=r" (rc)
           );
+  return rc;
 }
 
 
@@ -132,6 +138,7 @@ static int forza_get_my_zone(){
           "ecall \n\t"
           "mv %0, a0" : "=r" (rc)
           );
+  return rc;
 }
 
 
@@ -142,13 +149,12 @@ static int forza_get_my_precinct(){
           "ecall \n\t"
           "mv %0, a0" : "=r" (rc)
           );
+  return rc;
 }
 
 static void forza_zone_barrier(uint32_t num_harts){
-  int rc;
   asm volatile (
           "li a7, 4014 \n\t"
           "ecall \n\t"
-          "mv %0, a0" : "=r" (rc)
           );
 }
