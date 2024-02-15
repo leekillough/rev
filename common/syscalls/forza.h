@@ -12,6 +12,7 @@ static int forza_scratchpad_alloc( size_t size ){
     "ecall \n\t"
     "mv %0, a0" : "=r" (rc)
   );
+  return rc;
 }
 
 static int forza_scratchpad_free( uint64_t addr, size_t size ){
@@ -21,6 +22,7 @@ static int forza_scratchpad_free( uint64_t addr, size_t size ){
     "ecall \n\t"
     "mv %0, a0" : "=r" (rc)
   );
+  return rc;
 }
 
 static int forza_get_hart_id( ){
@@ -30,6 +32,7 @@ static int forza_get_hart_id( ){
     "ecall \n\t"
     "mv %0, a0" : "=r" (rc)
   );
+  return rc;
 }
 
 static int forza_send( uint64_t dst, uint64_t spaddr, size_t size  ){
@@ -39,6 +42,7 @@ static int forza_send( uint64_t dst, uint64_t spaddr, size_t size  ){
     "ecall \n\t"
     "mv %0, a0" : "=r" (rc)
   );
+  return rc;
 }
 
 static int forza_zen_credit_release(size_t size){
@@ -48,6 +52,7 @@ static int forza_zen_credit_release(size_t size){
     "ecall \n\t"
     "mv %0, a0" : "=r" (rc)
   );
+  return rc;
 }
 
 static int forza_zen_setup(uint64_t addr, size_t size, uint64_t tailptr){
@@ -57,6 +62,7 @@ static int forza_zen_setup(uint64_t addr, size_t size, uint64_t tailptr){
     "ecall \n\t"
     "mv %0, a0" : "=r" (rc)
   );
+  return rc;
 }
 
 /**
