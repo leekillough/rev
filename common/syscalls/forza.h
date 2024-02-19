@@ -5,8 +5,8 @@
 #include <limits.h>
 #include <stdarg.h>
 
-static int forza_scratchpad_alloc( size_t size ){
-  int rc;
+static uint64_t forza_scratchpad_alloc( size_t size ){
+  uint64_t rc;
   asm volatile (
     "li a7, 4000 \n\t"
     "ecall \n\t"
@@ -55,14 +55,13 @@ static int forza_zen_credit_release(size_t size){
   return rc;
 }
 
-static int forza_zen_setup(uint64_t addr, size_t size, uint64_t tailptr){
-    int rc;
+static uint64_t forza_zen_setup(uint64_t addr, size_t size, uint64_t tailptr){
+    uint64_t rc;
     asm volatile (
     "li a7, 4005 \n\t"
     "ecall \n\t"
     "mv %0, a0" : "=r" (rc)
   );
-  return rc;
 }
 
 /**
