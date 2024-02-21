@@ -247,6 +247,11 @@ bool RevProc::SeedInstTable(){
     EnableExt(new Zicbom(feature, mem, output), false);
   }
 
+  // Zifencei-Extension
+  if( feature->IsModeEnabled(RV_ZIFENCEI) ){
+    EnableExt(new Zifencei(feature, mem, output), false);
+  }
+
   return true;
 }
 
@@ -1038,7 +1043,7 @@ RevInst RevProc::DecodeRInst(uint32_t Inst, unsigned Entry) const {
   if( (InstTable[Entry].imm == FImm) && (InstTable[Entry].rs2Class == RevRegClass::RegUNKNOWN)){
     DInst.imm  = DECODE_IMM12(Inst) & 0b011111;
   }else{
-    DInst.imm     = 0x0;
+    DInst.imm  = 0x0;
   }
 
   // Size
@@ -2407,8 +2412,10 @@ void RevProc::ExecEcall(RevInst& inst){
 
     // For now, rewind the PC and keep executing the ECALL until we
     // have completed
-    if(EcallStatus::SUCCESS != status){
+    if( status != EcallStatus::SUCCESS ){
       RegFile->SetPC( RegFile->GetPC() - inst.instSize );
+    } else {
+      Harts[HartToDecodeID]->GetEcallState().clear();
     }
   } else {
     output->fatal(CALL_INFO, -1, "Ecall Code = %" PRIu64 " not found", EcallCode);
