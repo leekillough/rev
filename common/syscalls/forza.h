@@ -55,13 +55,14 @@ static int forza_zen_credit_release(size_t size){
   return rc;
 }
 
-static uint64_t forza_zen_setup(uint64_t addr, size_t size, uint64_t tailptr){
-    uint64_t rc;
+static int forza_zen_setup(uint64_t addr, size_t size, uint64_t tailptr){
+    int rc;
     asm volatile (
     "li a7, 4005 \n\t"
     "ecall \n\t"
     "mv %0, a0" : "=r" (rc)
   );
+  return rc;
 }
 
 /**
