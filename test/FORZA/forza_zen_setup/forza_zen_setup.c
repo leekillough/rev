@@ -29,7 +29,7 @@ int main(int argc, char **argv){
     forza_send(0, (uint64_t)addr, 2 * sizeof(uint64_t));
   }  
 
-  forza_scratchpad_free(addr, 16 * sizeof(uint64_t));
+  forza_scratchpad_free((uint64_t)addr, 16 * sizeof(uint64_t));
 
   int i = 9;
   i = i + argc;

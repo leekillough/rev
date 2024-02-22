@@ -13,12 +13,19 @@
 .PHONY: src
 
 EXAMPLE=forza_zen_setup
+EXCXX=forza_zen_setup_cxx
 CC=${RVCC}
 ARCH=rv64gc
+CXX=${RVCXX}
+CXXFLAGS="-std=c++14"
 
-all: $(EXAMPLE).exe
+all: $(EXAMPLE).exe $(EXCXX).exe
 $(EXAMPLE).exe: $(EXAMPLE).c
 	$(CC) -march=$(ARCH) -o $(EXAMPLE).exe $(EXAMPLE).c -static
+
+$(EXCXX).exe: $(EXAMPLE).c
+	$(CXX) -march=$(ARCH) $(CXXFLAGS) -o $(EXCXX).exe $(EXAMPLE).c -static
+
 clean:
 	rm -Rf $(EXAMPLE).exe
 
