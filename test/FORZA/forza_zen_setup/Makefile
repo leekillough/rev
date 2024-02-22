@@ -17,7 +17,7 @@ EXCXX=forza_zen_setup_cxx
 CC=${RVCC}
 ARCH=rv64gc
 CXX=${RVCXX}
-CXXFLAGS="-std=c++14"
+CXXFLAGS="-std=c++14" # warns about using register as type otherwise (c++17 default)
 
 all: $(EXAMPLE).exe $(EXCXX).exe
 $(EXAMPLE).exe: $(EXAMPLE).c
@@ -27,6 +27,6 @@ $(EXCXX).exe: $(EXAMPLE).c
 	$(CXX) -march=$(ARCH) $(CXXFLAGS) -o $(EXCXX).exe $(EXAMPLE).c -static
 
 clean:
-	rm -Rf $(EXAMPLE).exe
+	rm -Rf $(EXAMPLE).exe $(EXCXX).exe
 
 #-- EOF
