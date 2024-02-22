@@ -3400,7 +3400,7 @@ EcallStatus RevProc::ECALL_forza_zen_setup(RevInst& inst){
   uint16_t SrcHart = (uint16_t)HartToExecID;
   
   output->verbose(CALL_INFO, 0, 0,
-                  "ECALL_forza_zen_init: addr = 0x%" PRIx64 ", size = %" PRIu64 ", tailptr = 0x%" PRIx64 ", SrcZCID = %" PRIu8 
+                  "ECALL_forza_zen_setup: addr = 0x%" PRIx64 ", size = %" PRIu64 ", tailptr = 0x%" PRIx64 ", SrcZCID = %" PRIu8 
                   ", SrcPCID = %" PRIu8 ", SrcHart = %" PRIu16 "\n",
                   addr, (uint64_t)size, tailptr, SrcZCID, SrcPCID, SrcHart);
 
