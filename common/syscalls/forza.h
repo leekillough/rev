@@ -148,7 +148,7 @@ static int forza_get_my_zone(){
 }
 
 
-static int forza_get_my_precinct(){
+static int forza_get_my_precinct(uint64_t cur_ptr, uint64_t tail_ptr_addr, uint64_t tail_ptr_data){
   int rc;
   asm volatile (
           "li a7, 4013 \n\t"
