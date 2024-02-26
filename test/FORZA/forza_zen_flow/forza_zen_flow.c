@@ -16,9 +16,9 @@ int main(int argc, char **argv)
   int TID = forza_get_my_zap();
   int qsize = 10;
   uint64_t qaddr[10];
-  volatile uint64_t *my_tail_ptr; //address that zen should update
+  /* volatile */ uint64_t *my_tail_ptr; //address that zen should update
   my_tail_ptr = (uint64_t *)forza_scratchpad_alloc(1*sizeof(uint64_t *));
-  *my_tail_ptr = 0xdeadbeef; // initialize contents of tail ptr to dummy data
+  //*my_tail_ptr = 0xdeadbeef; // initialize contents of tail ptr to dummy data
   uint64_t *my_recv_buffer = &qaddr[0];
   //uint64_t *my_recv_buffer = (uint64_t *)forza_scratchpad_alloc(qsize*sizeof(uint64_t));
 
