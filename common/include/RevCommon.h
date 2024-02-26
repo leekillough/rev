@@ -126,6 +126,8 @@ struct MemReq{
     return std::make_pair( LSQHash(), *this );
   }
 
+  uint16_t getDestReg() const { return DestReg; }
+
   uint64_t    Addr          = _INVALID_ADDR_;
   uint16_t    DestReg       = 0;
   RevRegClass RegType       = RevRegClass::RegUNKNOWN;
@@ -160,6 +162,7 @@ enum class ThreadState {
   BLOCKED,  // Waiting for thread synchronization at this point (Currently only triggered by call to `rev_pthread_join`)
   READY,    // Indicates this thread is ready to be scheduled
   DONE,     // Thread has finished; deallocate resources.
+  MIGRATE,  // FORZA: Thread is migrating
 };
 
 

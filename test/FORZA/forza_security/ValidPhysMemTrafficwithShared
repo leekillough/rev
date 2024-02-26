@@ -1,0 +1,4 @@
+PhysAddr,Type,Valid,AppID
+0,Private,True,0
+262144,Shared,True,0,1,2,3
+524288,Shared,True,0,1,2

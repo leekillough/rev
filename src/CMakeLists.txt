@@ -22,17 +22,30 @@ set(RevCPUSrcs
   RevCoProc.cc
   RevRegFile.cc
   RevThread.cc
+  RevScratchpad.cc
+#  ZOPNET.cc
   )
+
+set(ZOPSrcs
+ZOPNET.cc
+)
 
 add_subdirectory(../common common)
 add_library(revcpu SHARED ${RevCPUSrcs})
+add_library(forza SHARED ${ZOPSrcs})
 target_include_directories(revcpu PRIVATE ${REVCPU_INCLUDE_PATH} PUBLIC ${SST_INSTALL_DIR}/include)
+target_include_directories(forza PRIVATE ${REVCPU_INCLUDE_PATH} PUBLIC ${SST_INSTALL_DIR}/include)
 
 install(TARGETS revcpu DESTINATION ${CMAKE_CURRENT_SOURCE_DIR})
 install(CODE "execute_process(COMMAND sst-register revcpu revcpu_LIBDIR=${CMAKE_CURRENT_SOURCE_DIR})")
+install(TARGETS forza DESTINATION ${CMAKE_CURRENT_SOURCE_DIR})
+install(CODE "execute_process(COMMAND sst-register forza forza_LIBDIR=${CMAKE_CURRENT_SOURCE_DIR})")
 if( ${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
   install(CODE "execute_process(COMMAND_ERROR_IS_FATAL ANY COMMAND_ECHO STDERR COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/../scripts/test_undefined_symbols.sh ${CMAKE_CURRENT_SOURCE_DIR}/librevcpu.dylib)")
+  install(CODE "execute_process(COMMAND_ERROR_IS_FATAL ANY COMMAND_ECHO STDERR COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/../scripts/test_undefined_symbols_forza.sh ${CMAKE_CURRENT_SOURCE_DIR}/libforza.dylib)")
 else()
   install(CODE "execute_process(COMMAND_ERROR_IS_FATAL ANY COMMAND_ECHO STDERR COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/../scripts/test_undefined_symbols.sh ${CMAKE_CURRENT_SOURCE_DIR}/librevcpu.so)")
+  install(CODE "execute_process(COMMAND_ERROR_IS_FATAL ANY COMMAND_ECHO STDERR COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/../scripts/test_undefined_symbols_forza.sh ${CMAKE_CURRENT_SOURCE_DIR}/libforza.so)")
 endif()
+
 # EOF

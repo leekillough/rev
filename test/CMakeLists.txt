@@ -159,16 +159,29 @@ macro(add_rev_test test_name test_dir timeout labels)
 
   else()
     # Custom target for running the specified script
+    #add_custom_target(run_${test_name_lower}_script
+   #   COMMAND ${CMAKE_COMMAND} -E echo "Executing script ${optional_script}"
+   #   COMMAND cd ${CMAKE_CURRENT_SOURCE_DIR}/${test_name_lower} && bash ${optional_script}
+   #   DEPENDS build_${test_name_lower}
+   #   COMMENT "Running script for ${test_name_lower} test"
+   # )
+    string(FIND "${labels}" "security" security_label_index)
+
+    if(NOT ${security_label_index} EQUAL -1)
+      set(passRegex "Invalid Physical Address Access")
+    else()
+      set(passRegex "Simulation is complete")
+    endif()
+
     add_custom_target(run_${test_name_lower}_script
       COMMAND ${CMAKE_COMMAND} -E echo "Executing script ${optional_script}"
-      COMMAND cd ${CMAKE_CURRENT_SOURCE_DIR}/${test_name_lower} && bash ${optional_script}
+      COMMAND cd ${CMAKE_CURRENT_SOURCE_DIR}/${test_dir_lower} && bash ${optional_script}
       DEPENDS build_${test_name_lower}
       COMMENT "Running script for ${test_name_lower} test"
     )
 
     # Add the custom target as a test
     add_test(NAME ${test_name_lower}_script COMMAND ${CMAKE_COMMAND} --build . --target run_${test_name_lower}_script)
-
     # Set test properties for the script test
     set_tests_properties(${test_name_lower}_script
       PROPERTIES
@@ -203,7 +216,7 @@ add_rev_test(DIVW divw 30 "all;memh;rv64")
 add_rev_test(DIVW2 divw2 30 "all;memh;rv64")
 add_rev_test(X0 x0 30 "all;memh;rv64")
 add_rev_test(ARGC argc 30 "all;memh;rv64;loader;" SCRIPT "run_argc.sh")
-add_rev_test(ARGC_SHORT argc 30 "all;memh;rv64;loader;" SCRIPT "run_argc_short.sh")
+add_rev_test(ARGC_SHORT argc_short 30 "all;memh;rv64;loader;" SCRIPT "run_argc_short.sh")
 add_rev_test(COPROC_EX coproc_ex 30 "all;memh;rv64;coproc" SCRIPT "run_coproc_ex.sh")
 add_rev_test(ZICBOM zicbom 45 "all;memh;rv64" SCRIPT "run_zicbom.sh")
 add_rev_test(BACKINGSTORE backingstore 100 "all;rv64" SCRIPT "run_backingstore.sh")
@@ -214,10 +227,14 @@ add_rev_test(BACKINGSTORE backingstore 100 "all;rv64" SCRIPT "run_backingstore.s
 # add_rev_test(DOT_DOUBLE dot_double 30 "all;rv64;blas-required")
 # add_rev_test(BGE_BLE bge_ble 30 "all;rv64")
 
+
+
 add_subdirectory(isa)
 add_subdirectory(amo)
 add_subdirectory(benchmarks)
 add_subdirectory(syscalls)
 add_subdirectory(threading)
+add_subdirectory(cxx)
+add_subdirectory(FORZA)
 
 # EOF

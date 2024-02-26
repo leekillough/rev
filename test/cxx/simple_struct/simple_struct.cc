@@ -40,7 +40,7 @@ class rec {
 };
 
 int main() {
-  rec testrec(1,2);
+  static rec testrec(1,2);
   assert(testrec.c==3);
 
   #if 1

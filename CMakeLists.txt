@@ -16,6 +16,8 @@ project(revcpu CXX)
 # Options for enabling tests
 option(CTEST_BLAS_REQUIRED_TESTS "Enable tests which require BLAS headers" OFF)
 option(CTEST_MULTILIB_TESTS "Enable 32-bit tests" ON)
+# Tests requiring FORZA
+option(CTEST_FORZA_TESTS "Enable tests which require FORZA" OFF)
 
 # SST Setup
 # TODO: Update when SST supports coherent CMake support
@@ -133,6 +135,11 @@ include_directories(
 add_subdirectory(src)
 add_subdirectory(common)
 add_subdirectory(test)
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/forza-elts")
+	message(STATUS "Enable Forza-elements Build")
+	add_subdirectory(forza-elts)
+endif()
 
 # Custom Commands
 add_custom_target(uninstall COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/scripts/uninstall.sh")

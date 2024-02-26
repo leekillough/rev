@@ -16,9 +16,12 @@ namespace SST::RevCPU{
 using MemSegment = RevMem::MemSegment;
 
 RevLoader::RevLoader( std::string Exe, std::string Args,
-                      RevMem *Mem, SST::Output *Output )
+                      RevMem *Mem, SST::Output *Output, bool R )
   : exe(Exe), args(Args), mem(Mem), output(Output),
-    RV32Entry(0x00l), RV64Entry(0x00ull) {
+    RV32Entry(0x00l), RV64Entry(0x00ull), isRZA(R) {
+  if( isRZA ){
+    output->verbose(CALL_INFO, 4, 0, "RZA device: Executing the full loader\n" );
+  }
   if( !LoadElf() )
     output->fatal(CALL_INFO, -1, "Error: failed to load executable into memory\n");
 }
@@ -62,7 +65,7 @@ bool RevLoader::IsRVBig( const Elf64_Ehdr eh64 ){
 
 // breaks the write into cache line chunks
 bool RevLoader::WriteCacheLine(uint64_t Addr, size_t Len, void *Data){
-  if( Len == 0 ){
+  if( (Len == 0) || (!isRZA) ){
     // nothing to do here, move along
     return true;
   }
@@ -532,6 +535,12 @@ bool RevLoader::LoadProgramArgs(){
     size_t len = argv[i].size() + 1;
 
     OldStackTop -= len;
+
+#if 0
+    for( unsigned j=0; j<tmpc.size(); j++ ){
+      std::cout << "tmpc[" << j << "] = " << tmpc[j] << std::endl;
+    }
+#endif
 
     WriteCacheLine(OldStackTop, len, &tmpc[0]);
   }

@@ -25,7 +25,7 @@ RevProc::RevProc( unsigned Id,
   : Halted(false), Stalled(false), SingleStep(false),
     CrackFault(false), ALUFault(false), fault_width(0),
     id(Id), HartToDecodeID(0), HartToExecID(0),
-    numHarts(NumHarts), opts(Opts), mem(Mem), coProc(nullptr), loader(Loader),
+    numHarts(NumHarts), opts(Opts), mem(Mem), coProc(nullptr), loader(Loader), zNic(nullptr),
     GetNewThreadID(std::move(GetNewTID)), output(Output), feature(nullptr),
     sfetch(nullptr), Tracer(nullptr) {
 
@@ -111,6 +111,7 @@ bool RevProc::SingleStepHart(){
 void RevProc::SetCoProc(RevCoProc* coproc){
   if(coProc == nullptr){
     coProc = coproc;
+    coProc->Reset();
   }else{
     output->fatal(CALL_INFO, -1,
                   "CONFIG ERROR: Core %u : Attempting to assign a co-processor when one is already present\n",
@@ -1617,27 +1618,54 @@ void RevProc::ExternalReleaseHart(RevProcPasskey<RevCoProc>, uint16_t HartID){
 
 
 
+// unsigned RevProc::GetNextHartToDecodeID() const {
+//   if(HartsClearToDecode.none()) { return HartToDecodeID;};
+
+//   unsigned nextID = HartToDecodeID;
+//   if(HartsClearToDecode[HartToDecodeID]){
+//     nextID = HartToDecodeID;
+//   }else{
+//     for(size_t tID = 0; tID < Harts.size(); tID++){
+//       nextID++;
+//       if(nextID >= Harts.size()){
+//         nextID = 0;
+//       }
+//       if(HartsClearToDecode[nextID]){ break; };
+//     }
+//     output->verbose(CALL_INFO, 6, 0,
+//                     "Core %" PRIu32 "; Hart switch from %" PRIu32 " to %" PRIu32 "\n",
+//                     id, HartToDecodeID, nextID);
+//   }
+//   return nextID;
+// }
 unsigned RevProc::GetNextHartToDecodeID() const {
-  if(HartsClearToDecode.none()) { return HartToDecodeID;};
-
-  unsigned nextID = HartToDecodeID;
-  if(HartsClearToDecode[HartToDecodeID]){
-    nextID = HartToDecodeID;
-  }else{
-    for(size_t tID = 0; tID < Harts.size(); tID++){
-      nextID++;
-      if(nextID >= Harts.size()){
-        nextID = 0;
-      }
-      if(HartsClearToDecode[nextID]){ break; };
-    }
-    output->verbose(CALL_INFO, 6, 0,
-                    "Core %" PRIu32 "; Hart switch from %" PRIu32 " to %" PRIu32 "\n",
-                    id, HartToDecodeID, nextID);
+ if(HartsClearToDecode.none()) { return HartToDecodeID; } // This should never happen
+ // start with HartToDecodeID + 1
+ unsigned nextID = (HartToDecodeID + 1) % Harts.size();
+ // store the original ID to return if no other ID is clear
+ unsigned originalHartID = HartToDecodeID;
+ // Loop from HartToDecodeID + 1 to end of Harts
+ for(; nextID < Harts.size(); nextID++) {
+  if(HartsClearToDecode[nextID]) {
+   output->verbose(CALL_INFO, 6, 0,
+           "Core %" PRIu32 "; Hart switch from %" PRIu32 " to %" PRIu32 "\n",
+           id, HartToDecodeID, nextID);
+   return nextID; // if nextID is clear, return it
   }
-  return nextID;
+ }
+ // Second loop from 0 to HartToDecodeID
+ for(nextID = 0; nextID < originalHartID; nextID++) {
+  if(HartsClearToDecode[nextID]) {
+   output->verbose(CALL_INFO, 6, 0,
+           "Core %" PRIu32 "; Hart switch from %" PRIu32 " to %" PRIu32 "\n",
+           id, HartToDecodeID, nextID);
+    return nextID;
+  }
+ }
+ // Nothing else was clear, return original
+ return originalHartID;
 }
-
+ 
 void RevProc::MarkLoadComplete(const MemReq& req){
   // Iterate over all outstanding loads for this reg (if any)
   for(auto [i, end] = LSQueue->equal_range(req.LSQHash()); i != end; ++i){

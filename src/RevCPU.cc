@@ -32,8 +32,11 @@ const char splash_msg[] = "\
 ";
 
 RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params )
-  : SST::Component(id), testStage(0), PrivTag(0), address(-1), EnableMemH(false),
-    DisableCoprocClock(false), Nic(nullptr), Ctrl(nullptr), ClockHandler(nullptr) {
+  : SST::Component(id), testStage(0), PrivTag(0), address(-1), EnableNIC(false),
+    EnableMemH(false), EnableCoProc(false),
+    EnableRZA(false), EnableZopNIC(false), EnableForzaSecurity(false),
+    DisableCoprocClock(false), Precinct(0), Zone(0),
+    Nic(nullptr), Ctrl(nullptr), zNic(nullptr), ClockHandler(nullptr) {
 
   const int Verbosity = params.find<int>("verbose", 0);
 
@@ -46,9 +49,15 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params )
   timeConverter = registerClock(cpuClock, ClockHandler);
 
   // Inform SST to wait until we authorize it to exit
-  registerAsPrimaryComponent();
-  primaryComponentDoNotEndSim();
+  EnableRZA    = params.find<bool>("enableRZA", 0);
+  if( !EnableRZA ){
+    // RZA's do not call these are they are effectively peripheral components
+    registerAsPrimaryComponent();
+    primaryComponentDoNotEndSim();
+  }
 
+  // std::string ClockFreq = params.find<std::string>("clock", "1Ghz");
+  // printf("given Txt files : %s\n",txtFile.c_str());
   // Derive the simulation parameters
   // We must always derive the number of cores before initializing the options
   numCores = params.find<unsigned>("numCores", "1");
@@ -123,6 +132,15 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params )
   // Create the memory object
   const uint64_t memSize = params.find<unsigned long>("memSize", 1073741824);
   EnableMemH = params.find<bool>("enable_memH", 0);
+
+  // Added for the security test
+  EnableForzaSecurity = params.find<bool>("enableForzaSecurity", false);
+
+  if( EnableForzaSecurity ){
+    memTrafficInput = params.find<std::string>("memTrafficInput","");
+    memTrafficOutput = params.find<std::string>("memTrafficOutput","");
+  }
+
   if( !EnableMemH ){
     // TODO: Use std::nothrow to return null instead of throwing std::bad_alloc
     Mem = new RevMem( memSize, Opts,  &output );
@@ -142,6 +160,97 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params )
       output.verbose(CALL_INFO, 1, 0, "Warning: memory faults cannot be enabled with memHierarchy support\n");
   }
 
+  // if the forza security models are enabled, inform RevMem that logging as been enabled
+  if( EnableForzaSecurity ){
+    if(memTrafficInput!="nil"){
+      output.verbose(CALL_INFO, 1, 0, "Enabling MemTrafficInput : %s\n", memTrafficInput.c_str());
+      Mem->updatePhysHistoryfromInput(memTrafficInput);
+    }
+    if(memTrafficOutput!="nil"){
+      output.verbose(CALL_INFO, 1, 0, "Enabling MemTrafficOutput : %s\n", memTrafficOutput.c_str());
+      Mem->setOutputFile(memTrafficOutput);
+      Mem->enablePhysHistoryLogging();
+    }
+  }
+
+  // FORZA: initialize scratchpad
+  Mem->InitScratchpad(id, _SCRATCHPAD_SIZE_, _CHUNK_SIZE_);
+
+  // FORZA: initialize the network
+  // setup the FORZA NoC NIC endpoint for the Zone
+  // Note that this must occur AFTER memory initialization
+  EnableZopNIC = params.find<bool>("enableZoneNIC", 0);
+  if( EnableZopNIC ){
+    output.verbose(CALL_INFO, 4, 0, "[FORZA] Enabling zone NIC on device=%s\n",
+                     getName().c_str());
+    Precinct = params.find<unsigned>("precinctId", 0);
+    Zone = params.find<unsigned>("zoneId", 0);
+    zNic = loadUserSubComponent<Forza::zopAPI>("zone_nic");
+    if( !zNic ){
+      output.fatal(CALL_INFO, -1, "Error: no ZONE NIC object loaded into RevCPU\n" );
+    }
+    Mem->setZNic(zNic);
+    zNic->setNumHarts(numHarts);
+    zNic->setPrecinctID(Precinct);
+    zNic->setZoneID(Zone);
+
+    // set the message handler for the NoC interface
+    zNic->setMsgHandler(new Event::Handler<RevCPU>(this, &RevCPU::handleZOPMessage));
+
+    // now that the NIC has been loaded, we need to ensure that the NIC knows
+    // what type of endpoint it is
+    if( EnableRZA ){
+      // This Rev instance is an RZA
+      if( !EnableMemH ){
+        output.fatal(CALL_INFO, -1,
+                     "Error : memHierarchy is required if the respective Rev instance is an RZA\n");
+      }
+      zNic->setEndpointType(Forza::zopCompID::Z_RZA);
+      output.verbose(CALL_INFO, 4, 0, "[FORZA] device=%s initialized as RZA device\n",
+                     getName().c_str());
+      // ensure the memory controller knows that it is an RZA device
+      Mem->setRZA();
+    }else{
+      // This Rev instance is a ZAP
+      Mem->unsetRZA();
+      unsigned zap = params.find<unsigned>("zapId", 0);
+      Forza::zopCompID zapId = Forza::zopCompID::Z_ZAP0;
+      switch( zap ){
+      case 0:
+        zapId = Forza::zopCompID::Z_ZAP0;
+        break;
+      case 1:
+        zapId = Forza::zopCompID::Z_ZAP1;
+        break;
+      case 2:
+        zapId = Forza::zopCompID::Z_ZAP2;
+        break;
+      case 3:
+        zapId = Forza::zopCompID::Z_ZAP3;
+        break;
+      case 4:
+        zapId = Forza::zopCompID::Z_ZAP4;
+        break;
+      case 5:
+        zapId = Forza::zopCompID::Z_ZAP5;
+        break;
+      case 6:
+        zapId = Forza::zopCompID::Z_ZAP6;
+        break;
+      case 7:
+        zapId = Forza::zopCompID::Z_ZAP7;
+        break;
+      default:
+        output.fatal(CALL_INFO, -1,
+                     "Error: zapId is out of range [0-7]\n");
+        break;
+      }
+      zNic->setEndpointType(zapId);
+      output.verbose(CALL_INFO, 4, 0, "[FORZA] device=%s initialized as ZAP device: ZAP%d\n",
+                     getName().c_str(), zap);
+    }
+  }
+
   // Set TLB Size
   const uint64_t tlbSize = params.find<unsigned long>("tlbSize", 512);
   Mem->SetTLBSize(tlbSize);
@@ -152,9 +261,16 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params )
 
   // Load the binary into memory
   // TODO: Use std::nothrow to return null instead of throwing std::bad_alloc
-  Loader = new RevLoader( Exe, Args, Mem, &output );
-  if( !Loader ){
-    output.fatal(CALL_INFO, -1, "Error: failed to initialize the RISC-V loader\n" );
+  if( EnableZopNIC ){
+    Loader = new RevLoader( Exe, Args, Mem, &output, EnableRZA );
+    if( !Loader ){
+      output.fatal(CALL_INFO, -1, "Error: failed to initialize the RISC-V loader\n" );
+    }
+  }else{
+    Loader = new RevLoader( Exe, Args, Mem, &output, true );
+    if( !Loader ){
+      output.fatal(CALL_INFO, -1, "Error: failed to initialize the RISC-V loader\n" );
+    }
   }
 
   Opts->SetArgs(Loader->GetArgv());
@@ -165,7 +281,9 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params )
     // Create the processor objects
     Procs.reserve(Procs.size() + numCores);
     for( unsigned i=0; i<numCores; i++ ){
-      Procs.push_back( new RevProc( i, Opts, numHarts, Mem, Loader, this->GetNewTID(), &output ) );
+      RevProc *tmpNewRevProc = new RevProc( i, Opts, numHarts, Mem, Loader, this->GetNewTID(), &output );
+      tmpNewRevProc->setZNic(zNic);
+      Procs.push_back( tmpNewRevProc );
     }
     // Create the co-processor objects
     for( unsigned i=0; i<numCores; i++){
@@ -176,11 +294,57 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params )
       CoProcs.push_back(CoProc);
       Procs[i]->SetCoProc(CoProc);
     }
+  }else if(EnableRZA){
+    // retrieve each of the RZA pipeline models
+    // NOTE:
+    // We currently disable the RZOP pipeline as the opcodes
+    // are not defined in version 3.3.0 of the spec
+    if( numCores != 2 ){
+      output.fatal(CALL_INFO, -1,
+                   "Error : FORZA RZA devices require at least 2 cores\n" );
+    }
+
+    // Force the coprocs to be enabled
+    EnableCoProc = true;
+
+    Procs.reserve(Procs.size() + numCores);
+    for( unsigned i=0; i<numCores; i++ ){
+      RevProc *tmpNewRevProc = new RevProc( i, Opts, numHarts, Mem, Loader, this->GetNewTID(), &output );
+      tmpNewRevProc->setZNic(zNic);
+      Procs.push_back( tmpNewRevProc );
+    }
+
+    RevCoProc *LSProc = loadUserSubComponent<RevCoProc>("rza_ls",
+                                                        SST::ComponentInfo::SHARE_NONE,
+                                                        Procs[Z_MZOP_PIPE_HART]);
+    if( !LSProc ){
+      output.fatal(CALL_INFO, -1,
+                   "Error : failed to initialize the RZA LS pipeline\n" );
+    }
+    LSProc->setMem(Mem);
+    LSProc->setZNic(zNic);
+
+    RevCoProc *AMOProc = loadUserSubComponent<RevCoProc>("rza_amo",
+                                                         SST::ComponentInfo::SHARE_NONE,
+                                                         Procs[Z_HZOP_PIPE_HART]);
+    if( !AMOProc ){
+      output.fatal(CALL_INFO, -1,
+                   "Error : failed to initialize the RZA AMO pipeline\n" );
+    }
+    AMOProc->setMem(Mem);
+    AMOProc->setZNic(zNic);
+
+    CoProcs.push_back(LSProc);
+    CoProcs.push_back(AMOProc);
+    Procs[Z_MZOP_PIPE_HART]->SetCoProc(LSProc);
+    Procs[Z_HZOP_PIPE_HART]->SetCoProc(AMOProc);
   }else{
     // Create the processor objects
     Procs.reserve(Procs.size() + numCores);
     for( unsigned i=0; i<numCores; i++ ){
-      Procs.push_back( new RevProc( i, Opts, numHarts, Mem, Loader, this->GetNewTID(), &output ) );
+      RevProc *tmpNewRevProc = new RevProc( i, Opts, numHarts, Mem, Loader, this->GetNewTID(), &output );
+      tmpNewRevProc->setZNic(zNic);
+      Procs.push_back( tmpNewRevProc );
     }
   }
 
@@ -430,6 +594,9 @@ void RevCPU::setup(){
   if( EnableMemH ){
     Ctrl->setup();
   }
+  if( EnableZopNIC ){
+    zNic->setup();
+  }
 }
 
 void RevCPU::finish(){
@@ -440,6 +607,436 @@ void RevCPU::init( unsigned int phase ){
     Nic->init(phase);
   if( EnableMemH )
     Ctrl->init(phase);
+  if( EnableZopNIC )
+    zNic->init(phase);
+}
+
+void RevCPU::processZOPQ(){
+  if( ZIQ.size() == 0 ){
+    return ;
+  }
+
+  bool flag = false;
+  uint64_t Addr = 0x00ull;
+
+  /// put the ZRqst structure in RevMem
+
+  for( unsigned i=0; i<ZIQ.size(); i++ ){
+    auto zev = ZIQ[i];
+    if( !zev->getFLIT(Z_FLIT_ADDR,&Addr) ){
+      output.fatal(CALL_INFO, -1, "[FORZA][RZA] Erroneous packet contents for ZOP\n");
+    }
+
+    //if( ZRqst.find(Addr) == ZRqst.end() ){
+    if( !Mem->isZRqst(Addr) ){
+      // did not find an outstanding memory request with the same address
+      // process this request
+      switch( zev->getType() ){
+      case Forza::zopMsgT::Z_MZOP:
+        // send to the MZOP pipeline
+        if( !CoProcs[Z_MZOP_PIPE_HART]->InjectZOP(zev, flag) ){
+          output.fatal(CALL_INFO, -1,
+                      "[FORZA][RZA] Failed to inject MZOP into pipeline; ID=%d\n",
+                      zev->getID());
+        }
+        break;
+      case Forza::zopMsgT::Z_HZOPAC:
+        // send to the HZOP pipeline
+        if( !CoProcs[Z_HZOP_PIPE_HART]->InjectZOP(zev, flag) ){
+          output.fatal(CALL_INFO, -1,
+                      "[FORZA][RZA] Failed to inject HZOP into pipeline; ID=%d\n",
+                      zev->getID());
+        }
+        break;
+      case Forza::zopMsgT::Z_HZOPV:
+        // send to the HZOP pipeline
+        output.fatal(CALL_INFO, -1,
+                    "[FORZA][RZA] RZA's disable handling of ZOP messages of Type=%s\n",
+                    zNic->msgTToStr(zev->getType()).c_str() );
+        break;
+      default:
+        output.fatal(CALL_INFO, -1,
+                    "[FORZA][RZA] RZA's cannot handle ZOP messages of Type=%s\n",
+                    zNic->msgTToStr(zev->getType()).c_str() );
+        break;
+      }
+
+      // If the request was NOT flagged as a store (mem write),
+      // add the request to the outstanding address map
+      // When the load hazard is cleared, we also need to clear this value
+      if( !flag ){
+        //ZRqst[Addr] = zev;
+        Mem->insertZRqst(Addr, zev);
+      }
+
+      // eject the request from the ZIQ
+      ZIQ.erase(ZIQ.begin() + i);
+
+      // signal completion for this cycle
+      return ;
+    }
+  }
+}
+
+void RevCPU::sendZQMThreadComplete(uint32_t ThreadID, uint32_t HartID){
+  output.verbose(CALL_INFO, 9, 0,
+                 "[FORZA][ZAP] Informing ZQM of completed thread: %d\n",
+                 ThreadID);
+#if 0
+  SST::Forza::zopEvent *zev = new SST::Forza::zopEvent();
+
+  // set all the fields
+  zev->setType(SST::Forza::zopMsgT::Z_TMIG);  // what is the message type?
+  zev->setNB(0);
+  zev->setID(HartID);
+  zev->setCredit(0);
+  zev->setOpc(SST::Forza::zopOpc::Z_TMIG_SELECT); // what is the opcode?
+  zev->setAppID(0);
+  zev->setDestZCID((uint8_t)(SST::Forza::zopCompID::Z_ZQM));
+  zev->setDestPCID((uint8_t)(zNic->getPCID(Zone)));
+  zev->setDestPrec((uint8_t)(Precinct));
+  zev->setSrcHart(HartID);
+  zev->setSrcZCID((uint8_t)(zNic->getEndpointType()));
+  zev->setSrcPCID((uint8_t)(zNic->getPCID(zNic->getZoneID())));
+  zev->setSrcPrec((uint8_t)(zNic->getPrecinctID()));
+
+  // build the payload
+  std::vector<uint64_t> Payload;
+  Payload.push_back((uint64_t)(ThreadID));
+
+  zev->setPayload(Payload);
+
+  zNic->send(zev, SST::Forza::zopCompID::Z_ZQM,
+             zNic->getPCID(Zone), Precinct);
+#endif
+}
+
+void RevCPU::handleZOPMessageRZA(Forza::zopEvent *zev){
+  output.verbose(CALL_INFO, 9, 0, "[FORZA][RZA] Injecting ZOP Message into ZIQ\n");
+  if( zev == nullptr ){
+    output.fatal(CALL_INFO, -1,
+                 "[FORZA][RZA]: Cannot inject null ZOP packet into ZIQ\n");
+  }
+
+  ZIQ.push_back(zev);
+}
+
+void RevCPU::MarkLoadCompleteDummy(const MemReq& req){
+  // Note: this is a placeholder MarkLoadComplete hazard
+  // function that is ONLY used for scratchpad loads
+  // These loads should return immediately.  If they don't,
+  // then the user has specified an erroneous address and YMMV
+}
+
+void RevCPU::handleZOPMZOP(Forza::zopEvent *zev){
+  output.verbose(CALL_INFO, 9, 0, "[FORZA][RZA] Handling MZOP\n");
+
+  if( zev == nullptr ){
+    output.fatal(CALL_INFO, -1,
+                 "[FORZA][ZAP]: Cannot handle null MZOP\n");
+  }
+
+  uint64_t addr = 0x00ull;
+  uint64_t data = 0x00ull;
+  bool isLoad = false;
+
+  // used only for load operations
+  std::function<void(const MemReq&)>LocalMarkLoadCompleteFunc =
+    [=](const MemReq& req){this->MarkLoadCompleteDummy(req); };
+  MemReq req{addr, 0x00, RevRegClass::RegGPR, zev->getSrcHart(),
+             MemOp::MemOpREAD, true, LocalMarkLoadCompleteFunc};
+
+  // retrieve the address
+  if( !zev->getFLIT(Z_FLIT_ADDR, &addr) ){
+    output.fatal(CALL_INFO, -1,
+                 "[FORZA][ZAP]: MZOP packet has no address FLIT: Type=%s, ID=%d\n",
+                 zNic->msgTToStr(zev->getType()).c_str(),
+                 zev->getID());
+  }
+
+  switch(zev->getOpc()){
+  case Forza::zopOpc::Z_MZOP_SCLB:
+    Mem->ReadVal(zev->getSrcHart(), addr,
+                 reinterpret_cast<uint8_t *>(&data),
+                 req, RevFlag::F_SEXT64);
+    isLoad = true;
+    break;
+  case Forza::zopOpc::Z_MZOP_SCLH:
+    Mem->ReadVal(zev->getSrcHart(), addr,
+                 reinterpret_cast<uint16_t *>(&data),
+                 req, RevFlag::F_SEXT64);
+    isLoad = true;
+    break;
+  case Forza::zopOpc::Z_MZOP_SCLW:
+    Mem->ReadVal(zev->getSrcHart(), addr,
+                 reinterpret_cast<uint32_t *>(&data),
+                 req, RevFlag::F_SEXT64);
+    isLoad = true;
+    break;
+  case Forza::zopOpc::Z_MZOP_SCLD:
+    Mem->ReadVal(zev->getSrcHart(), addr,
+                 reinterpret_cast<uint64_t *>(&data),
+                 req, RevFlag::F_SEXT64);
+    isLoad = true;
+    break;
+  case Forza::zopOpc::Z_MZOP_SCLSB:
+    Mem->ReadVal(zev->getSrcHart(), addr,
+                 reinterpret_cast<int8_t *>(&data),
+                 req, RevFlag::F_SEXT64);
+    isLoad = true;
+    break;
+  case Forza::zopOpc::Z_MZOP_SCLSH:
+    Mem->ReadVal(zev->getSrcHart(), addr,
+                 reinterpret_cast<int16_t *>(&data),
+                 req, RevFlag::F_SEXT64);
+    isLoad = true;
+    break;
+  case Forza::zopOpc::Z_MZOP_SCLSW:
+    Mem->ReadVal(zev->getSrcHart(), addr,
+                 reinterpret_cast<int32_t *>(&data),
+                 req, RevFlag::F_SEXT64);
+    isLoad = true;
+    break;
+  case Forza::zopOpc::Z_MZOP_SCSB:
+    if( !zev->getFLIT(Z_FLIT_DATA, &data) ){
+      output.fatal(CALL_INFO, -1,
+                   "[FORZA][ZAP]: MZOP packet has no data FLIT: Type=%s, ID=%d\n",
+                   zNic->msgTToStr(zev->getType()).c_str(),
+                   zev->getID());
+    }
+    Mem->Write(zev->getSrcHart(), addr,
+               static_cast<uint8_t>(data));
+    break;
+  case Forza::zopOpc::Z_MZOP_SCSH:
+    if( !zev->getFLIT(Z_FLIT_DATA, &data) ){
+      output.fatal(CALL_INFO, -1,
+                   "[FORZA][ZAP]: MZOP packet has no data FLIT: Type=%s, ID=%d\n",
+                   zNic->msgTToStr(zev->getType()).c_str(),
+                   zev->getID());
+    }
+    Mem->Write(zev->getSrcHart(), addr,
+               static_cast<uint16_t>(data));
+    break;
+  case Forza::zopOpc::Z_MZOP_SCSW:
+    if( !zev->getFLIT(Z_FLIT_DATA, &data) ){
+      output.fatal(CALL_INFO, -1,
+                   "[FORZA][ZAP]: MZOP packet has no data FLIT: Type=%s, ID=%d\n",
+                   zNic->msgTToStr(zev->getType()).c_str(),
+                   zev->getID());
+    }
+    Mem->Write(zev->getSrcHart(), addr,
+               static_cast<uint32_t>(data));
+    break;
+  case Forza::zopOpc::Z_MZOP_SCSD:
+    if( !zev->getFLIT(Z_FLIT_DATA, &data) ){
+      output.fatal(CALL_INFO, -1,
+                   "[FORZA][ZAP]: MZOP packet has no data FLIT: Type=%s, ID=%d\n",
+                   zNic->msgTToStr(zev->getType()).c_str(),
+                   zev->getID());
+    }
+    Mem->Write(zev->getSrcHart(), addr,
+               static_cast<uint64_t>(data));
+    break;
+  case Forza::zopOpc::Z_MZOP_SCSSB:
+    if( !zev->getFLIT(Z_FLIT_DATA, &data) ){
+      output.fatal(CALL_INFO, -1,
+                   "[FORZA][ZAP]: MZOP packet has no data FLIT: Type=%s, ID=%d\n",
+                   zNic->msgTToStr(zev->getType()).c_str(),
+                   zev->getID());
+    }
+    Mem->Write(zev->getSrcHart(), addr,
+               static_cast<int8_t>(data));
+    break;
+  case Forza::zopOpc::Z_MZOP_SCSSH:
+    if( !zev->getFLIT(Z_FLIT_DATA, &data) ){
+      output.fatal(CALL_INFO, -1,
+                   "[FORZA][ZAP]: MZOP packet has no data FLIT: Type=%s, ID=%d\n",
+                   zNic->msgTToStr(zev->getType()).c_str(),
+                   zev->getID());
+    }
+    Mem->Write(zev->getSrcHart(), addr,
+               static_cast<int16_t>(data));
+    break;
+  case Forza::zopOpc::Z_MZOP_SCSSW:
+    if( !zev->getFLIT(Z_FLIT_DATA, &data) ){
+      output.fatal(CALL_INFO, -1,
+                   "[FORZA][ZAP]: MZOP packet has no data FLIT: Type=%s, ID=%d\n",
+                   zNic->msgTToStr(zev->getType()).c_str(),
+                   zev->getID());
+    }
+    Mem->Write(zev->getSrcHart(), addr,
+               static_cast<int32_t>(data));
+    break;
+  default:
+    output.fatal(CALL_INFO, -1,
+                 "[FORZA][ZAP]: MZOP packet with erroneous opcode: Type=%s, ID=%d\n",
+                 zNic->msgTToStr(zev->getType()).c_str(),
+                 zev->getID());
+    break;
+  }
+
+  if( isLoad ){
+    // create a response packet with the data
+    output.verbose(CALL_INFO, 9, 0,
+                   "[FORZA][ZAP]: Build LOAD response for MSG @ ID=%d\n",
+                   (unsigned)(zev->getID()));
+    SST::Forza::zopEvent *rsp_zev = new SST::Forza::zopEvent();
+
+    // set all the fields
+    rsp_zev->setType(SST::Forza::zopMsgT::Z_RESP);
+    rsp_zev->setNB(0);
+    rsp_zev->setID(zev->getID());
+    rsp_zev->setCredit(0);
+    rsp_zev->setOpc(SST::Forza::zopOpc::Z_RESP_LR);
+    rsp_zev->setAppID(0);
+    rsp_zev->setDestHart(zev->getSrcHart());
+    rsp_zev->setDestZCID(zev->getSrcZCID());
+    rsp_zev->setDestPCID(zev->getSrcPCID());
+    rsp_zev->setDestPrec(zev->getSrcPrec());
+    rsp_zev->setSrcHart(zev->getDestHart());
+    rsp_zev->setSrcZCID((uint8_t)(zNic->getEndpointType()));
+    rsp_zev->setSrcPCID((uint8_t)(zNic->getPCID(zNic->getZoneID())));
+    rsp_zev->setSrcPrec((uint8_t)(zNic->getPrecinctID()));
+
+    // set the payload
+    std::vector<uint64_t> payload;
+    payload.push_back(0x00ull); // ACS
+    payload.push_back(data);    // load response data
+    rsp_zev->setPayload(payload);
+
+    // inject the packet
+    zNic->send(rsp_zev, (SST::Forza::zopCompID)(zev->getSrcZCID()));
+  }else{
+    // create a response packet with the data
+    output.verbose(CALL_INFO, 9, 0,
+                   "[FORZA][ZAP]: Build STORE response for MSG @ ID=%d\n",
+                   (unsigned)(zev->getID()));
+    SST::Forza::zopEvent *rsp_zev = new SST::Forza::zopEvent();
+
+    // set all the fields
+    rsp_zev->setType(SST::Forza::zopMsgT::Z_RESP);
+    rsp_zev->setNB(0);
+    rsp_zev->setID(zev->getID());
+    rsp_zev->setCredit(0);
+    rsp_zev->setOpc(SST::Forza::zopOpc::Z_RESP_SACK);
+    rsp_zev->setAppID(0);
+    rsp_zev->setDestHart(zev->getSrcHart());
+    rsp_zev->setDestZCID(zev->getSrcZCID());
+    rsp_zev->setDestPCID(zev->getSrcPCID());
+    rsp_zev->setDestPrec(zev->getSrcPrec());
+    rsp_zev->setSrcHart(zev->getDestHart());
+    rsp_zev->setSrcZCID((uint8_t)(zNic->getEndpointType()));
+    rsp_zev->setSrcPCID((uint8_t)(zNic->getPCID(zNic->getZoneID())));
+    rsp_zev->setSrcPrec((uint8_t)(zNic->getPrecinctID()));
+
+    // set the payload
+    std::vector<uint64_t> payload;
+    payload.push_back(0x00ull); // ACS
+    rsp_zev->setPayload(payload);
+
+    // inject the packet
+    zNic->send(rsp_zev, (SST::Forza::zopCompID)(zev->getSrcZCID()));
+  }
+
+  // delete the event
+  delete zev;
+}
+
+void RevCPU::handleZOPThreadMigrate(Forza::zopEvent *zev){
+  output.verbose(CALL_INFO, 9, 0, "[FORZA][RZA] Handling thread migration\n");
+
+  if( zev == nullptr ){
+    output.fatal(CALL_INFO, -1,
+                 "[FORZA][RZA]: Cannot handle null thread migration\n");
+  }
+
+  const auto& pkt = zev->getPacket();
+  // The thread-specific
+  // data is formatted as follows:
+  // pkt[0] = <header info>
+  // pkt[1] = <header info>
+  // pkt[2] = THREAD PC
+  // pkt[3] = x[1] register contents
+  // pkt[4] = x[2] register contents
+  // pkt[5] = x[3] register contents
+  // ...
+  // pkt[33] = x[31] register contents
+  // pkt[34] = f[0] register contents
+  // pkt[35] = f[1] register contents
+  // ...
+  // pkt[65] = f[31] register contents
+
+  // Create the regfile
+  std::unique_ptr<RevRegFile> MigratedRegState = std::make_unique<RevRegFile>(Procs[0]->GetRevFeature());
+  MigratedRegState->SetPC(pkt[2]);
+  for( unsigned i=0; i<32; i++ ){
+    MigratedRegState->SetX(i, pkt[3+i]);
+  }
+
+  uint64_t ThreadMemTopAddr = MigratedRegState->GetX<uint64_t>(RevReg::tp);
+  uint64_t ThreadMemBaseAddr = ThreadMemTopAddr - Mem->GetTLSSize() - _STACK_SIZE_;
+
+  // TODO: Remove ThreadMemSeg upon ThreadCompletion (ie. ThreadState == DONE)
+  std::shared_ptr<MemSegment> seg = std::make_shared<MemSegment>(ThreadMemBaseAddr, Mem->GetTLSSize() + _STACK_SIZE_);
+  Mem->GetThreadMemSegs().push_back(seg);
+
+  std::unique_ptr<RevThread> MigratedThread = std::make_unique<RevThread>(GetNewThreadID(),    // TODO: Include in Payload
+                                                                          _INVALID_TID_,       // TODO: Include in payload
+                                                                          seg,
+                                                                          std::move(MigratedRegState));
+
+  output.verbose(CALL_INFO, 1, 0, "[FORZA][RZA] Received thread that starts at address: 0x%" PRIx64 "\n",
+                  pkt[2]);
+  ReadyThreads.push_back(std::move(MigratedThread));
+}
+
+void RevCPU::handleZOPMessageZAP(Forza::zopEvent *zev){
+  output.verbose(CALL_INFO, 9, 0, "[FORZA][ZAP] Handling ZOP Message\n");
+  switch( zev->getType() ){
+  case Forza::zopMsgT::Z_RESP:
+    if( !Mem->handleRZAResponse(zev) ){
+      output.fatal(CALL_INFO, -1,
+                   "[FORZA][ZAP] Could not handle response for message ID=%d\n",
+                   (uint32_t)(zev->getID()));
+    }
+    break;
+  case Forza::zopMsgT::Z_EXCP:
+    output.fatal(CALL_INFO, -1,
+                 "[FORZA][ZAP] Received exception code=%s from message ID=%d\n",
+                 zNic->msgTToStr(zev->getType()).c_str(),
+                 (uint32_t)(zev->getID()));
+    break;
+  case Forza::zopMsgT::Z_TMIG:
+    handleZOPThreadMigrate(zev);
+    break;
+  case Forza::zopMsgT::Z_MZOP:
+    handleZOPMZOP(zev);
+    break;
+  default:
+    output.fatal(CALL_INFO, -1,
+                 "[FORZA][ZAP] ZAP's cannot handle ZOP messages of Type=%s\n",
+                 zNic->msgTToStr(zev->getType()).c_str());
+    break;
+  }
+}
+
+void RevCPU::handleZOPMessage(Event *ev){
+  output.verbose(CALL_INFO, 9, 0, "[FORZA][%s] Received ZOP Message\n",
+                 getName().c_str());
+  Forza::zopEvent *zev = static_cast<Forza::zopEvent*>(ev);
+
+  if( zev == nullptr ){
+    output.fatal(CALL_INFO, -1,
+                 "[FORZA][handleZOPMessage] : zopEvent is null\n");
+  }
+  if( EnableRZA ){
+    // handle a FORZA ZOP Message
+    handleZOPMessageRZA(zev);
+  }else{
+    // I am a ZAP device, handle the message accordingly
+    handleZOPMessageZAP(zev);
+  }
+
 }
 
 void RevCPU::handleMessage(Event *ev){
@@ -567,6 +1164,15 @@ bool RevCPU::clockTick( SST::Cycle_t currentCycle ){
 
   output.verbose(CALL_INFO, 8, 0, "Cycle: %" PRIu64 "\n", currentCycle);
 
+  // Process the ZOPQ
+  if( EnableRZA ){
+    processZOPQ();
+    for( unsigned i=0; i<CoProcs.size(); i++){
+      CoProcs[i]->ClockTick(currentCycle);
+    }
+    return false;
+  }
+
   // Execute each enabled core
   for( size_t i=0; i<Procs.size(); i++ ){
     // Check if we have more work to assign and places to put it
@@ -637,6 +1243,9 @@ bool RevCPU::clockTick( SST::Cycle_t currentCycle ){
       UpdateCoreStatistics(i);
       Procs[i]->PrintStatSummary();
     }
+    Mem->updatePhysHistorytoOutput();
+    
+
     primaryComponentOKToEndSim();
     output.verbose(CALL_INFO, 5, 0, "OK to end sim at cycle: %" PRIu64 "\n", static_cast<uint64_t>(currentCycle));
   } else {
@@ -761,9 +1370,18 @@ void RevCPU::HandleThreadStateChangesForProc(uint32_t ProcID){
     uint32_t ThreadID = Thread->GetID();
     // Handle the thread that changed state based on the new state
     switch ( Thread->GetState() ) {
+    case ThreadState::MIGRATE:
+      // This thread has been migrated
+      output.verbose(CALL_INFO, 8, 0, "Thread %" PRIu32 " on Core %" PRIu32 " is MIGRATED\n", ThreadID, ProcID);
+      CompletedThreads.emplace(ThreadID, std::move(Thread));
+      break;
     case ThreadState::DONE:
       // This thread has completed execution
       output.verbose(CALL_INFO, 8, 0, "Thread %" PRIu32 " on Core %" PRIu32 " is DONE\n", ThreadID, ProcID);
+      if( zNic ){
+        sendZQMThreadComplete(ThreadID,
+                              Procs[ProcID]->GetHartFromThreadID(ThreadID));
+      }
       CompletedThreads.emplace(ThreadID, std::move(Thread));
       break;
 
