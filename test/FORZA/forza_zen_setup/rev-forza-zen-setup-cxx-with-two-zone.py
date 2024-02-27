@@ -16,7 +16,8 @@ sst.setProgramOption("timebase", "1ps")
 
 DEBUG_L1 = 0
 DEBUG_MEM = 0
-DEBUG_LEVEL = 10
+#DEBUG_LEVEL = 10
+DEBUG_LEVEL = 1
 VERBOSE = 2
 MEM_SIZE = 1024*1024*1024-1
 
@@ -25,7 +26,8 @@ MEM_SIZE = 1024*1024*1024-1
 # --------------------------
 zen0 = sst.Component("zen0", "forzazen.ZEN")
 zen0.addParams({
-  "verbose" : 7,              # Verbosity
+  #"verbose" : 7,              # Verbosity
+  "verbose" : 2,              # Verbosity
   "clockFreq" : "1.0GHz",     # Clock Frequency
   "precinctId" : 0,           # precinct Id
   "zoneId" : 0,               # zone Id
@@ -39,7 +41,8 @@ zen0.addParams({
 })
 zen1 = sst.Component("zen1", "forzazen.ZEN")
 zen1.addParams({
-  "verbose" : 7,              # Verbosity
+  "verbose" : 2,              # Verbosity
+  #"verbose" : 7,              # Verbosity
   "clockFreq" : "1.0GHz",     # Clock Frequency
   "precinctId" : 0,           # precinct Id
   "zoneId" : 1,               # zone Id
@@ -58,7 +61,8 @@ zen1.addParams({
 # --------------------------
 zqm0 = sst.Component("zqm0", "forzazqm.ZQM")
 zqm0.addParams({
-  "verbose" : 7,              # Verbosity
+  "verbose" : 2,              # Verbosity
+  #"verbose" : 7,              # Verbosity
   "clockFreq" : "1.0GHz",     # Clock Frequency
   "precinctId" : 0,           # precinct Id
   "zoneId" : 0,               # zone Id
@@ -67,7 +71,8 @@ zqm0.addParams({
 })
 zqm1 = sst.Component("zqm1", "forzazqm.ZQM")
 zqm1.addParams({
-  "verbose" : 7,              # Verbosity
+  "verbose" : 2,              # Verbosity
+  #"verbose" : 7,              # Verbosity
   "clockFreq" : "1.0GHz",     # Clock Frequency
   "precinctId" : 0,           # precinct Id
   "zoneId" : 1,               # zone Id
@@ -81,7 +86,8 @@ zqm1.addParams({
 # --------------------------
 zap_cpu0_0 = sst.Component("zap0_0", "revcpu.RevCPU")
 zap_cpu0_0.addParams({
-        "verbose" : 5,                                # Verbosity
+        "verbose" : 2,                                # Verbosity
+        #"verbose" : 5,                                # Verbosity
         "numCores" : 1,                               # Number of cores
         "clock" : "1.0GHz",                           # Clock
         "memSize" : 1024*1024*1024,                   # Memory size in bytes
@@ -98,7 +104,8 @@ zap_cpu0_0.addParams({
 
 zap_cpu0_1 = sst.Component("zap0_1", "revcpu.RevCPU")
 zap_cpu0_1.addParams({
-        "verbose" : 5,                                # Verbosity
+        "verbose" : 2,                                # Verbosity
+        #"verbose" : 5,                                # Verbosity
         "numCores" : 1,                               # Number of cores
         "clock" : "1.0GHz",                           # Clock
         "memSize" : 1024*1024*1024,                   # Memory size in bytes
@@ -115,7 +122,8 @@ zap_cpu0_1.addParams({
 
 zap_cpu0_2 = sst.Component("zap0_2", "revcpu.RevCPU")
 zap_cpu0_2.addParams({
-        "verbose" : 5,                                # Verbosity
+        "verbose" : 2,                                # Verbosity
+        #"verbose" : 5,                                # Verbosity
         "numCores" : 1,                               # Number of cores
         "clock" : "1.0GHz",                           # Clock
         "memSize" : 1024*1024*1024,                   # Memory size in bytes
@@ -132,7 +140,8 @@ zap_cpu0_2.addParams({
 
 zap_cpu0_3 = sst.Component("zap0_3", "revcpu.RevCPU")
 zap_cpu0_3.addParams({
-        "verbose" : 5,                                # Verbosity
+        "verbose" : 2,                                # Verbosity
+        #"verbose" : 5,                                # Verbosity
         "numCores" : 1,                               # Number of cores
         "clock" : "1.0GHz",                           # Clock
         "memSize" : 1024*1024*1024,                   # Memory size in bytes
@@ -152,7 +161,8 @@ zap_cpu0_3.addParams({
 # --------------------------
 zap_cpu1_0 = sst.Component("zap1_0", "revcpu.RevCPU")
 zap_cpu1_0.addParams({
-        "verbose" : 5,                                # Verbosity
+        "verbose" : 2,                                # Verbosity
+        #"verbose" : 5,                                # Verbosity
         "numCores" : 1,                               # Number of cores
         "clock" : "1.0GHz",                           # Clock
         "memSize" : 1024*1024*1024,                   # Memory size in bytes
@@ -169,7 +179,8 @@ zap_cpu1_0.addParams({
 
 zap_cpu1_1 = sst.Component("zap1_1", "revcpu.RevCPU")
 zap_cpu1_1.addParams({
-        "verbose" : 5,                                # Verbosity
+        "verbose" : 2,                                # Verbosity
+        #"verbose" : 5,                                # Verbosity
         "numCores" : 1,                               # Number of cores
         "clock" : "1.0GHz",                           # Clock
         "memSize" : 1024*1024*1024,                   # Memory size in bytes
@@ -186,7 +197,8 @@ zap_cpu1_1.addParams({
 
 zap_cpu1_2 = sst.Component("zap1_2", "revcpu.RevCPU")
 zap_cpu1_2.addParams({
-        "verbose" : 5,                                # Verbosity
+        "verbose" : 2,                                # Verbosity
+        #"verbose" : 5,                                # Verbosity
         "numCores" : 1,                               # Number of cores
         "clock" : "1.0GHz",                           # Clock
         "memSize" : 1024*1024*1024,                   # Memory size in bytes
@@ -203,7 +215,8 @@ zap_cpu1_2.addParams({
 
 zap_cpu1_3 = sst.Component("zap1_3", "revcpu.RevCPU")
 zap_cpu1_3.addParams({
-        "verbose" : 5,                                # Verbosity
+        "verbose" : 2,                                # Verbosity
+        #"verbose" : 5,                                # Verbosity
         "numCores" : 1,                               # Number of cores
         "clock" : "1.0GHz",                           # Clock
         "memSize" : 1024*1024*1024,                   # Memory size in bytes
@@ -225,7 +238,8 @@ zap_cpu1_3.addParams({
 # --------------------------
 rza0 = sst.Component("rza0", "revcpu.RevCPU")
 rza0.addParams({
-        "verbose" : 5,                                # Verbosity
+        "verbose" : 2,                                # Verbosity
+        #"verbose" : 5,                                # Verbosity
         "numCores" : 2,                               # Number of cores
         "clock" : "1.0GHz",                           # Clock
         "memSize" : 1024*1024*1024,                   # Memory size in bytes
@@ -243,18 +257,21 @@ rza0.addParams({
 rza0_lspipe = rza0.setSubComponent("rza_ls","revcpu.RZALSCoProc")
 rza0_lspipe.addParams({
   "clock" : "1.0GHz",
-  "verbose" : 9,
+  #"verbose" : 9,
+  "verbose" : 2,
 })
 
 rza0_amopipe = rza0.setSubComponent("rza_amo","revcpu.RZAAMOCoProc")
 rza0_amopipe.addParams({
   "clock" : "1.0GHz",
-  "verbose" : 9,
+  #"verbose" : 9,
+  "verbose" : 2,
 })
 
 rza0_lsq = rza0.setSubComponent("memory", "revcpu.RevBasicMemCtrl");
 rza0_lsq.addParams({
-      "verbose"         : "9",
+      #"verbose"         : "9",
+      "verbose"         : "2",
       "clock"           : "2.0Ghz",
       "max_loads"       : 16,
       "max_stores"      : 16,
@@ -293,7 +310,8 @@ memory0.addParams({
 # --------------------------
 rza1 = sst.Component("rza1", "revcpu.RevCPU")
 rza1.addParams({
-        "verbose" : 5,                                # Verbosity
+        #"verbose" : 5,                                # Verbosity
+        "verbose" : 2,                                # Verbosity
         "numCores" : 2,                               # Number of cores
         "clock" : "1.0GHz",                           # Clock
         "memSize" : 1024*1024*1024,                   # Memory size in bytes
@@ -311,18 +329,21 @@ rza1.addParams({
 rza1_lspipe = rza1.setSubComponent("rza_ls","revcpu.RZALSCoProc")
 rza1_lspipe.addParams({
   "clock" : "1.0GHz",
-  "verbose" : 9,
+  #"verbose" : 9,
+  "verbose" : 2,
 })
 
 rza1_amopipe = rza1.setSubComponent("rza_amo","revcpu.RZAAMOCoProc")
 rza1_amopipe.addParams({
   "clock" : "1.0GHz",
-  "verbose" : 9,
+  #"verbose" : 9,
+  "verbose" : 2,
 })
 
 rza1_lsq = rza1.setSubComponent("memory", "revcpu.RevBasicMemCtrl");
 rza1_lsq.addParams({
-      "verbose"         : "9",
+      #"verbose"         : "9",
+      "verbose"         : "2",
       "clock"           : "2.0Ghz",
       "max_loads"       : 16,
       "max_stores"      : 16,
@@ -362,7 +383,8 @@ memory1.addParams({
 # SETUP THE ZONE0 NOC
 # --------------------------
 nic_params = {
-  "verbose" : 9,
+  #"verbose" : 9,
+  "verbose" : 2,
   "clock" : "1GHz",
   "req_per_cycle" : 1
 }
