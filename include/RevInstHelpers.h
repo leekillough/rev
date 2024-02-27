@@ -86,7 +86,7 @@ bool load(RevFeature *F, RevRegFile *R, RevMem *M, const RevInst& Inst) {
     }
     P.push_back(static_cast<uint64_t>(R->GetThreadID()));
 
-    R->SetSCAUSE(EXCEPTION_CAUSE::THREAD_MIGRATED);
+    R->SetSCAUSE(RevExceptionCause::THREAD_MIGRATED);
 
     return M->ZOP_ThreadMigrate(F->GetHartToExecID(), P, Zone, Precinct);
   }
@@ -156,7 +156,7 @@ bool store(RevFeature *F, RevRegFile *R, RevMem *M, const RevInst& Inst) {
       P.push_back(t);
     }
     P.push_back(static_cast<uint64_t>(R->GetThreadID()));
-    R->SetSCAUSE(EXCEPTION_CAUSE::THREAD_MIGRATED);
+    R->SetSCAUSE(RevExceptionCause::THREAD_MIGRATED);
     return M->ZOP_ThreadMigrate(F->GetHartToExecID(), P, Zone, Precinct);
   }
 
@@ -189,7 +189,7 @@ bool fload(RevFeature *F, RevRegFile *R, RevMem *M, const RevInst& Inst) {
       P.push_back(t);
     }
     P.push_back(static_cast<uint64_t>(R->GetThreadID()));
-    R->SetSCAUSE(EXCEPTION_CAUSE::THREAD_MIGRATED);
+    R->SetSCAUSE(RevExceptionCause::THREAD_MIGRATED);
     return M->ZOP_ThreadMigrate(F->GetHartToExecID(), P, Zone, Precinct);
   }
 
@@ -262,7 +262,7 @@ bool fstore(RevFeature *F, RevRegFile *R, RevMem *M, const RevInst& Inst) {
       P.push_back(t);
     }
     P.push_back(static_cast<uint64_t>(R->GetThreadID()));
-    R->SetSCAUSE(EXCEPTION_CAUSE::THREAD_MIGRATED);
+    R->SetSCAUSE(RevExceptionCause::THREAD_MIGRATED);
     return M->ZOP_ThreadMigrate(F->GetHartToExecID(), P, Zone, Precinct);
   }
 
