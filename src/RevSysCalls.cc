@@ -3884,15 +3884,17 @@ EcallStatus RevProc::ECALL_forza_get_my_zone(){
 }
 
 // 4013, forza_get_my_precinct();
-EcallStatus RevProc::ECALL_forza_get_my_precinct(RevInst& inst){
+EcallStatus RevProc::ECALL_forza_get_my_precinct(){
+#if 0
+  // Used this as a dummy call to print some things in test/FORZA/forza_zen_flow/forza_zen_flow.c
   uint64_t cur_ptr = (uint64_t)RegFile->GetX<uint64_t>(RevReg::a0);
   uint64_t tail_ptr_addr = (uint64_t)RegFile->GetX<uint64_t>(RevReg::a1);
   uint64_t tail_ptr_data = (uint64_t)RegFile->GetX<uint64_t>(RevReg::a2);
-
+#endif
   RegFile->SetX(RevReg::a0, zNic->getPrecinctID());
   output->verbose(CALL_INFO, 2, 0, "ECALL: forza_get_my_precinct called by thread %" PRIu32 " on hart %" PRIu32 ", val=%" PRIu32 "\n",
 		  GetActiveThreadID(), HartToExecID, zNic->getPrecinctID());
-  output->verbose(CALL_INFO, 2, 0, "ECALL HACK: 0x%" PRIx64 ", 0x%" PRIx64 ", 0x%" PRIx64 "\n", cur_ptr, tail_ptr_addr, tail_ptr_data);
+  //output->verbose(CALL_INFO, 2, 0, "ECALL HACK: 0x%" PRIx64 ", 0x%" PRIx64 ", 0x%" PRIx64 "\n", cur_ptr, tail_ptr_addr, tail_ptr_data);
   return EcallStatus::SUCCESS;
 }
 
