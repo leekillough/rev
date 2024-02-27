@@ -2042,7 +2042,7 @@ EcallStatus RevCore::ECALL_readahead() {
 }
 
 // 214, rev_sbrk(unsigned long brk)
-EcallStatus RevProc::ECALL_sbrk(RevInst& inst){
+EcallStatus RevProc::ECALL_sbrk(){
   auto NumBytes = RegFile->GetX<uint64_t>(RevReg::a0);
 
   // Return the current brk and then incremenet it by NumBytes
