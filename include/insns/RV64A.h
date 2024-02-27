@@ -38,7 +38,7 @@ class RV64A : public RevExt {
         P.push_back(t);
       }
       P.push_back(static_cast<uint64_t>(R->GetThreadID()));
-      R->SetSCAUSE(EXCEPTION_CAUSE::THREAD_MIGRATED);
+      R->SetSCAUSE(RevExceptionCause::THREAD_MIGRATED);
       return M->ZOP_ThreadMigrate(F->GetHartToExecID(), P, Zone, Precinct);
     }
     MemReq req(R->RV64[Inst.rs1], Inst.rd, RevRegClass::RegGPR, F->GetHartToExecID(), MemOp::MemOpAMO, true, R->GetMarkLoadComplete() );
@@ -70,7 +70,7 @@ class RV64A : public RevExt {
         P.push_back(t);
       }
       P.push_back(static_cast<uint64_t>(R->GetThreadID()));
-      R->SetSCAUSE(EXCEPTION_CAUSE::THREAD_MIGRATED);
+      R->SetSCAUSE(RevExceptionCause::THREAD_MIGRATED);
       return M->ZOP_ThreadMigrate(F->GetHartToExecID(), P, Zone, Precinct);
     }
     M->SC(F->GetHartToExecID(),
@@ -104,7 +104,7 @@ class RV64A : public RevExt {
       }
 
       P.push_back(static_cast<uint64_t>(R->GetThreadID()));
-      R->SetSCAUSE(EXCEPTION_CAUSE::THREAD_MIGRATED);
+      R->SetSCAUSE(RevExceptionCause::THREAD_MIGRATED);
       return M->ZOP_ThreadMigrate(F->GetHartToExecID(), P, Zone, Precinct);
     }
     uint32_t flags = static_cast<uint32_t>(F_AMO);
