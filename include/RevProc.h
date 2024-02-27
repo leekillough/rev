@@ -548,7 +548,7 @@ private:
   EcallStatus ECALL_sendmsg();                // 211, rev_sendmsg(int fd, struct user_msghdr  *msg, unsigned flags)
   EcallStatus ECALL_recvmsg();                // 212, rev_recvmsg(int fd, struct user_msghdr  *msg, unsigned flags)
   EcallStatus ECALL_readahead();              // 213, rev_readahead(int fd, loff_t offset, size_t count)
-  EcallStatus ECALL_brk();                    // 214, rev_brk(unsigned long brk)
+  EcallStatus ECALL_sbrk();                    // 214, rev_brk(unsigned long brk)
   EcallStatus ECALL_munmap();                 // 215, rev_munmap(unsigned long addr, size_t len)
   EcallStatus ECALL_mremap();                 // 216, rev_mremap(unsigned long addr, unsigned long old_len, unsigned long new_len, unsigned long flags, unsigned long new_addr)
   EcallStatus ECALL_add_key();                // 217, rev_add_key(const char  *_type, const char  *_description, const void  *_payload, size_t plen, key_serial_t destringid)
@@ -672,7 +672,7 @@ private:
   EcallStatus ECALL_forza_get_my_zone(); // 4012, forza_get_my_zone();
   EcallStatus ECALL_forza_get_my_precinct(); // 4013, forza_get_my_precinct();
   EcallStatus ECALL_forza_zone_barrier(); // 4014, forza_zone_barrier();
-  
+
   /// RevProc: Table of ecall codes w/ corresponding function pointer implementations
   static const std::unordered_map<uint32_t, EcallStatus(RevProc::*)()> Ecalls;
 

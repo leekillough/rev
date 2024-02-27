@@ -91,6 +91,9 @@ enum class RevExceptionCause : int32_t {
   INST_PAGE_FAULT           = 12,
   LOAD_PAGE_FAULT           = 13,
   STORE_AMO_PAGE_FAULT      = 15,
+
+  // FORZA
+  THREAD_MIGRATED           = 999,
 };
 
 class RevRegFile {

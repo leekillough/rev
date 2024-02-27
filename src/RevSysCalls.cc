@@ -1996,7 +1996,7 @@ EcallStatus RevProc::ECALL_readahead(){
 }
 
 // 214, rev_sbrk(unsigned long brk)
-EcallStatus RevProc::ECALL_sbrk(RevInst& inst){
+EcallStatus RevProc::ECALL_sbrk(){
   auto NumBytes = RegFile->GetX<uint64_t>(RevReg::a0);
 
   // Return the current brk and then incremenet it by NumBytes
@@ -3409,7 +3409,7 @@ const std::unordered_map<uint32_t, EcallStatus(RevProc::*)()> RevProc::Ecalls = 
     { 211, &RevProc::ECALL_sendmsg },                //  rev_sendmsg(int fd, struct user_msghdr  *msg, unsigned flags)
     { 212, &RevProc::ECALL_recvmsg },                //  rev_recvmsg(int fd, struct user_msghdr  *msg, unsigned flags)
     { 213, &RevProc::ECALL_readahead },              //  rev_readahead(int fd, loff_t offset, size_t count)
-    { 214, &RevProc::ECALL_brk },                    //  rev_brk(unsigned long brk)
+    { 214, &RevProc::ECALL_sbrk },                   //  rev_sbrk(size_t increment)
     { 215, &RevProc::ECALL_munmap },                 //  rev_munmap(unsigned long addr, size_t len)
     { 216, &RevProc::ECALL_mremap },                 //  rev_mremap(unsigned long addr, unsigned long old_len, unsigned long new_len, unsigned long flags, unsigned long new_addr)
     { 217, &RevProc::ECALL_add_key },                //  rev_add_key(const char  *_type, const char  *_description, const void  *_payload, size_t plen, key_serial_t destringid)
@@ -3580,7 +3580,7 @@ EcallStatus RevProc::ECALL_forza_send(){
   uint64_t spaddr = (uint64_t)RegFile->GetX<uint64_t>(RevReg::a1);
   size_t size = (size_t)RegFile->GetX<size_t>(RevReg::a2);
 
-  output->verbose(CALL_INFO, 2, 0, "ECALL: forza_send called by thread %" PRIu32 " on hart %" PRIu32 
+  output->verbose(CALL_INFO, 2, 0, "ECALL: forza_send called by thread %" PRIu32 " on hart %" PRIu32
       " dst = %" PRIx64 ", spaddr = %" PRIu64 ", size = %" PRIu64 "\n"
       , GetActiveThreadID(), HartToExecID, dst, spaddr, (uint64_t)size);
 
@@ -3613,8 +3613,8 @@ EcallStatus RevProc::ECALL_forza_send(){
   uint8_t SrcZCID = (uint8_t)(zNic->getEndpointType());
   uint8_t SrcPCID = (uint8_t)(zNic->getPCID(zNic->getZoneID()));
   uint16_t SrcHart = (uint16_t)HartToExecID;
-  
-  // output->verbose(CALL_INFO, 0, 0, "ECALL_forza_send: SrcZCID = %" PRIu8 
+
+  // output->verbose(CALL_INFO, 0, 0, "ECALL_forza_send: SrcZCID = %" PRIu8
   //           ", SrcPCID = %" PRIu8 ", SrcHart = %" PRIu16 "\n", SrcZCID, SrcPCID, SrcHart);
 
   SST::Forza::zopEvent *zev = new SST::Forza::zopEvent();
@@ -3641,7 +3641,7 @@ EcallStatus RevProc::ECALL_forza_send(){
     }
     payload.push_back(u.d);
     output->verbose(CALL_INFO, 2, 0, "ECALL: forza_send called by thread %" PRIu32 " on hart %"
-    PRIu32 ", dat[0]=%" PRIx8 ", dat[1]=%" PRIx8 ", dat[2]=%" PRIx8 ", dat[3]=%" PRIx8 
+    PRIu32 ", dat[0]=%" PRIx8 ", dat[1]=%" PRIx8 ", dat[2]=%" PRIx8 ", dat[3]=%" PRIx8
     ", dat[4]=%" PRIx8 ", dat[5]=%" PRIx8 ", dat[6]=%" PRIx8 ", dat[7]=%" PRIx8 ", dat[0-7]=%" PRIu64 " \n",
     GetActiveThreadID(), HartToExecID, dat[0], dat[1], dat[2], dat[3], dat[4], dat[5], dat[6], dat[7], u.d);
   }
@@ -3652,8 +3652,8 @@ EcallStatus RevProc::ECALL_forza_send(){
     output->fatal(CALL_INFO, -1, "Error : zNic is nullptr\n" );
   }
 
-  output->verbose(CALL_INFO, 0, 0, "ECALL_forza_send: SrcZCID = %" PRIu8 
-            ", SrcPCID = %" PRIu8 ", SrcHart = %" PRIu16 ", DstZCID = %" PRIu8 
+  output->verbose(CALL_INFO, 0, 0, "ECALL_forza_send: SrcZCID = %" PRIu8
+            ", SrcPCID = %" PRIu8 ", SrcHart = %" PRIu16 ", DstZCID = %" PRIu8
             ", DstPCID = %" PRIu8 ", DstHart = %" PRIu16 "\n", SrcZCID, SrcPCID, SrcHart, DstZCID, DstPCID, DstHart);
 
   switch(DstZCID)
@@ -3664,7 +3664,7 @@ EcallStatus RevProc::ECALL_forza_send(){
     case 1:
       zNic->send(zev, SST::Forza::zopCompID::Z_ZAP1);
       break;
-    case 2: 
+    case 2:
       zNic->send(zev, SST::Forza::zopCompID::Z_ZAP2);
       break;
     case 3:
@@ -3691,7 +3691,7 @@ EcallStatus RevProc::ECALL_forza_zen_credit_release(){
   uint8_t SrcZCID = (uint8_t)(zNic->getEndpointType());
   uint8_t SrcPCID = (uint8_t)(zNic->getPCID(zNic->getZoneID()));
   uint16_t SrcHart = (uint16_t)HartToExecID;
-  
+
   // set all the fields : FIXME
   zev->setType(SST::Forza::zopMsgT::Z_MSG);
   zev->setID(msg_id);
@@ -3722,7 +3722,7 @@ EcallStatus RevProc::ECALL_forza_zen_setup(){
                   "ECALL: forza_zen_setup called by thread %" PRIu32 " on hart %" PRIu32 "\n",
                   GetActiveThreadID(), HartToExecID);
 
-  // TODO: Forza library will pass the memory base address and size allocated by each actor to inform/initialize zen. 
+  // TODO: Forza library will pass the memory base address and size allocated by each actor to inform/initialize zen.
 
   SST::Forza::zopEvent *zev = new SST::Forza::zopEvent();
 
@@ -3731,9 +3731,9 @@ EcallStatus RevProc::ECALL_forza_zen_setup(){
   uint8_t SrcZCID = (uint8_t)(zNic->getEndpointType());
   uint8_t SrcPCID = (uint8_t)(zNic->getPCID(zNic->getZoneID()));
   uint16_t SrcHart = (uint16_t)HartToExecID;
-  
+
   output->verbose(CALL_INFO, 0, 0,
-                  "ECALL_forza_zen_init: addr = 0x%" PRIx64 ", size = %" PRIu64 ", tailptr = 0x%" PRIx64 ", SrcZCID = %" PRIu8 
+                  "ECALL_forza_zen_init: addr = 0x%" PRIx64 ", size = %" PRIu64 ", tailptr = 0x%" PRIx64 ", SrcZCID = %" PRIu8
                   ", SrcPCID = %" PRIu8 ", SrcHart = %" PRIu16 "\n",
                   addr, (uint64_t)size, tailptr, SrcZCID, SrcPCID, SrcHart);
 
@@ -3834,15 +3834,15 @@ EcallStatus RevProc::ECALL_forza_zqm_setup(){
 
   return EcallStatus::SUCCESS;
 }
-  
-// 4007, forza_get_harts_per_zap  
+
+// 4007, forza_get_harts_per_zap
 EcallStatus RevProc::ECALL_forza_get_harts_per_zap(){
   RegFile->SetX(RevReg::a0, this->numHarts);
   output->verbose(CALL_INFO, 2, 0, "ECALL: forza_get_harts_per_zap called by thread %" PRIu32 " on hart %" PRIu32 ", val=%" PRIu32 "\n",
 		  GetActiveThreadID(), HartToExecID, this->numHarts);
   return EcallStatus::SUCCESS;
 }
-  
+
 // 4008, forza_get_zaps_per_zone();
 EcallStatus RevProc::ECALL_forza_get_zaps_per_zone(){
   RegFile->SetX(RevReg::a0, (uint8_t)zNic->getNumZaps());
