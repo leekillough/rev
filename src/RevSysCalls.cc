@@ -3552,6 +3552,7 @@ EcallStatus RevProc::ECALL_forza_scratchpad_free(){
   output->verbose(CALL_INFO, 2, 0, "ECALL: forza_scratchpad_free called by thread %" PRIu32 " on hart %" PRIu32 "\n", GetActiveThreadID(), HartToExecID);
   uint64_t addr = RegFile->GetX<uint64_t>(RevReg::a0);
   uint64_t size = RegFile->GetX<uint64_t>(RevReg::a1);
+  output->verbose(CALL_INFO, 2, 0, "ECALL: forza_scratchpad_free with addr 0x%" PRIx64 ", and size %" PRIu64 "\n", addr, size); 
   mem->ScratchpadFree(addr, size);
 
   return EcallStatus::SUCCESS;
