@@ -3917,4 +3917,16 @@ EcallStatus RevProc::ECALL_forza_zone_barrier(){
   return EcallStatus::CONTINUE;
 }
 
+// 4015, forza_debug_print
+EcallStatus RevProc::ECALL_forza_debug_print(){
+  uint64_t a = (uint64_t)RegFile->GetX<uint64_t>(RevReg::a0);
+  uint64_t b = (uint64_t)RegFile->GetX<uint64_t>(RevReg::a1);
+  uint64_t c = (uint64_t)RegFile->GetX<uint64_t>(RevReg::a2);
+
+  output->verbose(CALL_INFO, 2, 0, "ECALL: forza_debug_print called by thread %" PRIu32 " on hart %" PRIu32 "; a=0x%" PRIx64 "; b=0x%" PRIx64 "; c=0x%" PRIx64 "\n", GetActiveThreadID(), HartToExecID, a, b, c);
+
+  RegFile->SetX(RevReg::a0, 0);
+  return EcallStatus::SUCCESS;
+}
+
 } // namespace SST::RevCPU
