@@ -21,7 +21,7 @@ CXXFLAGS="-std=c++14" # warns about using register as type otherwise (c++17 defa
 
 all: $(EXAMPLE).exe $(EXCXX).exe
 $(EXAMPLE).exe: $(EXAMPLE).c
-	$(CC) -Wall -march=$(ARCH) -o $(EXAMPLE).exe $(EXAMPLE).c -static
+	$(CC) -march=$(ARCH) -o $(EXAMPLE).exe $(EXAMPLE).c -static
 
 $(EXCXX).exe: $(EXAMPLE).c
 	$(CXX) -march=$(ARCH) $(CXXFLAGS) -o $(EXCXX).exe $(EXAMPLE).c -static

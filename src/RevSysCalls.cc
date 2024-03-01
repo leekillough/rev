@@ -3526,6 +3526,7 @@ const std::unordered_map<uint32_t, EcallStatus(RevProc::*)()> RevProc::Ecalls = 
     { 4012, &RevProc::ECALL_forza_get_my_zone }, // , forza_get_my_zone();
     { 4013, &RevProc::ECALL_forza_get_my_precinct }, // , forza_get_my_precinct();
     { 4014, &RevProc::ECALL_forza_zone_barrier }, // , forza_zone_barrier();
+    { 4015, &RevProc::ECALL_forza_debug_print }, //, forza_debug_print();
 };
 
 // 4000, forza_scratchpad_alloc(size_t size);

@@ -101,7 +101,7 @@ zap_cpu0_1.addParams({
         "verbose" : 5,                                # Verbosity
         "numCores" : 1,                               # Number of cores
         "clock" : "1.0GHz",                           # Clock
-        "memSize" : 1024*1024*1024,                   # Memory size in bytes
+        "memSize" : 1024*1024*1024+(1024*1024*200),                   # Memory size in bytes
         "machine" : "[0:RV64GC]",                     # Core:Config; RV64I for core 0
         "startAddr" : "[0:0x00000000]",               # Starting address for core 0
         "memCost" : "[0:1:10]",                       # Memory loads required 1-10 cycles
@@ -118,7 +118,7 @@ zap_cpu0_2.addParams({
         "verbose" : 5,                                # Verbosity
         "numCores" : 1,                               # Number of cores
         "clock" : "1.0GHz",                           # Clock
-        "memSize" : 1024*1024*1024,                   # Memory size in bytes
+        "memSize" : 1024*1024*1024+(1024*1024*400),                   # Memory size in bytes
         "machine" : "[0:RV64GC]",                     # Core:Config; RV64I for core 0
         "startAddr" : "[0:0x00000000]",               # Starting address for core 0
         "memCost" : "[0:1:10]",                       # Memory loads required 1-10 cycles
@@ -135,7 +135,7 @@ zap_cpu0_3.addParams({
         "verbose" : 5,                                # Verbosity
         "numCores" : 1,                               # Number of cores
         "clock" : "1.0GHz",                           # Clock
-        "memSize" : 1024*1024*1024,                   # Memory size in bytes
+        "memSize" : 1024*1024*1024+(1024*1024*600),                   # Memory size in bytes
         "machine" : "[0:RV64GC]",                     # Core:Config; RV64I for core 0
         "startAddr" : "[0:0x00000000]",               # Starting address for core 0
         "memCost" : "[0:1:10]",                       # Memory loads required 1-10 cycles
@@ -172,7 +172,7 @@ zap_cpu1_1.addParams({
         "verbose" : 5,                                # Verbosity
         "numCores" : 1,                               # Number of cores
         "clock" : "1.0GHz",                           # Clock
-        "memSize" : 1024*1024*1024,                   # Memory size in bytes
+        "memSize" : 1024*1024*1024+(1024*1024*200),                   # Memory size in bytes
         "machine" : "[0:RV64GC]",                     # Core:Config; RV64I for core 0
         "startAddr" : "[0:0x00000000]",               # Starting address for core 0
         "memCost" : "[0:1:10]",                       # Memory loads required 1-10 cycles
@@ -189,7 +189,7 @@ zap_cpu1_2.addParams({
         "verbose" : 5,                                # Verbosity
         "numCores" : 1,                               # Number of cores
         "clock" : "1.0GHz",                           # Clock
-        "memSize" : 1024*1024*1024,                   # Memory size in bytes
+        "memSize" : 1024*1024*1024+(1024*1024*400),                   # Memory size in bytes
         "machine" : "[0:RV64GC]",                     # Core:Config; RV64I for core 0
         "startAddr" : "[0:0x00000000]",               # Starting address for core 0
         "memCost" : "[0:1:10]",                       # Memory loads required 1-10 cycles
@@ -206,7 +206,7 @@ zap_cpu1_3.addParams({
         "verbose" : 5,                                # Verbosity
         "numCores" : 1,                               # Number of cores
         "clock" : "1.0GHz",                           # Clock
-        "memSize" : 1024*1024*1024,                   # Memory size in bytes
+        "memSize" : 1024*1024*1024+(1024*1024*600),                   # Memory size in bytes
         "machine" : "[0:RV64GC]",                     # Core:Config; RV64I for core 0
         "startAddr" : "[0:0x00000000]",               # Starting address for core 0
         "memCost" : "[0:1:10]",                       # Memory loads required 1-10 cycles
@@ -228,7 +228,7 @@ rza0.addParams({
         "verbose" : 5,                                # Verbosity
         "numCores" : 2,                               # Number of cores
         "clock" : "1.0GHz",                           # Clock
-        "memSize" : 1024*1024*1024,                   # Memory size in bytes
+        "memSize" : 1024*1024*1024+(1024*1024*1200),                   # Memory size in bytes
         "machine" : "[CORES:RV64G]",                  # Core:Config; RV64I for core 0
         "startAddr" : "[CORES:0x00000000]",           # Starting address for core 0
         "program" : os.getenv("REV_EXE", "forza_zen_setup.exe"),  # Target executable
@@ -278,7 +278,7 @@ memctrl0.addParams({
     "clock" : "2GHz",
     "verbose" : VERBOSE,
     "addr_range_start" : 0,
-    "addr_range_end" : MEM_SIZE+(1024*1024+1200),
+    "addr_range_end" : MEM_SIZE+(1024*1024*1200),
     "backing" : "malloc"
 })
 
@@ -296,7 +296,7 @@ rza1.addParams({
         "verbose" : 5,                                # Verbosity
         "numCores" : 2,                               # Number of cores
         "clock" : "1.0GHz",                           # Clock
-        "memSize" : 1024*1024*1024,                   # Memory size in bytes
+        "memSize" : 1024*1024*1024+(1024*1024*1200),                   # Memory size in bytes
         "machine" : "[CORES:RV64G]",                  # Core:Config; RV64I for core 0
         "startAddr" : "[CORES:0x00000000]",           # Starting address for core 0
         "program" : os.getenv("REV_EXE", "forza_zen_setup.exe"),  # Target executable
@@ -346,7 +346,7 @@ memctrl1.addParams({
     "clock" : "2GHz",
     "verbose" : VERBOSE,
     "addr_range_start" : 0,
-    "addr_range_end" : MEM_SIZE+(1024*1024+1200),
+    "addr_range_end" : MEM_SIZE+(1024*1024*1200),
     "backing" : "malloc"
 })
 
