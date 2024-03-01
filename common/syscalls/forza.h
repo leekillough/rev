@@ -148,7 +148,6 @@ static int forza_get_my_zone(){
 }
 
 // Used for debugging purposes...
-//static int forza_get_my_precinct(uint64_t cur_ptr, uint64_t tail_ptr_addr, uint64_t tail_ptr_data){
 static int forza_get_my_precinct(){
   int rc;
   asm volatile (
