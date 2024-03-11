@@ -41,21 +41,23 @@
 // Tracing macros
 // clang-format off
 #ifndef NO_REV_TRACER
+// clang-format off
 #define TRACE_REG_READ(R,V)  do{ if (Tracer) Tracer->regRead( (R), (V) ); }while(0)
 #define TRACE_REG_WRITE(R,V) do{ if (Tracer) Tracer->regWrite( (R), (V) ); }while(0)
 #define TRACE_PC_WRITE(PC)   do{ if (Tracer) Tracer->pcWrite( (PC) ); }while(0)
-#define TRACE_MEM_WRITE(ADR, LEN, DATA)    do{ if (Tracer) Tracer->memWrite( (ADR), (LEN), (DATA) ); }while(0)
-#define TRACE_MEM_READ(ADR, LEN, DATA)     do{ if (Tracer) Tracer->memRead(  (ADR), (LEN), (DATA) ); }while(0)
+#define TRACE_MEM_WRITE(ADR, LEN, DATA)  do{ if (Tracer) Tracer->memWrite( (ADR), (LEN), (DATA) ); }while(0)
+#define TRACE_MEM_READ(ADR, LEN, DATA)   do{ if (Tracer) Tracer->memRead(  (ADR), (LEN), (DATA) ); }while(0)
 #define TRACE_MEMH_SENDREAD(ADR, LEN, REG) do{ if (Tracer) Tracer->memhSendRead( (ADR), (LEN), (REG) ); }while(0)
 #define TRACE_MEM_READ_RESPONSE(LEN, DATA, REQ) do{ if (Tracer) Tracer->memReadResponse( (LEN), (DATA), (REQ) ); }while(0)
+// clang-format on
 #else
-#define TRACE_REG_READ(R,V)
-#define TRACE_REG_WRITE(R,V)
-#define TRACE_PC_WRITE(PC)
-#define TRACE_MEM_WRITE(ADR, LEN, DATA)
-#define TRACE_MEM_READ(ADR, LEN, DATA)
-#define TRACE_MEMH_SENDREAD(ADR, LEN, REG)
-#define TRACE_MEM_READ_RESPONSE(LEN, DATA, REQ)
+#define TRACE_REG_READ( R, V )
+#define TRACE_REG_WRITE( R, V )
+#define TRACE_PC_WRITE( PC )
+#define TRACE_MEM_WRITE( ADR, LEN, DATA )
+#define TRACE_MEM_READ( ADR, LEN, DATA )
+#define TRACE_MEMH_SENDREAD( ADR, LEN, REG )
+#define TRACE_MEM_READ_RESPONSE( LEN, DATA, REQ )
 #endif
 // clang-format on
 
