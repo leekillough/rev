@@ -3602,78 +3602,78 @@ EcallStatus RevProc::ECALL_forza_send(){
 
   auto nleft = size - EcallState.string.size();
   if(nleft == 0 && LSQueue->count(lsq_hash) == 0){
-    // Data is read and ready to be sent
+      // Data is read and ready to be sent
 
-      // TODO: note the endianess and fix it to be portable ...
-  ECALL_forza_send_union u;
-  for (size_t i = 0; i < sizeof(uint64_t); i++) {
-    u.b[i] = EcallState.buf[i];
-  }
-
-  uint8_t SrcZCID = (uint8_t)(zNic->getEndpointType());
-  uint8_t SrcPCID = (uint8_t)(zNic->getPCID(zNic->getZoneID()));
-  uint16_t SrcHart = (uint16_t)HartToExecID;
-
-  // output->verbose(CALL_INFO, 0, 0, "ECALL_forza_send: SrcZCID = %" PRIu8
-  //           ", SrcPCID = %" PRIu8 ", SrcHart = %" PRIu16 "\n", SrcZCID, SrcPCID, SrcHart);
-
-  SST::Forza::zopEvent *zev = new SST::Forza::zopEvent();
-  // set all the fields : FIXME
-  zev->setType(SST::Forza::zopMsgT::Z_MSG);
-  zev->setID(0);
-  zev->setOpc(SST::Forza::zopOpc::Z_MSG_SENDP);
-  zev->setSrcZCID(SrcZCID);
-  zev->setSrcPCID(SrcPCID);
-  zev->setSrcHart(SrcHart);
-
-  //TODO: Currently assuming alignement is 0, with a total of 512 threads per ZAP.
-  uint16_t DstHart = dst%opts->GetNumHarts();
-  uint8_t DstPCID = 0;
-  uint8_t DstZCID = dst/opts->GetNumHarts();
-  zev->setDestZCID(DstZCID);
-  zev->setDestPCID(DstPCID);
-  zev->setDestHart(DstHart);
-
-  std::vector<uint64_t> payload;
-  for (size_t i = 0; i < size; i += sizeof(uint64_t)) {
-    for (size_t j = 0; j < sizeof(uint64_t); j++) {
-      u.b[j] = EcallState.buf[i+j];
+        // TODO: note the endianess and fix it to be portable ...
+    ECALL_forza_send_union u;
+    for (size_t i = 0; i < sizeof(uint64_t); i++) {
+      u.b[i] = EcallState.buf[i];
     }
-    payload.push_back(u.d);
-    output->verbose(CALL_INFO, 2, 0, "ECALL: forza_send called by thread %" PRIu32 " on hart %"
-    PRIu32 ", dat[0]=%" PRIx8 ", dat[1]=%" PRIx8 ", dat[2]=%" PRIx8 ", dat[3]=%" PRIx8
-    ", dat[4]=%" PRIx8 ", dat[5]=%" PRIx8 ", dat[6]=%" PRIx8 ", dat[7]=%" PRIx8 ", dat[0-7]=%" PRIu64 " \n",
-    GetActiveThreadID(), HartToExecID, EcallState.buf[0], EcallState.buf[1], EcallState.buf[2], EcallState.buf[3], EcallState.buf[4], EcallState.buf[5], EcallState.buf[6], EcallState.buf[7], u.d);
-  }
-  zev->setPayload(payload);
-  zev->encodeEvent();
 
-  if (!zNic) {
-    output->fatal(CALL_INFO, -1, "Error : zNic is nullptr\n" );
-  }
+    uint8_t SrcZCID = (uint8_t)(zNic->getEndpointType());
+    uint8_t SrcPCID = (uint8_t)(zNic->getPCID(zNic->getZoneID()));
+    uint16_t SrcHart = (uint16_t)HartToExecID;
 
-  output->verbose(CALL_INFO, 0, 0, "ECALL_forza_send: SrcZCID = %" PRIu8
-            ", SrcPCID = %" PRIu8 ", SrcHart = %" PRIu16 ", DstZCID = %" PRIu8
-            ", DstPCID = %" PRIu8 ", DstHart = %" PRIu16 "\n", SrcZCID, SrcPCID, SrcHart, DstZCID, DstPCID, DstHart);
+    // output->verbose(CALL_INFO, 0, 0, "ECALL_forza_send: SrcZCID = %" PRIu8
+    //           ", SrcPCID = %" PRIu8 ", SrcHart = %" PRIu16 "\n", SrcZCID, SrcPCID, SrcHart);
 
-  switch(DstZCID)
-  {
-    case 0:
-      zNic->send(zev, SST::Forza::zopCompID::Z_ZAP0);
-      break;
-    case 1:
-      zNic->send(zev, SST::Forza::zopCompID::Z_ZAP1);
-      break;
-    case 2:
-      zNic->send(zev, SST::Forza::zopCompID::Z_ZAP2);
-      break;
-    case 3:
-      zNic->send(zev, SST::Forza::zopCompID::Z_ZAP3);
-      break;
-    default:
-      output->fatal(CALL_INFO, -1, "Error : DstZCID[%" PRIu8 "] doesnt exist\n", DstZCID);
-      break;
-  }
+    SST::Forza::zopEvent *zev = new SST::Forza::zopEvent();
+    // set all the fields : FIXME
+    zev->setType(SST::Forza::zopMsgT::Z_MSG);
+    zev->setID(0);
+    zev->setOpc(SST::Forza::zopOpc::Z_MSG_SENDP);
+    zev->setSrcZCID(SrcZCID);
+    zev->setSrcPCID(SrcPCID);
+    zev->setSrcHart(SrcHart);
+
+    //TODO: Currently assuming alignement is 0, with a total of 512 threads per ZAP.
+    uint16_t DstHart = dst%opts->GetNumHarts();
+    uint8_t DstPCID = 0;
+    uint8_t DstZCID = dst/opts->GetNumHarts();
+    zev->setDestZCID(DstZCID);
+    zev->setDestPCID(DstPCID);
+    zev->setDestHart(DstHart);
+
+    std::vector<uint64_t> payload;
+    for (size_t i = 0; i < size; i += sizeof(uint64_t)) {
+      for (size_t j = 0; j < sizeof(uint64_t); j++) {
+        u.b[j] = EcallState.buf[i+j];
+      }
+      payload.push_back(u.d);
+      output->verbose(CALL_INFO, 2, 0, "ECALL: forza_send called by thread %" PRIu32 " on hart %"
+      PRIu32 ", dat[0]=%" PRIx8 ", dat[1]=%" PRIx8 ", dat[2]=%" PRIx8 ", dat[3]=%" PRIx8
+      ", dat[4]=%" PRIx8 ", dat[5]=%" PRIx8 ", dat[6]=%" PRIx8 ", dat[7]=%" PRIx8 ", dat[0-7]=%" PRIu64 " \n",
+      GetActiveThreadID(), HartToExecID, EcallState.buf[0], EcallState.buf[1], EcallState.buf[2], EcallState.buf[3], EcallState.buf[4], EcallState.buf[5], EcallState.buf[6], EcallState.buf[7], u.d);
+    }
+    zev->setPayload(payload);
+    zev->encodeEvent();
+
+    if (!zNic) {
+      output->fatal(CALL_INFO, -1, "Error : zNic is nullptr\n" );
+    }
+
+    output->verbose(CALL_INFO, 0, 0, "ECALL_forza_send: SrcZCID = %" PRIu8
+              ", SrcPCID = %" PRIu8 ", SrcHart = %" PRIu16 ", DstZCID = %" PRIu8
+              ", DstPCID = %" PRIu8 ", DstHart = %" PRIu16 "\n", SrcZCID, SrcPCID, SrcHart, DstZCID, DstPCID, DstHart);
+
+    switch(DstZCID)
+    {
+      case 0:
+        zNic->send(zev, SST::Forza::zopCompID::Z_ZAP0);
+        break;
+      case 1:
+        zNic->send(zev, SST::Forza::zopCompID::Z_ZAP1);
+        break;
+      case 2:
+        zNic->send(zev, SST::Forza::zopCompID::Z_ZAP2);
+        break;
+      case 3:
+        zNic->send(zev, SST::Forza::zopCompID::Z_ZAP3);
+        break;
+      default:
+        output->fatal(CALL_INFO, -1, "Error : DstZCID[%" PRIu8 "] doesnt exist\n", DstZCID);
+        break;
+    }
 
 
     //RegFile->SetX(RevReg::a0, rc);
