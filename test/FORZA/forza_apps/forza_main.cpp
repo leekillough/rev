@@ -10,7 +10,7 @@ void forza_thread_init(void *FArgs_recv, sparsemat_t *mat_chunk)
   ForzaPkt qaddr[PKT_QUEUE_SIZE];
   uint64_t **tail_ptr;
   uint64_t *head_ptr;
-  
+
   tail_ptr = (uint64_t **) forza_scratchpad_alloc(1*sizeof(ForzaPkt *));
   *tail_ptr = (uint64_t *) &qaddr;
   head_ptr = (uint64_t *) &qaddr;
@@ -19,7 +19,6 @@ void forza_thread_init(void *FArgs_recv, sparsemat_t *mat_chunk)
   // forza_zone_barrier(GLOBAL_ACTORS+1);
   barrier(MY_ACTOR);
 
-  
   forza_packet_send(MY_ACTOR, mat_chunk);
 
   return;

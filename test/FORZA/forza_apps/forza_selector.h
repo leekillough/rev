@@ -53,7 +53,7 @@ namespace hclib {
         }
 
         void done(int mb_id) 
-        {            
+        {
             ForzaPkt *fpkt = (ForzaPkt *) forza_scratchpad_alloc(1*sizeof(ForzaPkt));
             fpkt->w = 0;
             fpkt->vj = 0;

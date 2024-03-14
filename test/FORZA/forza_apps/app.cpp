@@ -36,7 +36,7 @@ int forza_packet_send(int mytid, sparsemat_t *mmat)
     int ActorID = mytid;
 
     TriangleSelector* triSelector = new TriangleSelector(&cnt[ActorID], &mat[ActorID]);
-    
+
     // forza_fprintf(1, "AJAY\n", print_args);
 
     hclib::finish([=]() {
@@ -62,7 +62,7 @@ int forza_packet_send(int mytid, sparsemat_t *mmat)
                     if (pkg.w > L_j) {
                         break;
                     }
-            
+
                     // TrianglePkt *tpkt = (TrianglePkt *) forza_scratchpad_alloc(1*sizeof(TrianglePkt));
                     tpkt->w = pkg.w;
                     tpkt->vj = pkg.vj;
@@ -77,7 +77,7 @@ int forza_packet_send(int mytid, sparsemat_t *mmat)
 
     // forza_fprintf(1, "AJAY\n", print_args);
 
-    
+
     return 0;
 
 }
