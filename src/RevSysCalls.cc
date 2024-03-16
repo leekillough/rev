@@ -3194,6 +3194,7 @@ EcallStatus RevProc::ECALL_pthread_join(){
 /* ========================================= */
 /* System Call (ecall) Implementations Below */
 /* ========================================= */
+// clang-format off
 const std::unordered_map<uint32_t, EcallStatus(RevProc::*)()> RevProc::Ecalls = {
     { 0,   &RevProc::ECALL_io_setup },               //  rev_io_setup(unsigned nr_reqs, aio_context_t  *ctx)
     { 1,   &RevProc::ECALL_io_destroy },             //  rev_io_destroy(aio_context_t ctx)
@@ -3527,6 +3528,7 @@ const std::unordered_map<uint32_t, EcallStatus(RevProc::*)()> RevProc::Ecalls = 
     { 4013, &RevProc::ECALL_forza_get_my_precinct }, // , forza_get_my_precinct();
     { 4014, &RevProc::ECALL_forza_zone_barrier }, // , forza_zone_barrier();
 };
+// clang-format on
 
 // 4000, forza_scratchpad_alloc(size_t size);
 EcallStatus RevProc::ECALL_forza_scratchpad_alloc(){

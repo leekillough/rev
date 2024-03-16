@@ -168,7 +168,7 @@ bool RevLoader::LoadElf32(char *membuf, size_t sz){
     }
   }
 
-  mem->AddThreadMem();
+  (void) mem->AddThreadMem();
 
   // Add memory segments for each program header
   for (unsigned i = 0; i < eh->e_phnum; i++) {
@@ -332,7 +332,7 @@ bool RevLoader::LoadElf64(char *membuf, size_t sz){
   }
 
   // Add the first thread's memory
-  mem->AddThreadMem();
+  (void) mem->AddThreadMem();
 
   uint64_t StaticDataEnd = 0;
   uint64_t BSSEnd = 0;
