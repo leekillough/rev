@@ -61,22 +61,16 @@ class RevCoProc;
 class RevCore {
 public:
   /// RevCore: standard constructor
-  RevCore(
-    unsigned                  id,
-    RevOpts*                  opts,
-    unsigned                  numHarts,
-    RevMem*                   mem,
-    RevLoader*                loader,
-    std::function<uint32_t()> GetNewThreadID,
-    SST::Output*              output
-  );
+  RevCore( unsigned                    Id,
+           RevOpts*                    Opts,
+           unsigned                    NumHarts,
+           RevMem*                     Mem,
+           RevLoader*                  Loader,
+           std::function< uint32_t() > GetNewThreadID,
+           SST::Output*                Output );
 
   /// RevCore: standard destructor
   ~RevCore()                           = default;
-
-  /// RevCore: disallow copying and assignment
-  RevCore( const RevCore& )            = delete;
-  RevCore& operator=( const RevCore& ) = delete;
 
   /// RevCore: per-processor clock function
   bool ClockTick( SST::Cycle_t currentCycle );
@@ -94,10 +88,14 @@ public:
   bool SingleStepHart();
 
   /// RevCore: retrieve the local PC for the correct feature set
-  uint64_t GetPC() const { return RegFile->GetPC(); }
+  uint64_t GetPC() const {
+    return RegFile->GetPC();
+  }
 
   /// RevCore: set time converter for RTC
-  void SetTimeConverter( TimeConverter* tc ) { timeConverter = tc; }
+  void SetTimeConverter( TimeConverter* tc ) {
+    timeConverter = tc;
+  }
 
   /// RevCore: Debug mode read a register
   bool DebugReadReg( unsigned Idx, uint64_t* Value ) const;
@@ -106,13 +104,19 @@ public:
   bool DebugWriteReg( unsigned Idx, uint64_t Value ) const;
 
   /// RevCore: Is this an RV32 machine?
-  bool DebugIsRV32() { return feature->IsRV32(); }
+  bool DebugIsRV32() {
+    return feature->IsRV32();
+  }
 
   /// RevCore: Set an optional tracer
-  void SetTracer( RevTracer* T ) { Tracer = T; }
+  void SetTracer( RevTracer* T ) {
+    Tracer = T;
+  }
 
   /// RevCore: Retrieve a random memory cost value
-  unsigned RandCost() { return mem->RandCost( feature->GetMinCost(), feature->GetMaxCost() ); }
+  unsigned RandCost() {
+    return mem->RandCost( feature->GetMinCost(), feature->GetMaxCost() );
+  }
 
   /// RevCore: Handle register faults
   void HandleRegFault( unsigned width );
@@ -124,7 +128,7 @@ public:
   void HandleALUFault( unsigned width );
 
   /// RevCore: Handle ALU faults
-  void InjectALUFault( std::pair<unsigned, unsigned> EToE, RevInst& Inst );
+  void InjectALUFault( std::pair< unsigned, unsigned > EToE, RevInst& Inst );
 
   struct RevCoreStats {
     uint64_t totalCycles;
@@ -139,8 +143,7 @@ public:
 
   auto GetAndClearStats() {
     // Add each field from Stats into StatsTotal
-    for( auto stat :
-         { &RevCoreStats::totalCycles,
+    for( auto stat : { &RevCoreStats::totalCycles,
            &RevCoreStats::cyclesBusy,
            &RevCoreStats::cyclesIdle_Total,
            &RevCoreStats::cyclesStalled,
@@ -156,45 +159,56 @@ public:
     return ret;
   }
 
-  RevMem& GetMem() const { return *mem; }
+  RevMem& GetMem() const {
+    return *mem;
+  }
 
-  uint64_t GetCurrentSimCycle() const { return currentSimCycle; }
-
-  ///< RevCore: Called by RevCPU to handle the state changes threads may have happened during this Core's ClockTick
-  auto TransferThreadsThatChangedState() { return std::move( ThreadsThatChangedState ); }
+  ///< RevCore: Called by RevCPU to handle the state changes threads may have happened during this Proc's ClockTick
+  auto TransferThreadsThatChangedState() {
+    return std::move( ThreadsThatChangedState );
+  }
 
   ///< RevCore: Add
-  void AddThreadsThatChangedState( std::unique_ptr<RevThread>&& thread ) {
+  void AddThreadsThatChangedState( std::unique_ptr< RevThread >&& thread ) {
     ThreadsThatChangedState.push_back( std::move( thread ) );
   }
 
   ///< RevCore: SpawnThread creates a new thread and returns its ThreadID
-  void CreateThread( uint32_t NewTid, uint64_t fn, void* arg );
+  void     CreateThread( uint32_t NewTid, uint64_t fn, void* arg );
 
   ///< RevCore: Returns the current HartToExecID active pid
-  uint32_t GetActiveThreadID() { return Harts.at( HartToDecodeID )->GetAssignedThreadID(); }
+  uint32_t GetActiveThreadID() {
+    return Harts.at( HartToDecodeID )->GetAssignedThreadID();
+  }
 
-  ///< RevCore: Get this Core's feature
-  const RevFeature* GetRevFeature() const { return feature; }
+  ///< RevCore: Get this Proc's feature
+  RevFeature* GetRevFeature() const {
+    return feature;
+  }
 
   ///< RevCore: Mark a current request as complete
   void MarkLoadComplete( const MemReq& req );
 
   ///< RevCore: Get pointer to Load / Store queue used to track memory operations
-  std::shared_ptr<std::unordered_multimap<uint64_t, MemReq>> GetLSQueue() const { return LSQueue; }
+  std::shared_ptr< std::unordered_multimap< uint64_t, MemReq > >
+    GetLSQueue() const {
+    return LSQueue;
+  }
 
-  ///< RevProc: retrieve the HART ID that contains the target ThreadID
-  uint32_t GetHartFromThreadID(uint32_t ThreadID){
-    for( size_t i=0; i<numHarts; i++ ){
-      if( Harts[i]->GetAssignedThreadID() == ThreadID ){
+  ///< RevCore: retrieve the HART ID that contains the target ThreadID
+  uint32_t GetHartFromThreadID( uint32_t ThreadID ) {
+    for( size_t i = 0; i < numHarts; i++ ) {
+      if( Harts[i]->GetAssignedThreadID() == ThreadID ) {
         return i;
       }
     }
-    return numHarts+1;
+    return numHarts + 1;
   }
 
-  ///< RevProc: Set the ZOP NIC handler
-  void setZNic(Forza::zopAPI *Z) { zNic = Z; }
+  ///< RevCore: Set the ZOP NIC handler
+  void setZNic( Forza::zopAPI* Z ) {
+    zNic = Z;
+  }
 
   ///< RevCore: Add a co-processor to the RevCore
   void SetCoProc( RevCoProc* coproc );
@@ -204,18 +218,28 @@ public:
   ///  be created by a RevCoProc (or a class derived from RevCoProc) so this function may not be called from even within
   ///  RevCore
   [[deprecated( "RevRegClass regClass is used instead of bool isFloat" )]] bool
-    ExternalDepCheck( RevCorePasskey<RevCoProc>, uint16_t HartID, uint16_t reg, bool IsFloat ) {
-    RevRegClass       regClass = IsFloat ? RevRegClass::RegFLOAT : RevRegClass::RegGPR;
-    const RevRegFile* regFile  = GetRegFile( HartID );
-    return LSQCheck( HartID, regFile, reg, regClass ) || ScoreboardCheck( regFile, reg, regClass );
+    ExternalDepCheck( RevCorePasskey< RevCoProc >,
+                      uint16_t HartID,
+                      uint16_t reg,
+                      bool     IsFloat ) {
+    RevRegClass regClass =
+      IsFloat ? RevRegClass::RegFLOAT : RevRegClass::RegGPR;
+    const RevRegFile* regFile = GetRegFile( HartID );
+    return LSQCheck( HartID, regFile, reg, regClass ) ||
+           ScoreboardCheck( regFile, reg, regClass );
   }
 
   ///< RevCore: Allow a co-processor to manipulate the scoreboard by setting a bit. Note the RevCorePassKey may only
   ///  be created by a RevCoProc (or a class derived from RevCoProc) so this funciton may not be called from even within
   ///  RevCore
   [[deprecated( "RevRegClass regClass is used instead of bool isFloat" )]] void
-    ExternalDepSet( RevCorePasskey<RevCoProc>, uint16_t HartID, uint16_t RegNum, bool isFloat, bool value = true ) {
-    RevRegClass regClass = isFloat ? RevRegClass::RegFLOAT : RevRegClass::RegGPR;
+    ExternalDepSet( RevCorePasskey< RevCoProc >,
+                    uint16_t HartID,
+                    uint16_t RegNum,
+                    bool     isFloat,
+                    bool     value = true ) {
+    RevRegClass regClass =
+      isFloat ? RevRegClass::RegFLOAT : RevRegClass::RegGPR;
     DependencySet( HartID, RegNum, regClass, value );
   }
 
@@ -223,8 +247,12 @@ public:
   ///  be created by a RevCoProc (or a class derived from RevCoProc) so this funciton may not be called from even within
   ///  RevCore
   [[deprecated( "RevRegClass regClass is used instead of bool isFloat" )]] void
-    ExternalDepClear( RevCorePasskey<RevCoProc>, uint16_t HartID, uint16_t RegNum, bool isFloat ) {
-    RevRegClass regClass = isFloat ? RevRegClass::RegFLOAT : RevRegClass::RegGPR;
+    ExternalDepClear( RevCorePasskey< RevCoProc >,
+                      uint16_t HartID,
+                      uint16_t RegNum,
+                      bool     isFloat ) {
+    RevRegClass regClass =
+      isFloat ? RevRegClass::RegFLOAT : RevRegClass::RegGPR;
     DependencyClear( HartID, RegNum, regClass );
   }
 
@@ -232,22 +260,33 @@ public:
   ///< RevCore: Allow a co-processor to query the bits in scoreboard. Note the RevCorePassKey may only
   ///  be created by a RevCoProc (or a class derived from RevCoProc) so this function may not be called from even within
   ///  RevCore
-  bool ExternalDepCheck( RevCorePasskey<RevCoProc>, uint16_t HartID, uint16_t reg, RevRegClass regClass ) {
+  bool ExternalDepCheck( RevCorePasskey< RevCoProc >,
+                         uint16_t    HartID,
+                         uint16_t    reg,
+                         RevRegClass regClass ) {
     const RevRegFile* regFile = GetRegFile( HartID );
-    return LSQCheck( HartID, regFile, reg, regClass ) || ScoreboardCheck( regFile, reg, regClass );
+    return LSQCheck( HartID, regFile, reg, regClass ) ||
+           ScoreboardCheck( regFile, reg, regClass );
   }
 
   ///< RevCore: Allow a co-processor to manipulate the scoreboard by setting a bit. Note the RevCorePassKey may only
   ///  be created by a RevCoProc (or a class derived from RevCoProc) so this funciton may not be called from even within
   ///  RevCore
-  void ExternalDepSet( RevCorePasskey<RevCoProc>, uint16_t HartID, uint16_t RegNum, RevRegClass regClass, bool value = true ) {
+  void ExternalDepSet( RevCorePasskey< RevCoProc >,
+                       uint16_t    HartID,
+                       uint16_t    RegNum,
+                       RevRegClass regClass,
+                       bool        value = true ) {
     DependencySet( HartID, RegNum, regClass, value );
   }
 
   ///< RevCore: Allow a co-processor to manipulate the scoreboard by clearing a bit. Note the RevCorePassKey may only
   ///  be created by a RevCoProc (or a class derived from RevCoProc) so this funciton may not be called from even within
   ///  RevCore
-  void ExternalDepClear( RevCorePasskey<RevCoProc>, uint16_t HartID, uint16_t RegNum, RevRegClass regClass ) {
+  void ExternalDepClear( RevCorePasskey< RevCoProc >,
+                         uint16_t    HartID,
+                         uint16_t    RegNum,
+                         RevRegClass regClass ) {
     DependencyClear( HartID, RegNum, regClass );
   }
 
@@ -255,22 +294,24 @@ public:
   ///  unitl ExternalReleaseHart() is called. Note the RevCorePassKey may only
   ///  be created by a RevCoProc (or a class derived from RevCoProc) so this funciton may not be called from even within
   ///  RevCore
-  void ExternalStallHart( RevCorePasskey<RevCoProc>, uint16_t HartID );
+  void ExternalStallHart( RevCorePasskey< RevCoProc >, uint16_t HartID );
 
   ///< RevCore: Allow a co-processor to release the pipeline of this proc and allow a hart to continue
   ///  execution (this un-does the ExternalStallHart() function ). Note the RevCorePassKey may only
   ///  be created by a RevCoProc (or a class derived from RevCoProc) so this funciton may not be called from even within
   ///  RevCore
-  void ExternalReleaseHart( RevCorePasskey<RevCoProc>, uint16_t HartID );
+  void ExternalReleaseHart( RevCorePasskey< RevCoProc >, uint16_t HartID );
 
   ///< RevCore: Allow a co-process to retrieve the register file object for the target HART
-  std::unique_ptr<RevRegFile> ExternalGetRegFile(RevProcPasskey<RevCoProc>, unsigned Hart){
-    return Harts.at(Hart)->PopRegFile();
+  std::unique_ptr< RevRegFile > ExternalGetRegFile( RevCorePasskey< RevCoProc >,
+                                                    unsigned Hart ) {
+    return Harts.at( Hart )->PopRegFile();
   }
+
   //------------- END External Interface -------------------------------
 
   ///< RevCore: Used for loading a software thread into a RevHart
-  void AssignThread( std::unique_ptr<RevThread> ThreadToAssign );
+  void     AssignThread( std::unique_ptr< RevThread > ThreadToAssign );
 
   ///< RevCore:
   void UpdateStatusOfHarts();
@@ -278,8 +319,10 @@ public:
   ///< RevCore: Returns the id of an idle hart (or _INVALID_HART_ID_ if none are idle)
   unsigned FindIdleHartID() const;
 
-  ///< RevCore: Returns true if all harts are available (ie. There is nothing executing on this Core)
-  bool HasNoBusyHarts() const { return IdleHarts == ValidHarts; }
+  ///< RevCore: Returns true if all harts are available (ie. There is nothing executing on this Proc)
+  bool     HasNoBusyHarts() const {
+    return IdleHarts == ValidHarts;
+  }
 
   ///< RevCore: Used by RevCPU to determine if it can disable this proc
   ///           based on the criteria there are no threads assigned to it and the
@@ -287,67 +330,74 @@ public:
   bool HasNoWork() const;
 
   ///< RevCore: Returns true if there are any IdleHarts
-  bool HasIdleHart() const { return IdleHarts.any(); }
+  bool HasIdleHart() const {
+    return IdleHarts.any();
+  }
 
   ///< RevCore: Returns the number of cycles executed so far
   uint64_t GetCycles() const { return cycles; }
 
 private:
-  bool           Halted      = false;  ///< RevCore: determines if the core is halted
-  bool           Stalled     = false;  ///< RevCore: determines if the core is stalled on instruction fetch
-  bool           SingleStep  = false;  ///< RevCore: determines if we are in a single step
-  bool           CrackFault  = false;  ///< RevCore: determines if we need to handle a crack fault
-  bool           ALUFault    = false;  ///< RevCore: determines if we need to handle an ALU fault
-  unsigned       fault_width = 0;      ///< RevCore: the width of the target fault
-  unsigned const id;                   ///< RevCore: processor id
-  uint64_t       ExecPC          = 0;  ///< RevCore: executing PC
-  unsigned       HartToDecodeID  = 0;  ///< RevCore: Current executing ThreadID
-  unsigned       HartToExecID    = 0;  ///< RevCore: Thread to dispatch instruction
-  uint64_t       currentSimCycle = 0;  ///< RevCore: Current simulation cycle
+  bool Halted;  ///< RevCore: determines if the core is halted
+  bool
+    Stalled;  ///< RevCore: determines if the core is stalled on instruction fetch
+  bool SingleStep;  ///< RevCore: determines if we are in a single step
+  bool CrackFault;  ///< RevCore: determiens if we need to handle a crack fault
+  bool ALUFault;    ///< RevCore: determines if we need to handle an ALU fault
+  unsigned fault_width;     ///< RevCore: the width of the target fault
+  unsigned id;              ///< RevCore: processor id
+  uint64_t ExecPC;          ///< RevCore: executing PC
+  unsigned HartToDecodeID;  ///< RevCore: Current executing ThreadID
+  unsigned HartToExecID;    ///< RevCore: Thread to dispatch instruction
 
-  std::vector<std::shared_ptr<RevHart>> Harts{};                ///< RevCore: vector of Harts without a thread assigned to them
-  std::bitset<_MAX_HARTS_>              IdleHarts{};            ///< RevCore: bitset of Harts with no thread assigned
-  std::bitset<_MAX_HARTS_>              ValidHarts{};           ///< RevCore: Bits 0 -> numHarts are 1
-  std::bitset<_MAX_HARTS_>              HartsClearToDecode{};   ///< RevCore: Thread is clear to start (proceed with decode)
-  std::bitset<_MAX_HARTS_>              HartsClearToExecute{};  ///< RevCore: Thread is clear to execute (no register dependencides)
+  std::vector< std::shared_ptr< RevHart > >
+    Harts;  ///< RevCore: vector of Harts without a thread assigned to them
+  std::bitset< _MAX_HARTS_ >
+    IdleHarts;  ///< RevCore: bitset of Harts with no thread assigned
+  std::bitset< _MAX_HARTS_ > ValidHarts;  ///< RevCore: Bits 0 -> numHarts are 1
+  std::bitset< _MAX_HARTS_ >
+    HartsClearToDecode;  ///< RevCore: Thread is clear to start (proceed with decode)
+  std::bitset< _MAX_HARTS_ >
+    HartsClearToExecute;  ///< RevCore: Thread is clear to execute (no register dependencides)
 
-  unsigned   numHarts{};  ///< RevCore: Number of Harts for this core
-  RevOpts*   opts{};      ///< RevCore: options object
-  RevMem*    mem{};       ///< RevCore: memory object
-  RevCoProc* coProc{};    ///< RevCore: attached co-processor
-  RevLoader* loader{};    ///< RevCore: loader object
-
-  Forza::zopAPI *zNic{};  ///< RevProc: ZOPNic object
+  unsigned       numHarts;  ///< RevCore: Number of Harts for this core
+  RevOpts*       opts;      ///< RevCore: options object
+  RevMem*        mem;       ///< RevCore: memory object
+  RevCoProc*     coProc;    ///< RevCore: attached co-processor
+  RevLoader*     loader;    ///< RevCore: loader object
+  Forza::zopAPI* zNic;      ///< RevCore: ZOPNic object
 
   // Function pointer to the GetNewThreadID function in RevCPU (monotonically increasing thread ID counter)
-  std::function<uint32_t()> const GetNewThreadID;
+  std::function< uint32_t() > GetNewThreadID;
 
   // If a given assigned thread experiences a change of state, it sets the corresponding bit
-  std::vector<std::unique_ptr<RevThread>>
-    ThreadsThatChangedState{};  ///< RevCore: used to signal to RevCPU that the thread assigned to HART has changed state
+  std::vector< std::unique_ptr< RevThread > >
+    ThreadsThatChangedState;  ///< RevCore: used to signal to RevCPU that the thread assigned to HART has changed state
 
-  SST::Output* const             output;       ///< RevCore: output handler
-  std::unique_ptr<RevFeature>    featureUP{};  ///< RevCore: feature handler
-  RevFeature*                    feature{};
-  RevCoreStats                   Stats{};       ///< RevCore: collection of performance stats
-  RevCoreStats                   StatsTotal{};  ///< RevCore: collection of total performance stats
-  std::unique_ptr<RevPrefetcher> sfetch{};      ///< RevCore: stream instruction prefetcher
+  SST::Output*                  output;     ///< RevCore: output handler
+  std::unique_ptr< RevFeature > featureUP;  ///< RevCore: feature handler
+  RevFeature*                   feature;
+  RevCoreStats Stats{};  ///< RevCore: collection of performance stats
+  RevCoreStats
+    StatsTotal{};  ///< RevCore: collection of total performance stats
+  std::unique_ptr< RevPrefetcher >
+    sfetch;  ///< RevCore: stream instruction prefetcher
 
-  std::shared_ptr<std::unordered_multimap<uint64_t, MemReq>>
-    LSQueue{};  ///< RevCore: Load / Store queue used to track memory operations. Currently only tracks outstanding loads.
-  TimeConverter* timeConverter{};  ///< RevCore: Time converter for RTC
+  std::shared_ptr< std::unordered_multimap< uint64_t, MemReq > >
+    LSQueue;  ///< RevCore: Load / Store queue used to track memory operations. Currently only tracks outstanding loads.
+  TimeConverter* timeConverter;  ///< RevCore: Time converter for RTC
 
-  RevRegFile* RegFile        = nullptr;        ///< RevCore: Initial pointer to HartToDecodeID RegFile
-  uint32_t    ActiveThreadID = _INVALID_TID_;  ///< Software ThreadID (Not the Hart) that belongs to the Hart currently decoding
-  RevTracer*  Tracer         = nullptr;        ///< RevCore: Tracer object
+  RevRegFile*    RegFile =
+    nullptr;  ///< RevCore: Initial pointer to HartToDecodeID RegFile
+  uint32_t ActiveThreadID =
+    _INVALID_TID_;  ///< Software ThreadID (Not the Hart) that belongs to the Hart currently decoding
 
-  std::bitset<_MAX_HARTS_> CoProcStallReq{};
+  RevTracer*                 Tracer = nullptr;  ///< RevCore: Tracer object
 
-  uint64_t cycles{};  ///< RevCore: The number of cycles executed
-
+  std::bitset< _MAX_HARTS_ > CoProcStallReq;
   ///< RevCore: Utility function for system calls that involve reading a string from memory
-  EcallStatus EcallLoadAndParseString( uint64_t straddr, std::function<void()> );
-
+  EcallStatus                EcallLoadAndParseString( uint64_t straddr,
+                                                      std::function< void() > );
   // - Many of these are not implemented
   // - Their existence in the ECalls table is solely to not throw errors
   // - This _should_ be a comprehensive list of system calls supported on RISC-V
@@ -683,31 +733,30 @@ private:
   EcallStatus ECALL_dump_stack_to_file();     // 9003, dump_stack(const char* outputFile)
 
   /// FORZA
-  EcallStatus ECALL_forza_scratchpad_alloc(RevInst& inst); // 4000, forza_scratchpad_alloc(size_t size);
-  EcallStatus ECALL_forza_scratchpad_free(RevInst& inst);  // 4001, forza_scratchpad_free(size_t size);
-  EcallStatus ECALL_forza_get_hart_id(RevInst& inst);  // 4002, forza_get_hart_id();
-  EcallStatus ECALL_forza_send(RevInst& inst);  // 4003, forza_send();
-  EcallStatus ECALL_forza_zen_credit_release(RevInst& inst);  // 4004, forza_popq();
-  EcallStatus ECALL_forza_zen_setup(RevInst& inst);  // 4005, forza_zen_setup();
-  EcallStatus ECALL_forza_zqm_setup(RevInst& inst); // 4006, forza_zqm_setup();
-  EcallStatus ECALL_forza_get_harts_per_zap(RevInst& inst); // 4007, forza_get_harts_per_zap
-  EcallStatus ECALL_forza_get_zaps_per_zone(RevInst& inst); // 4008, forza_get_zaps_per_zone();
-  EcallStatus ECALL_forza_get_zones_per_precinct(RevInst& inst); // 4009, forza_get_zones_per_precinct();
-  EcallStatus ECALL_forza_get_num_precincts(RevInst& inst); // 4010, forza_get_num_precincts();
-  EcallStatus ECALL_forza_get_my_zap(RevInst& inst); // 4011, forza_get_my_zap();
-  EcallStatus ECALL_forza_get_my_zone(RevInst& inst); // 4012, forza_get_my_zone();
-  EcallStatus ECALL_forza_get_my_precinct(RevInst& inst); // 4013, forza_get_my_precinct();
-  EcallStatus ECALL_forza_zone_barrier(RevInst& inst); // 4014, forza_zone_barrier();
-
-  EcallStatus ECALL_dump_valid_mem();         // 9004, dump_valid_mem()
-  EcallStatus ECALL_dump_valid_mem_to_file(); // 9005, dump_valid_mem_to_file(const char* outputFile)
-
-  EcallStatus ECALL_dump_thread_mem();         // 9006, dump_thread_mem()
-  EcallStatus ECALL_dump_thread_mem_to_file(); // 9007, dump_thread_mem_to_file(const char* outputFile)
-  // clang-format on
+  EcallStatus
+    ECALL_forza_scratchpad_alloc();  // 4000, forza_scratchpad_alloc(size_t size);
+  EcallStatus
+    ECALL_forza_scratchpad_free();  // 4001, forza_scratchpad_free(size_t size);
+  EcallStatus ECALL_forza_get_hart_id();         // 4002, forza_get_hart_id();
+  EcallStatus ECALL_forza_send();                // 4003, forza_send();
+  EcallStatus ECALL_forza_zen_credit_release();  // 4004, forza_popq();
+  EcallStatus ECALL_forza_zen_setup();           // 4005, forza_zen_setup();
+  EcallStatus ECALL_forza_zqm_setup();           // 4006, forza_zqm_setup();
+  EcallStatus ECALL_forza_get_harts_per_zap();  // 4007, forza_get_harts_per_zap
+  EcallStatus
+    ECALL_forza_get_zaps_per_zone();  // 4008, forza_get_zaps_per_zone();
+  EcallStatus
+    ECALL_forza_get_zones_per_precinct();  // 4009, forza_get_zones_per_precinct();
+  EcallStatus
+    ECALL_forza_get_num_precincts();      // 4010, forza_get_num_precincts();
+  EcallStatus ECALL_forza_get_my_zap();   // 4011, forza_get_my_zap();
+  EcallStatus ECALL_forza_get_my_zone();  // 4012, forza_get_my_zone();
+  EcallStatus ECALL_forza_get_my_precinct();  // 4013, forza_get_my_precinct();
+  EcallStatus ECALL_forza_zone_barrier();     // 4014, forza_zone_barrier();
 
   /// RevCore: Table of ecall codes w/ corresponding function pointer implementations
-  static const std::unordered_map<uint32_t, EcallStatus ( RevCore::* )()> Ecalls;
+  static const std::unordered_map< uint32_t, EcallStatus ( RevCore::* )() >
+                              Ecalls;
 
   /// RevCore: Execute the Ecall based on the code loaded in RegFile->GetSCAUSE()
   bool ExecEcall();
@@ -715,24 +764,28 @@ private:
   /// RevCore: Get a pointer to the register file loaded into Hart w/ HartID
   RevRegFile* GetRegFile( unsigned HartID ) const;
 
-  std::vector<RevInstEntry>            InstTable{};   ///< RevCore: target instruction table
-  std::vector<std::unique_ptr<RevExt>> Extensions{};  ///< RevCore: vector of enabled extensions
+  std::vector< RevInstEntry > InstTable;  ///< RevCore: target instruction table
+
+  std::vector< std::unique_ptr< RevExt > >
+    Extensions;  ///< RevCore: vector of enabled extensions
+
   //std::vector<std::tuple<uint16_t, RevInst, bool>>  Pipeline; ///< RevCore: pipeline of instructions
-  std::deque<std::pair<uint16_t, RevInst>>    Pipeline{};     ///< RevCore: pipeline of instructions
-  std::unordered_map<std::string, unsigned>   NameToEntry{};  ///< RevCore: instruction mnemonic to table entry mapping
-  std::unordered_multimap<uint64_t, unsigned> EncToEntry{};   ///< RevCore: instruction encoding to table entry mapping
-  std::unordered_multimap<uint64_t, unsigned> CEncToEntry{};  ///< RevCore: compressed instruction encoding to table entry mapping
-  std::unordered_map<unsigned, std::pair<unsigned, unsigned>> EntryToExt{};  ///< RevCore: instruction entry to extension mapping
+  std::deque< std::pair< uint16_t, RevInst > >
+    Pipeline;  ///< RevCore: pipeline of instructions
+  std::map< std::string, unsigned >
+    NameToEntry;  ///< RevCore: instruction mnemonic to table entry mapping
+  std::map< uint32_t, unsigned >
+    EncToEntry;  ///< RevCore: instruction encoding to table entry mapping
+  std::map< uint32_t, unsigned >
+    CEncToEntry;  ///< RevCore: compressed instruction encoding to table entry mapping
+
+  std::map< unsigned, std::pair< unsigned, unsigned > >
+       EntryToExt;  ///< RevCore: instruction entry to extension object mapping
   ///           first = Master table entry number
   ///           second = pair<Extension Index, Extension Entry>
 
-  /// RevCore: finds an entry which matches an encoding whose predicate is true
-  auto matchInst(
-    const std::unordered_multimap<uint64_t, unsigned>& map,
-    uint64_t                                           encoding,
-    const std::vector<RevInstEntry>&                   InstTable,
-    uint32_t                                           Inst
-  ) const;
+  /// RevCore: splits a string into tokens
+  void splitStr( const std::string& s, char c, std::vector< std::string >& v );
 
   /// RevCore: parses the feature string for the target core
   bool ParseFeatureStr( std::string Feature );

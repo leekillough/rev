@@ -32,12 +32,11 @@ namespace SST::RevCPU {
 struct RevInst;
 
 /// BoxNaN: Store a boxed float inside a double
-inline void BoxNaN( double* dest, const float* value ) {
+inline void BoxNaN( double* dest, const void* value ) {
   uint32_t i32;
-  memcpy( &i32, value, sizeof( i32 ) );                   // The FP32 value
+  memcpy( &i32, value, sizeof( float ) );                 // The FP32 value
   uint64_t i64 = uint64_t{ i32 } | ~uint64_t{ 0 } << 32;  // Boxed NaN value
-  memcpy( dest, &i64, sizeof( i64 ) );                    // Store in FP64 register
-  static_assert( sizeof( i32 ) == sizeof( float ) && sizeof( i64 ) == sizeof( double ) );
+  memcpy( dest, &i64, sizeof( double ) );  // Store in FP64 register
 }
 
 /// RISC-V Register Mneumonics
@@ -114,14 +113,17 @@ private:
   uint32_t   cost{};            ///< RevRegFile: Cost of the instruction
   RevTracer* Tracer = nullptr;  ///< RegRegFile: Tracer object
   uint32_t ThreadID{};          ///< RevRegFile: Thread ID
+  RevTracer* Tracer = nullptr;  ///< RegRegFile: Tracer object
 
   union {                // Anonymous union. We zero-initialize the largest member
     uint32_t RV32_PC;    ///< RevRegFile: RV32 PC
     uint64_t RV64_PC{};  ///< RevRegFile: RV64 PC
   };
 
-  std::shared_ptr<std::unordered_multimap<uint64_t, MemReq>> LSQueue{};
-  std::function<void( const MemReq& )>                       MarkLoadCompleteFunc{};
+  FCSR fcsr{};  ///< RevRegFile: FCSR
+
+  std::shared_ptr< std::unordered_multimap< uint64_t, MemReq > > LSQueue{};
+  std::function< void( const MemReq& ) > MarkLoadCompleteFunc{};
 
   union {                             // Anonymous union. We zero-initialize the largest member
     uint32_t RV32[_REV_NUM_REGS_];    ///< RevRegFile: RV32I register file
@@ -133,24 +135,22 @@ private:
     double DPF[_REV_NUM_REGS_]{};  ///< RevRegFile: RVxxD register file
   };
 
-  std::bitset<_REV_NUM_REGS_> RV_Scoreboard{};  ///< RevRegFile: Scoreboard for RV32/RV64 RF to manage pipeline hazard
-  std::bitset<_REV_NUM_REGS_> FP_Scoreboard{};  ///< RevRegFile: Scoreboard for SPF/DPF RF to manage pipeline hazard
+  std::bitset< _REV_NUM_REGS_ >
+    RV_Scoreboard{};  ///< RevRegFile: Scoreboard for RV32/RV64 RF to manage pipeline hazard
+  std::bitset< _REV_NUM_REGS_ >
+    FP_Scoreboard{};  ///< RevRegFile: Scoreboard for SPF/DPF RF to manage pipeline hazard
 
   // Supervisor Mode CSRs
   uint64_t CSR[CSR_LIMIT]{};
 
-  // Floating-point CSR
-  FCSR fcsr{};
-
-  // Number of instructions retired
-  uint64_t InstRet{};
-
-  union {                  // Anonymous union. We zero-initialize the largest member
-    uint64_t RV64_SEPC{};  // Holds address of instruction that caused the exception (ie. ECALL)
+  union {  // Anonymous union. We zero-initialize the largest member
+    uint64_t
+      RV64_SEPC{};  // Holds address of instruction that caused the exception (ie. ECALL)
     uint32_t RV32_SEPC;
   };
 
-  RevExceptionCause SCAUSE = RevExceptionCause::NONE;  // Used to store cause of exception (ie. ECALL_USER_EXCEPTION)
+  RevExceptionCause SCAUSE = RevExceptionCause::
+    NONE;  // Used to store cause of exception (ie. ECALL_USER_EXCEPTION)
 
   union {                   // Anonymous union. We zero-initialize the largest member
     uint64_t RV64_STVAL{};  // Used to store additional info about exception (ECALL does not use this and sets value to 0)
@@ -165,54 +165,82 @@ private:
 #endif
 
 public:
-  // Constructor which takes a RevCore to indicate its hart's parent core
-  // Template is to prevent circular dependencies by not requiring RevCore to be a complete type now
-  template<typename T, typename = std::enable_if_t<std::is_same_v<T, RevCore>>>
-  explicit RevRegFile( T* core ) : Core( core ), IsRV32( core->GetRevFeature()->IsRV32() ), HasD( core->GetRevFeature()->HasD() ) {}
-
-  /// RevRegFile: disallow copying and assignment
-  RevRegFile( const RevRegFile& )            = delete;
-  RevRegFile& operator=( const RevRegFile& ) = delete;
+  // Constructor which takes a RevFeature
+  explicit RevRegFile( const RevFeature* feature ) :
+    IsRV32( feature->IsRV32() ), HasD( feature->HasD() ) {
+  }
 
   // Getters/Setters
 
   /// Get cost of the instruction
-  const uint32_t& GetCost() const { return cost; }
+  const uint32_t& GetCost() const {
+    return cost;
+  }
 
-  uint32_t& GetCost() { return cost; }
+  uint32_t& GetCost() {
+    return cost;
+  }
 
   /// Set cost of the instruction
-  void SetCost( uint32_t c ) { cost = c; }
+  void SetCost( uint32_t c ) {
+    cost = c;
+  }
 
   /// Get whether the instruction has been triggered
-  bool GetTrigger() const { return trigger; }
+  bool GetTrigger() const {
+    return trigger;
+  }
 
   /// Set whether the instruction has been triggered
-  void SetTrigger( bool t ) { trigger = t; }
+  void SetTrigger( bool t ) {
+    trigger = t;
+  }
 
   /// Get the instruction entry
-  unsigned GetEntry() const { return Entry; }
+  unsigned GetEntry() const {
+    return Entry;
+  }
 
   /// Set the instruction entry
-  void SetEntry( unsigned e ) { Entry = e; }
+  void SetEntry( unsigned e ) {
+    Entry = e;
+  }
 
   /// Get the Load/Store Queue
-  const auto& GetLSQueue() const { return LSQueue; }
+  const auto& GetLSQueue() const {
+    return LSQueue;
+  }
 
   /// Set the Load/Store Queue
-  void SetLSQueue( std::shared_ptr<std::unordered_multimap<uint64_t, MemReq>> lsq ) { LSQueue = std::move( lsq ); }
+  void SetLSQueue(
+    std::shared_ptr< std::unordered_multimap< uint64_t, MemReq > > lsq ) {
+    LSQueue = std::move( lsq );
+  }
 
   /// Set the current tracer
-  void SetTracer( RevTracer* t ) { Tracer = t; }
+  void SetTracer( RevTracer* t ) {
+    Tracer = t;
+  }
 
   /// Get the MarkLoadComplete function
-  const std::function<void( const MemReq& )>& GetMarkLoadComplete() const { return MarkLoadCompleteFunc; }
+  const std::function< void( const MemReq& ) >& GetMarkLoadComplete() const {
+    return MarkLoadCompleteFunc;
+  }
 
   /// Set the MarkLoadComplete function
-  void SetMarkLoadComplete( std::function<void( const MemReq& )> func ) { MarkLoadCompleteFunc = std::move( func ); }
+  void SetMarkLoadComplete( std::function< void( const MemReq& ) > func ) {
+    MarkLoadCompleteFunc = std::move( func );
+  }
 
   /// Invoke the MarkLoadComplete function
-  void MarkLoadComplete( const MemReq& req ) const { MarkLoadCompleteFunc( req ); }
+  void MarkLoadComplete( const MemReq& req ) const {
+    MarkLoadCompleteFunc( req );
+  }
+
+  /// Return the Floating-Point Rounding Mode
+  FRMode GetFPRound() const {
+    return static_cast< FRMode >( fcsr.frm );
+  }
 
   /// Capture the PC of current instruction which raised exception
   void SetSEPC() {

@@ -42,9 +42,6 @@
 // -- FORZA Headers
 #include "ZOPNET.h"
 
-// -- PAN Common Headers
-#include "../common/include/PanAddr.h"
-
 namespace SST::RevCPU {
 
 class RevCPU : public SST::Component {
@@ -76,14 +73,12 @@ public:
   // RevCPU Component Registration Data
   // -------------------------------------------------------
   /// RevCPU: Register the component with the SST core
-  SST_ELI_REGISTER_COMPONENT(
-    RevCPU,    // component class
+  SST_ELI_REGISTER_COMPONENT( RevCPU,    // component class
     "revcpu",  // component library
     "RevCPU",  // component name
     SST_ELI_ELEMENT_VERSION( 1, 0, 0 ),
     "RISC-V SST CPU",
-    COMPONENT_CATEGORY_PROCESSOR
-  )
+                              COMPONENT_CATEGORY_PROCESSOR )
 
   // -------------------------------------------------------
   // RevCPU Component Parameter Data
@@ -145,7 +140,7 @@ public:
     {"nic", "Network interface", "SST::RevCPU::RevNIC"},
     {"pan_nic", "PAN Network interface", "SST::RevCPU::PanNet"},
     {"memory", "Memory interface to utilize for cache/memory hierachy", "SST::RevCPU::RevMemCtrl"},
-    {"co_proc", "Co-processor attached to RevProc", "SST::RevCPU::RevSimpleCoProc"},
+    {"co_proc", "Co-processor attached to RevCore", "SST::RevCPU::RevSimpleCoProc"},
     {"rza_ls",  "[FORZA] RZA Load/Store Pipeline", "SST::RevCPU::RZALSCoProc"},
     {"rza_amo", "[FORZA] RZA AMO Pipeline", "SST::RevCPU::RZAAMOCoProc"},
     {"zone_nic","[FORZA] Zone NIC", "SST::Forza::zopNIC"},
@@ -218,7 +213,6 @@ public:
     {"TLBHits",             "TLB hits",                                             "count",  1},
     {"TLBMisses",           "TLB misses",                                           "count",  1},
     )
-
   // clang-format on
 
   // Passed as a function pointer to each RevCore for when they encounter a function that
@@ -228,17 +222,19 @@ public:
   }
 
 private:
-  unsigned numCores{};     ///< RevCPU: number of RISC-V cores
-  unsigned numHarts{};     ///< RevCPU: number of RISC-V cores
-  unsigned msgPerCycle{};  ///< RevCPU: number of messages to send per cycle
-  //  unsigned          RDMAPerCycle{};  ///< RevCPU: number of RDMA messages per cycle to inject into PAN network
-  //  unsigned          testStage{};     ///< RevCPU: controls the PAN Test harness staging
-  //  unsigned          testIters{};     ///< RevCPU: the number of message iters for each PAN Test
-  RevOpts*              Opts{};     ///< RevCPU: Simulation options object
-  RevMem*               Mem{};      ///< RevCPU: RISC-V main memory object
-  RevLoader*            Loader{};   ///< RevCPU: RISC-V loader
-  std::vector<RevCore*> Procs{};    ///< RevCPU: RISC-V processor objects
-  bool*                 Enabled{};  ///< RevCPU: Completion structure
+  unsigned numCores{};                  ///< RevCPU: number of RISC-V cores
+  unsigned numHarts{};                  ///< RevCPU: number of RISC-V cores
+  unsigned msgPerCycle{};               ///< RevCPU: number of messages to send per cycle
+  unsigned RDMAPerCycle{};              ///< RevCPU: number of RDMA messages per cycle to inject into PAN network
+  unsigned testStage{};                 ///< RevCPU: controls the PAN Test harness staging
+  unsigned testIters{};                 ///< RevCPU: the number of message iters for each PAN Test
+  std::string Exe{};                    ///< RevCPU: binary executable
+  std::string Args{};                   ///< RevCPU: argument list
+  RevOpts *Opts{};                      ///< RevCPU: Simulation options object
+  RevMem *Mem{};                        ///< RevCPU: RISC-V main memory object
+  RevLoader *Loader{};                  ///< RevCPU: RISC-V loader
+  std::vector<RevCore *> Procs{};       ///< RevCPU: RISC-V processor objects
+  bool *Enabled{};                      ///< RevCPU: Completion structure
 
   // Initializes a RevThread object.
   // - Adds it's ThreadID to the ThreadQueue to be scheduled
@@ -250,6 +246,9 @@ private:
   // Adds Thread with ThreadID to AssignedThreads vector for ProcID
   // - Handles updating LSQueue & MarkLoadComplete function pointers
   void AssignThread( std::unique_ptr<RevThread>&& ThreadToAssign, unsigned ProcID );
+
+  // Sets up arguments for a thread with a given ID and feature set.
+  void SetupArgs( const std::unique_ptr< RevRegFile >& RegFile );
 
   // Checks the status of ALL threads that are currently blocked.
   void CheckBlockedThreads();
@@ -265,16 +264,16 @@ private:
 
   // Checks if a thread with a given Thread ID can proceed (used for pthread_join).
   // it does this by seeing if a given thread's WaitingOnTID has completed
-  bool ThreadCanProceed( const std::unique_ptr<RevThread>& Thread );
+  bool ThreadCanProceed( const std::unique_ptr< RevThread >& Thread );
 
   // vector of Threads which are ready to be scheduled
-  std::vector<std::unique_ptr<RevThread>> ReadyThreads{};
+  std::vector< std::unique_ptr< RevThread > > ReadyThreads{};
 
   // List of Threads that are currently blocked (waiting for their WaitingOnTID to be a key in CompletedThreads).
-  std::list<std::unique_ptr<RevThread>> BlockedThreads{};
+  std::list< std::unique_ptr< RevThread > >   BlockedThreads{};
 
   // Set of Thread IDs and their corresponding RevThread that have completed their execution on this RevCPU
-  std::unordered_map<uint32_t, std::unique_ptr<RevThread>> CompletedThreads{};
+  std::unordered_map< uint32_t, std::unique_ptr< RevThread > > CompletedThreads{};
 
   // Generates a new Thread ID using the RNG.
   uint32_t GetNewThreadID() { return RevRand( 0, UINT32_MAX ); }
@@ -324,11 +323,11 @@ private:
   TimeConverter* timeConverter{};       ///< RevCPU: SST time conversion handler
   SST::Output output{};                 ///< RevCPU: SST output handler
 
-  nicAPI *Nic;                        ///< RevCPU: Network interface controller
-  panNicAPI *PNic;                    ///< RevCPU: PAN network interface controller
-  PanExec *PExec;                     ///< RevCPU: PAN execution context
-  RevMemCtrl *Ctrl;                   ///< RevCPU: Rev memory controller
-  Forza::zopAPI *zNic;                ///< RevCPU: FORZA ZOP NIC
+  nicAPI *Nic{};                        ///< RevCPU: Network interface controller
+  panNicAPI *PNic{};                    ///< RevCPU: PAN network interface controller
+  PanExec *PExec{};                     ///< RevCPU: PAN execution context
+  RevMemCtrl *Ctrl{};                   ///< RevCPU: Rev memory controller
+  Forza::zopAPI *zNic{};                ///< RevCPU: FORZA ZOP NIC
 
   SST::Clock::Handler<RevCPU>* ClockHandler{};  ///< RevCPU: Clock Handler
 
@@ -338,10 +337,18 @@ private:
     TrackGets{};  ///< RevCPU: tracks the outstanding get messages; tuple<Tag, Addr, Sz>
   std::vector<std::tuple<uint8_t, uint32_t, unsigned, int, uint64_t>> ReadQueue{};  ///< RevCPU: outgoing memory read queue
 
-  SST::Clock::Handler<RevCPU>* ClockHandler;  ///< RevCPU: Clock Handler
+  std::vector< RevCoProc* > CoProcs{};  ///< RevCPU: CoProcessor attached to Rev
 
-  std::vector<Forza::zopEvent *> ZIQ;             ///< RevCPU: ZOP Issue Queue
-  std::map<uint64_t,Forza::zopEvent *> ZRqst;     ///< RevCPU: outstanding ZOP requests
+  SST::Clock::Handler< RevCPU >*  ClockHandler;  ///< RevCPU: Clock Handler
+
+  std::vector< Forza::zopEvent* > ZIQ;  ///< RevCPU: ZOP Issue Queue
+  std::map< uint64_t, Forza::zopEvent* >
+    ZRqst;  ///< RevCPU: outstanding ZOP requests
+
+  std::queue< std::pair< uint32_t, char* > > ZeroRqst;  ///< RevCPU: tracks incoming zero address put requests; pair<Size, Data>
+  std::list< std::pair< uint8_t, int > > TrackTags;  ///< RevCPU: tracks the outgoing messages; pair<Tag, Dest>
+  std::vector< std::tuple< uint8_t, uint64_t, uint32_t > > TrackGets;  ///< RevCPU: tracks the outstanding get messages; tuple<Tag, Addr, Sz>
+  std::vector< std::tuple< uint8_t, uint32_t, unsigned, int, uint64_t > > ReadQueue;  ///< RevCPU: outgoing memory read queue
 
   ///<         - Tag
   ///<         - Size
@@ -413,9 +420,6 @@ private:
   std::vector<Statistic<uint64_t>*> TLBMissesPerCore{};
   std::vector<Statistic<uint64_t>*> TLBHitsPerCore{};
 
-
-
-
   //-------------------------------------------------------
   // -- FUNCTIONS
   //-------------------------------------------------------
@@ -429,35 +433,26 @@ private:
   /// RevCPU: RevNIC message handler
   void handleMessage( SST::Event* ev );
 
-  /// RevCPU: PAN NIC message handler
-  void handlePANMessage(SST::Event *ev);
-
-  /// RevCPU: Handle PAN host-side message (host only)
-  void handleHostPANMessage(panNicEvent *event);
-
-  /// RevCPU: Handle PAN network-side messages (NIC's or switches)
-  void handleNetPANMessage(panNicEvent *event);
-
   /// RevCPU: Handle FORZA ZOP Message
-  void handleZOPMessage(SST::Event *ev);
+  void    handleZOPMessage( SST::Event* ev );
 
   /// RevCPU: Handle FORZA ZOP Message for RZA devices
-  void handleZOPMessageRZA(Forza::zopEvent *zev);
+  void    handleZOPMessageRZA( Forza::zopEvent* zev );
 
   /// RevCPU: Handle FORZA ZOP Message for ZAP devices
-  void handleZOPMessageZAP(Forza::zopEvent *zev);
+  void    handleZOPMessageZAP( Forza::zopEvent* zev );
 
   /// RevCPU: Handle FORZA MZOP requests
-  void handleZOPMZOP(Forza::zopEvent *zev);
+  void    handleZOPMZOP( Forza::zopEvent* zev );
 
   /// RevCPU: Handle FORZA Thread Migration
-  void handleZOPThreadMigrate(Forza::zopEvent *zev);
+  void    handleZOPThreadMigrate( Forza::zopEvent* zev );
 
   /// RevCPU: Handle FORZA scratchpad request responses
-  void MarkLoadCompleteDummy(const MemReq& req);
+  void    MarkLoadCompleteDummy( const MemReq& req );
 
   /// RevCPU: Inform the ZQM that a thread is done
-  void sendZQMThreadComplete(uint32_t ThreadID, uint32_t HartID);
+  void    sendZQMThreadComplete( uint32_t ThreadID, uint32_t HartID );
 
   /// RevCPU: Creates a unique tag for this message
   uint8_t createTag();

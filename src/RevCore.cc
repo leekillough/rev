@@ -16,7 +16,7 @@ namespace SST::RevCPU {
 
 using MemSegment = RevMem::MemSegment;
 
-RevProc::RevProc( unsigned                    Id,
+RevCore::RevCore( unsigned                    Id,
                   RevOpts*                    Opts,
                   unsigned                    NumHarts,
                   RevMem*                     Mem,
@@ -100,7 +100,7 @@ RevProc::RevProc( unsigned                    Id,
                    id );
 }
 
-bool RevProc::Halt() {
+bool RevCore::Halt() {
   if( Halted )
     return false;
   Halted     = true;
@@ -108,7 +108,7 @@ bool RevProc::Halt() {
   return true;
 }
 
-bool RevProc::Resume() {
+bool RevCore::Resume() {
   if( Halted ) {
     Halted     = false;
     SingleStep = false;
@@ -130,7 +130,7 @@ bool RevCore::SingleStepHart() {
   }
 }
 
-void RevProc::SetCoProc( RevCoProc* coproc ) {
+void RevCore::SetCoProc( RevCoProc* coproc ) {
   if( coProc == nullptr ) {
     coProc = coproc;
     coProc->Reset();
@@ -143,7 +143,7 @@ void RevProc::SetCoProc( RevCoProc* coproc ) {
   }
 }
 
-bool RevProc::EnableExt( RevExt* Ext, bool Opt ) {
+bool RevCore::EnableExt( RevExt* Ext, bool Opt ) {
   if( !Ext )
     output->fatal(
       CALL_INFO, -1, "Error: failed to initialize RISC-V extensions\n" );
@@ -221,7 +221,7 @@ bool RevProc::EnableExt( RevExt* Ext, bool Opt ) {
   return true;
 }
 
-bool RevProc::SeedInstTable() {
+bool RevCore::SeedInstTable() {
   output->verbose( CALL_INFO,
                    6,
                    0,
@@ -289,7 +289,7 @@ bool RevProc::SeedInstTable() {
   return true;
 }
 
-uint32_t RevProc::CompressCEncoding( RevInstEntry Entry ) {
+uint32_t RevCore::CompressCEncoding( RevInstEntry Entry ) {
   uint32_t Value = 0x00;
 
   Value |= Entry.opcode;
@@ -301,7 +301,7 @@ uint32_t RevProc::CompressCEncoding( RevInstEntry Entry ) {
   return Value;
 }
 
-uint32_t RevProc::CompressEncoding( RevInstEntry Entry ) {
+uint32_t RevCore::CompressEncoding( RevInstEntry Entry ) {
   uint32_t Value = 0x00;
 
   Value |= Entry.opcode;
@@ -315,7 +315,7 @@ uint32_t RevProc::CompressEncoding( RevInstEntry Entry ) {
   return Value;
 }
 
-void RevProc::splitStr( const std::string&          s,
+void RevCore::splitStr( const std::string&          s,
                         char                        c,
                         std::vector< std::string >& v ) {
   std::string::size_type i = 0;
@@ -336,7 +336,7 @@ void RevProc::splitStr( const std::string&          s,
   }
 }
 
-std::string RevProc::ExtractMnemonic( RevInstEntry Entry ) {
+std::string RevCore::ExtractMnemonic( RevInstEntry Entry ) {
   std::string                Tmp = Entry.mnemonic;
   std::vector< std::string > vstr;
   splitStr( Tmp, ' ', vstr );
@@ -344,7 +344,7 @@ std::string RevProc::ExtractMnemonic( RevInstEntry Entry ) {
   return vstr[0];
 }
 
-bool RevProc::InitTableMapping() {
+bool RevCore::InitTableMapping() {
   output->verbose( CALL_INFO,
                    6,
                    0,
@@ -384,7 +384,7 @@ bool RevProc::InitTableMapping() {
   return true;
 }
 
-bool RevProc::ReadOverrideTables() {
+bool RevCore::ReadOverrideTables() {
   output->verbose( CALL_INFO,
                    6,
                    0,
@@ -434,7 +434,7 @@ bool RevProc::ReadOverrideTables() {
   return true;
 }
 
-bool RevProc::LoadInstructionTable() {
+bool RevCore::LoadInstructionTable() {
   // Stage 1: load the instruction table for each enable feature
   if( !SeedInstTable() )
     return false;
@@ -450,7 +450,7 @@ bool RevProc::LoadInstructionTable() {
   return true;
 }
 
-bool RevProc::Reset() {
+bool RevCore::Reset() {
 
   IdleHarts.reset();
 
@@ -467,7 +467,7 @@ bool RevProc::Reset() {
   return true;
 }
 
-RevInst RevProc::DecodeCRInst( uint16_t Inst, unsigned Entry ) const {
+RevInst RevCore::DecodeCRInst( uint16_t Inst, unsigned Entry ) const {
   RevInst CompInst;
 
   // cost
@@ -509,7 +509,7 @@ RevInst RevProc::DecodeCRInst( uint16_t Inst, unsigned Entry ) const {
   return CompInst;
 }
 
-RevInst RevProc::DecodeCIInst( uint16_t Inst, unsigned Entry ) const {
+RevInst RevCore::DecodeCIInst( uint16_t Inst, unsigned Entry ) const {
   RevInst CompInst;
 
   // cost
@@ -600,7 +600,7 @@ RevInst RevProc::DecodeCIInst( uint16_t Inst, unsigned Entry ) const {
   return CompInst;
 }
 
-RevInst RevProc::DecodeCSSInst( uint16_t Inst, unsigned Entry ) const {
+RevInst RevCore::DecodeCSSInst( uint16_t Inst, unsigned Entry ) const {
   RevInst CompInst;
 
   // cost
@@ -647,7 +647,7 @@ RevInst RevProc::DecodeCSSInst( uint16_t Inst, unsigned Entry ) const {
   return CompInst;
 }
 
-RevInst RevProc::DecodeCIWInst( uint16_t Inst, unsigned Entry ) const {
+RevInst RevCore::DecodeCIWInst( uint16_t Inst, unsigned Entry ) const {
   RevInst CompInst;
 
   // cost
@@ -925,7 +925,7 @@ RevInst RevCore::DecodeCJInst( uint16_t Inst, unsigned Entry ) const {
   return CompInst;
 }
 
-RevInst RevProc::DecodeCompressed( uint32_t Inst ) const {
+RevInst RevCore::DecodeCompressed( uint32_t Inst ) const {
   uint16_t TmpInst = (uint16_t) ( Inst & 0b1111111111111111 );
   uint8_t  opc    = 0;
   uint8_t  funct2 = 0;
@@ -1065,7 +1065,7 @@ RevInst RevProc::DecodeCompressed( uint32_t Inst ) const {
   return ret;
 }
 
-RevInst RevProc::DecodeRInst( uint32_t Inst, unsigned Entry ) const {
+RevInst RevCore::DecodeRInst( uint32_t Inst, unsigned Entry ) const {
   RevInst DInst;
 
   DInst.cost      = InstTable[Entry].cost;
@@ -1121,7 +1121,7 @@ RevInst RevProc::DecodeRInst( uint32_t Inst, unsigned Entry ) const {
   return DInst;
 }
 
-RevInst RevProc::DecodeIInst( uint32_t Inst, unsigned Entry ) const {
+RevInst RevCore::DecodeIInst( uint32_t Inst, unsigned Entry ) const {
   RevInst DInst;
 
   // cost
@@ -1156,7 +1156,7 @@ RevInst RevProc::DecodeIInst( uint32_t Inst, unsigned Entry ) const {
   return DInst;
 }
 
-RevInst RevProc::DecodeSInst( uint32_t Inst, unsigned Entry ) const {
+RevInst RevCore::DecodeSInst( uint32_t Inst, unsigned Entry ) const {
   RevInst DInst;
 
   // cost
@@ -1190,7 +1190,7 @@ RevInst RevProc::DecodeSInst( uint32_t Inst, unsigned Entry ) const {
   return DInst;
 }
 
-RevInst RevProc::DecodeUInst( uint32_t Inst, unsigned Entry ) const {
+RevInst RevCore::DecodeUInst( uint32_t Inst, unsigned Entry ) const {
   RevInst DInst;
 
   // cost
@@ -1221,7 +1221,7 @@ RevInst RevProc::DecodeUInst( uint32_t Inst, unsigned Entry ) const {
   return DInst;
 }
 
-RevInst RevProc::DecodeBInst( uint32_t Inst, unsigned Entry ) const {
+RevInst RevCore::DecodeBInst( uint32_t Inst, unsigned Entry ) const {
   RevInst DInst;
 
   // cost
@@ -1258,7 +1258,7 @@ RevInst RevProc::DecodeBInst( uint32_t Inst, unsigned Entry ) const {
   return DInst;
 }
 
-RevInst RevProc::DecodeJInst( uint32_t Inst, unsigned Entry ) const {
+RevInst RevCore::DecodeJInst( uint32_t Inst, unsigned Entry ) const {
   RevInst DInst;
 
   // cost
@@ -1292,7 +1292,7 @@ RevInst RevProc::DecodeJInst( uint32_t Inst, unsigned Entry ) const {
   return DInst;
 }
 
-RevInst RevProc::DecodeR4Inst( uint32_t Inst, unsigned Entry ) const {
+RevInst RevCore::DecodeR4Inst( uint32_t Inst, unsigned Entry ) const {
   RevInst DInst;
 
   // cost
@@ -1320,7 +1320,7 @@ RevInst RevProc::DecodeR4Inst( uint32_t Inst, unsigned Entry ) const {
   return DInst;
 }
 
-bool RevProc::DebugReadReg( unsigned Idx, uint64_t* Value ) const {
+bool RevCore::DebugReadReg( unsigned Idx, uint64_t* Value ) const {
   if( !Halted )
     return false;
   if( Idx >= _REV_NUM_REGS_ ) {
@@ -1331,8 +1331,7 @@ bool RevProc::DebugReadReg( unsigned Idx, uint64_t* Value ) const {
   return true;
 }
 
-bool RevProc::DebugWriteReg( unsigned Idx, uint64_t Value ) const {
->>>>>>> cd40aac8 (put functions inside SST::RevCPU namespace instead of using namespace SST::RevCPU):src/RevProc.cc
+bool RevCore::DebugWriteReg( unsigned Idx, uint64_t Value ) const {
   RevRegFile* regFile = GetRegFile( HartToExecID );
   if( !Halted )
     return false;
@@ -1343,7 +1342,7 @@ bool RevProc::DebugWriteReg( unsigned Idx, uint64_t Value ) const {
   return true;
 }
 
-bool RevProc::PrefetchInst() {
+bool RevCore::PrefetchInst() {
   uint64_t PC = Harts[HartToDecodeID]->RegFile->GetPC();
 
   // These are addresses that we can't decode
@@ -1355,7 +1354,7 @@ bool RevProc::PrefetchInst() {
   return sfetch->IsAvail( PC );
 }
 
-RevInst RevProc::FetchAndDecodeInst() {
+RevInst RevCore::FetchAndDecodeInst() {
   uint32_t Inst    = 0x00ul;
   uint64_t PC      = GetPC();
   bool     Fetched = false;
@@ -1427,7 +1426,7 @@ RevInst RevProc::FetchAndDecodeInst() {
 // This function is pure, with no side effects or dependencies
 // on non-constant outside variables. This make it memoizable,
 // but right now, there isn't enough benefit for memoization.
-RevInst RevProc::DecodeInst( uint32_t Inst ) const {
+RevInst RevCore::DecodeInst( uint32_t Inst ) const {
   if( ~Inst & 0b11 ) {
     // this is a compressed instruction
     return DecodeCompressed( Inst );
@@ -1598,7 +1597,7 @@ RevInst RevProc::DecodeInst( uint32_t Inst ) const {
   return ret;
 }
 
-void RevProc::HandleRegFault( unsigned width ) {
+void RevCore::HandleRegFault( unsigned width ) {
   const char* RegPrefix;
   RevRegFile* regFile = GetRegFile( HartToExecID );
 
@@ -1639,7 +1638,7 @@ void RevProc::HandleRegFault( unsigned width ) {
                    RegIdx );
 }
 
-void RevProc::HandleCrackFault( unsigned width ) {
+void RevCore::HandleCrackFault( unsigned width ) {
   CrackFault  = true;
   fault_width = width;
   output->verbose(
@@ -1649,14 +1648,14 @@ void RevProc::HandleCrackFault( unsigned width ) {
     "FAULT:CRACK: Crack+Decode fault injected into next decode cycle\n" );
 }
 
-void RevProc::HandleALUFault( unsigned width ) {
+void RevCore::HandleALUFault( unsigned width ) {
   ALUFault    = true;
   fault_width = true;
   output->verbose(
     CALL_INFO, 5, 0, "FAULT:ALU: ALU fault injected into next retire cycle\n" );
 }
 
-bool RevProc::DependencyCheck( unsigned HartID, const RevInst* I ) const {
+bool RevCore::DependencyCheck( unsigned HartID, const RevInst* I ) const {
   const RevRegFile*   regFile = GetRegFile( HartID );
   const RevInstEntry* E       = &InstTable[I->entry];
 
@@ -1694,7 +1693,7 @@ bool RevProc::DependencyCheck( unsigned HartID, const RevInst* I ) const {
     ScoreboardCheck( regFile, I->rs3, E->rs3Class );
 }
 
-void RevProc::ExternalStallHart( RevProcPasskey< RevCoProc >,
+void RevCore::ExternalStallHart( RevCorePasskey< RevCoProc >,
                                  uint16_t HartID ) {
   if( HartID < Harts.size() ) {
     CoProcStallReq.set( HartID );
@@ -1708,7 +1707,7 @@ void RevProc::ExternalStallHart( RevProcPasskey< RevCoProc >,
   }
 }
 
-void RevProc::ExternalReleaseHart( RevProcPasskey< RevCoProc >,
+void RevCore::ExternalReleaseHart( RevCorePasskey< RevCoProc >,
                                    uint16_t HartID ) {
   if( HartID < Harts.size() ) {
     CoProcStallReq.reset( HartID );
@@ -1722,7 +1721,7 @@ void RevProc::ExternalReleaseHart( RevProcPasskey< RevCoProc >,
   }
 }
 
-// unsigned RevProc::GetNextHartToDecodeID() const {
+// unsigned RevCore::GetNextHartToDecodeID() const {
 //   if(HartsClearToDecode.none()) { return HartToDecodeID;};
 
 //   unsigned nextID = HartToDecodeID;
@@ -1742,7 +1741,7 @@ void RevProc::ExternalReleaseHart( RevProcPasskey< RevCoProc >,
 //   }
 //   return nextID;
 // }
-unsigned RevProc::GetNextHartToDecodeID() const {
+unsigned RevCore::GetNextHartToDecodeID() const {
   if( HartsClearToDecode.none() ) {
     return HartToDecodeID;
   }  // This should never happen
@@ -1782,7 +1781,7 @@ unsigned RevProc::GetNextHartToDecodeID() const {
  return originalHartID;
 }
 
-void RevProc::MarkLoadComplete( const MemReq& req ) {
+void RevCore::MarkLoadComplete( const MemReq& req ) {
   // Iterate over all outstanding loads for this reg (if any)
   for( auto [i, end] = LSQueue->equal_range( req.LSQHash() ); i != end; ++i ) {
     if( i->second.Addr == req.Addr ) {
@@ -1812,7 +1811,7 @@ void RevProc::MarkLoadComplete( const MemReq& req ) {
                  req.Addr );
 }
 
-bool RevProc::ClockTick( SST::Cycle_t currentCycle ) {
+bool RevCore::ClockTick( SST::Cycle_t currentCycle ) {
   RevInst Inst;
   bool    rtn = false;
   ++Stats.totalCycles;
@@ -2073,7 +2072,7 @@ bool RevProc::ClockTick( SST::Cycle_t currentCycle ) {
   return rtn;
 }
 
-std::unique_ptr< RevThread > RevProc::PopThreadFromHart( unsigned HartID ) {
+std::unique_ptr< RevThread > RevCore::PopThreadFromHart( unsigned HartID ) {
   if( HartID >= numHarts ) {
     output->fatal( CALL_INFO,
                    -1,
@@ -2086,7 +2085,7 @@ std::unique_ptr< RevThread > RevProc::PopThreadFromHart( unsigned HartID ) {
   return Harts.at( HartID )->PopThread();
 }
 
-void RevProc::PrintStatSummary() {
+void RevCore::PrintStatSummary() {
   auto   memStatsTotal = mem->GetMemStatsTotal();
 
   double eff           = StatsTotal.totalCycles ?
@@ -2122,7 +2121,7 @@ void RevProc::PrintStatSummary() {
                    StatsTotal.retired );
 }
 
-RevRegFile* RevProc::GetRegFile( unsigned HartID ) const {
+RevRegFile* RevCore::GetRegFile( unsigned HartID ) const {
   if( HartID >= Harts.size() ) {
     output->fatal( CALL_INFO,
                    -1,
@@ -2134,7 +2133,7 @@ RevRegFile* RevProc::GetRegFile( unsigned HartID ) const {
   return Harts.at( HartID )->RegFile.get();
 }
 
-void RevProc::CreateThread( uint32_t NewTID, uint64_t firstPC, void* arg ) {
+void RevCore::CreateThread( uint32_t NewTID, uint64_t firstPC, void* arg ) {
   // tidAddr is the address we have to write the new thread's id to
   output->verbose(
     CALL_INFO, 2, 0, "Creating new thread with PC = 0x%" PRIx64 "\n", firstPC );
@@ -2220,7 +2219,7 @@ bool RevCore::ExecEcall() {
 // This function should never be called if there are no available harts
 // so if for some reason we can't find a hart without a thread assigned
 // to it then we have a bug.
-void RevProc::AssignThread( std::unique_ptr< RevThread > Thread ) {
+void RevCore::AssignThread( std::unique_ptr< RevThread > Thread ) {
   unsigned HartToAssign = FindIdleHartID();
 
   if( HartToAssign == _REV_INVALID_HART_ID_ ) {
@@ -2261,7 +2260,7 @@ unsigned RevCore::FindIdleHartID() const {
   return IdleHartID;
 }
 
-void RevProc::InjectALUFault( std::pair< unsigned, unsigned > EToE,
+void RevCore::InjectALUFault( std::pair< unsigned, unsigned > EToE,
                               RevInst&                        Inst ) {
   // inject ALU fault
   RevExt* Ext = Extensions[EToE.first].get();
@@ -2292,11 +2291,11 @@ void RevProc::InjectALUFault( std::pair< unsigned, unsigned > EToE,
 ///< RevCore: Used by RevCPU to determine if it can disable this proc
 ///           based on the criteria there are no threads assigned to it and the
 ///           CoProc is done
-bool RevProc::HasNoWork() const {
+bool RevCore::HasNoWork() const {
   return HasNoBusyHarts() && ( !coProc || coProc->IsDone() );
 }
 
-void RevProc::UpdateStatusOfHarts() {
+void RevCore::UpdateStatusOfHarts() {
   // A Hart is ClearToDecode if:
   //   1. It has a thread assigned to it (ie. NOT Idle)
   //   2. It's last instruction is done executing (ie. cost is set to 0)
