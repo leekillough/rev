@@ -13,15 +13,15 @@
 
 #include <stdlib.h>
 
-extern void fw(void){
+extern void fw( void ) {
   int a = 0;
   int b = 1;
-  while( 1 ){
+  while( 1 ) {
     a = b;
   }
 }
 
-int main(int argc, char **argv){
+int main( int argc, char** argv ) {
   fw();
   return 0;
 }

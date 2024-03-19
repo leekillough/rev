@@ -12,20 +12,20 @@
  */
 
 #include "../../../common/syscalls/forza.h"
-#include <stdlib.h>
 #include <stdint.h>
+#include <stdlib.h>
 
-int main(int argc, char **argv){
+int main( int argc, char** argv ) {
 
   // barrier 1
-  forza_zone_barrier(4);
+  forza_zone_barrier( 4 );
 
   // do stuff
   int i = 9;
-  i = i + argc;
+  i     = i + argc;
 
   // barrier 2
-  forza_zone_barrier(4);
+  forza_zone_barrier( 4 );
 
   return i;
 }

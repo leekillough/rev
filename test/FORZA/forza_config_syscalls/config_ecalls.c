@@ -13,20 +13,20 @@
 
 #include "../../../common/syscalls/forza.h"
 #include "../../../common/syscalls/syscalls.h"
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
 
-#define assert(x)                                                              \
-  do                                                                           \
-    if (!(x)) {                                                                \
-      asm(".dword 0x00000000");                                                \
-    }                                                                          \
-  while (0)
+#define assert( x )               \
+  do                              \
+    if( !( x ) ) {                \
+      asm( ".dword 0x00000000" ); \
+    }                             \
+  while( 0 )
 
-int main(int argc, char **argv){
+int main( int argc, char** argv ) {
 
   int a = argc;
-  assert(a == 8);
+  assert( a == 8 );
 #if 0
   for (int i = 0; i < a; i++){
     char buf[128];
@@ -35,26 +35,26 @@ int main(int argc, char **argv){
   }
 #endif
 
-  int i_harts_per_zap = 64; //atoi(argv[1]); //64
-  assert(i_harts_per_zap == forza_get_harts_per_zap());
+  int i_harts_per_zap = 64;  //atoi(argv[1]); //64
+  assert( i_harts_per_zap == forza_get_harts_per_zap() );
 
-  int i_zaps_per_zone = 1; //atoi(argv[2]); //1
-  assert(i_zaps_per_zone == forza_get_zaps_per_zone());
+  int i_zaps_per_zone = 1;  //atoi(argv[2]); //1
+  assert( i_zaps_per_zone == forza_get_zaps_per_zone() );
 
-  int i_zones_per_precinct = 8; //atoi(argv[3]); //8
-  assert(i_zones_per_precinct == forza_get_zones_per_precinct());
+  int i_zones_per_precinct = 8;  //atoi(argv[3]); //8
+  assert( i_zones_per_precinct == forza_get_zones_per_precinct() );
 
-  int i_num_precincts = 3; //atoi(argv[4]); //3
-  assert(i_num_precincts == forza_get_num_precincts());
+  int i_num_precincts = 3;  //atoi(argv[4]); //3
+  assert( i_num_precincts == forza_get_num_precincts() );
 
-  int i_my_zap = 0; //atoi(argv[5]); //0
-  assert(i_my_zap == forza_get_my_zap());
+  int i_my_zap = 0;  //atoi(argv[5]); //0
+  assert( i_my_zap == forza_get_my_zap() );
 
-  int i_my_zone = 0; //atoi(argv[6]); //0
-  assert(i_my_zone == forza_get_my_zone());
+  int i_my_zone = 0;  //atoi(argv[6]); //0
+  assert( i_my_zone == forza_get_my_zone() );
 
-  int i_my_precinct = 0; //atoi(argv[7]); //0
-  assert(i_my_precinct == forza_get_my_precinct());
+  int i_my_precinct = 0;  //atoi(argv[7]); //0
+  assert( i_my_precinct == forza_get_my_precinct() );
 
   return 0;
 }

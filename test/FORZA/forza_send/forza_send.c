@@ -2,9 +2,9 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-#define assert(cond)                                                           \
-  if (!(cond)) {                                                               \
-    abort();                                                                   \
+#define assert( cond ) \
+  if( !( cond ) ) {    \
+    abort();           \
   }
 
 int main() {

@@ -18,8 +18,8 @@ bool RevScratchpad::ReadMem(
   unsigned      Hart,
   uint64_t      Addr,
   size_t        Len,
-  void         *Target,
-  const MemReq &req ) {  //, Interfaces::StandardMem::Request::flags_t flags){
+  void*         Target,
+  const MemReq& req ) {  //, Interfaces::StandardMem::Request::flags_t flags){
   // Figure out what chunk we're in
   size_t BaseChunkNum = ( Addr - BaseAddr ) / ChunkSize;
   size_t TopChunkNum  = ( Addr + Len - BaseAddr ) / ChunkSize;
@@ -79,7 +79,7 @@ bool RevScratchpad::WriteMem(
   unsigned    Hart,
   uint64_t    Addr,
   size_t      Len,
-  const void *Data ) {  // Interfaces::StandardMem::Request::flags_t flags){
+  const void* Data ) {  // Interfaces::StandardMem::Request::flags_t flags){
   // Figure out what chunk(s) we're writing to
   size_t BaseChunkNum = ( Addr - BaseAddr ) / ChunkSize;
   size_t TopChunkNum  = ( Addr + Len - BaseAddr ) / ChunkSize;

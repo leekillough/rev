@@ -50,7 +50,7 @@ zen.addParams({
 # argv[5] = my_zap
 # argv[6] = my_zone
 # argv[7] = my_precinct
-# 
+#
 # --------------------------
 zap_cpu1 = sst.Component("zap0", "revcpu.RevCPU")
 zap_cpu1.addParams({

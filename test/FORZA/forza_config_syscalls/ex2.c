@@ -14,17 +14,17 @@
 #include "../../../common/syscalls/forza.h"
 #include <stdlib.h>
 
-#define assert(x)                                                              \
-  do                                                                           \
-    if (!(x)) {                                                                \
-      asm(".dword 0x00000000");                                                \
-    }                                                                          \
-  while (0)
+#define assert( x )               \
+  do                              \
+    if( !( x ) ) {                \
+      asm( ".dword 0x00000000" ); \
+    }                             \
+  while( 0 )
 
-int main(int argc, char **argv){
+int main( int argc, char** argv ) {
 
-  int harts_per_zap = atoi(argv[1]);
-  assert(harts_per_zap == forza_get_harts_per_zap());
+  int harts_per_zap = atoi( argv[1] );
+  assert( harts_per_zap == forza_get_harts_per_zap() );
 
   return 0;
 }
