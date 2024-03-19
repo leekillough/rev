@@ -1541,6 +1541,7 @@ void RevCPU::HandleThreadStateChangesForProc( uint32_t ProcID ) {
                       ProcID );
       CompletedThreads.emplace( ThreadID, std::move( Thread ) );
       break;
+
     case ThreadState::DONE:
       // This thread has completed execution
       output.verbose( CALL_INFO,

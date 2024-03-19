@@ -58,7 +58,6 @@ RevMem::RevMem( uint64_t MemSize, RevOpts* Opts, SST::Output* Output ) :
   PhysAddrCheck   = false;
   PhysAddrLogging = false;
 
-
   if( !physMem )
     output->fatal(
       CALL_INFO, -1, "Error: could not allocate backing memory\n" );
@@ -295,7 +294,6 @@ void RevMem::AddToTLB( uint64_t vAddr, uint64_t physAddr ) {
 }
 
 uint64_t RevMem::CalcPhysAddr( uint64_t pageNum, uint64_t vAddr ) {
-
   /* Check if vAddr is in the TLB */
   uint64_t physAddr = SearchTLB( vAddr );
 
@@ -1188,6 +1186,7 @@ void RevMem::InitHeap( const uint64_t& EndOfStaticData ) {
     // Mark heap as free
     FreeMemSegs.emplace_back(
       std::make_shared< MemSegment >( EndOfStaticData + 1, maxHeapSize ) );
+
     heapend    = EndOfStaticData + 1;
     heapstart  = EndOfStaticData + 1;
 

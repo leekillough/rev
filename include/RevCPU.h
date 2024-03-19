@@ -292,9 +292,10 @@ private:
   bool     EnableNIC;   ///< RevCPU: Flag for enabling the NIC
   bool     EnableMemH;  ///< RevCPU: Enable memHierarchy
   bool EnableCoProc;    ///< RevCPU: Enable a co-processor attached to all cores
-  bool EnableRZA;       ///< RevCPU: Enables the RZA functionality
-  bool EnableZopNIC;    ///< RevCPU: Enables the ZONE/ZOP NIC functionality
-  bool EnableForzaSecurity;      ///< RevCPU: Enables the FORZA memory security
+
+  bool EnableRZA;            ///< RevCPU: Enables the RZA functionality
+  bool EnableZopNIC;         ///< RevCPU: Enables the ZONE/ZOP NIC functionality
+  bool EnableForzaSecurity;  ///< RevCPU: Enables the FORZA memory security
   std::string memTrafficInput;   ///< RevCPU: Memory traffic input
   std::string memTrafficOutput;  ///< RevCPU: Memory traffic output
 
@@ -407,7 +408,6 @@ private:
   std::vector< Statistic< uint64_t >* > FloatsExec;
   std::vector< Statistic< uint64_t >* > TLBMissesPerCore;
   std::vector< Statistic< uint64_t >* > TLBHitsPerCore;
-
 
   //-------------------------------------------------------
   // -- FUNCTIONS

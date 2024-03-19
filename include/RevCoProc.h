@@ -16,6 +16,7 @@
 #include <ctime>
 #include <list>
 #include <mutex>
+
 #include <queue>
 #include <random>
 #include <stdio.h>
@@ -34,6 +35,7 @@
 #include "RevInstTable.h"
 #include "RevMem.h"
 #include "RevOpts.h"
+
 #include "ZOPNET.h"
 
 namespace SST::RevCPU {

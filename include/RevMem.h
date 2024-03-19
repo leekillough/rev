@@ -612,7 +612,6 @@ private:
   Forza::zopAPI*                   zNic;        ///< RevMem: FORZA ZOP NIC
   bool isRZA;  ///< RevMem: FORZA RZA flag; true if this device is an RZA
 
-
   std::vector< std::shared_ptr< MemSegment > >
     MemSegs;  // Currently Allocated MemSegs
   std::vector< std::shared_ptr< MemSegment > >

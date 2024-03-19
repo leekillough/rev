@@ -140,6 +140,7 @@ bool RevNIC::clockTick( Cycle_t cycle ) {
 
   return false;
 }
+
 }  // namespace SST::RevCPU
 
 // EOF

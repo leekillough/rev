@@ -2290,6 +2290,7 @@ void RevCore::UpdateStatusOfHarts() {
   }
   return;
 }
+
 }  // namespace SST::RevCPU
 
 // EOF

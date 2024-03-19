@@ -139,7 +139,6 @@ struct MemReq {
   bool                                   isOutstanding        = false;
 
   std::function< void( const MemReq& ) > MarkLoadCompleteFunc = nullptr;
-
 };  //struct MemReq
 
 // Enum for tracking the state of a RevThread.

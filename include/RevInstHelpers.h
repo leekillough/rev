@@ -253,7 +253,6 @@ bool fload( RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) {
 /// Floating-point store template
 template< typename T >
 bool fstore( RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) {
-
   // FORZA: check the address to see whether we need to migrate the thread
   unsigned Zone     = 0x00;
   unsigned Precinct = 0x00;
