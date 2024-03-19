@@ -21,8 +21,8 @@ topo_params = {
     "core_switch_idx": core_switch_idx,
     "csrs": base_tooling_dir+"/configs/tree_r48_g8_ep4608_t3_Kl:1_vl1_CN5000/chip.%d.csr.csv",
     "4OportSelectLut" : base_tooling_dir+"/configs/tree_r48_g8_ep4608_t3_Kl:1_vl1_CN5000/chip.%d.four_oport_select.csv",
-    "max_terminal": max_terminal, 
-    #Max local used for aggrgate switches instead of terminal number. 
+    "max_terminal": max_terminal,
+    #Max local used for aggrgate switches instead of terminal number.
     "max_local": max_local,
     "ScLut":  base_tooling_dir+"/configs/tree_r48_g8_ep4608_t3_Kl:1_vl1_CN5000/chip.%d.sc_map.csv",
     "ScModLut":  base_tooling_dir+"/configs/tree_r48_g8_ep4608_t3_Kl:1_vl1_CN5000/chip.%d.sc_mod.csv",
@@ -52,7 +52,7 @@ networkLinkControl_params = {
    "output_buf_size" : "14kB",
    "rc_small": 0,
    "rc_large": 4,
-   "rc_threshold": 12000, 
+   "rc_threshold": 12000,
    "cc_becn_enabled": False,
    "cc_becn_down_count": "50us",
    "cc_delay_enabled": False,
@@ -119,11 +119,11 @@ def getNumNodes():
         return getNumNodes_csv()
     elif topology == "CSV-Megafly":
         return getNumNodes_csv()
-    else: 
+    else:
         e =  Exception("Topology Type not supported")
         raise e
-        
-   
+
+
 def getRouterNameForId(rtr_id):
     if topology == "CSV-Fattree":
         return getRouterNameForLocation(0, rtr_id)
@@ -146,7 +146,7 @@ def findRouterByLocation(location, rtr):
     return sst.findComponentByName(getRouterNameForLocation(location,rtr))
 
 def buildTopo():
-    if topology == "CSV-Dragonfly":        
+    if topology == "CSV-Dragonfly":
         df = pd.read_csv(csv_topology, header=None, skipinitialspace=True)
         df.columns = ["guid", "port", "type", "description", "guid1", "port1", "type1", "description1"]
 
@@ -160,14 +160,14 @@ def buildTopo():
             if name not in links and name2 not in links:
                 links[name] = sst.Link(name)
                 # links[name] = name
-            if name in links: 
+            if name in links:
                 return links[name]
-            if name2 in links: 
+            if name2 in links:
                 ret = links[name2]
                 del links[name2]
                 return ret
         nic_num = 0
-        
+
         for switch in df[df.type=="SW"].description.unique():
                 router_num = int(re.findall(r'\d+', switch)[0])
                 rtr = instanciateRouter(max_port+1, router_num)
@@ -184,7 +184,7 @@ def buildTopo():
                 for port in range(0,max_port+1):
                     portDf = switch_df[ (switch_df.port == port)]
                     # Check if port is connected
-                    if not portDf.empty: 
+                    if not portDf.empty:
                         if str(portDf[portDf.port == port].head().type1.values[0]) == "FI":
                             node_id = nic_num
                             ep_lc = HFIEndpoints[node_id]
@@ -222,15 +222,15 @@ def buildTopo():
             if name not in links and name2 not in links:
                 links[name] = sst.Link(name)
                 # links[name] = name
-            if name in links: 
+            if name in links:
                 return links[name]
-            if name2 in links: 
+            if name2 in links:
                 ret = links[name2]
                 del links[name2]
                 return ret
 
         nic_num = 0
-        
+
         for switch in df[df.type=="SW"].description.unique():
                 router_num = int(re.findall(r'\d+', switch)[0])
                 rtr = instanciateRouter(max_port+1, router_num)
@@ -243,7 +243,7 @@ def buildTopo():
 
                 if(router_num < int(core_switch_idx)):
                     sub.addParam("switch_personality", (math.floor(router_num/8) % 2))
-                else:   
+                else:
                     sub.addParam("switch_personality", 2)
 
                 unconnected = list()
@@ -253,7 +253,7 @@ def buildTopo():
                 for port in range(0,max_port+1):
                     portDf = switch_df[ (switch_df.port == port)]
                     # Check if port is connected
-                    if not portDf.empty: 
+                    if not portDf.empty:
                         if str(portDf[portDf.port == port].head().type1.values[0]) == "FI":
                             node_id = nic_num
                             ep_lc = HFIEndpoints[node_id]
@@ -292,14 +292,14 @@ def buildTopo():
             if name not in links and name2 not in links:
                 links[name] = sst.Link(name)
                 # links[name] = name
-            if name in links: 
+            if name in links:
                 return links[name]
-            if name2 in links: 
+            if name2 in links:
                 ret = links[name2]
                 del links[name2]
                 return ret
         nic_num = 0
-        
+
         for switch in df[df.type=="SW"].description.unique():
                 router_num = int(re.findall(r'\d+', switch)[0])
                 rtr = instanciateRouter(max_port+1, router_num)
@@ -312,7 +312,7 @@ def buildTopo():
 
                 if((router_num % aggregate_start) < (aggregate_start/2)):
                     sub.addParam("switch_personality", 0)
-                else:   
+                else:
                     sub.addParam("switch_personality", 1)
 
                 unconnected = list()
@@ -322,7 +322,7 @@ def buildTopo():
                 for port in range(0,max_port+1):
                     portDf = switch_df[ (switch_df.port == port)]
                     # Check if port is connected
-                    if not portDf.empty: 
+                    if not portDf.empty:
                         if str(portDf[portDf.port == port].head().type1.values[0]) == "FI":
                             node_id = nic_num
                             ep_lc = HFIEndpoints[node_id]
@@ -582,7 +582,7 @@ class FORZA:
         "output_buf_size" : "14kB",
         "rc_small": 0,
         "rc_large": 4,
-        "rc_threshold": 12000, 
+        "rc_threshold": 12000,
         "cc_becn_enabled": False,
         "cc_becn_down_count": "50us",
         "cc_delay_enabled": False,
