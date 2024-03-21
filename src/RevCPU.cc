@@ -699,9 +699,12 @@ void RevCPU::processZOPQ() {
 
   for( unsigned i = 0; i < ZIQ.size(); i++ ) {
     auto zev = ZIQ[i];
-    if( !zev->getFLIT( Z_FLIT_ADDR, &Addr ) ) {
-      output.fatal(
-        CALL_INFO, -1, "[FORZA][RZA] Erroneous packet contents for ZOP\n" );
+    if( !zev->getFLIT(Z_FLIT_ADDR,&Addr) ){
+      output.fatal(CALL_INFO, -1,
+                   "[FORZA][RZA] Erroneous packet contents for ZOP : [SrcZCID:SrcPCID:Type:Opc:ID]=[%hu:%hu:%s:%hu:%hu]\n",
+                   (uint8_t)(zev->getSrcZCID()), (uint8_t)(zev->getSrcPCID()),
+                   zNic->msgTToStr(zev->getType()).c_str(),
+                   (uint8_t)(zev->getOpc()), (uint8_t)(zev->getID()));
     }
 
     //if( ZRqst.find(Addr) == ZRqst.end() ){
