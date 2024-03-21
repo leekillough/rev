@@ -152,7 +152,8 @@ namespace SST::Forza{
                          uint64_t hart_id, uint64_t queue_loc);
 
     /// ZEN: send a normal store operation to the zone's RZA
-    void sendMsgToRZANonDMA(uint64_t acs, uint64_t addr, uint64_t src_payload,
+    //void sendMsgToRZANonDMA(uint64_t acs, uint64_t addr, uint64_t src_payload,
+    void sendMsgToRZANonDMA(uint64_t acs, uint64_t addr, std::vector<uint64_t> src_payload,
                             uint8_t cur_msg_id, uint64_t hart_id,
                             uint64_t queue_loc);
 
@@ -182,14 +183,6 @@ namespace SST::Forza{
     /// ZEN: handle incoming precinct ZOP messages
     void handleIncomingPrecZOP(SST::Event *ev);
 
-#if 0
-    // DEPRECATED
-    void sendNACKToZAP(uint64_t hart_id, uint64_t zcid, uint8_t cur_msg_id);  // deprecate me
-    void sendACKToZAP(uint64_t hart_id, uint64_t zcid, uint8_t cur_msg_id);   // deprecate me
-    void sendNACKToZIP(uint64_t hart_id, uint64_t zcid, uint8_t cur_msg_id);  // deprecate me
-    void sendACKToZIP(uint64_t hart_id, uint64_t zcid, uint8_t cur_msg_id);   // deprecate me
-#endif
-
     /// ZEN: processes incoming setup messages
     void processSetupMsgs();
 
@@ -205,9 +198,6 @@ namespace SST::Forza{
 
     /// ZEN: retrieve the write ACS
     uint64_t  getWriteACS(uint64_t);
-
-    /// ZEN: find the first unused bit
-    bool findFirstUnsetBit(const std::bitset<256>& bv, uint8_t *bit);
 
     /// ZEN: preps to send the RZA an HZOP (really, a DMA MZOP)
     void prepSendRZAHZOP();
@@ -247,9 +237,9 @@ namespace SST::Forza{
     bool precinct_nic_enabled;      ///< ZEN: enable precinct NIC
     // ----- END SST PARAMETERS
 
-    //bool sent;
+    zopMsgID *zoneMsgID;            ///< ZEN: manually allocated message IDs
+
     uint64_t zip_credits;
-    std::bitset<256> msg_id;
     std::map<std::pair<uint64_t, uint64_t>, ZENTableRow*> hart_tables;
     std::map<uint64_t, ZENTableRow*> zone_tables;
     std::map<uint64_t, ZENTableRow*> precinct_tables;
