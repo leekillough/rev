@@ -152,8 +152,7 @@ namespace SST::Forza{
                          uint64_t hart_id, uint64_t queue_loc);
 
     /// ZEN: send a normal store operation to the zone's RZA
-    //void sendMsgToRZANonDMA(uint64_t acs, uint64_t addr, uint64_t src_payload,
-    void sendMsgToRZANonDMA(uint64_t acs, uint64_t addr, std::vector<uint64_t> src_payload,
+    void sendMsgToRZANonDMA(uint64_t acs, uint64_t addr, uint64_t src_payload,
                             uint8_t cur_msg_id, uint64_t hart_id,
                             uint64_t queue_loc);
 
