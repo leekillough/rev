@@ -925,6 +925,10 @@ void ZEN::processSetupMsgs(){
             ev->getID(),
             m_zop_iface);
 
+    // Need to set the scratch tail to the start of the memory buffer
+    uint8_t zcid = ev->getSrcZCID();
+    sendMsgToScratchpad(hart_id, zcid, scratch_tail, 1, mem_start_addr); 
+
     output.verbose(CALL_INFO, 9, 0, "setup hart table %" PRIu64 ", start addr 0x%" PRIx64 ", end addr 0x%" PRIx64 "\n",
                    hart_id, mem_start_addr, mem_end_addr);
     output.verbose(CALL_INFO, 9, 0, "setup hart table %" PRIu64 ", start addr 0x%" PRIx64 ", end addr 0x%" PRIx64 "\n",
