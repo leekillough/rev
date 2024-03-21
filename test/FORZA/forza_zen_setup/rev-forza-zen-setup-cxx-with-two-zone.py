@@ -16,8 +16,7 @@ sst.setProgramOption("timebase", "1ps")
 
 DEBUG_L1 = 0
 DEBUG_MEM = 0
-#DEBUG_LEVEL = 10
-DEBUG_LEVEL = 1
+DEBUG_LEVEL = 10
 VERBOSE = 2
 MEM_SIZE = 1024*1024*1024-1
 
@@ -26,12 +25,11 @@ MEM_SIZE = 1024*1024*1024-1
 # --------------------------
 zen0 = sst.Component("zen0", "forzazen.ZEN")
 zen0.addParams({
-  #"verbose" : 7,              # Verbosity
-  "verbose" : 2,              # Verbosity
+  "verbose" : 7,              # Verbosity
   "clockFreq" : "1.0GHz",     # Clock Frequency
   "precinctId" : 0,           # precinct Id
   "zoneId" : 0,               # zone Id
-  "numHarts" : 0,             # number of harts
+  "numHarts" : 1,             # number of harts
   "numZaps" : 4,              # number of zaps
   "numZones" : 2,             # number of zones
   "numPrecincts" : 1,         # number of precincts
@@ -41,12 +39,11 @@ zen0.addParams({
 })
 zen1 = sst.Component("zen1", "forzazen.ZEN")
 zen1.addParams({
-  "verbose" : 2,              # Verbosity
-  #"verbose" : 7,              # Verbosity
+  "verbose" : 7,              # Verbosity
   "clockFreq" : "1.0GHz",     # Clock Frequency
   "precinctId" : 0,           # precinct Id
   "zoneId" : 1,               # zone Id
-  "numHarts" : 0,             # number of harts
+  "numHarts" : 1,             # number of harts
   "numZaps" : 4,              # number of zaps
   "numZones" : 2,             # number of zones
   "numPrecincts" : 1,         # number of precincts
@@ -59,26 +56,24 @@ zen1.addParams({
 # --------------------------
 # SETUP THE ZQMS
 # --------------------------
-zqm0 = sst.Component("zqm0", "forzazqm.ZQM")
-zqm0.addParams({
-  "verbose" : 2,              # Verbosity
-  #"verbose" : 7,              # Verbosity
-  "clockFreq" : "1.0GHz",     # Clock Frequency
-  "precinctId" : 0,           # precinct Id
-  "zoneId" : 0,               # zone Id
-  "numHarts" : 1,             # number of harts
-  "numCores" : 1,             # number of cores
-})
-zqm1 = sst.Component("zqm1", "forzazqm.ZQM")
-zqm1.addParams({
-  "verbose" : 2,              # Verbosity
-  #"verbose" : 7,              # Verbosity
-  "clockFreq" : "1.0GHz",     # Clock Frequency
-  "precinctId" : 0,           # precinct Id
-  "zoneId" : 1,               # zone Id
-  "numHarts" : 1,             # number of harts
-  "numCores" : 1,             # number of cores
-})
+#zqm0 = sst.Component("zqm0", "forzazqm.ZQM")
+#zqm0.addParams({
+#  "verbose" : 1,              # Verbosity
+#  "clockFreq" : "1.0GHz",     # Clock Frequency
+#  "precinctId" : 0,           # precinct Id
+#  "zoneId" : 0,               # zone Id
+#  "numHarts" : 1,             # number of harts
+#  "numCores" : 4,             # number of cores
+#})
+#zqm1 = sst.Component("zqm1", "forzazqm.ZQM")
+#zqm1.addParams({
+#  "verbose" : 1,              # Verbosity
+#  "clockFreq" : "1.0GHz",     # Clock Frequency
+#  "precinctId" : 0,           # precinct Id
+#  "zoneId" : 1,               # zone Id
+#  "numHarts" : 1,             # number of harts
+#  "numCores" : 4,             # number of cores
+#})
 
 
 # --------------------------
@@ -86,8 +81,7 @@ zqm1.addParams({
 # --------------------------
 zap_cpu0_0 = sst.Component("zap0_0", "revcpu.RevCPU")
 zap_cpu0_0.addParams({
-        "verbose" : 2,                                # Verbosity
-        #"verbose" : 5,                                # Verbosity
+        "verbose" : 5,                                # Verbosity
         "numCores" : 1,                               # Number of cores
         "clock" : "1.0GHz",                           # Clock
         "memSize" : 1024*1024*1024,                   # Memory size in bytes
@@ -104,11 +98,10 @@ zap_cpu0_0.addParams({
 
 zap_cpu0_1 = sst.Component("zap0_1", "revcpu.RevCPU")
 zap_cpu0_1.addParams({
-        "verbose" : 2,                                # Verbosity
-        #"verbose" : 5,                                # Verbosity
+        "verbose" : 5,                                # Verbosity
         "numCores" : 1,                               # Number of cores
         "clock" : "1.0GHz",                           # Clock
-        "memSize" : 1024*1024*1024,                   # Memory size in bytes
+        "memSize" : 1024*1024*1024+(1024*1024*200),                   # Memory size in bytes
         "machine" : "[0:RV64GC]",                     # Core:Config; RV64I for core 0
         "startAddr" : "[0:0x00000000]",               # Starting address for core 0
         "memCost" : "[0:1:10]",                       # Memory loads required 1-10 cycles
@@ -122,11 +115,10 @@ zap_cpu0_1.addParams({
 
 zap_cpu0_2 = sst.Component("zap0_2", "revcpu.RevCPU")
 zap_cpu0_2.addParams({
-        "verbose" : 2,                                # Verbosity
-        #"verbose" : 5,                                # Verbosity
+        "verbose" : 5,                                # Verbosity
         "numCores" : 1,                               # Number of cores
         "clock" : "1.0GHz",                           # Clock
-        "memSize" : 1024*1024*1024,                   # Memory size in bytes
+        "memSize" : 1024*1024*1024+(1024*1024*400),                   # Memory size in bytes
         "machine" : "[0:RV64GC]",                     # Core:Config; RV64I for core 0
         "startAddr" : "[0:0x00000000]",               # Starting address for core 0
         "memCost" : "[0:1:10]",                       # Memory loads required 1-10 cycles
@@ -140,11 +132,10 @@ zap_cpu0_2.addParams({
 
 zap_cpu0_3 = sst.Component("zap0_3", "revcpu.RevCPU")
 zap_cpu0_3.addParams({
-        "verbose" : 2,                                # Verbosity
-        #"verbose" : 5,                                # Verbosity
+        "verbose" : 5,                                # Verbosity
         "numCores" : 1,                               # Number of cores
         "clock" : "1.0GHz",                           # Clock
-        "memSize" : 1024*1024*1024,                   # Memory size in bytes
+        "memSize" : 1024*1024*1024+(1024*1024*600),                   # Memory size in bytes
         "machine" : "[0:RV64GC]",                     # Core:Config; RV64I for core 0
         "startAddr" : "[0:0x00000000]",               # Starting address for core 0
         "memCost" : "[0:1:10]",                       # Memory loads required 1-10 cycles
@@ -161,8 +152,7 @@ zap_cpu0_3.addParams({
 # --------------------------
 zap_cpu1_0 = sst.Component("zap1_0", "revcpu.RevCPU")
 zap_cpu1_0.addParams({
-        "verbose" : 2,                                # Verbosity
-        #"verbose" : 5,                                # Verbosity
+        "verbose" : 5,                                # Verbosity
         "numCores" : 1,                               # Number of cores
         "clock" : "1.0GHz",                           # Clock
         "memSize" : 1024*1024*1024,                   # Memory size in bytes
@@ -179,11 +169,10 @@ zap_cpu1_0.addParams({
 
 zap_cpu1_1 = sst.Component("zap1_1", "revcpu.RevCPU")
 zap_cpu1_1.addParams({
-        "verbose" : 2,                                # Verbosity
-        #"verbose" : 5,                                # Verbosity
+        "verbose" : 5,                                # Verbosity
         "numCores" : 1,                               # Number of cores
         "clock" : "1.0GHz",                           # Clock
-        "memSize" : 1024*1024*1024,                   # Memory size in bytes
+        "memSize" : 1024*1024*1024+(1024*1024*200),                   # Memory size in bytes
         "machine" : "[0:RV64GC]",                     # Core:Config; RV64I for core 0
         "startAddr" : "[0:0x00000000]",               # Starting address for core 0
         "memCost" : "[0:1:10]",                       # Memory loads required 1-10 cycles
@@ -197,11 +186,10 @@ zap_cpu1_1.addParams({
 
 zap_cpu1_2 = sst.Component("zap1_2", "revcpu.RevCPU")
 zap_cpu1_2.addParams({
-        "verbose" : 2,                                # Verbosity
-        #"verbose" : 5,                                # Verbosity
+        "verbose" : 5,                                # Verbosity
         "numCores" : 1,                               # Number of cores
         "clock" : "1.0GHz",                           # Clock
-        "memSize" : 1024*1024*1024,                   # Memory size in bytes
+        "memSize" : 1024*1024*1024+(1024*1024*400),                   # Memory size in bytes
         "machine" : "[0:RV64GC]",                     # Core:Config; RV64I for core 0
         "startAddr" : "[0:0x00000000]",               # Starting address for core 0
         "memCost" : "[0:1:10]",                       # Memory loads required 1-10 cycles
@@ -215,11 +203,10 @@ zap_cpu1_2.addParams({
 
 zap_cpu1_3 = sst.Component("zap1_3", "revcpu.RevCPU")
 zap_cpu1_3.addParams({
-        "verbose" : 2,                                # Verbosity
-        #"verbose" : 5,                                # Verbosity
+        "verbose" : 5,                                # Verbosity
         "numCores" : 1,                               # Number of cores
         "clock" : "1.0GHz",                           # Clock
-        "memSize" : 1024*1024*1024,                   # Memory size in bytes
+        "memSize" : 1024*1024*1024+(1024*1024*600),                   # Memory size in bytes
         "machine" : "[0:RV64GC]",                     # Core:Config; RV64I for core 0
         "startAddr" : "[0:0x00000000]",               # Starting address for core 0
         "memCost" : "[0:1:10]",                       # Memory loads required 1-10 cycles
@@ -238,11 +225,10 @@ zap_cpu1_3.addParams({
 # --------------------------
 rza0 = sst.Component("rza0", "revcpu.RevCPU")
 rza0.addParams({
-        "verbose" : 2,                                # Verbosity
-        #"verbose" : 5,                                # Verbosity
+        "verbose" : 5,                                # Verbosity
         "numCores" : 2,                               # Number of cores
         "clock" : "1.0GHz",                           # Clock
-        "memSize" : 1024*1024*1024,                   # Memory size in bytes
+        "memSize" : 1024*1024*1024+(1024*1024*1200),                   # Memory size in bytes
         "machine" : "[CORES:RV64G]",                  # Core:Config; RV64I for core 0
         "startAddr" : "[CORES:0x00000000]",           # Starting address for core 0
         "program" : os.getenv("REV_EXE", "forza_zen_setup_cxx.exe"),  # Target executable
@@ -257,21 +243,18 @@ rza0.addParams({
 rza0_lspipe = rza0.setSubComponent("rza_ls","revcpu.RZALSCoProc")
 rza0_lspipe.addParams({
   "clock" : "1.0GHz",
-  #"verbose" : 9,
-  "verbose" : 2,
+  "verbose" : 9,
 })
 
 rza0_amopipe = rza0.setSubComponent("rza_amo","revcpu.RZAAMOCoProc")
 rza0_amopipe.addParams({
   "clock" : "1.0GHz",
-  #"verbose" : 9,
-  "verbose" : 2,
+  "verbose" : 9,
 })
 
 rza0_lsq = rza0.setSubComponent("memory", "revcpu.RevBasicMemCtrl");
 rza0_lsq.addParams({
-      #"verbose"         : "9",
-      "verbose"         : "2",
+      "verbose"         : "9",
       "clock"           : "2.0Ghz",
       "max_loads"       : 16,
       "max_stores"      : 16,
@@ -295,7 +278,7 @@ memctrl0.addParams({
     "clock" : "2GHz",
     "verbose" : VERBOSE,
     "addr_range_start" : 0,
-    "addr_range_end" : MEM_SIZE,
+    "addr_range_end" : MEM_SIZE+(1024*1024*1200),
     "backing" : "malloc"
 })
 
@@ -310,11 +293,10 @@ memory0.addParams({
 # --------------------------
 rza1 = sst.Component("rza1", "revcpu.RevCPU")
 rza1.addParams({
-        #"verbose" : 5,                                # Verbosity
-        "verbose" : 2,                                # Verbosity
+        "verbose" : 5,                                # Verbosity
         "numCores" : 2,                               # Number of cores
         "clock" : "1.0GHz",                           # Clock
-        "memSize" : 1024*1024*1024,                   # Memory size in bytes
+        "memSize" : 1024*1024*1024+(1024*1024*1200),                   # Memory size in bytes
         "machine" : "[CORES:RV64G]",                  # Core:Config; RV64I for core 0
         "startAddr" : "[CORES:0x00000000]",           # Starting address for core 0
         "program" : os.getenv("REV_EXE", "forza_zen_setup_cxx.exe"),  # Target executable
@@ -329,21 +311,18 @@ rza1.addParams({
 rza1_lspipe = rza1.setSubComponent("rza_ls","revcpu.RZALSCoProc")
 rza1_lspipe.addParams({
   "clock" : "1.0GHz",
-  #"verbose" : 9,
-  "verbose" : 2,
+  "verbose" : 9,
 })
 
 rza1_amopipe = rza1.setSubComponent("rza_amo","revcpu.RZAAMOCoProc")
 rza1_amopipe.addParams({
   "clock" : "1.0GHz",
-  #"verbose" : 9,
-  "verbose" : 2,
+  "verbose" : 9,
 })
 
 rza1_lsq = rza1.setSubComponent("memory", "revcpu.RevBasicMemCtrl");
 rza1_lsq.addParams({
-      #"verbose"         : "9",
-      "verbose"         : "2",
+      "verbose"         : "9",
       "clock"           : "2.0Ghz",
       "max_loads"       : 16,
       "max_stores"      : 16,
@@ -367,7 +346,7 @@ memctrl1.addParams({
     "clock" : "2GHz",
     "verbose" : VERBOSE,
     "addr_range_start" : 0,
-    "addr_range_end" : MEM_SIZE,
+    "addr_range_end" : MEM_SIZE+(1024*1024*1200),
     "backing" : "malloc"
 })
 
@@ -383,8 +362,7 @@ memory1.addParams({
 # SETUP THE ZONE0 NOC
 # --------------------------
 nic_params = {
-  #"verbose" : 9,
-  "verbose" : 2,
+  "verbose" : 9,
   "clock" : "1GHz",
   "req_per_cycle" : 1
 }
@@ -396,7 +374,7 @@ net_params = {
 rtr_params = {
   "xbar_bw" : "100GB/s",
   "flit_size" : "8B",
-  "num_ports" : "7",
+  "num_ports" : "6",
   "id" : 0
 }
 
@@ -418,8 +396,8 @@ rza_iface0 = rza_nic0.setSubComponent("iface", "merlin.linkcontrol")
 zen_nic0 = zen0.setSubComponent("zone_nic", "forza.zopNIC")
 zen_iface0 = zen_nic0.setSubComponent("iface", "merlin.linkcontrol")
 
-zqm_nic0 = zqm0.setSubComponent("zone_nic", "forza.zopNIC")
-zqm_iface0 = zqm_nic0.setSubComponent("iface", "merlin.linkcontrol")
+#zqm_nic0 = zqm0.setSubComponent("zone_nic", "forza.zopNIC")
+#zqm_iface0 = zqm_nic0.setSubComponent("iface", "merlin.linkcontrol")
 
 router0 = sst.Component("router0", "merlin.hr_router")
 router0.setSubComponent("topology", "merlin.singlerouter")
@@ -437,8 +415,8 @@ rza_nic0.addParams(nic_params)
 rza_iface0.addParams(net_params)
 zen_nic0.addParams(nic_params)
 zen_iface0.addParams(net_params)
-zqm_nic0.addParams(nic_params)
-zqm_iface0.addParams(net_params)
+#zqm_nic0.addParams(nic_params)
+#zqm_iface0.addParams(net_params)
 router0.addParams(net_params)
 router0.addParams(rtr_params)
 
@@ -463,8 +441,8 @@ rza_iface1 = rza_nic1.setSubComponent("iface", "merlin.linkcontrol")
 zen_nic1 = zen1.setSubComponent("zone_nic", "forza.zopNIC")
 zen_iface1 = zen_nic1.setSubComponent("iface", "merlin.linkcontrol")
 
-zqm_nic1 = zqm1.setSubComponent("zone_nic", "forza.zopNIC")
-zqm_iface1 = zqm_nic1.setSubComponent("iface", "merlin.linkcontrol")
+#zqm_nic1 = zqm1.setSubComponent("zone_nic", "forza.zopNIC")
+#zqm_iface1 = zqm_nic1.setSubComponent("iface", "merlin.linkcontrol")
 
 router1 = sst.Component("router1", "merlin.hr_router")
 router1.setSubComponent("topology", "merlin.singlerouter")
@@ -482,8 +460,8 @@ rza_nic1.addParams(nic_params)
 rza_iface1.addParams(net_params)
 zen_nic1.addParams(nic_params)
 zen_iface1.addParams(net_params)
-zqm_nic1.addParams(nic_params)
-zqm_iface1.addParams(net_params)
+#zqm_nic1.addParams(nic_params)
+#zqm_iface1.addParams(net_params)
 router1.addParams(net_params)
 router1.addParams(rtr_params)
 
@@ -542,8 +520,8 @@ rza_link0.connect( (rza_iface0, "rtr_port", "1us"), (router0, "port4", "1us") )
 zen_link0 = sst.Link("zen_link0")
 zen_link0.connect( (zen_iface0, "rtr_port", "1us"), (router0, "port5", "1us") )
 
-zqm_link0 = sst.Link("zqm_link0")
-zqm_link0.connect( (zqm_iface0, "rtr_port", "1us"), (router0, "port6", "1us") )
+#zqm_link0 = sst.Link("zqm_link0")
+#zqm_link0.connect( (zqm_iface0, "rtr_port", "1us"), (router0, "port6", "1us") )
 
 #-- ZONE1 NOC
 zap_link1_0 = sst.Link("zap_link1_0")
@@ -564,8 +542,8 @@ rza_link1.connect( (rza_iface1, "rtr_port", "1us"), (router1, "port4", "1us") )
 zen_link1 = sst.Link("zen_link1")
 zen_link1.connect( (zen_iface1, "rtr_port", "1us"), (router1, "port5", "1us") )
 
-zqm_link1 = sst.Link("zqm_link1")
-zqm_link1.connect( (zqm_iface1, "rtr_port", "1us"), (router1, "port6", "1us") )
+#zqm_link1 = sst.Link("zqm_link1")
+#zqm_link1.connect( (zqm_iface1, "rtr_port", "1us"), (router1, "port6", "1us") )
 
 #-- PRECINCT NOC
 zen_prec_link0 = sst.Link("zen_prec_link0")

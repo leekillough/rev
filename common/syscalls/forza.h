@@ -147,7 +147,7 @@ static int forza_get_my_zone(){
   return rc;
 }
 
-
+// Used for debugging purposes...
 static int forza_get_my_precinct(){
   int rc;
   asm volatile (
@@ -164,3 +164,14 @@ static void forza_zone_barrier(uint32_t num_harts){
           "ecall \n\t"
           );
 }
+
+static int forza_debug_print(uint64_t a, uint64_t b, uint64_t c){
+  int rc;
+  asm volatile (
+	  "li a7, 4015 \n\t"
+	  "ecall \n\t"
+	  "mv %0, a0" : "=r" (rc)
+	  );
+  return rc;
+}
+

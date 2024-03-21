@@ -3527,6 +3527,7 @@ const std::unordered_map<uint32_t, EcallStatus(RevProc::*)()> RevProc::Ecalls = 
     { 4012, &RevProc::ECALL_forza_get_my_zone }, // , forza_get_my_zone();
     { 4013, &RevProc::ECALL_forza_get_my_precinct }, // , forza_get_my_precinct();
     { 4014, &RevProc::ECALL_forza_zone_barrier }, // , forza_zone_barrier();
+    { 4015, &RevProc::ECALL_forza_debug_print }, //, forza_debug_print();
 };
 // clang-format on
 
@@ -3554,6 +3555,7 @@ EcallStatus RevProc::ECALL_forza_scratchpad_free(){
   output->verbose(CALL_INFO, 2, 0, "ECALL: forza_scratchpad_free called by thread %" PRIu32 " on hart %" PRIu32 "\n", GetActiveThreadID(), HartToExecID);
   uint64_t addr = RegFile->GetX<uint64_t>(RevReg::a0);
   uint64_t size = RegFile->GetX<uint64_t>(RevReg::a1);
+  output->verbose(CALL_INFO, 2, 0, "ECALL: forza_scratchpad_free with addr 0x%" PRIx64 ", and size %" PRIu64 "\n", addr, size); 
   mem->ScratchpadFree(addr, size);
 
   return EcallStatus::SUCCESS;
@@ -3776,7 +3778,7 @@ EcallStatus RevProc::ECALL_forza_zen_setup(){
   uint16_t SrcHart = (uint16_t)HartToExecID;
 
   output->verbose(CALL_INFO, 0, 0,
-                  "ECALL_forza_zen_init: addr = 0x%" PRIx64 ", size = %" PRIu64 ", tailptr = 0x%" PRIx64 ", SrcZCID = %" PRIu8
+                  "ECALL_forza_zen_setup: addr = 0x%" PRIx64 ", size = %" PRIu64 ", tailptr = 0x%" PRIx64 ", SrcZCID = %" PRIu8 
                   ", SrcPCID = %" PRIu8 ", SrcHart = %" PRIu16 "\n",
                   addr, (uint64_t)size, tailptr, SrcZCID, SrcPCID, SrcHart);
 
@@ -3950,6 +3952,18 @@ EcallStatus RevProc::ECALL_forza_zone_barrier(){
   }
 
   return EcallStatus::CONTINUE;
+}
+
+// 4015, forza_debug_print
+EcallStatus RevProc::ECALL_forza_debug_print(){
+  uint64_t a = (uint64_t)RegFile->GetX<uint64_t>(RevReg::a0);
+  uint64_t b = (uint64_t)RegFile->GetX<uint64_t>(RevReg::a1);
+  uint64_t c = (uint64_t)RegFile->GetX<uint64_t>(RevReg::a2);
+
+  output->verbose(CALL_INFO, 2, 0, "ECALL: forza_debug_print called by thread %" PRIu32 " on hart %" PRIu32 "; a=0x%" PRIx64 "; b=0x%" PRIx64 "; c=0x%" PRIx64 "\n", GetActiveThreadID(), HartToExecID, a, b, c);
+
+  RegFile->SetX(RevReg::a0, 0);
+  return EcallStatus::SUCCESS;
 }
 
 } // namespace SST::RevCPU
