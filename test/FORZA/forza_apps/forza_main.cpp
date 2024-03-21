@@ -36,7 +36,7 @@ int main (int argc, char **argv)
   // int MY_ACTOR = 0;
   mat = (sparsemat_t *) forza_malloc(GLOBAL_ACTORS*sizeof(sparsemat_t));
   cnt = (int64_t *) forza_malloc(GLOBAL_ACTORS*sizeof(int64_t));
-  
+
   if(MY_ACTOR == 0)
   {
 

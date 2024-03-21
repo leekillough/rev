@@ -25,7 +25,7 @@ MEM_SIZE = 8*1024*1024*1024
 # --------------------------
 zen = sst.Component("zen0", "forzazen.ZEN")
 zen.addParams({
-  "verbose" : 7,              # Verbosity
+  "verbose" : 9,              # Verbosity
   "clockFreq" : "1.0GHz",     # Clock Frequency
   "precinctId" : 0,           # precinct Id
   "zoneId" : 0,               # zone Id
@@ -57,7 +57,7 @@ zqm.addParams({
 # --------------------------
 zap_cpu0 = sst.Component("zap0", "revcpu.RevCPU")
 zap_cpu0.addParams({
-        "verbose" : 2,                                # Verbosity
+        "verbose" : 7,                                # Verbosity
         "numCores" : 1,                               # Number of cores
         # "numHarts" : 16,
         "clock" : "1.0GHz",                           # Clock

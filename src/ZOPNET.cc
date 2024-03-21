@@ -832,7 +832,8 @@ bool zopNIC::clockTick(SST::Cycle_t cycle){
     if( thisCycle < ReqPerCycle ){
       zopEvent *ev = static_cast<zopEvent*>((*it)->inspectPayload());
       Hart = (unsigned)(ev->getSrcHart());
-      if( Type == SST::Forza::zopCompID::Z_RZA || Type == SST::Forza::zopCompID::Z_ZEN ){
+      if( Type == SST::Forza::zopCompID::Z_RZA ||
+          Type == SST::Forza::zopCompID::Z_ZEN ){
         // I am an RZA... I don't need to reserve any message IDs
         // ZEN ACKs and NACKs do not use message IDs, ZEN ZOPs to the RZA internally
         // handle message IDs.

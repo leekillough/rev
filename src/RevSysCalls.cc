@@ -3626,7 +3626,7 @@ EcallStatus RevProc::ECALL_forza_send(){
     zev->setSrcPCID(SrcPCID);
     zev->setSrcHart(SrcHart);
 
-    //TODO: Currently assuming alignement is 0, with a total of 512 threads per ZAP.
+    //TODO: Currently assuming alignment is 0, with a total of 512 threads per ZAP.
     uint16_t DstHart = dst%opts->GetNumHarts();
     uint8_t DstPCID = 0;
     uint8_t DstZCID = dst/opts->GetNumHarts();
@@ -3643,7 +3643,9 @@ EcallStatus RevProc::ECALL_forza_send(){
       output->verbose(CALL_INFO, 2, 0, "ECALL: forza_send called by thread %" PRIu32 " on hart %"
       PRIu32 ", dat[0]=%" PRIx8 ", dat[1]=%" PRIx8 ", dat[2]=%" PRIx8 ", dat[3]=%" PRIx8
       ", dat[4]=%" PRIx8 ", dat[5]=%" PRIx8 ", dat[6]=%" PRIx8 ", dat[7]=%" PRIx8 ", dat[0-7]=%" PRIu64 " \n",
-      GetActiveThreadID(), HartToExecID, EcallState.buf[0], EcallState.buf[1], EcallState.buf[2], EcallState.buf[3], EcallState.buf[4], EcallState.buf[5], EcallState.buf[6], EcallState.buf[7], u.d);
+      GetActiveThreadID(), HartToExecID, EcallState.buf[0], EcallState.buf[1],
+      EcallState.buf[2], EcallState.buf[3], EcallState.buf[4],
+      EcallState.buf[5], EcallState.buf[6], EcallState.buf[7], u.d);
     }
     zev->setPayload(payload);
     zev->encodeEvent();
@@ -3654,7 +3656,8 @@ EcallStatus RevProc::ECALL_forza_send(){
 
     output->verbose(CALL_INFO, 0, 0, "ECALL_forza_send: SrcZCID = %" PRIu8
               ", SrcPCID = %" PRIu8 ", SrcHart = %" PRIu16 ", DstZCID = %" PRIu8
-              ", DstPCID = %" PRIu8 ", DstHart = %" PRIu16 "\n", SrcZCID, SrcPCID, SrcHart, DstZCID, DstPCID, DstHart);
+              ", DstPCID = %" PRIu8 ", DstHart = %" PRIu16 "\n",
+              SrcZCID, SrcPCID, SrcHart, DstZCID, DstPCID, DstHart);
 
     switch(DstZCID)
     {
