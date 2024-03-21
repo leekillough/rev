@@ -27,7 +27,7 @@ int main(int argc, char **argv){
   register uint64_t a = 0;
   if (a == 0) {
     forza_send(0, (uint64_t)addr, 2 * sizeof(uint64_t));
-  }  
+  }
 
   forza_scratchpad_free((uint64_t)addr, 16 * sizeof(uint64_t));
 
