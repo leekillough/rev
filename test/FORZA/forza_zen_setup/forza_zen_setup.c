@@ -43,6 +43,12 @@ int main(int argc, char **argv){
   // Now that we've done the zen setup, every thread should have *tail_ptr == mem_buff_start
   if (forza_get_my_zone() == 0)
     assert((uint64_t)my_buff_start == *tail_ptr);
+#if 0
+  register uint64_t a = 0;
+  if (a == 0) {
+    forza_send(0, (uint64_t)addr, 2 * sizeof(uint64_t));
+  }
+#endif 
 
   forza_scratchpad_free((uint64_t)tail_ptr, 1*sizeof(uint64_t*));
 

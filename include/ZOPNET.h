@@ -769,7 +769,7 @@ public:
 
   /// zopAPI: get the number of precincts
   virtual unsigned getNumPrecincts() = 0;
-  
+
   /// zopAPI: clear the message Id hazard
   virtual void clearMsgID(unsigned Hart, uint8_t Id) = 0;
 
