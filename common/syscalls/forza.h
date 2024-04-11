@@ -41,6 +41,7 @@ FORZA_SYSCALL( 4011, int forza_get_my_zap() );
 FORZA_SYSCALL( 4012, int forza_get_my_zone() );
 FORZA_SYSCALL( 4013, int forza_get_my_precinct() );
 FORZA_SYSCALL( 4014, void forza_zone_barrier( uint32_t num_harts ) );
+FORZA_SYSCALL( 4015, int forza_debug_print(uint64_t a, uint64_t b, uint64_t c) );
 
 // clang-format on
 

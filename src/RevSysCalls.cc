@@ -4727,6 +4727,7 @@ const std::unordered_map<uint32_t, EcallStatus(RevCore::*)()> RevCore::Ecalls = 
     { 4012, &RevCore::ECALL_forza_get_my_zone }, // , forza_get_my_zone();
     { 4013, &RevCore::ECALL_forza_get_my_precinct }, // , forza_get_my_precinct();
     { 4014, &RevCore::ECALL_forza_zone_barrier }, // , forza_zone_barrier();
+    { 4015, &RevCore::ECALL_forza_debug_print }, //, forza_debug_print();
 };
 
 // clang-format on
@@ -4783,6 +4784,13 @@ EcallStatus RevCore::ECALL_forza_scratchpad_free() {
                    HartToExecID );
   uint64_t addr = RegFile->GetX< uint64_t >( RevReg::a0 );
   uint64_t size = RegFile->GetX< uint64_t >( RevReg::a1 );
+  output->verbose( CALL_INFO,
+                   2,
+                   0,
+                   "ECALL: forza_scratchpad_free with addr 0x%" PRIx64
+                   ", and size %" PRIu64 "\n",
+                   addr,
+                   size );
   mem->ScratchpadFree( addr, size );
 
   return EcallStatus::SUCCESS;
@@ -4811,156 +4819,198 @@ union ECALL_forza_send_union {
 
 // 4003 forza_send( uint64_t dst, uint64_t spaddr, size_t size  )
 EcallStatus RevCore::ECALL_forza_send() {
+  uint64_t     dst    = (uint64_t) RegFile->GetX< uint64_t >( RevReg::a0 );
+  uint64_t     spaddr = (uint64_t) RegFile->GetX< uint64_t >( RevReg::a1 );
+  size_t       size   = (size_t) RegFile->GetX< size_t >( RevReg::a2 );
 
-  output->verbose( CALL_INFO,
-                   2,
-                   0,
-                   "ECALL: forza_send called by thread %" PRIu32
-                   " on hart %" PRIu32 "\n",
-                   GetActiveThreadID(),
-                   HartToExecID );
-  // TODO: Using the scratchpad addr and size, read scratrpad memory, create a ZOP and send to destination.
+  const size_t max_data_size = 4000;
+  //unsigned char dat[max_data_size];
 
-  uint64_t dst    = (uint64_t) RegFile->GetX< uint64_t >( RevReg::a0 );
-  uint64_t spaddr = (uint64_t) RegFile->GetX< uint64_t >( RevReg::a1 );
-  size_t   size   = (size_t) RegFile->GetX< size_t >( RevReg::a2 );
-
-  output->verbose( CALL_INFO,
-                   2,
-                   0,
-                   "ECALL: forza_send called by thread %" PRIu32
-                   " on hart %" PRIu32 " dst = %" PRIx64 ", spaddr = %" PRIu64
-                   ", size = %" PRIu64 "\n",
-                   GetActiveThreadID(),
-                   HartToExecID,
-                   dst,
-                   spaddr,
-                   (uint64_t) size );
-
-  // NOT THIS: mem->ReadMem( uint64_t Addr, size_t Len, void *Data )
-  // USE THIS: mem->ReadMem (unsigned Hart, uint64_t Addr, size_t Len, void *Target, const MemReq& req, RevFlag flags)
-
-  const size_t  max_data_size = 4000;
-  unsigned char dat[max_data_size];
-
-  // force programmer to make padding to uint64_t
-  if( size % sizeof( uint64_t ) ) {
-    output->fatal( CALL_INFO,
-                   -1,
-                   "ECALL_forza_send: error, size (%" PRIu64
-                   ") should be a multiple of (%" PRIu64 ")\n",
-                   (uint64_t) size,
-                   (uint64_t) ( sizeof( uint64_t ) ) );
-  }
-  if( size > max_data_size ) {
-    output->fatal( CALL_INFO,
-                   1,
-                   "ECALL_forza_send: error, size (%" PRIu64
-                   ") > max_data_size (%" PRIu64 ")\n",
-                   (uint64_t) size,
-                   (uint64_t) max_data_size );
-  }
-
-  MemReq req;
-  bool   ReadMemSuccess = mem->ReadMem( (unsigned) HartToExecID,
-                                      (uint64_t) spaddr,
-                                      size,
-                                      (void*) dat,
-                                      req,
-                                      SST::RevCPU::RevFlag::F_NONE );
-  if( !ReadMemSuccess ) {
-    output->fatal(
-      CALL_INFO, 1, "ECALL_forza_send: error, mem->ReadMem fails\n" );
-  }
-
-  // TODO: note the endianess and fix it to be portable ...
-  ECALL_forza_send_union u;
-  for( size_t i = 0; i < sizeof( uint64_t ); i++ ) {
-    u.b[i] = dat[i];
-  }
-
-  uint8_t  SrcZCID          = (uint8_t) ( zNic->getEndpointType() );
-  uint8_t  SrcPCID          = (uint8_t) ( zNic->getPCID( zNic->getZoneID() ) );
-  uint16_t SrcHart          = (uint16_t) HartToExecID;
-
-  // output->verbose(CALL_INFO, 0, 0, "ECALL_forza_send: SrcZCID = %" PRIu8
-  //           ", SrcPCID = %" PRIu8 ", SrcHart = %" PRIu16 "\n", SrcZCID, SrcPCID, SrcHart);
-
-  SST::Forza::zopEvent* zev = new SST::Forza::zopEvent();
-  // set all the fields : FIXME
-  zev->setType( SST::Forza::zopMsgT::Z_MSG );
-  zev->setID( 0 );
-  zev->setOpc( SST::Forza::zopOpc::Z_MSG_SENDP );
-  zev->setSrcZCID( SrcZCID );
-  zev->setSrcPCID( SrcPCID );
-  zev->setSrcHart( SrcHart );
-
-  //TODO: Currently assuming alignement is 0, with a total of 512 threads per ZAP.
-  uint16_t DstHart = dst % opts->GetNumHarts();
-  uint8_t  DstPCID = 0;
-  uint8_t  DstZCID = dst / opts->GetNumHarts();
-  zev->setDestZCID( DstZCID );
-  zev->setDestPCID( DstPCID );
-  zev->setDestHart( DstHart );
-
-  std::vector< uint64_t > payload;
-  for( size_t i = 0; i < size; i += sizeof( uint64_t ) ) {
-    for( size_t j = 0; j < sizeof( uint64_t ); j++ ) {
-      u.b[j] = dat[i + j];
-    }
-    payload.push_back( u.d );
+  auto&        EcallState    = Harts.at( HartToExecID )->GetEcallState();
+  if( EcallState.bytesRead == 0 ) {
     output->verbose( CALL_INFO,
                      2,
                      0,
                      "ECALL: forza_send called by thread %" PRIu32
-                     " on hart %" PRIu32 ", dat[0]=%" PRIx8 ", dat[1]=%" PRIx8
-                     ", dat[2]=%" PRIx8 ", dat[3]=%" PRIx8 ", dat[4]=%" PRIx8
-                     ", dat[5]=%" PRIx8 ", dat[6]=%" PRIx8 ", dat[7]=%" PRIx8
-                     ", dat[0-7]=%" PRIu64 " \n",
+                     " on hart %" PRIu32 " dst = %" PRIx64 ", spaddr = %" PRIu64
+                     ", size = %" PRIu64 "\n",
                      GetActiveThreadID(),
                      HartToExecID,
-                     dat[0],
-                     dat[1],
-                     dat[2],
-                     dat[3],
-                     dat[4],
-                     dat[5],
-                     dat[6],
-                     dat[7],
-                     u.d );
-  }
-  zev->setPayload( payload );
-  zev->encodeEvent();
-
-  if( !zNic ) {
-    output->fatal( CALL_INFO, -1, "Error : zNic is nullptr\n" );
-  }
-
-  output->verbose( CALL_INFO,
-                   0,
-                   0,
-                   "ECALL_forza_send: SrcZCID = %" PRIu8 ", SrcPCID = %" PRIu8
-                   ", SrcHart = %" PRIu16 ", DstZCID = %" PRIu8
-                   ", DstPCID = %" PRIu8 ", DstHart = %" PRIu16 "\n",
-                   SrcZCID,
-                   SrcPCID,
-                   SrcHart,
-                   DstZCID,
-                   DstPCID,
-                   DstHart );
-
-  switch( DstZCID ) {
-  case 0: zNic->send( zev, SST::Forza::zopCompID::Z_ZAP0 ); break;
-  case 1: zNic->send( zev, SST::Forza::zopCompID::Z_ZAP1 ); break;
-  case 2: zNic->send( zev, SST::Forza::zopCompID::Z_ZAP2 ); break;
-  case 3: zNic->send( zev, SST::Forza::zopCompID::Z_ZAP3 ); break;
-  default:
-    output->fatal(
-      CALL_INFO, -1, "Error : DstZCID[%" PRIu8 "] doesnt exist\n", DstZCID );
-    break;
+                     dst,
+                     spaddr,
+                     (uint64_t) size );
+    // TODO: Using the scratchpad addr and size, read scratrpad memory, create a ZOP and send to destination.
+    // force programmer to make padding to uint64_t
+    if( size % sizeof( uint64_t ) ) {
+      output->fatal( CALL_INFO,
+                     -1,
+                     "ECALL_forza_send: error, size (%" PRIu64
+                     ") should be a multiple of (%" PRIu64 ")\n",
+                     (uint64_t) size,
+                     (uint64_t) ( sizeof( uint64_t ) ) );
+    }
+    if( size > max_data_size ) {
+      output->fatal( CALL_INFO,
+                     1,
+                     "ECALL_forza_send: error, size (%" PRIu64
+                     ") > max_data_size (%" PRIu64 ")\n",
+                     (uint64_t) size,
+                     (uint64_t) max_data_size );
+    }
   }
 
-  return EcallStatus::SUCCESS;
+  auto lsq_hash = LSQHash(
+    RevReg::a0, RevRegClass::RegGPR, HartToExecID );  // Cached hash value
+
+  if( EcallState.bytesRead && LSQueue->count( lsq_hash ) == 0 ) {
+    EcallState.string +=
+      std::string_view( EcallState.buf.data(), EcallState.bytesRead );
+    EcallState.bytesRead = 0;
+  }
+
+  auto nleft = size - EcallState.string.size();
+  if( nleft == 0 && LSQueue->count( lsq_hash ) == 0 ) {
+    // Data is read and ready to be sent
+
+    // TODO: note the endianess and fix it to be portable ...
+    ECALL_forza_send_union u;
+    for( size_t i = 0; i < sizeof( uint64_t ); i++ ) {
+      u.b[i] = EcallState.buf[i];
+    }
+
+    uint8_t  SrcZCID = (uint8_t) ( zNic->getEndpointType() );
+    uint8_t  SrcPCID = (uint8_t) ( zNic->getPCID( zNic->getZoneID() ) );
+    uint16_t SrcHart = (uint16_t) HartToExecID;
+
+    // output->verbose(CALL_INFO, 0, 0, "ECALL_forza_send: SrcZCID = %" PRIu8
+    //           ", SrcPCID = %" PRIu8 ", SrcHart = %" PRIu16 "\n", SrcZCID, SrcPCID, SrcHart);
+
+    SST::Forza::zopEvent* zev = new SST::Forza::zopEvent();
+    // set all the fields : FIXME
+    zev->setType( SST::Forza::zopMsgT::Z_MSG );
+    zev->setID( 0 );
+    zev->setOpc( SST::Forza::zopOpc::Z_MSG_SENDP );
+    zev->setSrcZCID( SrcZCID );
+    zev->setSrcPCID( SrcPCID );
+    zev->setSrcHart( SrcHart );
+
+    //TODO: Currently assuming alignment is 0, with a total of 512 threads per ZAP.
+    uint16_t DstHart = dst % opts->GetNumHarts();
+    uint8_t  DstPCID = 0;
+    uint8_t  DstZCID = dst / opts->GetNumHarts();
+    zev->setDestZCID( DstZCID );
+    zev->setDestPCID( DstPCID );
+    zev->setDestHart( DstHart );
+
+    std::vector< uint64_t > payload;
+    for( size_t i = 0; i < size; i += sizeof( uint64_t ) ) {
+      for( size_t j = 0; j < sizeof( uint64_t ); j++ ) {
+        u.b[j] = EcallState.buf[i + j];
+      }
+      payload.push_back( u.d );
+      output->verbose( CALL_INFO,
+                       2,
+                       0,
+                       "ECALL: forza_send called by thread %" PRIu32
+                       " on hart %" PRIu32 ", dat[0]=%" PRIx8 ", dat[1]=%" PRIx8
+                       ", dat[2]=%" PRIx8 ", dat[3]=%" PRIx8 ", dat[4]=%" PRIx8
+                       ", dat[5]=%" PRIx8 ", dat[6]=%" PRIx8 ", dat[7]=%" PRIx8
+                       ", dat[0-7]=%" PRIu64 " \n",
+                       GetActiveThreadID(),
+                       HartToExecID,
+                       EcallState.buf[0],
+                       EcallState.buf[1],
+                       EcallState.buf[2],
+                       EcallState.buf[3],
+                       EcallState.buf[4],
+                       EcallState.buf[5],
+                       EcallState.buf[6],
+                       EcallState.buf[7],
+                       u.d );
+    }
+    zev->setPayload( payload );
+    zev->encodeEvent();
+
+    if( !zNic ) {
+      output->fatal( CALL_INFO, -1, "Error : zNic is nullptr\n" );
+    }
+
+    output->verbose( CALL_INFO,
+                     0,
+                     0,
+                     "ECALL_forza_send: SrcZCID = %" PRIu8 ", SrcPCID = %" PRIu8
+                     ", SrcHart = %" PRIu16 ", DstZCID = %" PRIu8
+                     ", DstPCID = %" PRIu8 ", DstHart = %" PRIu16 "\n",
+                     SrcZCID,
+                     SrcPCID,
+                     SrcHart,
+                     DstZCID,
+                     DstPCID,
+                     DstHart );
+
+    switch( DstZCID ) {
+    case 0: zNic->send( zev, SST::Forza::zopCompID::Z_ZAP0 ); break;
+    case 1: zNic->send( zev, SST::Forza::zopCompID::Z_ZAP1 ); break;
+    case 2: zNic->send( zev, SST::Forza::zopCompID::Z_ZAP2 ); break;
+    case 3: zNic->send( zev, SST::Forza::zopCompID::Z_ZAP3 ); break;
+    default:
+      output->fatal(
+        CALL_INFO, -1, "Error : DstZCID[%" PRIu8 "] doesnt exist\n", DstZCID );
+      break;
+    }
+
+
+    //RegFile->SetX(RevReg::a0, rc);
+    DependencyClear( HartToExecID, RevReg::a0, RevRegClass::RegGPR );
+    RegFile->SetX( RevReg::a0, 1 );
+    return EcallStatus::SUCCESS;
+  }
+
+  if( LSQueue->count( lsq_hash ) == 0 ) {
+    MemReq req( spaddr + EcallState.string.size(),
+                RevReg::a0,
+                RevRegClass::RegGPR,
+                HartToExecID,
+                MemOp::MemOpREAD,
+                true,
+                RegFile->GetMarkLoadComplete() );
+    LSQueue->insert( req.LSQHashPair() );
+
+    if( nleft >= 8 ) {
+      mem->ReadVal( HartToExecID,
+                    spaddr + EcallState.string.size(),
+                    reinterpret_cast< uint64_t* >( EcallState.buf.data() ),
+                    req,
+                    RevFlag::F_NONE );
+      EcallState.bytesRead = 8;
+    } else if( nleft >= 4 ) {
+      mem->ReadVal( HartToExecID,
+                    spaddr + EcallState.string.size(),
+                    reinterpret_cast< uint32_t* >( EcallState.buf.data() ),
+                    req,
+                    RevFlag::F_NONE );
+      EcallState.bytesRead = 4;
+    } else if( nleft >= 2 ) {
+      mem->ReadVal( HartToExecID,
+                    spaddr + EcallState.string.size(),
+                    reinterpret_cast< uint16_t* >( EcallState.buf.data() ),
+                    req,
+                    RevFlag::F_NONE );
+      EcallState.bytesRead = 2;
+    } else {
+      mem->ReadVal( HartToExecID,
+                    spaddr + EcallState.string.size(),
+                    reinterpret_cast< uint8_t* >( EcallState.buf.data() ),
+                    req,
+                    RevFlag::F_NONE );
+      EcallState.bytesRead = 1;
+    }
+
+    DependencySet( HartToExecID, RevReg::a0, RevRegClass::RegGPR );
+    return EcallStatus::CONTINUE;
+  }
+
+  return EcallStatus::CONTINUE;
 }
 
 // 4004, forza_zen_credit_release();
@@ -5030,9 +5080,10 @@ EcallStatus RevCore::ECALL_forza_zen_setup() {
   output->verbose( CALL_INFO,
                    0,
                    0,
-                   "ECALL_forza_zen_init: addr = 0x%" PRIx64 ", size = %" PRIu64
-                   ", tailptr = 0x%" PRIx64 ", SrcZCID = %" PRIu8
-                   ", SrcPCID = %" PRIu8 ", SrcHart = %" PRIu16 "\n",
+                   "ECALL_forza_zen_setup: addr = 0x%" PRIx64
+                   ", size = %" PRIu64 ", tailptr = 0x%" PRIx64
+                   ", SrcZCID = %" PRIu8 ", SrcPCID = %" PRIu8
+                   ", SrcHart = %" PRIu16 "\n",
                    addr,
                    (uint64_t) size,
                    tailptr,
@@ -5273,6 +5324,28 @@ EcallStatus RevCore::ECALL_forza_zone_barrier() {
   }
 
   return EcallStatus::CONTINUE;
+}
+
+// 4015, forza_debug_print
+EcallStatus RevCore::ECALL_forza_debug_print() {
+  uint64_t a = (uint64_t) RegFile->GetX< uint64_t >( RevReg::a0 );
+  uint64_t b = (uint64_t) RegFile->GetX< uint64_t >( RevReg::a1 );
+  uint64_t c = (uint64_t) RegFile->GetX< uint64_t >( RevReg::a2 );
+
+  output->verbose( CALL_INFO,
+                   2,
+                   0,
+                   "ECALL: forza_debug_print called by thread %" PRIu32
+                   " on hart %" PRIu32 "; a=0x%" PRIx64 "; b=0x%" PRIx64
+                   "; c=0x%" PRIx64 "\n",
+                   GetActiveThreadID(),
+                   HartToExecID,
+                   a,
+                   b,
+                   c );
+
+  RegFile->SetX( RevReg::a0, 0 );
+  return EcallStatus::SUCCESS;
 }
 
 }  // namespace SST::RevCPU
