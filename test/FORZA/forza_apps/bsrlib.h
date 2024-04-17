@@ -14,31 +14,31 @@
 // } msg_t;
 
 #include <inttypes.h>
+
 typedef struct barrier_struct {
-    volatile uint64_t t[NTHREAD];
+  volatile uint64_t t[NTHREAD];
 } barrier_t;
 
-barrier_t DEFAULT_BARRIER_INSTANCE = {.t = {0ul}};
+barrier_t DEFAULT_BARRIER_INSTANCE = { .t = { 0ul } };
 
 // void barrier(volatile barrier_t *p, int mythread) {
-void barrier(uint64_t mythread) {
-    volatile barrier_t *p = &DEFAULT_BARRIER_INSTANCE;
+void      barrier( uint64_t mythread ) {
+  volatile barrier_t* p = &DEFAULT_BARRIER_INSTANCE;
 
-    p->t[mythread]++;
-    uint64_t a = p->t[mythread];
-    while (1) {
-        int ok = 1;
-        for (int i = 0; i < NTHREAD; i++) {                                                                                                                                                                                                                                                                                                                      
-            if (p->t[i] < a) {
-                ok = 0;
-            }
-        }
-        if (ok) {
-            break;
-        }
+  p->t[mythread]++;
+  uint64_t a = p->t[mythread];
+  while( 1 ) {
+    int ok = 1;
+    for( int i = 0; i < NTHREAD; i++ ) {
+      if( p->t[i] < a ) {
+        ok = 0;
+      }
     }
+    if( ok ) {
+      break;
+    }
+  }
 }
-
 
 // typedef struct mailbox_struct {
 //  int busy;
@@ -62,7 +62,6 @@ void barrier(uint64_t mythread) {
 //     *m = mbox_addr->m;
 //     mbox_addr->busy = 0;
 // }
-
 
 
 #endif

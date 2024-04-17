@@ -1,69 +1,22 @@
-#include <stdint.h>
+#include <limits.h>
+#include <stdarg.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <sys/types.h>
-#include <limits.h>
-#include <stdarg.h>
 
-static uint64_t forza_scratchpad_alloc( size_t size ){
-  uint64_t rc;
-  asm volatile (
-    "li a7, 4000 \n\t"
-    "ecall \n\t"
-    "mv %0, a0" : "=r" (rc)
-  );
-  return rc;
-}
+#ifndef _FORZA_H_
+#define _FORZA_H_
 
-static int forza_scratchpad_free( uint64_t addr, size_t size ){
-  int rc;
-  asm volatile (
-    "li a7, 4001 \n\t"
-    "ecall \n\t"
-    "mv %0, a0" : "=r" (rc)
-  );
-  return rc;
-}
+// clang-format off
+#define FORZA_SYSCALL(NUM, PROTO) __attribute__((naked)) \
+  static PROTO{ asm(" li a7," #NUM "; ecall; ret"); }
 
-static int forza_get_hart_id( ){
-  int rc;
-  asm volatile (
-    "li a7, 4002 \n\t"
-    "ecall \n\t"
-    "mv %0, a0" : "=r" (rc)
-  );
-  return rc;
-}
-
-static int forza_send( uint64_t dst, uint64_t spaddr, size_t size  ){
-  int rc;
-  asm volatile (
-    "li a7, 4003 \n\t"
-    "ecall \n\t"
-    "mv %0, a0" : "=r" (rc)
-  );
-  return rc;
-}
-
-static int forza_zen_credit_release(size_t size){
-  int rc;
-  asm volatile (
-    "li a7, 4004 \n\t"
-    "ecall \n\t"
-    "mv %0, a0" : "=r" (rc)
-  );
-  return rc;
-}
-
-static int forza_zen_setup(uint64_t addr, size_t size, uint64_t tailptr){
-    int rc;
-    asm volatile (
-    "li a7, 4005 \n\t"
-    "ecall \n\t"
-    "mv %0, a0" : "=r" (rc)
-  );
-  return rc;
-}
+FORZA_SYSCALL( 4000, uint64_t forza_scratchpad_alloc( size_t size ) );
+FORZA_SYSCALL( 4001, int forza_scratchpad_free( uint64_t addr, size_t size ) );
+FORZA_SYSCALL( 4002, int forza_get_hart_id() );
+FORZA_SYSCALL( 4003, int forza_send( uint64_t dst, uint64_t spaddr, size_t size ) );
+FORZA_SYSCALL( 4004, int forza_zen_credit_release( size_t size ) );
+FORZA_SYSCALL( 4005, int forza_zen_setup( uint64_t addr, size_t size, uint64_t tailptr ) );
 
 /**
  * @param addr - start of application zone run queue - should be 8byte aligned
@@ -74,104 +27,22 @@ static int forza_zen_setup(uint64_t addr, size_t size, uint64_t tailptr){
  * @return
  *
  */
-static int forza_zqm_setup(uint64_t addr, uint64_t size, uint64_t min_hart, uint64_t max_hart, uint64_t seq_ld_flag){
-  int rc;
-  asm volatile (
-          "li a7, 4006 \n\t"
-          "ecall \n\t"
-          "mv %0, a0" : "=r" (rc)
-          );
-  return rc;
-}
+FORZA_SYSCALL( 4006, int forza_zqm_setup( uint64_t addr,
+                                          uint64_t size,
+                                          uint64_t min_hart,
+                                          uint64_t max_hart,
+                                          uint64_t seq_ld_flag ) );
 
-static int forza_get_harts_per_zap(){
-  int rc;
-  asm volatile (
-		"li a7, 4007 \n\t"
-		"ecall \n\t"
-		"mv %0, a0" : "=r" (rc)
-		);
-  return rc;
-}
+FORZA_SYSCALL( 4007, int forza_get_harts_per_zap() );
+FORZA_SYSCALL( 4008, int forza_get_zaps_per_zone() );
+FORZA_SYSCALL( 4009, int forza_get_zones_per_precinct() );
+FORZA_SYSCALL( 4010, int forza_get_num_precincts() );
+FORZA_SYSCALL( 4011, int forza_get_my_zap() );
+FORZA_SYSCALL( 4012, int forza_get_my_zone() );
+FORZA_SYSCALL( 4013, int forza_get_my_precinct() );
+FORZA_SYSCALL( 4014, void forza_zone_barrier( uint32_t num_harts ) );
+FORZA_SYSCALL( 4015, int forza_debug_print(uint64_t a, uint64_t b, uint64_t c) );
 
+// clang-format on
 
-static int forza_get_zaps_per_zone(){
-  int rc;
-  asm volatile (
-          "li a7, 4008 \n\t"
-          "ecall \n\t"
-          "mv %0, a0" : "=r" (rc)
-          );
-  return rc;
-}
-
-static int forza_get_zones_per_precinct(){
-  int rc;
-  asm volatile (
-          "li a7, 4009 \n\t"
-          "ecall \n\t"
-          "mv %0, a0" : "=r" (rc)
-          );
-  return rc;
-}
-
-static int forza_get_num_precincts(){
-  int rc;
-  asm volatile (
-          "li a7, 4010 \n\t"
-          "ecall \n\t"
-          "mv %0, a0" : "=r" (rc)
-          );
-  return rc;
-}
-
-
-static int forza_get_my_zap(){
-  int rc;
-  asm volatile (
-          "li a7, 4011 \n\t"
-          "ecall \n\t"
-          "mv %0, a0" : "=r" (rc)
-          );
-  return rc;
-}
-
-
-static int forza_get_my_zone(){
-  int rc;
-  asm volatile (
-          "li a7, 4012 \n\t"
-          "ecall \n\t"
-          "mv %0, a0" : "=r" (rc)
-          );
-  return rc;
-}
-
-// Used for debugging purposes...
-static int forza_get_my_precinct(){
-  int rc;
-  asm volatile (
-          "li a7, 4013 \n\t"
-          "ecall \n\t"
-          "mv %0, a0" : "=r" (rc)
-          );
-  return rc;
-}
-
-static void forza_zone_barrier(uint32_t num_harts){
-  asm volatile (
-          "li a7, 4014 \n\t"
-          "ecall \n\t"
-          );
-}
-
-static int forza_debug_print(uint64_t a, uint64_t b, uint64_t c){
-  int rc;
-  asm volatile (
-	  "li a7, 4015 \n\t"
-	  "ecall \n\t"
-	  "mv %0, a0" : "=r" (rc)
-	  );
-  return rc;
-}
-
+#endif

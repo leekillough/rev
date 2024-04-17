@@ -31,7 +31,7 @@ zen.addParams({
   "zoneId" : 0,               # zone Id
   "numHarts" : 1,             # number of harts
 #  "numZaps" : 4,              # number of zaps
-  "numZaps" : 2, 
+  "numZaps" : 2,
   "numZones" : 1,             # number of zones
   "numPrecincts" : 1,         # number of precincts
   "enableDMA" : 0,            # enable the DMA?

@@ -1,20 +1,20 @@
 ZEN[zen0] Registering clock with frequency=1.0GHz
 zopNIC[zen0:zone_nic] Registering clock with frequency=1GHz
-RevCPU[zap0:RevCPU:0]: Building Rev with 1 cores and 1 hart(s) on each core 
+RevCPU[zap0:RevCPU:0]: Building Rev with 1 cores and 1 hart(s) on each core
 RevCPU[zap0:RevCPU:0]: [FORZA] Enabling zone NIC on device=zap0
 zopNIC[zap0:zone_nic] Registering clock with frequency=1GHz
 RevCPU[zap0:RevCPU:0]: [FORZA] device=zap0 initialized as ZAP device: ZAP0
 zopNIC[zap0:zone_nic:send:0]: Buffering message from zap0:zone_nic to endpoint [hart:zcid:pcid:type]=[0:8:0:RZA] before network boots
 RevCPU[zap0:RevCPU:0]: Warning: tracer could not find disassembler. Using REV default
 RevCPU[zap0:RevCPU:0]: Initialization of RevCPUs complete.
-RevCPU[zap1:RevCPU:0]: Building Rev with 1 cores and 1 hart(s) on each core 
+RevCPU[zap1:RevCPU:0]: Building Rev with 1 cores and 1 hart(s) on each core
 RevCPU[zap1:RevCPU:0]: [FORZA] Enabling zone NIC on device=zap1
 zopNIC[zap1:zone_nic] Registering clock with frequency=1GHz
 RevCPU[zap1:RevCPU:0]: [FORZA] device=zap1 initialized as ZAP device: ZAP1
 zopNIC[zap1:zone_nic:send:0]: Buffering message from zap1:zone_nic to endpoint [hart:zcid:pcid:type]=[0:8:0:RZA] before network boots
 RevCPU[zap1:RevCPU:0]: Warning: tracer could not find disassembler. Using REV default
 RevCPU[zap1:RevCPU:0]: Initialization of RevCPUs complete.
-RevCPU[rza:RevCPU:0]: Building Rev with 2 cores and 1 hart(s) on each core 
+RevCPU[rza:RevCPU:0]: Building Rev with 2 cores and 1 hart(s) on each core
 RevCPU[rza:RevCPU:0]: [FORZA] Enabling zone NIC on device=rza
 zopNIC[rza:zone_nic] Registering clock with frequency=1GHz
 RevCPU[rza:RevCPU:0]: [FORZA] device=rza initialized as RZA device
