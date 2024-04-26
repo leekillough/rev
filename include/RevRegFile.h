@@ -92,6 +92,9 @@ enum class RevExceptionCause : int32_t {
   INST_PAGE_FAULT           = 12,
   LOAD_PAGE_FAULT           = 13,
   STORE_AMO_PAGE_FAULT      = 15,
+
+  // FORZA
+  THREAD_MIGRATED           = 999,
 };
 
 // clang-format on
@@ -102,9 +105,10 @@ public:
   const bool HasD;    ///< RevRegFile: Cached copy of Features->HasD()
 
 private:
-  bool       trigger{};  ///< RevRegFile: Has the instruction been triggered?
-  unsigned   Entry{};    ///< RevRegFile: Instruction entry
-  uint32_t   cost{};     ///< RevRegFile: Cost of the instruction
+  bool       trigger{};   ///< RevRegFile: Has the instruction been triggered?
+  unsigned   Entry{};     ///< RevRegFile: Instruction entry
+  uint32_t   cost{};      ///< RevRegFile: Cost of the instruction
+  uint32_t   ThreadID{};  ///< RevRegFile: Thread ID
   RevTracer* Tracer = nullptr;  ///< RegRegFile: Tracer object
 
   union {              // Anonymous union. We zero-initialize the largest member
@@ -371,6 +375,14 @@ public:
     } else {
       SPF[size_t( rd )] = value;  // Store in FP32 register
     }
+  }
+
+  uint32_t GetThreadID() const {
+    return ThreadID;
+  }
+
+  void SetThreadID( uint32_t tid ) {
+    ThreadID = tid;
   }
 
   // Friend functions and classes to access internal register state
