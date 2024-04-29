@@ -194,6 +194,21 @@ public:
     return LSQueue;
   }
 
+  ///< RevCore: retrieve the HART ID that contains the target ThreadID
+  uint32_t GetHartFromThreadID( uint32_t ThreadID ) {
+    for( size_t i = 0; i < numHarts; i++ ) {
+      if( Harts[i]->GetAssignedThreadID() == ThreadID ) {
+        return i;
+      }
+    }
+    return numHarts + 1;
+  }
+
+  ///< RevCore: Set the ZOP NIC handler
+  void setZNic( Forza::zopAPI* Z ) {
+    zNic = Z;
+  }
+
   ///< RevCore: Add a co-processor to the RevCore
   void SetCoProc( RevCoProc* coproc );
 
@@ -285,6 +300,13 @@ public:
   ///  be created by a RevCoProc (or a class derived from RevCoProc) so this funciton may not be called from even within
   ///  RevCore
   void ExternalReleaseHart( RevCorePasskey< RevCoProc >, uint16_t HartID );
+
+  ///< RevCore: Allow a co-process to retrieve the register file object for the target HART
+  std::unique_ptr< RevRegFile > ExternalGetRegFile( RevCorePasskey< RevCoProc >,
+                                                    unsigned Hart ) {
+    return Harts.at( Hart )->PopRegFile();
+  }
+
   //------------- END External Interface -------------------------------
 
   ///< RevCore: Used for loading a software thread into a RevHart
@@ -334,11 +356,12 @@ private:
   std::bitset< _MAX_HARTS_ >
     HartsClearToExecute;  ///< RevCore: Thread is clear to execute (no register dependencides)
 
-  unsigned   numHarts;  ///< RevCore: Number of Harts for this core
-  RevOpts*   opts;      ///< RevCore: options object
-  RevMem*    mem;       ///< RevCore: memory object
-  RevCoProc* coProc;    ///< RevCore: attached co-processor
-  RevLoader* loader;    ///< RevCore: loader object
+  unsigned       numHarts;  ///< RevCore: Number of Harts for this core
+  RevOpts*       opts;      ///< RevCore: options object
+  RevMem*        mem;       ///< RevCore: memory object
+  RevCoProc*     coProc;    ///< RevCore: attached co-processor
+  RevLoader*     loader;    ///< RevCore: loader object
+  Forza::zopAPI* zNic;      ///< RevCore: ZOPNic object
 
   // Function pointer to the GetNewThreadID function in RevCPU (monotonically increasing thread ID counter)
   std::function< uint32_t() > GetNewThreadID;
@@ -593,7 +616,7 @@ private:
   EcallStatus ECALL_sendmsg();                // 211, rev_sendmsg(int fd, struct user_msghdr  *msg, unsigned flags)
   EcallStatus ECALL_recvmsg();                // 212, rev_recvmsg(int fd, struct user_msghdr  *msg, unsigned flags)
   EcallStatus ECALL_readahead();              // 213, rev_readahead(int fd, loff_t offset, size_t count)
-  EcallStatus ECALL_brk();                    // 214, rev_brk(unsigned long brk)
+  EcallStatus ECALL_sbrk();                    // 214, rev_brk(unsigned long brk)
   EcallStatus ECALL_munmap();                 // 215, rev_munmap(unsigned long addr, size_t len)
   EcallStatus ECALL_mremap();                 // 216, rev_mremap(unsigned long addr, unsigned long old_len, unsigned long new_len, unsigned long flags, unsigned long new_addr)
   EcallStatus ECALL_add_key();                // 217, rev_add_key(const char  *_type, const char  *_description, const void  *_payload, size_t plen, key_serial_t destringid)
@@ -701,6 +724,29 @@ private:
   EcallStatus ECALL_pthread_join();           // 1001, rev_pthread_join(pthread_t thread, void **retval);
   EcallStatus ECALL_pthread_exit();           // 1002, rev_pthread_exit(void* retval);
   // clang-format on
+
+  /// FORZA
+  EcallStatus
+    ECALL_forza_scratchpad_alloc();  // 4000, forza_scratchpad_alloc(size_t size);
+  EcallStatus
+    ECALL_forza_scratchpad_free();  // 4001, forza_scratchpad_free(size_t size);
+  EcallStatus ECALL_forza_get_hart_id();         // 4002, forza_get_hart_id();
+  EcallStatus ECALL_forza_send();                // 4003, forza_send();
+  EcallStatus ECALL_forza_zen_credit_release();  // 4004, forza_popq();
+  EcallStatus ECALL_forza_zen_setup();           // 4005, forza_zen_setup();
+  EcallStatus ECALL_forza_zqm_setup();           // 4006, forza_zqm_setup();
+  EcallStatus ECALL_forza_get_harts_per_zap();  // 4007, forza_get_harts_per_zap
+  EcallStatus
+    ECALL_forza_get_zaps_per_zone();  // 4008, forza_get_zaps_per_zone();
+  EcallStatus
+    ECALL_forza_get_zones_per_precinct();  // 4009, forza_get_zones_per_precinct();
+  EcallStatus
+    ECALL_forza_get_num_precincts();      // 4010, forza_get_num_precincts();
+  EcallStatus ECALL_forza_get_my_zap();   // 4011, forza_get_my_zap();
+  EcallStatus ECALL_forza_get_my_zone();  // 4012, forza_get_my_zone();
+  EcallStatus ECALL_forza_get_my_precinct();  // 4013, forza_get_my_precinct();
+  EcallStatus ECALL_forza_zone_barrier();     // 4014, forza_zone_barrier();
+  EcallStatus ECALL_forza_debug_print();      // 4015, forza_debug_print();
 
   /// RevCore: Table of ecall codes w/ corresponding function pointer implementations
   static const std::unordered_map< uint32_t, EcallStatus ( RevCore::* )() >

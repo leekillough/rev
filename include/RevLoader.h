@@ -281,7 +281,8 @@ public:
   RevLoader( std::string  Exe,
              std::string  Args,
              RevMem*      Mem,
-             SST::Output* Output );
+             SST::Output* Output,
+             bool         isRZA );
 
   /// RevLoader: standard destructor
   ~RevLoader();
@@ -330,6 +331,8 @@ private:
 
   uint32_t RV32Entry;  ///< RevLoader: RV32 entry
   uint64_t RV64Entry;  ///< RevLoader: RV64 entry
+
+  bool isRZA;  ///< RevLoader: is this device an RZA?
 
   uint64_t TLSBaseAddr = 0;
   uint64_t TLSSize     = 0;

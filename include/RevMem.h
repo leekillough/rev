@@ -41,11 +41,28 @@
 #include "RevRand.h"
 #include "RevTracer.h"
 
+// -- FORZA Headers
+#include "RevScratchpad.h"
+#include "ZOPNET.h"
+
 #ifndef _REVMEM_BASE_
 #define _REVMEM_BASE_ 0x00000000
 #endif
 
 #define _STACK_SIZE_ ( size_t{ 1024 * 1024 } )
+
+#define Z_ADDR_MASK  0xFFFFFFFFFF
+#define Z_ZONE_MASK  0b111
+#define Z_PREC_MASK  0x1FFF
+#define Z_SP_MASK    0b01
+#define Z_VIEW_MASK  0b01
+#define Z_SEG_MASK   0x3F
+#define Z_ADDR_SHIFT 0x00
+#define Z_ZONE_SHIFT 40
+#define Z_PREC_SHIFT 43
+#define Z_SP_SHIFT   56
+#define Z_VIEW_SHIFT 57
+#define Z_SEG_SHIFT  58
 
 namespace SST::RevCPU {
 
@@ -71,7 +88,7 @@ public:
     MemSegment( uint64_t baseAddr, uint64_t size ) :
       BaseAddr( baseAddr ), Size( size ) {
       TopAddr = baseAddr + size;
-    }  // Permissions(permissions) {}
+    }
 
     uint64_t getTopAddr() const {
       return BaseAddr + Size;
@@ -399,6 +416,15 @@ public:
     return heapend;
   }
 
+  // FIXME:
+  uint64_t GetBrk() {
+    return brk;
+  }
+
+  void AdjustBrk( const int64_t NumBytes ) {
+    brk += NumBytes;
+  }
+
   uint64_t ExpandHeap( uint64_t Size );
 
   void SetTLSInfo( const uint64_t& BaseAddr, const uint64_t& Size );
@@ -445,6 +471,124 @@ public:
     return memStatsTotal;
   }
 
+  // ----------------------------------------------------
+  // ---- FORZA Interfaces
+  // ----------------------------------------------------
+  /// FORZA: Checks if address is in scratchpad (ie. bits 56 & 57 are set)
+  inline bool IsAddrInScratchpad( const uint64_t& Addr );
+
+  /// FORZA: Init Scratchpad
+  void InitScratchpad( const unsigned ZapNum,
+                       const size_t   Size,
+                       const size_t   ChunkSize );
+
+  /// FORZA: Interface for allocating in the Scratchpad
+  uint64_t ScratchpadAlloc( size_t numBytes );
+
+  /// FORZA: Interface for freeing from Scratchpad
+  void ScratchpadFree( uint64_t Addr, size_t size );
+
+  /// FORZA: set the ZOP NIC object
+  void setZNic( Forza::zopAPI* Z ) {
+    zNic = Z;
+  }
+
+  /// FORZA: set the RZA flag for this instance of RevMem
+  void setRZA() {
+    isRZA = true;
+  }
+
+  /// FORZA: disable the RZA for this instance of RevMem
+  void unsetRZA() {
+    isRZA = false;
+  }
+
+  /// FORZA: handle message response
+  bool handleRZAResponse( Forza::zopEvent* zev );
+
+  /// FORZA: insert a new ZOP address request
+  void insertZRqst( uint64_t Addr, Forza::zopEvent* zev );
+
+  /// FORZA: check to see if the target address is in the zop request hazard map
+  bool isZRqst( uint64_t Addr );
+
+  /// FORZA: clear the taret address from the zop request hazard map
+  void clearZRqst( uint64_t Addr );
+
+  /// FORZA: Determine if the target address resides on the same zone
+  ///        Returns false if the address is not local and places the
+  ///        target Zone and Precinct IDs in `Zone` and `Precinct`, respectively.
+  ///        Returns true if the address is local
+  bool isLocalAddr( uint64_t vAddr, unsigned& Zone, unsigned& Precinct );
+
+  /// FORZA: send a thread migration request
+  bool ZOP_ThreadMigrate( unsigned                Hart,
+                          std::vector< uint64_t > Payload,
+                          unsigned                Zone,
+                          unsigned                Precinct );
+
+  // Add Physical Addresss Information
+  /// FORZA: update the physical history from the input file
+  void updatePhysHistoryfromInput( const std::string& InputFile );
+
+  /// FORZA: update history to the output file
+  void updatePhysHistorytoOutput();
+
+  /// FORZA: enable physical history logging
+  void enablePhysHistoryLogging();
+
+  /// FORZA: validate a physical address
+  std::pair< bool, std::string > validatePhysAddr( uint64_t pAddr, int appID );
+
+  /// FORZA: update physical history
+  void updatePhysHistory( uint64_t pAddr, int appID );
+
+  /// FORZA: set the output file name
+  void setOutputFile( std::string name );
+
+private:
+  /// FORZA: convert a standard RISC-V AMO opcode to a ZOP opcode
+  Forza::zopOpc flagToZOP( uint32_t flags, size_t Len );
+
+  /// FORZA: convert a standard RISC-V memory request to a ZOP opcode
+  Forza::zopOpc memToZOP( uint32_t flags, size_t Len, bool Write );
+
+  /// FORZA: send an AMO request
+  bool ZOP_AMOMem( unsigned      Hart,
+                   uint64_t      Addr,
+                   size_t        Len,
+                   void*         Data,
+                   void*         Target,
+                   const MemReq& req,
+                   RevFlag       flags );
+
+  /// FORZA: send a READ request
+  bool ZOP_READMem( unsigned      Hart,
+                    uint64_t      Addr,
+                    size_t        Len,
+                    void*         Target,
+                    const MemReq& req,
+                    RevFlag       flags );
+
+  /// FORZA: send a WRITE request
+  bool ZOP_WRITEMem(
+    unsigned Hart, uint64_t Addr, size_t Len, void* Data, RevFlag flags );
+
+  /// FORZA: send a large raw WRITE request: DO NOT USE
+  bool __ZOP_WRITEMemLarge(
+    unsigned Hart, uint64_t Addr, size_t Len, void* Data, RevFlag flags );
+
+  /// FORZA: send a WRITE request using the target opcode: DO NOT USE
+  bool __ZOP_WRITEMemBase( unsigned           Hart,
+                           uint64_t           Addr,
+                           size_t             Len,
+                           void*              Data,
+                           RevFlag            flags,
+                           SST::Forza::zopOpc opc );
+
+  /// FORZA: send a HART fence request
+  bool __ZOP_FENCEHart( unsigned Hart );
+
 protected:
   char* physMem = nullptr;  ///< RevMem: memory container
 
@@ -464,6 +608,9 @@ private:
   RevMemCtrl*  ctrl;    ///< RevMem: memory controller object
   SST::Output* output;  ///< RevMem: output handler
 
+  std::shared_ptr< RevScratchpad > scratchpad;  ///< FORZA: Scratchpad
+  Forza::zopAPI*                   zNic;        ///< RevMem: FORZA ZOP NIC
+  bool isRZA;  ///< RevMem: FORZA RZA flag; true if this device is an RZA
 
   std::vector< std::shared_ptr< MemSegment > >
     MemSegs;  // Currently Allocated MemSegs
@@ -503,8 +650,10 @@ private:
     nextPage;  ///< RevMem: next physical page to be allocated. Will result in index
   /// nextPage * pageSize into physMem
 
-  uint64_t heapend;       ///< RevMem: top of the stack
-  uint64_t heapstart;     ///< RevMem: top of the stack
+  uint64_t heapend;       ///< RevMem: End of the heap
+  uint64_t brk;           ///< RevMem: Program BRK FIXME: HACK
+  uint64_t mmapRegion;    ///< RevMem: FIXME: HACK
+  uint64_t heapstart;     ///< RevMem: Start of the heap space
   uint64_t stacktop = 0;  ///< RevMem: top of the stack
 
   std::vector< uint64_t > FutureRes;  ///< RevMem: future operation reservations
@@ -516,6 +665,22 @@ private:
 #define LRSC_VAL  3
   std::vector< std::tuple< unsigned, uint64_t, unsigned, uint64_t* > >
     LRSC;  ///< RevMem: load reserve/store conditional vector
+
+  // -- FORZA
+  std::map< uint64_t, Forza::zopEvent* >
+    ZRqst;  ///< RevMem: zop request address map
+
+  // FORZA Security Test
+  std::map< uint64_t, std::tuple< std::string, bool, int > >
+    OutputPhysAddrHist;  //History to Output file
+  std::map< uint64_t, std::tuple< std::string, bool, std::vector< int > > >
+              InputPhysAddrHist;  //Read from Input file
+  bool        PhysAddrCheck;
+  bool        PhysAddrLogging;
+  std::string outputFile;
+  // std::ofstream output_file;
+  // std::ofstream input_file;
+
 
 };  // class RevMem
 
