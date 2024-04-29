@@ -15,7 +15,7 @@ private:
   int64_t*     cnt_;
   sparsemat_t* mat_;
 
-  void         req_process( TrianglePkt pkg, int sender_rank ) {
+  void req_process( TrianglePkt pkg, int sender_rank ) {
     int64_t tempCount = 0;
 
     for( int64_t k = mat_->loffset[pkg.vj]; k < mat_->loffset[pkg.vj + 1];
@@ -36,15 +36,15 @@ private:
 };
 
 void* triangle_selector( int* mytid ) {
-  int               ActorID = *( mytid );
+  int ActorID = *( mytid );
 
   TriangleSelector* triSelector =
     new TriangleSelector( &cnt[ActorID], &mat[ActorID] );
 
   hclib::finish( [=]() {
     triSelector->start( ActorID );
-    int64_t     k, kk, pe;
-    int64_t     l_i, L_j;
+    int64_t k, kk, pe;
+    int64_t l_i, L_j;
 
     TrianglePkt pkg;
 
@@ -123,7 +123,7 @@ int main( int argc, char* argv[] ) {
   hclib::launch( deps, 2, [=] {
     forza_thread_t pt[2 * THREADS];
 
-    int            tid[THREADS];
+    int tid[THREADS];
     for( int i = 0; i < THREADS; i++ ) {
       tid[i] = i;
     }

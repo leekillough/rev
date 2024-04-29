@@ -11,10 +11,10 @@
 #define NUM_ACTORS_PER_ZAP   512
 #define QUEUE_SIZE_PER_ACTOR 100
 
-static uint64_t           LOCAL_ACTORS      = 1;
-static uint64_t           GLOBAL_ACTORS     = 1;
-static uint64_t           ACTOR_START_INDEX = 0;
-static uint64_t           THREADS_PER_ACTOR = 1;
+static uint64_t LOCAL_ACTORS      = 1;
+static uint64_t GLOBAL_ACTORS     = 1;
+static uint64_t ACTOR_START_INDEX = 0;
+static uint64_t THREADS_PER_ACTOR = 1;
 
 typedef unsigned long int forza_thread_t;
 static forza_thread_t     actor_threads[NUM_ACTORS_PER_ZAP];
@@ -40,7 +40,7 @@ enum ForzaThreadType { SENDER, RECEIVER };
 // } ForzaPkt;
 
 typedef struct ForzaPkt_ {
-  int     type;
+  int type;
   // void *pkt;
   int64_t w;
   int64_t vj;
@@ -82,7 +82,7 @@ extern int          forza_packet_send( int mytid, sparsemat_t* mmat );
 
 // extern void forza_packet_send(int mytid);
 
-static int          my_atoi( char* x ) {
+static int my_atoi( char* x ) {
   int acc = 0;
   while( *x >= '0' && *x <= '9' ) {
     acc *= 10;
@@ -95,7 +95,7 @@ static int          my_atoi( char* x ) {
 static uint64_t forza_file_read( char* filename, char* buf, size_t count ) {
   uint64_t i         = 0;
 
-  int      fd        = rev_openat( AT_FDCWD, filename, 0, O_RDONLY );
+  int fd             = rev_openat( AT_FDCWD, filename, 0, O_RDONLY );
 
   uint64_t bytesRead = 0;
   char     temp_buf[2000];
@@ -260,13 +260,13 @@ static int forza_thread_join( forza_thread_t tid ) {
 static void
   forza_packet_poll( int mytid, uint64_t** tail_ptr, uint64_t* head_ptr ) {
   // int MY_ACTOR = mytid;
-  uint64_t poll_done   = 0;
+  uint64_t poll_done = 0;
   // int qsize = 100;
   // ForzaPkt qaddr[100];
   // uint64_t **tail_ptr = (uint64_t **) forza_scratchpad_alloc(1*sizeof(uint64_t *));
   // *tail_ptr = (uint64_t *) &qaddr;
   // uint64_t *head_ptr = (uint64_t *) &qaddr;
-  bool     system_done = false;
+  bool system_done   = false;
 
   // forza_zen_setup((uint64_t) &qaddr, qsize*sizeof(ForzaPkt), (uint64_t) tail_ptr);
 

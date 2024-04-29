@@ -522,12 +522,12 @@ EcallStatus RevCore::ECALL_mknodat() {
 // TODO: 34, rev_mkdirat(int dfd, const char  * pathname, umode_t mode)
 EcallStatus RevCore::ECALL_mkdirat() {
   output->verbose( CALL_INFO, 2, 0, "ECALL: mkdirat called" );
-  EcallState& ECALL  = Harts.at( HartToExecID )->GetEcallState();
-  auto        dirfd  = RegFile->GetX< int >( RevReg::a0 );
-  auto        path   = RegFile->GetX< uint64_t >( RevReg::a1 );
-  auto        mode   = RegFile->GetX< unsigned short >( RevReg::a2 );
+  EcallState& ECALL = Harts.at( HartToExecID )->GetEcallState();
+  auto        dirfd = RegFile->GetX< int >( RevReg::a0 );
+  auto        path  = RegFile->GetX< uint64_t >( RevReg::a1 );
+  auto        mode  = RegFile->GetX< unsigned short >( RevReg::a2 );
 
-  auto        action = [&] {
+  auto action       = [&] {
     // Do the mkdirat on the host
     int rc = mkdirat( dirfd, ECALL.string.c_str(), mode );
     RegFile->SetX( RevReg::a0, rc );
@@ -937,9 +937,9 @@ EcallStatus RevCore::ECALL_read() {
                    "\n",
                    ActiveThreadID,
                    HartToExecID );
-  auto  fd           = RegFile->GetX< int >( RevReg::a0 );
-  auto  BufAddr      = RegFile->GetX< uint64_t >( RevReg::a1 );
-  auto  BufSize      = RegFile->GetX< uint64_t >( RevReg::a2 );
+  auto fd            = RegFile->GetX< int >( RevReg::a0 );
+  auto BufAddr       = RegFile->GetX< uint64_t >( RevReg::a1 );
+  auto BufSize       = RegFile->GetX< uint64_t >( RevReg::a2 );
 
   // Check if Current Ctx has access to the fd
   auto& ActiveThread = Harts.at( HartToExecID )->Thread;
@@ -962,7 +962,7 @@ EcallStatus RevCore::ECALL_read() {
   std::vector< char > TmpBuf( BufSize );
 
   // Do the read on the host
-  int                 rc = read( fd, &TmpBuf[0], BufSize );
+  int rc = read( fd, &TmpBuf[0], BufSize );
 
   // Write that data to the buffer inside of Rev
   mem->WriteMem( HartToExecID, BufAddr, BufSize, &TmpBuf[0] );
@@ -2865,10 +2865,10 @@ EcallStatus RevCore::ECALL_readahead() {
 
 // 214, rev_sbrk(unsigned long brk)
 EcallStatus RevCore::ECALL_sbrk() {
-  auto           NumBytes = RegFile->GetX< uint64_t >( RevReg::a0 );
+  auto NumBytes      = RegFile->GetX< uint64_t >( RevReg::a0 );
 
   // Return the current brk and then incremenet it by NumBytes
-  const uint64_t brk      = mem->GetHeapEnd();
+  const uint64_t brk = mem->GetHeapEnd();
   // FIXME: Add Error Checking
   mem->AdjustBrk( NumBytes );
   // output->fatal(CALL_INFO, 11,
@@ -2885,7 +2885,7 @@ EcallStatus RevCore::ECALL_munmap() {
   auto Addr = RegFile->GetX< uint64_t >( RevReg::a0 );
   auto Size = RegFile->GetX< uint64_t >( RevReg::a1 );
 
-  int  rc   = mem->DeallocMem( Addr, Size ) == uint64_t( -1 );
+  int rc    = mem->DeallocMem( Addr, Size ) == uint64_t( -1 );
   if( rc == -1 ) {
     output->fatal( CALL_INFO,
                    11,
@@ -4338,7 +4338,7 @@ EcallStatus RevCore::ECALL_pthread_create() {
                    " on hart %" PRIu32 "\n",
                    ActiveThreadID,
                    HartToExecID );
-  uint64_t          tidAddr     = RegFile->GetX< uint64_t >( RevReg::a0 );
+  uint64_t tidAddr              = RegFile->GetX< uint64_t >( RevReg::a0 );
   //uint64_t AttrPtr     = RegFile->GetX<uint64_t>(RevReg::a1);
   uint64_t          NewThreadPC = RegFile->GetX< uint64_t >( RevReg::a2 );
   uint64_t          ArgPtr      = RegFile->GetX< uint64_t >( RevReg::a3 );
@@ -4819,14 +4819,14 @@ union ECALL_forza_send_union {
 
 // 4003 forza_send( uint64_t dst, uint64_t spaddr, size_t size  )
 EcallStatus RevCore::ECALL_forza_send() {
-  uint64_t     dst    = (uint64_t) RegFile->GetX< uint64_t >( RevReg::a0 );
-  uint64_t     spaddr = (uint64_t) RegFile->GetX< uint64_t >( RevReg::a1 );
-  size_t       size   = (size_t) RegFile->GetX< size_t >( RevReg::a2 );
+  uint64_t dst    = (uint64_t) RegFile->GetX< uint64_t >( RevReg::a0 );
+  uint64_t spaddr = (uint64_t) RegFile->GetX< uint64_t >( RevReg::a1 );
+  size_t   size   = (size_t) RegFile->GetX< size_t >( RevReg::a2 );
 
   const size_t max_data_size = 4000;
   //unsigned char dat[max_data_size];
 
-  auto&        EcallState    = Harts.at( HartToExecID )->GetEcallState();
+  auto& EcallState           = Harts.at( HartToExecID )->GetEcallState();
   if( EcallState.bytesRead == 0 ) {
     output->verbose( CALL_INFO,
                      2,
@@ -5025,13 +5025,13 @@ EcallStatus RevCore::ECALL_forza_zen_credit_release() {
   // TODO: Give back a credit to the zen and update ZEN should update its head pointer to new packet.
   uint64_t num_creds = (uint64_t) RegFile->GetX< uint64_t >( RevReg::a0 );
 
-  SST::Forza::zopEvent* zev     = new SST::Forza::zopEvent();
+  SST::Forza::zopEvent* zev = new SST::Forza::zopEvent();
 
-  uint8_t               msg_id  = 0;
+  uint8_t msg_id            = 0;
 
-  uint8_t               SrcZCID = (uint8_t) ( zNic->getEndpointType() );
-  uint8_t  SrcPCID = (uint8_t) ( zNic->getPCID( zNic->getZoneID() ) );
-  uint16_t SrcHart = (uint16_t) HartToExecID;
+  uint8_t  SrcZCID          = (uint8_t) ( zNic->getEndpointType() );
+  uint8_t  SrcPCID          = (uint8_t) ( zNic->getPCID( zNic->getZoneID() ) );
+  uint16_t SrcHart          = (uint16_t) HartToExecID;
 
   // set all the fields : FIXME
   zev->setType( SST::Forza::zopMsgT::Z_MSG );
@@ -5069,13 +5069,13 @@ EcallStatus RevCore::ECALL_forza_zen_setup() {
 
   // TODO: Forza library will pass the memory base address and size allocated by each actor to inform/initialize zen.
 
-  SST::Forza::zopEvent* zev     = new SST::Forza::zopEvent();
+  SST::Forza::zopEvent* zev = new SST::Forza::zopEvent();
 
-  uint8_t               msg_id  = 0;
+  uint8_t msg_id            = 0;
 
-  uint8_t               SrcZCID = (uint8_t) ( zNic->getEndpointType() );
-  uint8_t  SrcPCID = (uint8_t) ( zNic->getPCID( zNic->getZoneID() ) );
-  uint16_t SrcHart = (uint16_t) HartToExecID;
+  uint8_t  SrcZCID          = (uint8_t) ( zNic->getEndpointType() );
+  uint8_t  SrcPCID          = (uint8_t) ( zNic->getPCID( zNic->getZoneID() ) );
+  uint16_t SrcHart          = (uint16_t) HartToExecID;
 
   output->verbose( CALL_INFO,
                    0,
@@ -5152,9 +5152,9 @@ EcallStatus RevCore::ECALL_forza_zqm_setup() {
   //    need to have more arguments to support this.
   // As currently written, this will send the ZQM setup packet to Precinct 0, Zone 0, ZQM.
 
-  SST::Forza::zopEvent* zev    = new SST::Forza::zopEvent();
+  SST::Forza::zopEvent* zev = new SST::Forza::zopEvent();
 
-  uint8_t               msg_id = 0;
+  uint8_t msg_id            = 0;
   zev->setType( SST::Forza::zopMsgT::Z_MSG );
   zev->setID( msg_id );
   zev->setOpc( SST::Forza::zopOpc::Z_MSG_ZQMSET );

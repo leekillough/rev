@@ -65,10 +65,10 @@ public:
     }
     uint64_t AllocedAt;
     // figure out how many chunks we need (round up)
-    size_t   numChunks  = ( SizeRequested + ChunkSize - 1 ) / ChunkSize;
+    size_t numChunks  = ( SizeRequested + ChunkSize - 1 ) / ChunkSize;
 
     // find N contiguous chunks
-    size_t   FirstChunk = FindContiguousChunks( numChunks );
+    size_t FirstChunk = FindContiguousChunks( numChunks );
     if( FirstChunk == FreeList.size() ) {
       output->verbose(
         CALL_INFO,
@@ -142,12 +142,12 @@ public:
   uint64_t ScratchpadAlloc( size_t numBytes );
 
   /// RevScratchpad: Attempts to allocate numBytes in the scratchpad
-  bool     ReadMem(
-        unsigned      Hart,
-        uint64_t      Addr,
-        size_t        Len,
-        void*         Target,
-        const MemReq& req );  //Interfaces::StandardMem::Request::flags_t flags);
+  bool ReadMem(
+    unsigned      Hart,
+    uint64_t      Addr,
+    size_t        Len,
+    void*         Target,
+    const MemReq& req );  //Interfaces::StandardMem::Request::flags_t flags);
 
   /// RevScratchpad: Attempts to allocate numBytes in the scratchpad
   bool WriteMem(

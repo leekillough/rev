@@ -264,14 +264,14 @@ private:
   bool ThreadCanProceed( const std::unique_ptr< RevThread >& Thread );
 
   // vector of Threads which are ready to be scheduled
-  std::vector< std::unique_ptr< RevThread > > ReadyThreads   = {};
+  std::vector< std::unique_ptr< RevThread > > ReadyThreads = {};
 
   // List of Threads that are currently blocked (waiting for their WaitingOnTID to be a key in CompletedThreads).
-  std::list< std::unique_ptr< RevThread > >   BlockedThreads = {};
+  std::list< std::unique_ptr< RevThread > > BlockedThreads = {};
 
   // Set of Thread IDs and their corresponding RevThread that have completed their execution on this RevCPU
   std::unordered_map< uint32_t, std::unique_ptr< RevThread > >
-           CompletedThreads = {};
+    CompletedThreads = {};
 
   // Generates a new Thread ID using the RNG.
   uint32_t GetNewThreadID() {
@@ -281,7 +281,7 @@ private:
   uint8_t  PrivTag;  ///< RevCPU: private tag locator
   uint32_t LToken;   ///< RevCPU: token identifier for PAN Test
 
-  int      address;  ///< RevCPU: local network address
+  int address;  ///< RevCPU: local network address
 
   unsigned fault_width;  ///< RevCPU: the width (in bits) for target faults
   int64_t  fault_range;  ///< RevCPU: the range of cycles to inject the fault
@@ -289,9 +289,9 @@ private:
 
   uint64_t PrevAddr;  ///< RevCPU: previous address for handling PAN messages
 
-  bool     EnableNIC;   ///< RevCPU: Flag for enabling the NIC
-  bool     EnableMemH;  ///< RevCPU: Enable memHierarchy
-  bool EnableCoProc;    ///< RevCPU: Enable a co-processor attached to all cores
+  bool EnableNIC;     ///< RevCPU: Flag for enabling the NIC
+  bool EnableMemH;    ///< RevCPU: Enable memHierarchy
+  bool EnableCoProc;  ///< RevCPU: Enable a co-processor attached to all cores
 
   bool EnableRZA;            ///< RevCPU: Enables the RZA functionality
   bool EnableZopNIC;         ///< RevCPU: Enables the ZONE/ZOP NIC functionality
@@ -299,16 +299,16 @@ private:
   std::string memTrafficInput;   ///< RevCPU: Memory traffic input
   std::string memTrafficOutput;  ///< RevCPU: Memory traffic output
 
-  bool        EnableFaults;       ///< RevCPU: Enable fault injection logic
-  bool        EnableCrackFaults;  ///< RevCPU: Enable Crack+Decode Faults
-  bool        EnableMemFaults;    ///< RevCPU: Enable memory faults (bit flips)
-  bool        EnableRegFaults;    ///< RevCPU: Enable register faults
-  bool        EnableALUFaults;    ///< RevCPU: Enable ALU faults
+  bool EnableFaults;       ///< RevCPU: Enable fault injection logic
+  bool EnableCrackFaults;  ///< RevCPU: Enable Crack+Decode Faults
+  bool EnableMemFaults;    ///< RevCPU: Enable memory faults (bit flips)
+  bool EnableRegFaults;    ///< RevCPU: Enable register faults
+  bool EnableALUFaults;    ///< RevCPU: Enable ALU faults
 
-  bool        DisableCoprocClock;  ///< RevCPU: Disables manual coproc clocking
+  bool DisableCoprocClock;  ///< RevCPU: Disables manual coproc clocking
 
-  unsigned    Precinct;  ///< RevCPU: FORZA precinct ID
-  unsigned    Zone;      ///< RevCPU: FORZA zone ID
+  unsigned Precinct;  ///< RevCPU: FORZA precinct ID
+  unsigned Zone;      ///< RevCPU: FORZA zone ID
 
   TimeConverter* timeConverter;  ///< RevCPU: SST time conversion handler
   SST::Output    output;         ///< RevCPU: SST output handler
@@ -319,7 +319,7 @@ private:
 
   std::vector< RevCoProc* > CoProcs;  ///< RevCPU: CoProcessor attached to Rev
 
-  SST::Clock::Handler< RevCPU >*  ClockHandler;  ///< RevCPU: Clock Handler
+  SST::Clock::Handler< RevCPU >* ClockHandler;  ///< RevCPU: Clock Handler
 
   std::vector< Forza::zopEvent* > ZIQ;  ///< RevCPU: ZOP Issue Queue
   std::map< uint64_t, Forza::zopEvent* >
@@ -338,7 +338,7 @@ private:
                            unsigned,
                            int,
                            uint64_t > >
-                         ReadQueue;  ///< RevCPU: outgoing memory read queue
+    ReadQueue;  ///< RevCPU: outgoing memory read queue
   ///<         - Tag
   ///<         - Size
   ///<         - Cost
@@ -414,61 +414,61 @@ private:
   //-------------------------------------------------------
 
   /// RevCPU: decode the fault codes
-  void    DecodeFaultCodes( const std::vector< std::string >& faults );
+  void DecodeFaultCodes( const std::vector< std::string >& faults );
 
   /// RevCPU:: decode the fault width
-  void    DecodeFaultWidth( const std::string& width );
+  void DecodeFaultWidth( const std::string& width );
 
   /// RevCPU: RevNIC message handler
-  void    handleMessage( SST::Event* ev );
+  void handleMessage( SST::Event* ev );
 
   /// RevCPU: Handle FORZA ZOP Message
-  void    handleZOPMessage( SST::Event* ev );
+  void handleZOPMessage( SST::Event* ev );
 
   /// RevCPU: Handle FORZA ZOP Message for RZA devices
-  void    handleZOPMessageRZA( Forza::zopEvent* zev );
+  void handleZOPMessageRZA( Forza::zopEvent* zev );
 
   /// RevCPU: Handle FORZA ZOP Message for ZAP devices
-  void    handleZOPMessageZAP( Forza::zopEvent* zev );
+  void handleZOPMessageZAP( Forza::zopEvent* zev );
 
   /// RevCPU: Handle FORZA MZOP requests
-  void    handleZOPMZOP( Forza::zopEvent* zev );
+  void handleZOPMZOP( Forza::zopEvent* zev );
 
   /// RevCPU: Handle FORZA Thread Migration
-  void    handleZOPThreadMigrate( Forza::zopEvent* zev );
+  void handleZOPThreadMigrate( Forza::zopEvent* zev );
 
   /// RevCPU: Handle FORZA scratchpad request responses
-  void    MarkLoadCompleteDummy( const MemReq& req );
+  void MarkLoadCompleteDummy( const MemReq& req );
 
   /// RevCPU: Inform the ZQM that a thread is done
-  void    sendZQMThreadComplete( uint32_t ThreadID, uint32_t HartID );
+  void sendZQMThreadComplete( uint32_t ThreadID, uint32_t HartID );
 
   /// RevCPU: Creates a unique tag for this message
   uint8_t createTag();
 
   /// RevCPU: Registers all the internal statistics
-  void    registerStatistics();
+  void registerStatistics();
 
   /// RevCPU: handle fault injection
-  void    HandleFaultInjection( SST::Cycle_t currentCycle );
+  void HandleFaultInjection( SST::Cycle_t currentCycle );
 
   /// RevCPU: handle crack+decode fault injection
-  void    HandleCrackFault( SST::Cycle_t currentCycle );
+  void HandleCrackFault( SST::Cycle_t currentCycle );
 
   /// RevCPU: handle memory fault
-  void    HandleMemFault( SST::Cycle_t currentCycle );
+  void HandleMemFault( SST::Cycle_t currentCycle );
 
   /// RevCPU: handle register fault
-  void    HandleRegFault( SST::Cycle_t currentCycle );
+  void HandleRegFault( SST::Cycle_t currentCycle );
 
   /// RevCPU: handle ALU fault
-  void    HandleALUFault( SST::Cycle_t currentCycle );
+  void HandleALUFault( SST::Cycle_t currentCycle );
 
   /// RevCPU: updates sst statistics on a per core basis
-  void    UpdateCoreStatistics( unsigned coreNum );
+  void UpdateCoreStatistics( unsigned coreNum );
 
   /// RevCPU: processes the incoming ZOP queue
-  void    processZOPQ();
+  void processZOPQ();
 
 };  // class RevCPU
 

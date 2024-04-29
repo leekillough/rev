@@ -314,10 +314,10 @@ public:
     sendSuccessResp( Forza::zopAPI* zNic, Forza::zopEvent* zev, uint16_t Hart );
 
   /// RevCoProc: Sends a successful LOAD data response ZOP
-  bool         sendSuccessResp( Forza::zopAPI*   zNic,
-                                Forza::zopEvent* zev,
-                                uint16_t         Hart,
-                                uint64_t         Data );
+  bool sendSuccessResp( Forza::zopAPI*   zNic,
+                        Forza::zopEvent* zev,
+                        uint16_t         Hart,
+                        uint64_t         Data );
 
   /// RevCoProc: Virtual mark load complete method
   virtual void MarkLoadComplete( const MemReq& req ) {
@@ -378,7 +378,7 @@ public:
   /// RevSimpleCoProc: clock tick function - currently not registeres with SST, called by RevCPU
   virtual bool ClockTick( SST::Cycle_t cycle );
 
-  void         registerStats();
+  void registerStats();
 
   /// RevSimpleCoProc: Enqueue Inst into the InstQ and return
   virtual bool
@@ -416,12 +416,12 @@ private:
   };
 
   /// RevSimpleCoProc: Total number of instructions retired
-  Statistic< uint64_t >*      num_instRetired;
+  Statistic< uint64_t >* num_instRetired;
 
   /// Queue of instructions sent from attached RevCore
   std::queue< RevCoProcInst > InstQ;
 
-  SST::Cycle_t                cycleCount;
+  SST::Cycle_t cycleCount;
 
 };  //class RevSimpleCoProc
 
@@ -534,13 +534,13 @@ private:
   RegAlloc       Alloc;  ///< RZALSCoProc: Register allocator object
 
   /// RZALSCoProc: Handle the incoming MZOP request
-  bool           handleMZOP( Forza::zopEvent* zev, bool& flag );
+  bool handleMZOP( Forza::zopEvent* zev, bool& flag );
 
   /// RZALSCoProc: Register all the statistics
-  void           registerStats();
+  void registerStats();
 
   /// RZALSCoProc: record the target statistic
-  void           recordStat( mzopStats Stat, uint64_t Data );
+  void recordStat( mzopStats Stat, uint64_t Data );
 
 #define LOADQ_ZEV 0
 #define LOADQ_RS2 1
@@ -551,7 +551,7 @@ private:
     MarkLoadCompleteFunc;  ///< RZALSCoProc: Hazard function
 
   std::vector< Statistic< uint64_t >* >
-       stats;  ///< RZALSCoProc: Statistics handlers
+    stats;  ///< RZALSCoProc: Statistics handlers
 
   /// RZALSCoProc: checks the load queues for completed operations and clears hazards
   void CheckLSQueue();
@@ -843,13 +843,13 @@ private:
   RegAlloc       Alloc;  ///< RZAAMOCoProc: Register allocator object
 
   /// RZAAMOCoProc: Handle the incoming HZOP request
-  bool           handleHZOP( Forza::zopEvent* zev, bool& flag );
+  bool handleHZOP( Forza::zopEvent* zev, bool& flag );
 
   /// RZAAMOCoProc: Register all the statistics
-  void           registerStats();
+  void registerStats();
 
   /// RZAAMOCoProc: record the target statistic
-  void           recordStat( hzopStats Stat, uint64_t Data );
+  void recordStat( hzopStats Stat, uint64_t Data );
 
 #define AMOQ_ZEV 0
 #define AMOQ_RS1 1
@@ -861,7 +861,7 @@ private:
     MarkLoadCompleteFunc;  ///< RZAAMOCoProc: Hazard function
 
   std::vector< Statistic< uint64_t >* >
-       stats;  ///< RZAAMOCoProc: Statistics handlers
+    stats;  ///< RZAAMOCoProc: Statistics handlers
 
   /// RZAAMOCoProc: checks the load queues for completed operations and clears hazards
   void CheckLSQueue();

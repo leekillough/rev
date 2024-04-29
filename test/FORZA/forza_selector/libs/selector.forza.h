@@ -26,7 +26,7 @@ class Selector {
 public:
   Mailbox< T > mbx[10];
 
-  void         start( int tid ) {
+  void start( int tid ) {
     if( tid == 0 ) {
       print_args[0] = (void*) &tid;
       forza_fprintf( 1, "Actor[%d]: Start Send\n", print_args );

@@ -5,7 +5,7 @@ class BFSSelector : public hclib::Selector< visitmsg > {
   std::vector< int64_t >* nextFrontier;
   int64_t*                pred_glob;
 
-  void                    process( visitmsg m, int sender_rank ) {
+  void process( visitmsg m, int sender_rank ) {
     // code ported to forzalib and not keeping a version here for ease of
     // compilation.
   }
@@ -19,11 +19,11 @@ public:
 };
 
 void* bfs_selector( int* mytid ) {
-  int          ActorID = *( mytid );
+  int ActorID     = *( mytid );
 
-  int          root    = ActorID;
+  int root        = ActorID;
 
-  sparsemat_t* A2      = &mat[ActorID];
+  sparsemat_t* A2 = &mat[ActorID];
 
   if( root % THREADS == ActorID ) {
     visited[ActorID][root / THREADS]         = true;
@@ -40,12 +40,12 @@ void* bfs_selector( int* mytid ) {
         for( int j = A2->loffset[frontier[ActorID][i]];
              j < A2->loffset[frontier[ActorID][i] + 1];
              j++ ) {
-          int       column = A2->lnonzero[j];
-          int       dest   = column % THREADS;
+          int column  = A2->lnonzero[j];
+          int dest    = column % THREADS;
 
-          visitmsg* m      = (visitmsg*) forza_malloc( 1 * sizeof( visitmsg ) );
-          m->vloc          = column / THREADS;
-          m->vfrom         = frontier[ActorID][i];
+          visitmsg* m = (visitmsg*) forza_malloc( 1 * sizeof( visitmsg ) );
+          m->vloc     = column / THREADS;
+          m->vfrom    = frontier[ActorID][i];
 
 
           bfss_ptr->send( REQUEST, m, dest, ActorID );
@@ -146,7 +146,7 @@ int main( int argc, char* argv[] ) {
   hclib::launch( deps, 2, [=] {
     forza_thread_t pt[2 * THREADS];
 
-    int            tid[THREADS];
+    int tid[THREADS];
     for( int i = 0; i < THREADS; i++ ) {
       tid[i] = i;
     }

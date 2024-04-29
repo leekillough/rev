@@ -26,8 +26,8 @@ int main( int argc, char** argv ) {
   int TID = forza_get_my_zap();
   if( forza_get_my_zone() > 0 )
     return 0;
-  int       num_buff_entries = 10;
-  uint64_t  mem_buff[num_buff_entries];  // Buffer for zen to write to
+  int      num_buff_entries = 10;
+  uint64_t mem_buff[num_buff_entries];  // Buffer for zen to write to
   //forza_debug_print((uint64_t)&mem_buff[0], (uint64_t)num_buff_entries, (uint64_t)TID);
 
   uint64_t* tail_ptr;

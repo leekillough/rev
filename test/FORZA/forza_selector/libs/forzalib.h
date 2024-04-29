@@ -88,19 +88,19 @@ sparsemat_t* mat;
 sparsemat_t* kmer_mat;
 int64_t*     cnt;
 
-int64_t**    frontier;
-int64_t**    nextFrontier;
+int64_t** frontier;
+int64_t** nextFrontier;
 
-int64_t*     nvisited;
-int64_t*     visited_size;
-int64_t*     frontierTail;
-int64_t*     nextFrontierTail;
-bool*        visited[2];
+int64_t* nvisited;
+int64_t* visited_size;
+int64_t* frontierTail;
+int64_t* nextFrontierTail;
+bool*    visited[2];
 
-void         generate_graph( sparsemat_t* mmfile,
-                             bool         iskmer,
-                             bool         isbfs,
-                             int          mynode ) {
+void generate_graph( sparsemat_t* mmfile,
+                     bool         iskmer,
+                     bool         isbfs,
+                     int          mynode ) {
   char buffer1[BUF_SIZE];
   char buffer2[BUF_SIZE][10];
   char path[40];

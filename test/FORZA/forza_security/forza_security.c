@@ -7,7 +7,7 @@ uint64_t A[8192];
 uint64_t B[8192];
 uint64_t R[8192];
 
-int      main() {
+int main() {
   uint64_t i = 0;
   uint64_t j = 0;
   int      r = 0;

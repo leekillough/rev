@@ -18,7 +18,7 @@
 #define N   10
 
 typedef std::basic_string< char, std::char_traits< char >, Allocator< char > >
-     revString;
+  revString;
 
 void testAlloc() {
   std::array< int, DIM > arr;

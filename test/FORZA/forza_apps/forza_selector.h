@@ -35,7 +35,7 @@ class Selector {
 public:
   Mailbox< T > mbx[10];
 
-  void         start() {
+  void start() {
   }
 
   int send( int mb_id, T* pkt, int rank ) {

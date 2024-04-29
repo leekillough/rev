@@ -332,10 +332,10 @@ void zopNIC::send_zone_barrier( unsigned Hart, unsigned endpoints ) {
         ( (unsigned) ( std::get< _HM_ZID >( t ) ) == Zone ) &&
         ( std::get< _HM_PID >( t ) == Precinct ) ) {
       // found a candidate target
-      auto      realDest = i.first;
+      auto realDest = i.first;
 
       // create the packet
-      zopEvent* ev       = new zopEvent();
+      zopEvent* ev  = new zopEvent();
       ev->setType( SST::Forza::zopMsgT::Z_MSG );
       ev->setNB( 0 );
       ev->setCredit( 0 );

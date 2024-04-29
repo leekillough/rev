@@ -22,7 +22,7 @@ typedef struct barrier_struct {
 barrier_t DEFAULT_BARRIER_INSTANCE = { .t = { 0ul } };
 
 // void barrier(volatile barrier_t *p, int mythread) {
-void      barrier( uint64_t mythread ) {
+void barrier( uint64_t mythread ) {
   volatile barrier_t* p = &DEFAULT_BARRIER_INSTANCE;
 
   p->t[mythread]++;

@@ -147,7 +147,7 @@ public:
   }
 
   /// RevMem: handle memory injection
-  void     HandleMemFault( unsigned width );
+  void HandleMemFault( unsigned width );
 
   /// RevMem: get the stack_top address
   uint64_t GetStackTop() {
@@ -163,7 +163,7 @@ public:
   RevTracer* Tracer = nullptr;
 
   /// RevMem: retrieve the address of the top of memory (not stack)
-  uint64_t   GetMemTop() {
+  uint64_t GetMemTop() {
     return ( _REVMEM_BASE_ + memSize );
   }
 
@@ -173,7 +173,7 @@ public:
   }
 
   /// RevMem: initiate a memory fence
-  bool     FenceMem( unsigned Hart );
+  bool FenceMem( unsigned Hart );
 
   /// RevMem: retrieves the cache line size.  Returns 0 if no cache is configured
   unsigned getLineSize() {
@@ -298,42 +298,42 @@ public:
   // ---- Atomic/Future/LRSC Interfaces
   // ----------------------------------------------------
   /// RevMem: Add a memory reservation for the target address
-  bool     LRBase( unsigned      Hart,
-                   uint64_t      Addr,
-                   size_t        Len,
-                   void*         Data,
-                   uint8_t       aq,
-                   uint8_t       rl,
-                   const MemReq& req,
-                   RevFlag       flags );
+  bool LRBase( unsigned      Hart,
+               uint64_t      Addr,
+               size_t        Len,
+               void*         Data,
+               uint8_t       aq,
+               uint8_t       rl,
+               const MemReq& req,
+               RevFlag       flags );
 
   /// RevMem: Clear a memory reservation for the target address
-  bool     SCBase( unsigned Hart,
-                   uint64_t Addr,
-                   size_t   Len,
-                   void*    Data,
-                   void*    Target,
-                   uint8_t  aq,
-                   uint8_t  rl,
-                   RevFlag  flags );
+  bool SCBase( unsigned Hart,
+               uint64_t Addr,
+               size_t   Len,
+               void*    Data,
+               void*    Target,
+               uint8_t  aq,
+               uint8_t  rl,
+               RevFlag  flags );
 
   /// RevMem: Initiated an AMO request
-  bool     AMOMem( unsigned      Hart,
-                   uint64_t      Addr,
-                   size_t        Len,
-                   void*         Data,
-                   void*         Target,
-                   const MemReq& req,
-                   RevFlag       flags );
+  bool AMOMem( unsigned      Hart,
+               uint64_t      Addr,
+               size_t        Len,
+               void*         Data,
+               void*         Target,
+               const MemReq& req,
+               RevFlag       flags );
 
   /// RevMem: Initiates a future operation [RV64P only]
-  bool     SetFuture( uint64_t Addr );
+  bool SetFuture( uint64_t Addr );
 
   /// RevMem: Revokes a future operation [RV64P only]
-  bool     RevokeFuture( uint64_t Addr );
+  bool RevokeFuture( uint64_t Addr );
 
   /// RevMem: Interrogates the target address and returns 'true' if a future reservation is present [RV64P only]
-  bool     StatusFuture( uint64_t Addr );
+  bool StatusFuture( uint64_t Addr );
 
   /// RevMem: Randomly assign a memory cost
   unsigned RandCost( unsigned Min, unsigned Max ) {
@@ -344,7 +344,7 @@ public:
   uint32_t GetNewThreadPID();
 
   /// RevMem: Used to set the size of the TLBSize
-  void     SetTLBSize( unsigned numEntries ) {
+  void SetTLBSize( unsigned numEntries ) {
     tlbSize = numEntries;
   }
 
@@ -379,7 +379,7 @@ public:
   }
 
   /// RevMem: Add new MemSegment (anywhere) --- Returns BaseAddr of segment
-  uint64_t                      AddMemSeg( const uint64_t& SegSize );
+  uint64_t AddMemSeg( const uint64_t& SegSize );
 
   /// RevMem: Add new thread mem (starting at TopAddr [growing down])
   std::shared_ptr< MemSegment > AddThreadMem();
@@ -402,9 +402,9 @@ public:
   uint64_t AllocMemAt( const uint64_t& BaseAddr, const uint64_t& Size );
 
   /// RevMem: Sets the HeapStart & HeapEnd to EndOfStaticData
-  void     InitHeap( const uint64_t& EndOfStaticData );
+  void InitHeap( const uint64_t& EndOfStaticData );
 
-  void     SetHeapStart( const uint64_t& HeapStart ) {
+  void SetHeapStart( const uint64_t& HeapStart ) {
     heapstart = HeapStart;
   }
 
@@ -425,9 +425,9 @@ public:
     brk += NumBytes;
   }
 
-  uint64_t        ExpandHeap( uint64_t Size );
+  uint64_t ExpandHeap( uint64_t Size );
 
-  void            SetTLSInfo( const uint64_t& BaseAddr, const uint64_t& Size );
+  void SetTLSInfo( const uint64_t& BaseAddr, const uint64_t& Size );
 
   // RevMem: Used to get the TLS BaseAddr & Size
   const uint64_t& GetTLSBaseAddr() {
@@ -478,18 +478,18 @@ public:
   inline bool IsAddrInScratchpad( const uint64_t& Addr );
 
   /// FORZA: Init Scratchpad
-  void        InitScratchpad( const unsigned ZapNum,
-                              const size_t   Size,
-                              const size_t   ChunkSize );
+  void InitScratchpad( const unsigned ZapNum,
+                       const size_t   Size,
+                       const size_t   ChunkSize );
 
   /// FORZA: Interface for allocating in the Scratchpad
-  uint64_t    ScratchpadAlloc( size_t numBytes );
+  uint64_t ScratchpadAlloc( size_t numBytes );
 
   /// FORZA: Interface for freeing from Scratchpad
-  void        ScratchpadFree( uint64_t Addr, size_t size );
+  void ScratchpadFree( uint64_t Addr, size_t size );
 
   /// FORZA: set the ZOP NIC object
-  void        setZNic( Forza::zopAPI* Z ) {
+  void setZNic( Forza::zopAPI* Z ) {
     zNic = Z;
   }
 
@@ -541,10 +541,10 @@ public:
   std::pair< bool, std::string > validatePhysAddr( uint64_t pAddr, int appID );
 
   /// FORZA: update physical history
-  void                           updatePhysHistory( uint64_t pAddr, int appID );
+  void updatePhysHistory( uint64_t pAddr, int appID );
 
   /// FORZA: set the output file name
-  void                           setOutputFile( std::string name );
+  void setOutputFile( std::string name );
 
 private:
   /// FORZA: convert a standard RISC-V AMO opcode to a ZOP opcode
@@ -554,25 +554,25 @@ private:
   Forza::zopOpc memToZOP( uint32_t flags, size_t Len, bool Write );
 
   /// FORZA: send an AMO request
-  bool          ZOP_AMOMem( unsigned      Hart,
-                            uint64_t      Addr,
-                            size_t        Len,
-                            void*         Data,
-                            void*         Target,
-                            const MemReq& req,
-                            RevFlag       flags );
+  bool ZOP_AMOMem( unsigned      Hart,
+                   uint64_t      Addr,
+                   size_t        Len,
+                   void*         Data,
+                   void*         Target,
+                   const MemReq& req,
+                   RevFlag       flags );
 
   /// FORZA: send a READ request
-  bool          ZOP_READMem( unsigned      Hart,
-                             uint64_t      Addr,
-                             size_t        Len,
-                             void*         Target,
-                             const MemReq& req,
-                             RevFlag       flags );
+  bool ZOP_READMem( unsigned      Hart,
+                    uint64_t      Addr,
+                    size_t        Len,
+                    void*         Target,
+                    const MemReq& req,
+                    RevFlag       flags );
 
   /// FORZA: send a WRITE request
-  bool          ZOP_WRITEMem(
-             unsigned Hart, uint64_t Addr, size_t Len, void* Data, RevFlag flags );
+  bool ZOP_WRITEMem(
+    unsigned Hart, uint64_t Addr, size_t Len, void* Data, RevFlag flags );
 
   /// FORZA: send a large raw WRITE request: DO NOT USE
   bool __ZOP_WRITEMemLarge(
@@ -593,8 +593,8 @@ protected:
   char* physMem = nullptr;  ///< RevMem: memory container
 
 private:
-  RevMemStats   memStats      = {};
-  RevMemStats   memStatsTotal = {};
+  RevMemStats memStats      = {};
+  RevMemStats memStatsTotal = {};
 
   unsigned long memSize;      ///< RevMem: size of the target memory
   unsigned      tlbSize;      ///< RevMem: number of entries in the TLB
@@ -604,9 +604,9 @@ private:
     TLB;
   std::list< uint64_t >
     LRUQueue;  ///< RevMem: List ordered by last access for implementing LRU policy when TLB fills up
-  RevOpts*                         opts;  ///< RevMem: options object
-  RevMemCtrl*                      ctrl;  ///< RevMem: memory controller object
-  SST::Output*                     output;  ///< RevMem: output handler
+  RevOpts*     opts;    ///< RevMem: options object
+  RevMemCtrl*  ctrl;    ///< RevMem: memory controller object
+  SST::Output* output;  ///< RevMem: output handler
 
   std::shared_ptr< RevScratchpad > scratchpad;  ///< FORZA: Scratchpad
   Forza::zopAPI*                   zNic;        ///< RevMem: FORZA ZOP NIC
@@ -650,11 +650,11 @@ private:
     nextPage;  ///< RevMem: next physical page to be allocated. Will result in index
   /// nextPage * pageSize into physMem
 
-  uint64_t                heapend;       ///< RevMem: End of the heap
-  uint64_t                brk;           ///< RevMem: Program BRK FIXME: HACK
-  uint64_t                mmapRegion;    ///< RevMem: FIXME: HACK
-  uint64_t                heapstart;     ///< RevMem: Start of the heap space
-  uint64_t                stacktop = 0;  ///< RevMem: top of the stack
+  uint64_t heapend;       ///< RevMem: End of the heap
+  uint64_t brk;           ///< RevMem: Program BRK FIXME: HACK
+  uint64_t mmapRegion;    ///< RevMem: FIXME: HACK
+  uint64_t heapstart;     ///< RevMem: Start of the heap space
+  uint64_t stacktop = 0;  ///< RevMem: top of the stack
 
   std::vector< uint64_t > FutureRes;  ///< RevMem: future operation reservations
 

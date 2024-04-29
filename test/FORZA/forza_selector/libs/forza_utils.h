@@ -15,14 +15,14 @@ volatile int* fbarriers;
 typedef unsigned long int forza_thread_t;
 typedef int               fd_t;
 
-volatile void*            print_args[MAX_PRINT_ARGS];
+volatile void* print_args[MAX_PRINT_ARGS];
 
 // #define FDADDRESS(fd) ((char *) ((0x1100L) | (fd << 3)))
 
-char                      revbuf[4096] = { 0 };
-char                      revbufhead   = 0;
+char revbuf[4096] = { 0 };
+char revbufhead   = 0;
 
-void*                     forza_malloc( size_t size ) {
+void* forza_malloc( size_t size ) {
   return (void*) rev_mmap( 0,
                            size,
                            PROT_READ | PROT_WRITE | PROT_EXEC,
