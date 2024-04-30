@@ -22,6 +22,26 @@ class RV32A : public RevExt {
 
   static bool
     lrw( RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) {
+    unsigned Zone     = 0x00;
+    unsigned Precinct = 0x00;
+    if( !M->isLocalAddr( R->GetX< uint64_t >( Inst.rs1 ), Zone, Precinct ) ) {
+      // trigger the migration
+      std::vector< uint64_t > P;
+      P.push_back( R->GetPC() );
+      for( unsigned i = 1; i < 32; i++ ) {
+        P.push_back( R->GetX< uint64_t >( i ) );
+      }
+      for( unsigned i = 0; i < 32; i++ ) {
+        uint64_t t = 0x00ull;
+        double   s = R->DPF[i];
+        memcpy( &t, &s, sizeof( t ) );
+        P.push_back( t );
+      }
+
+      P.push_back( static_cast< uint64_t >( R->GetThreadID() ) );
+      R->SetSCAUSE( RevExceptionCause::THREAD_MIGRATED );
+      return M->ZOP_ThreadMigrate( F->GetHartToExecID(), P, Zone, Precinct );
+    }
     if( R->IsRV32 ) {
       MemReq req( uint64_t( R->RV32[Inst.rs1] ),
                   Inst.rd,
@@ -62,6 +82,25 @@ class RV32A : public RevExt {
 
   static bool
     scw( RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) {
+    unsigned Zone     = 0x00;
+    unsigned Precinct = 0x00;
+    if( !M->isLocalAddr( R->GetX< uint64_t >( Inst.rs1 ), Zone, Precinct ) ) {
+      // trigger the migration
+      std::vector< uint64_t > P;
+      P.push_back( R->GetPC() );
+      for( unsigned i = 1; i < 32; i++ ) {
+        P.push_back( R->GetX< uint64_t >( i ) );
+      }
+      for( unsigned i = 0; i < 32; i++ ) {
+        uint64_t t = 0x00ull;
+        double   s = R->DPF[i];
+        memcpy( &t, &s, sizeof( t ) );
+        P.push_back( t );
+      }
+      P.push_back( static_cast< uint64_t >( R->GetThreadID() ) );
+      R->SetSCAUSE( RevExceptionCause::THREAD_MIGRATED );
+      return M->ZOP_ThreadMigrate( F->GetHartToExecID(), P, Zone, Precinct );
+    }
     if( R->IsRV32 ) {
       M->SC( F->GetHartToExecID(),
              R->RV32[Inst.rs1],
@@ -86,6 +125,26 @@ class RV32A : public RevExt {
   template< RevFlag F_AMO >
   static bool
     amooper( RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) {
+    unsigned Zone     = 0x00;
+    unsigned Precinct = 0x00;
+    if( !M->isLocalAddr( R->GetX< uint64_t >( Inst.rs1 ), Zone, Precinct ) ) {
+      // trigger the migration
+      std::vector< uint64_t > P;
+      P.push_back( R->GetPC() );
+      for( unsigned i = 1; i < 32; i++ ) {
+        P.push_back( R->GetX< uint64_t >( i ) );
+      }
+      for( unsigned i = 0; i < 32; i++ ) {
+        uint64_t t = 0x00ull;
+        double   s = R->DPF[i];
+        memcpy( &t, &s, sizeof( t ) );
+        P.push_back( t );
+      }
+
+      P.push_back( static_cast< uint64_t >( R->GetThreadID() ) );
+      R->SetSCAUSE( RevExceptionCause::THREAD_MIGRATED );
+      return M->ZOP_ThreadMigrate( F->GetHartToExecID(), P, Zone, Precinct );
+    }
     uint32_t flags = static_cast< uint32_t >( F_AMO );
 
     if( Inst.aq && Inst.rl ) {

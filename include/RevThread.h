@@ -36,6 +36,8 @@ public:
     ID( ID ),
     ParentID( ParentID ), ThreadMem( ThreadMem ),
     VirtRegState( std::move( VirtRegState ) ) {
+    // Save thread's ID to regfile
+    this->VirtRegState->SetThreadID( ID );
   }
 
   ///< RevThread: Destructor
