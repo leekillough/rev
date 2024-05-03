@@ -342,14 +342,18 @@ private:
 
   SST::Clock::Handler< RevCPU >*  ClockHandler;  ///< RevCPU: Clock Handler
 
-  std::vector< Forza::zopEvent* > ZIQ;  ///< RevCPU: ZOP Issue Queue
-  std::map< uint64_t, Forza::zopEvent* >
-    ZRqst;  ///< RevCPU: outstanding ZOP requests
+  std::vector<Forza::zopEvent*>        ZIQ;    ///< RevCPU: ZOP Issue Queue
+  std::map<uint64_t, Forza::zopEvent*> ZRqst;  ///< RevCPU: outstanding ZOP requests
 
-  std::queue< std::pair< uint32_t, char* > > ZeroRqst;  ///< RevCPU: tracks incoming zero address put requests; pair<Size, Data>
-  std::list< std::pair< uint8_t, int > > TrackTags;  ///< RevCPU: tracks the outgoing messages; pair<Tag, Dest>
-  std::vector< std::tuple< uint8_t, uint64_t, uint32_t > > TrackGets;  ///< RevCPU: tracks the outstanding get messages; tuple<Tag, Addr, Sz>
-  std::vector< std::tuple< uint8_t, uint32_t, unsigned, int, uint64_t > > ReadQueue;  ///< RevCPU: outgoing memory read queue
+  std::queue<std::pair<uint32_t, char*>> ZeroRqst;   ///< RevCPU: tracks incoming zero address put requests; pair<Size, Data>
+  std::list<std::pair<uint8_t, int>>     TrackTags;  ///< RevCPU: tracks the outgoing messages; pair<Tag, Dest>
+  std::vector<std::tuple<
+    uint8_t,
+    uint64_t,
+    uint32_t>>
+                                    TrackGets;  ///< RevCPU: tracks the outstanding get messages; tuple<Tag, Addr, Sz>
+  std::vector<std::tuple<uint8_t, uint32_t, unsigned, int,
+                         uint64_t>> ReadQueue;  ///< RevCPU: outgoing memory read queue
 
   ///<         - Tag
   ///<         - Size

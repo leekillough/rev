@@ -32,10 +32,6 @@
 
 #define _MAX_HARTS_    4096
 
-// FORZA: SCRATCHPAD
-#define _CHUNK_SIZE_ 512
-#define _SCRATCHPAD_SIZE_ (_CHUNK_SIZE_*1024)
-
 namespace SST::RevCPU {
 
 /// Zero-extend value of bits size
@@ -123,7 +119,6 @@ struct MemReq {
 
   uint16_t getDestReg() const { return DestReg; }
 
-private:
   uint64_t    Addr                                          = _INVALID_ADDR_;
   uint16_t    DestReg                                       = 0;
   RevRegClass RegType                                       = RevRegClass::RegUNKNOWN;
@@ -132,7 +127,6 @@ private:
   bool        isOutstanding                                 = false;
 
   std::function<void( const MemReq& )> MarkLoadCompleteFunc = nullptr;
-
 };  //struct MemReq
 
 // Enum for tracking the state of a RevThread.

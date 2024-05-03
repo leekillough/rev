@@ -206,9 +206,7 @@ public:
   }
 
   ///< RevCore: Set the ZOP NIC handler
-  void setZNic( Forza::zopAPI* Z ) {
-    zNic = Z;
-  }
+  void setZNic( Forza::zopAPI* Z ) { zNic = Z; }
 
   ///< RevCore: Set the ZOP NIC msg id generator
   void setZNicMsgIds( Forza::zopMsgID* Z ) {
@@ -305,11 +303,10 @@ public:
   ///  execution (this un-does the ExternalStallHart() function ). Note the RevCorePassKey may only
   ///  be created by a RevCoProc (or a class derived from RevCoProc) so this funciton may not be called from even within
   ///  RevCore
-  void ExternalReleaseHart( RevCorePasskey< RevCoProc >, uint16_t HartID );
+  void ExternalReleaseHart( RevCorePasskey<RevCoProc>, uint16_t HartID );
 
   ///< RevCore: Allow a co-process to retrieve the register file object for the target HART
-  std::unique_ptr< RevRegFile > ExternalGetRegFile( RevCorePasskey< RevCoProc >,
-                                                    unsigned Hart ) {
+  std::unique_ptr<RevRegFile> ExternalGetRegFile( RevCorePasskey<RevCoProc>, unsigned Hart ) {
     return Harts.at( Hart )->PopRegFile();
   }
 
@@ -739,22 +736,17 @@ private:
   EcallStatus ECALL_dump_stack_to_file();     // 9003, dump_stack(const char* outputFile)
 
   /// FORZA
-  EcallStatus
-    ECALL_forza_scratchpad_alloc();  // 4000, forza_scratchpad_alloc(size_t size);
-  EcallStatus
-    ECALL_forza_scratchpad_free();  // 4001, forza_scratchpad_free(size_t size);
+  EcallStatus ECALL_forza_scratchpad_alloc();        // 4000, forza_scratchpad_alloc(size_t size);
+  EcallStatus ECALL_forza_scratchpad_free();         // 4001, forza_scratchpad_free(size_t size);
   EcallStatus ECALL_forza_get_hart_id();         // 4002, forza_get_hart_id();
   EcallStatus ECALL_forza_send();                // 4003, forza_send();
   EcallStatus ECALL_forza_zen_credit_release();  // 4004, forza_popq();
   EcallStatus ECALL_forza_zen_setup();           // 4005, forza_zen_setup();
   EcallStatus ECALL_forza_zqm_setup();           // 4006, forza_zqm_setup();
   EcallStatus ECALL_forza_get_harts_per_zap();  // 4007, forza_get_harts_per_zap
-  EcallStatus
-    ECALL_forza_get_zaps_per_zone();  // 4008, forza_get_zaps_per_zone();
-  EcallStatus
-    ECALL_forza_get_zones_per_precinct();  // 4009, forza_get_zones_per_precinct();
-  EcallStatus
-    ECALL_forza_get_num_precincts();      // 4010, forza_get_num_precincts();
+  EcallStatus ECALL_forza_get_zaps_per_zone();       // 4008, forza_get_zaps_per_zone();
+  EcallStatus ECALL_forza_get_zones_per_precinct();  // 4009, forza_get_zones_per_precinct();
+  EcallStatus ECALL_forza_get_num_precincts();       // 4010, forza_get_num_precincts();
   EcallStatus ECALL_forza_get_my_zap();   // 4011, forza_get_my_zap();
   EcallStatus ECALL_forza_get_my_zone();  // 4012, forza_get_my_zone();
   EcallStatus ECALL_forza_get_my_precinct();  // 4013, forza_get_my_precinct();

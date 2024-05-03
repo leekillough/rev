@@ -388,12 +388,9 @@ public:
   void SetHeapEnd( const uint64_t& HeapEnd ) { heapend = HeapEnd; }
 
   // FIXME:
-  uint64_t GetBrk(){ return brk; }
-  void AdjustBrk(const int64_t NumBytes){ brk += NumBytes ; }
+  uint64_t GetBrk() { return brk; }
 
-  uint64_t ExpandHeap(uint64_t Size);
-
-  const uint64_t& GetHeapEnd() { return heapend; }
+  void AdjustBrk( const int64_t NumBytes ) { brk += NumBytes; }
 
   uint64_t ExpandHeap( uint64_t Size );
 
@@ -456,7 +453,7 @@ public:
   inline bool IsAddrInScratchpad(const uint64_t& Addr);
 
   /// FORZA: Init Scratchpad
-  void InitScratchpad(const unsigned ZapNum, const size_t Size, const size_t ChunkSize);
+  void InitScratchpad( const unsigned ZapNum, const size_t Size, const size_t ChunkSize );
 
   /// FORZA: Interface for allocating in the Scratchpad
   uint64_t ScratchpadAlloc(size_t numBytes);
@@ -465,7 +462,7 @@ public:
   void ScratchpadFree(uint64_t Addr, size_t size);
 
   /// FORZA: set the ZOP NIC object
-  void setZNic( Forza::zopAPI *Z ) { zNic = Z; }
+  void setZNic( Forza::zopAPI* Z ) { zNic = Z; }
 
   /// FORZA: set the RZA flag for this instance of RevMem
   void setRZA() { isRZA = true; }
@@ -493,10 +490,9 @@ public:
                    unsigned &Zone, unsigned &Precinct);
 
   /// FORZA: send a thread migration request
-  bool ZOP_ThreadMigrate(unsigned Hart, std::vector<uint64_t> Payload,
-                         unsigned Zone, unsigned Precinct);
+  bool ZOP_ThreadMigrate( unsigned Hart, std::vector<uint64_t> Payload, unsigned Zone, unsigned Precinct );
 
-  // Add Physical Addresss Information 
+  // Add Physical Addresss Information
   /// FORZA: update the physical history from the input file
   void updatePhysHistoryfromInput(const std::string &InputFile);
 
@@ -507,7 +503,7 @@ public:
   void enablePhysHistoryLogging();
 
   /// FORZA: validate a physical address
-  std::pair<bool,std::string> validatePhysAddr(uint64_t pAddr,int appID);
+  std::pair<bool, std::string> validatePhysAddr( uint64_t pAddr, int appID );
 
   /// FORZA: update physical history
   void updatePhysHistory(uint64_t pAddr,int appID);
@@ -523,31 +519,19 @@ private:
   Forza::zopOpc memToZOP(uint32_t flags, size_t Len, bool Write);
 
   /// FORZA: send an AMO request
-  bool ZOP_AMOMem(unsigned Hart, uint64_t Addr, size_t Len,
-                  void *Data, void *Target,
-                  const MemReq& req,
-                  RevFlag flags);
+  bool ZOP_AMOMem( unsigned Hart, uint64_t Addr, size_t Len, void* Data, void* Target, const MemReq& req, RevFlag flags );
 
   /// FORZA: send a READ request
-  bool ZOP_READMem(unsigned Hart, uint64_t Addr, size_t Len,
-                   void *Target,
-                   const MemReq& req,
-                   RevFlag flags);
+  bool ZOP_READMem( unsigned Hart, uint64_t Addr, size_t Len, void* Target, const MemReq& req, RevFlag flags );
 
   /// FORZA: send a WRITE request
-  bool ZOP_WRITEMem(unsigned Hart, uint64_t Addr, size_t Len,
-                    void *Data,
-                    RevFlag flags);
+  bool ZOP_WRITEMem( unsigned Hart, uint64_t Addr, size_t Len, void* Data, RevFlag flags );
 
   /// FORZA: send a large raw WRITE request: DO NOT USE
-  bool __ZOP_WRITEMemLarge(unsigned Hart, uint64_t Addr, size_t Len,
-                           void *Data,
-                           RevFlag flags);
+  bool __ZOP_WRITEMemLarge( unsigned Hart, uint64_t Addr, size_t Len, void* Data, RevFlag flags );
 
   /// FORZA: send a WRITE request using the target opcode: DO NOT USE
-  bool __ZOP_WRITEMemBase(unsigned Hart, uint64_t Addr, size_t Len,
-                          void *Data, RevFlag flags,
-                          SST::Forza::zopOpc opc );
+  bool __ZOP_WRITEMemBase( unsigned Hart, uint64_t Addr, size_t Len, void* Data, RevFlag flags, SST::Forza::zopOpc opc );
 
   /// FORZA: send a HART fence request
   bool __ZOP_FENCEHart(unsigned Hart);
@@ -569,13 +553,13 @@ private:
   SST::Output*        output{};    ///< RevMem: output handler
 
   std::shared_ptr<RevScratchpad> scratchpad; ///< FORZA: Scratchpad
-  Forza::zopAPI *zNic;          ///< RevMem: FORZA ZOP NIC
-  bool isRZA;                   ///< RevMem: FORZA RZA flag; true if this device is an RZA
+  Forza::zopAPI*                 zNic;        ///< RevMem: FORZA ZOP NIC
+  bool                           isRZA;       ///< RevMem: FORZA RZA flag; true if this device is an RZA
 
-  std::vector<std::shared_ptr<MemSegment>> MemSegs{};        // Currently Allocated MemSegs
-  std::vector<std::shared_ptr<MemSegment>> FreeMemSegs{};    // MemSegs that have been unallocated
-  std::vector<std::shared_ptr<MemSegment>> ThreadMemSegs{};  // For each RevThread there is a corresponding MemSeg (TLS & Stack)
-  std::map<std::string, std::shared_ptr<MemSegment>> DumpRanges{};  // Mem ranges to dump at points specified in the configuration
+  std::vector<std::shared_ptr<MemSegment>> MemSegs;      // Currently Allocated MemSegs
+  std::vector<std::shared_ptr<MemSegment>> FreeMemSegs;  // MemSegs that have been unallocated
+  std::vector<std::shared_ptr<MemSegment>>
+    ThreadMemSegs;  // For each RevThread there is a corresponding MemSeg that contains TLS & Stack
 
   uint64_t TLSBaseAddr       = 0;                   ///< RevMem: TLS Base Address
   uint64_t TLSSize           = sizeof( uint32_t );  ///< RevMem: TLS Size (minimum size is enough to write the TID)
@@ -611,17 +595,16 @@ private:
   std::vector<std::tuple<unsigned, uint64_t, unsigned, uint64_t*>> LRSC{};  ///< RevMem: load reserve/store conditional vector
 
   // -- FORZA
-  std::map<uint64_t,Forza::zopEvent *> ZRqst; ///< RevMem: zop request address map
+  std::map<uint64_t, Forza::zopEvent*> ZRqst;  ///< RevMem: zop request address map
 
-  // FORZA Security Test 
-  std::map<uint64_t, std::tuple<std::string,bool, int>> OutputPhysAddrHist; //History to Output file 
-  std::map<uint64_t,std::tuple<std::string,bool,std::vector<int>>> InputPhysAddrHist; //Read from Input file 
+  // FORZA Security Test
+  std::map<uint64_t, std::tuple<std::string, bool, int>>              OutputPhysAddrHist;  //History to Output file
+  std::map<uint64_t, std::tuple<std::string, bool, std::vector<int>>> InputPhysAddrHist;   //Read from Input file
   bool PhysAddrCheck;
   bool PhysAddrLogging;
   std::string outputFile;
   // std::ofstream output_file;
   // std::ofstream input_file;
-
 
 };  // class RevMem
 

@@ -366,6 +366,10 @@ public:
     }
   }
 
+  uint32_t GetThreadID() const { return ThreadID; }
+
+  void SetThreadID( uint32_t tid ) { ThreadID = tid; }
+
 private:
   // Performance counters
 
