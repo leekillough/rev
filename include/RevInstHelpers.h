@@ -64,14 +64,12 @@ bool load( RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) {
   // FORZA: check the address to see whether we need to migrate the thread
   unsigned Zone     = 0x00;
   unsigned Precinct = 0x00;
-  if( !M->isLocalAddr( R->GetX< uint64_t >( Inst.rs1 ) + Inst.ImmSignExt( 12 ),
-                       Zone,
-                       Precinct ) ) {
+  if( !M->isLocalAddr( R->GetX<uint64_t>( Inst.rs1 ) + Inst.ImmSignExt( 12 ), Zone, Precinct ) ) {
     // trigger the migration
-    std::vector< uint64_t > P;
+    std::vector<uint64_t> P;
     P.push_back( R->GetPC() );
     for( unsigned i = 1; i < 32; i++ ) {
-      P.push_back( R->GetX< uint64_t >( i ) );
+      P.push_back( R->GetX<uint64_t>( i ) );
     }
     for( unsigned i = 0; i < 32; i++ ) {
       uint64_t t = 0x00ull;
@@ -79,7 +77,7 @@ bool load( RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) {
       memcpy( &t, &s, sizeof( t ) );
       P.push_back( t );
     }
-    P.push_back( static_cast< uint64_t >( R->GetThreadID() ) );
+    P.push_back( static_cast<uint64_t>( R->GetThreadID() ) );
 
     R->SetSCAUSE( RevExceptionCause::THREAD_MIGRATED );
 
@@ -146,14 +144,12 @@ bool store( RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) {
   // FORZA: check the address to see whether we need to migrate the thread
   unsigned Zone     = 0x00;
   unsigned Precinct = 0x00;
-  if( !M->isLocalAddr( R->GetX< uint64_t >( Inst.rs1 ) + Inst.ImmSignExt( 12 ),
-                       Zone,
-                       Precinct ) ) {
+  if( !M->isLocalAddr( R->GetX<uint64_t>( Inst.rs1 ) + Inst.ImmSignExt( 12 ), Zone, Precinct ) ) {
     // trigger the migration
-    std::vector< uint64_t > P;
+    std::vector<uint64_t> P;
     P.push_back( R->GetPC() );
     for( unsigned i = 1; i < 32; i++ ) {
-      P.push_back( R->GetX< uint64_t >( i ) );
+      P.push_back( R->GetX<uint64_t>( i ) );
     }
     for( unsigned i = 0; i < 32; i++ ) {
       uint64_t t = 0x00ull;
@@ -161,14 +157,12 @@ bool store( RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) {
       memcpy( &t, &s, sizeof( t ) );
       P.push_back( t );
     }
-    P.push_back( static_cast< uint64_t >( R->GetThreadID() ) );
+    P.push_back( static_cast<uint64_t>( R->GetThreadID() ) );
     R->SetSCAUSE( RevExceptionCause::THREAD_MIGRATED );
     return M->ZOP_ThreadMigrate( F->GetHartToExecID(), P, Zone, Precinct );
   }
 
-  M->Write( F->GetHartToExecID(),
-            R->GetX< uint64_t >( Inst.rs1 ) + Inst.ImmSignExt( 12 ),
-            R->GetX< T >( Inst.rs2 ) );
+  M->Write( F->GetHartToExecID(), R->GetX<uint64_t>( Inst.rs1 ) + Inst.ImmSignExt( 12 ), R->GetX<T>( Inst.rs2 ) );
   R->AdvancePC( Inst );
   return true;
 }
@@ -180,14 +174,12 @@ bool fload( RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) {
   // FORZA: check the address to see whether we need to migrate the thread
   unsigned Zone     = 0x00;
   unsigned Precinct = 0x00;
-  if( !M->isLocalAddr( R->GetX< uint64_t >( Inst.rs1 ) + Inst.ImmSignExt( 12 ),
-                       Zone,
-                       Precinct ) ) {
+  if( !M->isLocalAddr( R->GetX<uint64_t>( Inst.rs1 ) + Inst.ImmSignExt( 12 ), Zone, Precinct ) ) {
     // trigger the migration
-    std::vector< uint64_t > P;
+    std::vector<uint64_t> P;
     P.push_back( R->GetPC() );
     for( unsigned i = 1; i < 32; i++ ) {
-      P.push_back( R->GetX< uint64_t >( i ) );
+      P.push_back( R->GetX<uint64_t>( i ) );
     }
     for( unsigned i = 0; i < 32; i++ ) {
       uint64_t t = 0x00ull;
@@ -195,14 +187,13 @@ bool fload( RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) {
       memcpy( &t, &s, sizeof( t ) );
       P.push_back( t );
     }
-    P.push_back( static_cast< uint64_t >( R->GetThreadID() ) );
+    P.push_back( static_cast<uint64_t>( R->GetThreadID() ) );
     R->SetSCAUSE( RevExceptionCause::THREAD_MIGRATED );
     return M->ZOP_ThreadMigrate( F->GetHartToExecID(), P, Zone, Precinct );
   }
 
-  if( std::is_same_v< T, double > || F->HasD() ) {
-    static constexpr RevFlag flags =
-      sizeof( T ) < sizeof( double ) ? RevFlag::F_BOXNAN : RevFlag::F_NONE;
+  if( std::is_same_v<T, double> || F->HasD() ) {
+    static constexpr RevFlag flags = sizeof( T ) < sizeof( double ) ? RevFlag::F_BOXNAN : RevFlag::F_NONE;
 
     uint64_t rs1                   = R->GetX<uint64_t>( Inst.rs1 );
     MemReq   req(
@@ -251,14 +242,12 @@ bool fstore( RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) {
   // FORZA: check the address to see whether we need to migrate the thread
   unsigned Zone     = 0x00;
   unsigned Precinct = 0x00;
-  if( !M->isLocalAddr( R->GetX< uint64_t >( Inst.rs1 ) + Inst.ImmSignExt( 12 ),
-                       Zone,
-                       Precinct ) ) {
+  if( !M->isLocalAddr( R->GetX<uint64_t>( Inst.rs1 ) + Inst.ImmSignExt( 12 ), Zone, Precinct ) ) {
     // trigger the migration
-    std::vector< uint64_t > P;
+    std::vector<uint64_t> P;
     P.push_back( R->GetPC() );
     for( unsigned i = 1; i < 32; i++ ) {
-      P.push_back( R->GetX< uint64_t >( i ) );
+      P.push_back( R->GetX<uint64_t>( i ) );
     }
     for( unsigned i = 0; i < 32; i++ ) {
       uint64_t t = 0x00ull;
@@ -266,15 +255,13 @@ bool fstore( RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) {
       memcpy( &t, &s, sizeof( t ) );
       P.push_back( t );
     }
-    P.push_back( static_cast< uint64_t >( R->GetThreadID() ) );
+    P.push_back( static_cast<uint64_t>( R->GetThreadID() ) );
     R->SetSCAUSE( RevExceptionCause::THREAD_MIGRATED );
     return M->ZOP_ThreadMigrate( F->GetHartToExecID(), P, Zone, Precinct );
   }
 
-  T val = R->GetFP< T, true >( Inst.rs2 );
-  M->Write( F->GetHartToExecID(),
-            R->GetX< uint64_t >( Inst.rs1 ) + Inst.ImmSignExt( 12 ),
-            val );
+  T val = R->GetFP<T, true>( Inst.rs2 );
+  M->Write( F->GetHartToExecID(), R->GetX<uint64_t>( Inst.rs1 ) + Inst.ImmSignExt( 12 ), val );
   R->AdvancePC( Inst );
   return true;
 }

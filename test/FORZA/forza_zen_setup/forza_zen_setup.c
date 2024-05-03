@@ -3,7 +3,7 @@
  *
  * RISC-V ISA: RV64I
  *
- * Copyright (C) 2017-2023 Tactical Computing Laboratories, LLC
+ * Copyright (C) 2017-2024 Tactical Computing Laboratories, LLC
  * All Rights Reserved
  * contact@tactcomplabs.com
  *
@@ -31,13 +31,11 @@ int main( int argc, char** argv ) {
   //forza_debug_print((uint64_t)&mem_buff[0], (uint64_t)num_buff_entries, (uint64_t)TID);
 
   uint64_t* tail_ptr;
-  tail_ptr  = (uint64_t*) forza_scratchpad_alloc( 1 * sizeof( uint64_t* ) );
-  *tail_ptr = 0xdeadbeef;
+  tail_ptr                = (uint64_t*) forza_scratchpad_alloc( 1 * sizeof( uint64_t* ) );
+  *tail_ptr               = 0xdeadbeef;
 
   uint64_t* my_buff_start = &mem_buff[0];
-  forza_zen_setup( (uint64_t) my_buff_start,
-                   num_buff_entries * sizeof( uint64_t ),
-                   (uint64_t) tail_ptr );
+  forza_zen_setup( (uint64_t) my_buff_start, num_buff_entries * sizeof( uint64_t ), (uint64_t) tail_ptr );
 
   uint64_t nzaps = ( forza_get_my_zone() == 0 ) ? forza_get_zaps_per_zone() : 0;
   forza_zone_barrier( nzaps );

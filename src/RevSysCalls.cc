@@ -2044,7 +2044,7 @@ EcallStatus RevCore::ECALL_readahead() {
 
 // 214, rev_sbrk(unsigned long brk)
 EcallStatus RevCore::ECALL_sbrk() {
-  auto NumBytes      = RegFile->GetX< uint64_t >( RevReg::a0 );
+  auto NumBytes      = RegFile->GetX<uint64_t>( RevReg::a0 );
 
   // Return the current brk and then incremenet it by NumBytes
   const uint64_t brk = mem->GetHeapEnd();
@@ -3575,39 +3575,26 @@ const std::unordered_map<uint32_t, EcallStatus(RevCore::*)()> RevCore::Ecalls = 
 
 // 4000, forza_scratchpad_alloc(size_t size);
 EcallStatus RevCore::ECALL_forza_scratchpad_alloc() {
-  output->verbose( CALL_INFO,
-                   2,
-                   0,
-                   "ECALL: forza_scratchpad_alloc called by thread %" PRIu32
-                   " on hart %" PRIu32 "\n",
-                   GetActiveThreadID(),
-                   HartToExecID );
-  uint64_t size = RegFile->GetX< uint64_t >( RevReg::a0 );
-
   output->verbose(
     CALL_INFO,
-    4,
+    2,
     0,
-    "ECALL: forza_scratchpad_alloc attempting to allocate %" PRIu64 " bytes\n",
-    size );
+    "ECALL: forza_scratchpad_alloc called by thread %" PRIu32 " on hart %" PRIu32 "\n",
+    GetActiveThreadID(),
+    HartToExecID
+  );
+  uint64_t size = RegFile->GetX<uint64_t>( RevReg::a0 );
+
+  output->verbose( CALL_INFO, 4, 0, "ECALL: forza_scratchpad_alloc attempting to allocate %" PRIu64 " bytes\n", size );
   uint64_t Addr = mem->ScratchpadAlloc( size );
 
   if( Addr == _INVALID_ADDR_ ) {
-    output->verbose( CALL_INFO,
-                     2,
-                     0,
-                     "ECALL: forza_scratchpad_alloc failed to allocate %" PRIu64
-                     " bytes\n",
-                     size );
+    output->verbose( CALL_INFO, 2, 0, "ECALL: forza_scratchpad_alloc failed to allocate %" PRIu64 " bytes\n", size );
     RegFile->SetX( RevReg::a0, ( uint64_t ) nullptr );
   } else {
-    output->verbose( CALL_INFO,
-                     2,
-                     0,
-                     "ECALL: forza_scratchpad_alloc allocated %" PRIu64
-                     " bytes at address %" PRIx64 "\n",
-                     size,
-                     Addr );
+    output->verbose(
+      CALL_INFO, 2, 0, "ECALL: forza_scratchpad_alloc allocated %" PRIu64 " bytes at address %" PRIx64 "\n", size, Addr
+    );
     RegFile->SetX( RevReg::a0, Addr );
   }
 
@@ -3616,22 +3603,17 @@ EcallStatus RevCore::ECALL_forza_scratchpad_alloc() {
 
 // 4001, forza_scratchpad_dealloc(size_t size);
 EcallStatus RevCore::ECALL_forza_scratchpad_free() {
-  output->verbose( CALL_INFO,
-                   2,
-                   0,
-                   "ECALL: forza_scratchpad_free called by thread %" PRIu32
-                   " on hart %" PRIu32 "\n",
-                   GetActiveThreadID(),
-                   HartToExecID );
-  uint64_t addr = RegFile->GetX< uint64_t >( RevReg::a0 );
-  uint64_t size = RegFile->GetX< uint64_t >( RevReg::a1 );
-  output->verbose( CALL_INFO,
-                   2,
-                   0,
-                   "ECALL: forza_scratchpad_free with addr 0x%" PRIx64
-                   ", and size %" PRIu64 "\n",
-                   addr,
-                   size );
+  output->verbose(
+    CALL_INFO,
+    2,
+    0,
+    "ECALL: forza_scratchpad_free called by thread %" PRIu32 " on hart %" PRIu32 "\n",
+    GetActiveThreadID(),
+    HartToExecID
+  );
+  uint64_t addr = RegFile->GetX<uint64_t>( RevReg::a0 );
+  uint64_t size = RegFile->GetX<uint64_t>( RevReg::a1 );
+  output->verbose( CALL_INFO, 2, 0, "ECALL: forza_scratchpad_free with addr 0x%" PRIx64 ", and size %" PRIu64 "\n", addr, size );
   mem->ScratchpadFree( addr, size );
 
   return EcallStatus::SUCCESS;
@@ -3639,13 +3621,14 @@ EcallStatus RevCore::ECALL_forza_scratchpad_free() {
 
 // 4002, forza_get_hart_id();
 EcallStatus RevCore::ECALL_forza_get_hart_id() {
-  output->verbose( CALL_INFO,
-                   2,
-                   0,
-                   "ECALL: forza_get_hart_id called by thread %" PRIu32
-                   " on hart %" PRIu32 "\n",
-                   GetActiveThreadID(),
-                   HartToExecID );
+  output->verbose(
+    CALL_INFO,
+    2,
+    0,
+    "ECALL: forza_get_hart_id called by thread %" PRIu32 " on hart %" PRIu32 "\n",
+    GetActiveThreadID(),
+    HartToExecID
+  );
   RegFile->SetX( RevReg::a0, HartToExecID );
   return EcallStatus::SUCCESS;
 }
@@ -3657,55 +3640,55 @@ union ECALL_forza_send_union {
 
 // clang-format on
 
-
 // 4003 forza_send( uint64_t dst, uint64_t spaddr, size_t size  )
 EcallStatus RevCore::ECALL_forza_send() {
-  uint64_t dst    = (uint64_t) RegFile->GetX< uint64_t >( RevReg::a0 );
-  uint64_t spaddr = (uint64_t) RegFile->GetX< uint64_t >( RevReg::a1 );
-  size_t   size   = (size_t) RegFile->GetX< size_t >( RevReg::a2 );
+  uint64_t dst               = (uint64_t) RegFile->GetX<uint64_t>( RevReg::a0 );
+  uint64_t spaddr            = (uint64_t) RegFile->GetX<uint64_t>( RevReg::a1 );
+  size_t   size              = (size_t) RegFile->GetX<size_t>( RevReg::a2 );
 
   const size_t max_data_size = 4000;
   //unsigned char dat[max_data_size];
 
   auto& EcallState           = Harts.at( HartToExecID )->GetEcallState();
   if( EcallState.bytesRead == 0 ) {
-    output->verbose( CALL_INFO,
-                     2,
-                     0,
-                     "ECALL: forza_send called by thread %" PRIu32
-                     " on hart %" PRIu32 " dst = %" PRIx64 ", spaddr = %" PRIu64
-                     ", size = %" PRIu64 "\n",
-                     GetActiveThreadID(),
-                     HartToExecID,
-                     dst,
-                     spaddr,
-                     (uint64_t) size );
+    output->verbose(
+      CALL_INFO,
+      2,
+      0,
+      "ECALL: forza_send called by thread %" PRIu32 " on hart %" PRIu32 " dst = %" PRIx64 ", spaddr = %" PRIu64 ", size = %" PRIu64
+      "\n",
+      GetActiveThreadID(),
+      HartToExecID,
+      dst,
+      spaddr,
+      (uint64_t) size
+    );
     // TODO: Using the scratchpad addr and size, read scratrpad memory, create a ZOP and send to destination.
     // force programmer to make padding to uint64_t
     if( size % sizeof( uint64_t ) ) {
-      output->fatal( CALL_INFO,
-                     -1,
-                     "ECALL_forza_send: error, size (%" PRIu64
-                     ") should be a multiple of (%" PRIu64 ")\n",
-                     (uint64_t) size,
-                     (uint64_t) ( sizeof( uint64_t ) ) );
+      output->fatal(
+        CALL_INFO,
+        -1,
+        "ECALL_forza_send: error, size (%" PRIu64 ") should be a multiple of (%" PRIu64 ")\n",
+        (uint64_t) size,
+        (uint64_t) ( sizeof( uint64_t ) )
+      );
     }
     if( size > max_data_size ) {
-      output->fatal( CALL_INFO,
-                     1,
-                     "ECALL_forza_send: error, size (%" PRIu64
-                     ") > max_data_size (%" PRIu64 ")\n",
-                     (uint64_t) size,
-                     (uint64_t) max_data_size );
+      output->fatal(
+        CALL_INFO,
+        1,
+        "ECALL_forza_send: error, size (%" PRIu64 ") > max_data_size (%" PRIu64 ")\n",
+        (uint64_t) size,
+        (uint64_t) max_data_size
+      );
     }
   }
 
-  auto lsq_hash = LSQHash(
-    RevReg::a0, RevRegClass::RegGPR, HartToExecID );  // Cached hash value
+  auto lsq_hash = LSQHash( RevReg::a0, RevRegClass::RegGPR, HartToExecID );  // Cached hash value
 
   if( EcallState.bytesRead && LSQueue->count( lsq_hash ) == 0 ) {
-    EcallState.string +=
-      std::string_view( EcallState.buf.data(), EcallState.bytesRead );
+    EcallState.string += std::string_view( EcallState.buf.data(), EcallState.bytesRead );
     EcallState.bytesRead = 0;
   }
 
@@ -3719,9 +3702,9 @@ EcallStatus RevCore::ECALL_forza_send() {
       u.b[i] = EcallState.buf[i];
     }
 
-    uint8_t  SrcZCID = (uint8_t) ( zNic->getEndpointType() );
-    uint8_t  SrcPCID = (uint8_t) ( zNic->getPCID( zNic->getZoneID() ) );
-    uint16_t SrcHart = (uint16_t) HartToExecID;
+    uint8_t  SrcZCID          = (uint8_t) ( zNic->getEndpointType() );
+    uint8_t  SrcPCID          = (uint8_t) ( zNic->getPCID( zNic->getZoneID() ) );
+    uint16_t SrcHart          = (uint16_t) HartToExecID;
 
     // output->verbose(CALL_INFO, 0, 0, "ECALL_forza_send: SrcZCID = %" PRIu8
     //           ", SrcPCID = %" PRIu8 ", SrcHart = %" PRIu16 "\n", SrcZCID, SrcPCID, SrcHart);
@@ -3743,31 +3726,30 @@ EcallStatus RevCore::ECALL_forza_send() {
     zev->setDestPCID( DstPCID );
     zev->setDestHart( DstHart );
 
-    std::vector< uint64_t > payload;
+    std::vector<uint64_t> payload;
     for( size_t i = 0; i < size; i += sizeof( uint64_t ) ) {
       for( size_t j = 0; j < sizeof( uint64_t ); j++ ) {
         u.b[j] = EcallState.buf[i + j];
       }
       payload.push_back( u.d );
-      output->verbose( CALL_INFO,
-                       2,
-                       0,
-                       "ECALL: forza_send called by thread %" PRIu32
-                       " on hart %" PRIu32 ", dat[0]=%" PRIx8 ", dat[1]=%" PRIx8
-                       ", dat[2]=%" PRIx8 ", dat[3]=%" PRIx8 ", dat[4]=%" PRIx8
-                       ", dat[5]=%" PRIx8 ", dat[6]=%" PRIx8 ", dat[7]=%" PRIx8
-                       ", dat[0-7]=%" PRIu64 " \n",
-                       GetActiveThreadID(),
-                       HartToExecID,
-                       EcallState.buf[0],
-                       EcallState.buf[1],
-                       EcallState.buf[2],
-                       EcallState.buf[3],
-                       EcallState.buf[4],
-                       EcallState.buf[5],
-                       EcallState.buf[6],
-                       EcallState.buf[7],
-                       u.d );
+      output->verbose(
+        CALL_INFO,
+        2,
+        0,
+        "ECALL: forza_send called by thread %" PRIu32 " on hart %" PRIu32 ", dat[0]=%" PRIx8 ", dat[1]=%" PRIx8 ", dat[2]=%" PRIx8
+        ", dat[3]=%" PRIx8 ", dat[4]=%" PRIx8 ", dat[5]=%" PRIx8 ", dat[6]=%" PRIx8 ", dat[7]=%" PRIx8 ", dat[0-7]=%" PRIu64 " \n",
+        GetActiveThreadID(),
+        HartToExecID,
+        EcallState.buf[0],
+        EcallState.buf[1],
+        EcallState.buf[2],
+        EcallState.buf[3],
+        EcallState.buf[4],
+        EcallState.buf[5],
+        EcallState.buf[6],
+        EcallState.buf[7],
+        u.d
+      );
     }
     zev->setPayload( payload );
     zev->encodeEvent();
@@ -3776,30 +3758,27 @@ EcallStatus RevCore::ECALL_forza_send() {
       output->fatal( CALL_INFO, -1, "Error : zNic is nullptr\n" );
     }
 
-    output->verbose( CALL_INFO,
-                     0,
-                     0,
-                     "ECALL_forza_send: SrcZCID = %" PRIu8 ", SrcPCID = %" PRIu8
-                     ", SrcHart = %" PRIu16 ", DstZCID = %" PRIu8
-                     ", DstPCID = %" PRIu8 ", DstHart = %" PRIu16 "\n",
-                     SrcZCID,
-                     SrcPCID,
-                     SrcHart,
-                     DstZCID,
-                     DstPCID,
-                     DstHart );
+    output->verbose(
+      CALL_INFO,
+      0,
+      0,
+      "ECALL_forza_send: SrcZCID = %" PRIu8 ", SrcPCID = %" PRIu8 ", SrcHart = %" PRIu16 ", DstZCID = %" PRIu8 ", DstPCID = %" PRIu8
+      ", DstHart = %" PRIu16 "\n",
+      SrcZCID,
+      SrcPCID,
+      SrcHart,
+      DstZCID,
+      DstPCID,
+      DstHart
+    );
 
     switch( DstZCID ) {
     case 0: zNic->send( zev, SST::Forza::zopCompID::Z_ZAP0 ); break;
     case 1: zNic->send( zev, SST::Forza::zopCompID::Z_ZAP1 ); break;
     case 2: zNic->send( zev, SST::Forza::zopCompID::Z_ZAP2 ); break;
     case 3: zNic->send( zev, SST::Forza::zopCompID::Z_ZAP3 ); break;
-    default:
-      output->fatal(
-        CALL_INFO, -1, "Error : DstZCID[%" PRIu8 "] doesnt exist\n", DstZCID );
-      break;
+    default: output->fatal( CALL_INFO, -1, "Error : DstZCID[%" PRIu8 "] doesnt exist\n", DstZCID ); break;
     }
-
 
     //RegFile->SetX(RevReg::a0, rc);
     DependencyClear( HartToExecID, RevReg::a0, RevRegClass::RegGPR );
@@ -3808,42 +3787,36 @@ EcallStatus RevCore::ECALL_forza_send() {
   }
 
   if( LSQueue->count( lsq_hash ) == 0 ) {
-    MemReq req( spaddr + EcallState.string.size(),
-                RevReg::a0,
-                RevRegClass::RegGPR,
-                HartToExecID,
-                MemOp::MemOpREAD,
-                true,
-                RegFile->GetMarkLoadComplete() );
+    MemReq req(
+      spaddr + EcallState.string.size(),
+      RevReg::a0,
+      RevRegClass::RegGPR,
+      HartToExecID,
+      MemOp::MemOpREAD,
+      true,
+      RegFile->GetMarkLoadComplete()
+    );
     LSQueue->insert( req.LSQHashPair() );
 
     if( nleft >= 8 ) {
-      mem->ReadVal( HartToExecID,
-                    spaddr + EcallState.string.size(),
-                    reinterpret_cast< uint64_t* >( EcallState.buf.data() ),
-                    req,
-                    RevFlag::F_NONE );
+      mem->ReadVal(
+        HartToExecID, spaddr + EcallState.string.size(), reinterpret_cast<uint64_t*>( EcallState.buf.data() ), req, RevFlag::F_NONE
+      );
       EcallState.bytesRead = 8;
     } else if( nleft >= 4 ) {
-      mem->ReadVal( HartToExecID,
-                    spaddr + EcallState.string.size(),
-                    reinterpret_cast< uint32_t* >( EcallState.buf.data() ),
-                    req,
-                    RevFlag::F_NONE );
+      mem->ReadVal(
+        HartToExecID, spaddr + EcallState.string.size(), reinterpret_cast<uint32_t*>( EcallState.buf.data() ), req, RevFlag::F_NONE
+      );
       EcallState.bytesRead = 4;
     } else if( nleft >= 2 ) {
-      mem->ReadVal( HartToExecID,
-                    spaddr + EcallState.string.size(),
-                    reinterpret_cast< uint16_t* >( EcallState.buf.data() ),
-                    req,
-                    RevFlag::F_NONE );
+      mem->ReadVal(
+        HartToExecID, spaddr + EcallState.string.size(), reinterpret_cast<uint16_t*>( EcallState.buf.data() ), req, RevFlag::F_NONE
+      );
       EcallState.bytesRead = 2;
     } else {
-      mem->ReadVal( HartToExecID,
-                    spaddr + EcallState.string.size(),
-                    reinterpret_cast< uint8_t* >( EcallState.buf.data() ),
-                    req,
-                    RevFlag::F_NONE );
+      mem->ReadVal(
+        HartToExecID, spaddr + EcallState.string.size(), reinterpret_cast<uint8_t*>( EcallState.buf.data() ), req, RevFlag::F_NONE
+      );
       EcallState.bytesRead = 1;
     }
 
@@ -3856,15 +3829,16 @@ EcallStatus RevCore::ECALL_forza_send() {
 
 // 4004, forza_zen_credit_release();
 EcallStatus RevCore::ECALL_forza_zen_credit_release() {
-  output->verbose( CALL_INFO,
-                   2,
-                   0,
-                   "ECALL: forza_zen_credit_release called by thread %" PRIu32
-                   " on hart %" PRIu32 "\n",
-                   GetActiveThreadID(),
-                   HartToExecID );
+  output->verbose(
+    CALL_INFO,
+    2,
+    0,
+    "ECALL: forza_zen_credit_release called by thread %" PRIu32 " on hart %" PRIu32 "\n",
+    GetActiveThreadID(),
+    HartToExecID
+  );
   // TODO: Give back a credit to the zen and update ZEN should update its head pointer to new packet.
-  uint64_t num_creds = (uint64_t) RegFile->GetX< uint64_t >( RevReg::a0 );
+  uint64_t num_creds        = (uint64_t) RegFile->GetX<uint64_t>( RevReg::a0 );
 
   SST::Forza::zopEvent* zev = new SST::Forza::zopEvent();
 
@@ -3884,7 +3858,7 @@ EcallStatus RevCore::ECALL_forza_zen_credit_release() {
 
   // set the payload, do actual send setup thing : FIXME
   // read ZEN::processSetupMsgs
-  std::vector< uint64_t > payload;
+  std::vector<uint64_t> payload;
   payload.push_back( num_creds );  // acs_pair = payload[0]
   zev->setPayload( payload );
 
@@ -3897,16 +3871,12 @@ EcallStatus RevCore::ECALL_forza_zen_credit_release() {
 
 // 4005, forza_zen_setup(uint64_t addr, size_t size, uint64_t tailptr);
 EcallStatus RevCore::ECALL_forza_zen_setup() {
-  uint64_t addr    = (uint64_t) RegFile->GetX< uint64_t >( RevReg::a0 );
-  size_t   size    = (size_t) RegFile->GetX< size_t >( RevReg::a1 );
-  uint64_t tailptr = (uint64_t) RegFile->GetX< uint64_t >( RevReg::a2 );
-  output->verbose( CALL_INFO,
-                   2,
-                   0,
-                   "ECALL: forza_zen_setup called by thread %" PRIu32
-                   " on hart %" PRIu32 "\n",
-                   GetActiveThreadID(),
-                   HartToExecID );
+  uint64_t addr    = (uint64_t) RegFile->GetX<uint64_t>( RevReg::a0 );
+  size_t   size    = (size_t) RegFile->GetX<size_t>( RevReg::a1 );
+  uint64_t tailptr = (uint64_t) RegFile->GetX<uint64_t>( RevReg::a2 );
+  output->verbose(
+    CALL_INFO, 2, 0, "ECALL: forza_zen_setup called by thread %" PRIu32 " on hart %" PRIu32 "\n", GetActiveThreadID(), HartToExecID
+  );
 
   // TODO: Forza library will pass the memory base address and size allocated by each actor to inform/initialize zen.
 
@@ -3918,19 +3888,19 @@ EcallStatus RevCore::ECALL_forza_zen_setup() {
   uint8_t  SrcPCID          = (uint8_t) ( zNic->getPCID( zNic->getZoneID() ) );
   uint16_t SrcHart          = (uint16_t) HartToExecID;
 
-  output->verbose( CALL_INFO,
-                   0,
-                   0,
-                   "ECALL_forza_zen_setup: addr = 0x%" PRIx64
-                   ", size = %" PRIu64 ", tailptr = 0x%" PRIx64
-                   ", SrcZCID = %" PRIu8 ", SrcPCID = %" PRIu8
-                   ", SrcHart = %" PRIu16 "\n",
-                   addr,
-                   (uint64_t) size,
-                   tailptr,
-                   SrcZCID,
-                   SrcPCID,
-                   SrcHart );
+  output->verbose(
+    CALL_INFO,
+    0,
+    0,
+    "ECALL_forza_zen_setup: addr = 0x%" PRIx64 ", size = %" PRIu64 ", tailptr = 0x%" PRIx64 ", SrcZCID = %" PRIu8
+    ", SrcPCID = %" PRIu8 ", SrcHart = %" PRIu16 "\n",
+    addr,
+    (uint64_t) size,
+    tailptr,
+    SrcZCID,
+    SrcPCID,
+    SrcHart
+  );
 
   // set all the fields : FIXME
   zev->setType( SST::Forza::zopMsgT::Z_MSG );
@@ -3942,7 +3912,7 @@ EcallStatus RevCore::ECALL_forza_zen_setup() {
 
   // set the payload, do actual send setup thing : FIXME
   // read ZEN::processSetupMsgs
-  std::vector< uint64_t > payload;
+  std::vector<uint64_t> payload;
   payload.push_back( 0x00ull );  // acs_pair = payload[0]
   payload.push_back( addr );     // mem_start_addr = payload[1]
   payload.push_back( size );     // size = payload[3]
@@ -3960,31 +3930,29 @@ EcallStatus RevCore::ECALL_forza_zen_setup() {
 
 // 4006, forza_zqm_setup(uint64_t addr, uint64_t size, uint64_t min_hart, uint64_t max_hart, uint64_t seq_ld_flag);
 EcallStatus RevCore::ECALL_forza_zqm_setup() {
-  uint64_t low_addr    = (uint64_t) RegFile->GetX< uint64_t >( RevReg::a0 );
-  uint64_t size        = (uint64_t) RegFile->GetX< uint64_t >( RevReg::a1 );
+  uint64_t low_addr    = (uint64_t) RegFile->GetX<uint64_t>( RevReg::a0 );
+  uint64_t size        = (uint64_t) RegFile->GetX<uint64_t>( RevReg::a1 );
   uint64_t high_addr   = low_addr + size - 1;
-  uint64_t min_hart    = (uint64_t) RegFile->GetX< uint64_t >( RevReg::a2 );
-  uint64_t max_hart    = (uint64_t) RegFile->GetX< uint64_t >( RevReg::a3 );
-  uint64_t seq_ld_flag = (uint64_t) RegFile->GetX< uint64_t >( RevReg::a4 );
+  uint64_t min_hart    = (uint64_t) RegFile->GetX<uint64_t>( RevReg::a2 );
+  uint64_t max_hart    = (uint64_t) RegFile->GetX<uint64_t>( RevReg::a3 );
+  uint64_t seq_ld_flag = (uint64_t) RegFile->GetX<uint64_t>( RevReg::a4 );
 
-  output->verbose( CALL_INFO,
-                   2,
-                   0,
-                   "ECALL: forza_zqm_init called by thread %" PRIu32
-                   " on hart %" PRIu32 "\n",
-                   GetActiveThreadID(),
-                   HartToExecID );
-  output->verbose( CALL_INFO,
-                   5,
-                   0,
-                   "Arguments: low_addr=0x%lx, size=0x%lx, high_addr=0x%lx,"
-                   " min_hart=0x%lx, max_hart=0x%lx, seq_ld_flag=0x%lx\n",
-                   low_addr,
-                   size,
-                   high_addr,
-                   min_hart,
-                   max_hart,
-                   seq_ld_flag );
+  output->verbose(
+    CALL_INFO, 2, 0, "ECALL: forza_zqm_init called by thread %" PRIu32 " on hart %" PRIu32 "\n", GetActiveThreadID(), HartToExecID
+  );
+  output->verbose(
+    CALL_INFO,
+    5,
+    0,
+    "Arguments: low_addr=0x%lx, size=0x%lx, high_addr=0x%lx,"
+    " min_hart=0x%lx, max_hart=0x%lx, seq_ld_flag=0x%lx\n",
+    low_addr,
+    size,
+    high_addr,
+    min_hart,
+    max_hart,
+    seq_ld_flag
+  );
 
   // TODO: If this initialization is being executed by a single thread, then one of two things has to happen:
   // A. This function sends a zop to all ZQMs in the system (so a double for-loop should be written)
@@ -3999,8 +3967,7 @@ EcallStatus RevCore::ECALL_forza_zqm_setup() {
   zev->setType( SST::Forza::zopMsgT::Z_MSG );
   zev->setID( msg_id );
   zev->setOpc( SST::Forza::zopOpc::Z_MSG_ZQMSET );
-  zev->setAppID(
-    0 );  // FIXME: Pull this from the executing thread; for now, just use 0
+  zev->setAppID( 0 );  // FIXME: Pull this from the executing thread; for now, just use 0
 
   // src info
   zev->setSrcHart( HartToExecID );
@@ -4029,7 +3996,7 @@ EcallStatus RevCore::ECALL_forza_zqm_setup() {
    * 0x7 or 0xF (since we're dealing with 8byte storage chunks)
    */
 
-  std::vector< uint64_t > payload;
+  std::vector<uint64_t> payload;
   payload.push_back( min_hart );
   payload.push_back( max_hart );
   payload.push_back( low_addr );
@@ -4038,10 +4005,7 @@ EcallStatus RevCore::ECALL_forza_zqm_setup() {
   zev->setPayload( payload );
 
   // Let's send the message
-  zNic->send( zev,
-              SST::Forza::zopCompID::Z_ZQM,
-              zNic->getPCID( zev->getDestPCID() ),
-              zev->getDestPrec() );
+  zNic->send( zev, SST::Forza::zopCompID::Z_ZQM, zNic->getPCID( zev->getDestPCID() ), zev->getDestPrec() );
 
   return EcallStatus::SUCCESS;
 }
@@ -4049,28 +4013,30 @@ EcallStatus RevCore::ECALL_forza_zqm_setup() {
 // 4007, forza_get_harts_per_zap
 EcallStatus RevCore::ECALL_forza_get_harts_per_zap() {
   RegFile->SetX( RevReg::a0, this->numHarts );
-  output->verbose( CALL_INFO,
-                   2,
-                   0,
-                   "ECALL: forza_get_harts_per_zap called by thread %" PRIu32
-                   " on hart %" PRIu32 ", val=%" PRIu32 "\n",
-                   GetActiveThreadID(),
-                   HartToExecID,
-                   this->numHarts );
+  output->verbose(
+    CALL_INFO,
+    2,
+    0,
+    "ECALL: forza_get_harts_per_zap called by thread %" PRIu32 " on hart %" PRIu32 ", val=%" PRIu32 "\n",
+    GetActiveThreadID(),
+    HartToExecID,
+    this->numHarts
+  );
   return EcallStatus::SUCCESS;
 }
 
 // 4008, forza_get_zaps_per_zone();
 EcallStatus RevCore::ECALL_forza_get_zaps_per_zone() {
   RegFile->SetX( RevReg::a0, (uint8_t) zNic->getNumZaps() );
-  output->verbose( CALL_INFO,
-                   2,
-                   0,
-                   "ECALL: forza_get_zaps_per_zone called by thread %" PRIu32
-                   " on hart %" PRIu32 ", val=%" PRIu32 "\n",
-                   GetActiveThreadID(),
-                   HartToExecID,
-                   zNic->getNumZaps() );
+  output->verbose(
+    CALL_INFO,
+    2,
+    0,
+    "ECALL: forza_get_zaps_per_zone called by thread %" PRIu32 " on hart %" PRIu32 ", val=%" PRIu32 "\n",
+    GetActiveThreadID(),
+    HartToExecID,
+    zNic->getNumZaps()
+  );
   return EcallStatus::SUCCESS;
 }
 
@@ -4081,83 +4047,88 @@ EcallStatus RevCore::ECALL_forza_get_zones_per_precinct() {
     CALL_INFO,
     2,
     0,
-    "ECALL: forza_get_zones_per_precinct called by thread %" PRIu32
-    " on hart %" PRIu32 ", val=%" PRIu32 "\n",
+    "ECALL: forza_get_zones_per_precinct called by thread %" PRIu32 " on hart %" PRIu32 ", val=%" PRIu32 "\n",
     GetActiveThreadID(),
     HartToExecID,
-    zNic->getNumZones() );
+    zNic->getNumZones()
+  );
   return EcallStatus::SUCCESS;
 }
 
 // 4010, forza_get_num_precincts();
 EcallStatus RevCore::ECALL_forza_get_num_precincts() {
   RegFile->SetX( RevReg::a0, zNic->getNumPrecincts() );
-  output->verbose( CALL_INFO,
-                   2,
-                   0,
-                   "ECALL: forza_get_num_precincts called by thread %" PRIu32
-                   " on hart %" PRIu32 ", val=%" PRIu32 "\n",
-                   GetActiveThreadID(),
-                   HartToExecID,
-                   zNic->getNumPrecincts() );
+  output->verbose(
+    CALL_INFO,
+    2,
+    0,
+    "ECALL: forza_get_num_precincts called by thread %" PRIu32 " on hart %" PRIu32 ", val=%" PRIu32 "\n",
+    GetActiveThreadID(),
+    HartToExecID,
+    zNic->getNumPrecincts()
+  );
   return EcallStatus::SUCCESS;
 }
 
 // 4011, forza_get_my_zap();
 EcallStatus RevCore::ECALL_forza_get_my_zap() {
   RegFile->SetX( RevReg::a0, (uint8_t) zNic->getEndpointType() );
-  output->verbose( CALL_INFO,
-                   2,
-                   0,
-                   "ECALL: forza_get_my_zap called by thread %" PRIu32
-                   " on hart %" PRIu32 ", val=%" PRIu32 "\n",
-                   GetActiveThreadID(),
-                   HartToExecID,
-                   (unsigned) zNic->getEndpointType() );
+  output->verbose(
+    CALL_INFO,
+    2,
+    0,
+    "ECALL: forza_get_my_zap called by thread %" PRIu32 " on hart %" PRIu32 ", val=%" PRIu32 "\n",
+    GetActiveThreadID(),
+    HartToExecID,
+    (unsigned) zNic->getEndpointType()
+  );
   return EcallStatus::SUCCESS;
 }
 
 // 4012, forza_get_my_zone();
 EcallStatus RevCore::ECALL_forza_get_my_zone() {
   RegFile->SetX( RevReg::a0, zNic->getZoneID() );
-  output->verbose( CALL_INFO,
-                   2,
-                   0,
-                   "ECALL: forza_get_my_zone called by thread %" PRIu32
-                   " on hart %" PRIu32 ", val=%" PRIu32 "\n",
-                   GetActiveThreadID(),
-                   HartToExecID,
-                   zNic->getZoneID() );
+  output->verbose(
+    CALL_INFO,
+    2,
+    0,
+    "ECALL: forza_get_my_zone called by thread %" PRIu32 " on hart %" PRIu32 ", val=%" PRIu32 "\n",
+    GetActiveThreadID(),
+    HartToExecID,
+    zNic->getZoneID()
+  );
   return EcallStatus::SUCCESS;
 }
 
 // 4013, forza_get_my_precinct();
 EcallStatus RevCore::ECALL_forza_get_my_precinct() {
   RegFile->SetX( RevReg::a0, zNic->getPrecinctID() );
-  output->verbose( CALL_INFO,
-                   2,
-                   0,
-                   "ECALL: forza_get_my_precinct called by thread %" PRIu32
-                   " on hart %" PRIu32 ", val=%" PRIu32 "\n",
-                   GetActiveThreadID(),
-                   HartToExecID,
-                   zNic->getPrecinctID() );
+  output->verbose(
+    CALL_INFO,
+    2,
+    0,
+    "ECALL: forza_get_my_precinct called by thread %" PRIu32 " on hart %" PRIu32 ", val=%" PRIu32 "\n",
+    GetActiveThreadID(),
+    HartToExecID,
+    zNic->getPrecinctID()
+  );
   return EcallStatus::SUCCESS;
 }
 
 // 4014, forza_zone_barrier()
 EcallStatus RevCore::ECALL_forza_zone_barrier() {
-  unsigned num_harts = (unsigned) RegFile->GetX< uint32_t >( RevReg::a0 );
+  unsigned num_harts = (unsigned) RegFile->GetX<uint32_t>( RevReg::a0 );
   if( !zNic->hasBarrier( HartToExecID ) ) {
     zNic->send_zone_barrier( HartToExecID, num_harts );
-    output->verbose( CALL_INFO,
-                     2,
-                     0,
-                     "ECALL: forza_zone_barrier called by thread %" PRIu32
-                     " on hart %" PRIu32 ", val=%" PRIu32 "\n",
-                     GetActiveThreadID(),
-                     HartToExecID,
-                     zNic->getPrecinctID() );
+    output->verbose(
+      CALL_INFO,
+      2,
+      0,
+      "ECALL: forza_zone_barrier called by thread %" PRIu32 " on hart %" PRIu32 ", val=%" PRIu32 "\n",
+      GetActiveThreadID(),
+      HartToExecID,
+      zNic->getPrecinctID()
+    );
   }
 
   if( zNic->isBarrierComplete( HartToExecID ) ) {
@@ -4169,21 +4140,22 @@ EcallStatus RevCore::ECALL_forza_zone_barrier() {
 
 // 4015, forza_debug_print
 EcallStatus RevCore::ECALL_forza_debug_print() {
-  uint64_t a = (uint64_t) RegFile->GetX< uint64_t >( RevReg::a0 );
-  uint64_t b = (uint64_t) RegFile->GetX< uint64_t >( RevReg::a1 );
-  uint64_t c = (uint64_t) RegFile->GetX< uint64_t >( RevReg::a2 );
+  uint64_t a = (uint64_t) RegFile->GetX<uint64_t>( RevReg::a0 );
+  uint64_t b = (uint64_t) RegFile->GetX<uint64_t>( RevReg::a1 );
+  uint64_t c = (uint64_t) RegFile->GetX<uint64_t>( RevReg::a2 );
 
-  output->verbose( CALL_INFO,
-                   2,
-                   0,
-                   "ECALL: forza_debug_print called by thread %" PRIu32
-                   " on hart %" PRIu32 "; a=0x%" PRIx64 "; b=0x%" PRIx64
-                   "; c=0x%" PRIx64 "\n",
-                   GetActiveThreadID(),
-                   HartToExecID,
-                   a,
-                   b,
-                   c );
+  output->verbose(
+    CALL_INFO,
+    2,
+    0,
+    "ECALL: forza_debug_print called by thread %" PRIu32 " on hart %" PRIu32 "; a=0x%" PRIx64 "; b=0x%" PRIx64 "; c=0x%" PRIx64
+    "\n",
+    GetActiveThreadID(),
+    HartToExecID,
+    a,
+    b,
+    c
+  );
 
   RegFile->SetX( RevReg::a0, 0 );
   return EcallStatus::SUCCESS;

@@ -276,11 +276,7 @@ struct ElfInfo {
 class RevLoader {
 public:
   /// RevLoader: standard constructor
-  RevLoader( std::string  Exe,
-             std::string  Args,
-             RevMem*      Mem,
-             SST::Output* Output,
-             bool         isRZA );
+  RevLoader( std::string Exe, std::string Args, RevMem* Mem, SST::Output* Output, bool isRZA );
 
   /// RevLoader: standard destructor
   ~RevLoader();

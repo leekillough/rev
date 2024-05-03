@@ -3,28 +3,28 @@
 
 namespace hclib {
 
-template< typename T >
+template<typename T>
 inline void launch( const char** deps, int ndeps, T&& lambda ) {
   // forza_fprintf(1, "Actor Launch\n", print_args);
   lambda();
 }
 
-template< typename T >
+template<typename T>
 inline void finish( T&& lambda ) {
   // forza_fprintf(1, "Actor Finish\n", print_args);
   lambda();
 }
 
-template< typename T >
+template<typename T>
 class Mailbox {
 public:
-  std::function< void( T, int ) > process;
+  std::function<void( T, int )> process;
 };
 
-template< typename T >
+template<typename T>
 class Selector {
 public:
-  Mailbox< T > mbx[10];
+  Mailbox<T> mbx[10];
 
   void start( int tid ) {
     if( tid == 0 ) {

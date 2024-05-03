@@ -23,8 +23,7 @@ uint64_t forza_file_read( char* filename, char* buf, size_t count ) {
 }
 
 typedef struct sparsemat_t_ {
-  int64_t
-    local;  //!< 0/1 flag specifies whether this is a local or distributed matrix
+  int64_t local;     //!< 0/1 flag specifies whether this is a local or distributed matrix
   int64_t numrows;   //!< the total number of rows in the matrix
   int64_t lnumrows;  //!< the number of rows on this PE
                      // note lnumrows = (numrows / NPES) + {0 or 1}
@@ -33,14 +32,11 @@ typedef struct sparsemat_t_ {
   int64_t nnz;       //!< total number of nonzeros in the matrix
   int64_t lnnz;      //!< the number of nonzeros on this PE
   //int64_t * offset;      //!< the row offsets into the array of nonzeros
-  int64_t loffset
-    [PKT_QUEUE_SIZE];  //!< the row offsets for the row with affinity to this PE
+  int64_t loffset[PKT_QUEUE_SIZE];  //!< the row offsets for the row with affinity to this PE
   //int64_t * nonzero;     //!< the global array of column indices of nonzeros
-  int64_t lnonzero
-    [PKT_QUEUE_SIZE];  //!< local array of column indices (for rows on this PE).
+  int64_t lnonzero[PKT_QUEUE_SIZE];  //!< local array of column indices (for rows on this PE).
   //double * value;        //!< the global array of values of nonzeros. Optional.
-  double lvalue
-    [PKT_QUEUE_SIZE];  //!< local array of values (values for rows on this PE)
+  double lvalue[PKT_QUEUE_SIZE];  //!< local array of values (values for rows on this PE)
 } sparsemat_t;
 
 typedef struct TrianglePkt {
@@ -97,10 +93,7 @@ int64_t* frontierTail;
 int64_t* nextFrontierTail;
 bool*    visited[2];
 
-void generate_graph( sparsemat_t* mmfile,
-                     bool         iskmer,
-                     bool         isbfs,
-                     int          mynode ) {
+void generate_graph( sparsemat_t* mmfile, bool iskmer, bool isbfs, int mynode ) {
   char buffer1[BUF_SIZE];
   char buffer2[BUF_SIZE][10];
   char path[40];
@@ -124,7 +117,6 @@ void generate_graph( sparsemat_t* mmfile,
     }
   }
 
-
   uint64_t bytesRead = forza_file_read( path, buffer1, 50000 );
   buffer1[bytesRead] = '\0';
 
@@ -143,8 +135,7 @@ void generate_graph( sparsemat_t* mmfile,
     j++;
   }
 
-  mmfile[mynode].local =
-    atoi( buffer2[0] );  //my_atoi should be replaced with sscanf
+  mmfile[mynode].local    = atoi( buffer2[0] );  //my_atoi should be replaced with sscanf
   mmfile[mynode].numrows  = atoi( buffer2[1] );
   mmfile[mynode].lnumrows = atoi( buffer2[2] );
   mmfile[mynode].numcols  = atoi( buffer2[3] );
@@ -167,8 +158,7 @@ void generate_graph( sparsemat_t* mmfile,
 
   if( isbfs ) {
     visited_size[mynode] = mat[mynode].lnumrows;
-    visited[mynode] =
-      (bool*) forza_malloc( visited_size[mynode] * sizeof( bool ) );
+    visited[mynode]      = (bool*) forza_malloc( visited_size[mynode] * sizeof( bool ) );
     for( int tt = 0; tt < visited_size[mynode]; tt++ ) {
       visited[mynode][tt] = 0;
     }
@@ -212,14 +202,12 @@ void forza_recv_process( void* pkt, int AID ) {
   TrianglePkt* pkg       = (TrianglePkt*) pkt;
   int64_t      tempCount = 0;
 
-  for( int64_t k = mat[AID].loffset[pkg->vj]; k < mat[AID].loffset[pkg->vj + 1];
-       k++ ) {
+  for( int64_t k = mat[AID].loffset[pkg->vj]; k < mat[AID].loffset[pkg->vj + 1]; k++ ) {
     if( pkg->w == mat[AID].lnonzero[k] ) {
       tempCount++;
       break;
     }
-    if( pkg->w <
-        mat[AID].lnonzero[k] ) {  // requires that nonzeros are increasing
+    if( pkg->w < mat[AID].lnonzero[k] ) {  // requires that nonzeros are increasing
       break;
     }
   }
@@ -252,10 +240,7 @@ void* forza_poll_thread( int* mytid ) {
 
       while( mb_request[mythread][i].pkt[recvcnt].valid ) {
         switch( mb_request[mythread][i].pkt[recvcnt].mb_type ) {
-        case REQUEST:
-          forza_recv_process( mb_request[mythread][i].pkt[recvcnt].pkt,
-                              mythread );
-          break;
+        case REQUEST: forza_recv_process( mb_request[mythread][i].pkt[recvcnt].pkt, mythread ); break;
         case RESPONSE: break;
         case FORZA_DONE: mb_request[mythread][i].mbdone = 1; break;
         case FORZA_BARRIER: fbarriers[mythread]++; break;
@@ -282,7 +267,7 @@ void jaccard_phase1_recv( void* pkt, int AID ) {
   DegreePkt* pkg2 = (DegreePkt*) pkt;
   DegreePkt* dpkt = (DegreePkt*) forza_malloc( 1 * sizeof( DegreePkt ) );
   dpkt->src_idx   = pkg2->src_idx;
-  dpkt->i = kmer_mat[AID].loffset[pkg2->i + 1] - kmer_mat[AID].loffset[pkg2->i];
+  dpkt->i         = kmer_mat[AID].loffset[pkg2->i + 1] - kmer_mat[AID].loffset[pkg2->i];
   ForzaPkt fpkt;
   fpkt.pkt     = (void*) dpkt;
   fpkt.mb_type = RESPONSE;
@@ -319,13 +304,9 @@ void* jaccard_phase1_poll( int* mytid ) {
 
       while( mb_request[mythread][i].pkt[recvcnt].valid ) {
         switch( mb_request[mythread][i].pkt[recvcnt].mb_type ) {
-        case REQUEST:
-          jaccard_phase1_recv( mb_request[mythread][i].pkt[recvcnt].pkt,
-                               mythread );
-          break;
+        case REQUEST: jaccard_phase1_recv( mb_request[mythread][i].pkt[recvcnt].pkt, mythread ); break;
         case RESPONSE:
-          jaccard_phase1_resp( mb_request[mythread][i].pkt[recvcnt].pkt,
-                               mythread );
+          jaccard_phase1_resp( mb_request[mythread][i].pkt[recvcnt].pkt, mythread );
           mb_request[mythread][i].expected_resp--;
           if( mb_request[mythread][i].expected_resp == 0 ) {
             ForzaPkt fpkt;
@@ -360,11 +341,8 @@ void* jaccard_phase1_poll( int* mytid ) {
   return NULL;
 }
 
-int64_t binary_search( int64_t      l_,
-                       int64_t      r_,
-                       int64_t      val_,
-                       sparsemat_t* mat_,
-                       int64_t      flag_ ) {  // custom binary search function
+int64_t binary_search( int64_t l_, int64_t r_, int64_t val_, sparsemat_t* mat_,
+                       int64_t flag_ ) {  // custom binary search function
   while( l_ <= r_ ) {
     int     m_ = l_ + ( r_ - l_ ) / 2;
     int64_t comp_var_;
@@ -389,19 +367,12 @@ void jaccard_phase2_recv( void* pkt, int AID ) {
   JaccardPkt*  pkg2              = (JaccardPkt*) pkt;
   sparsemat_t* mat_              = &kmer_mat[AID];
   sparsemat_t* intersection_mat_ = &mat[AID];
-  int64_t      search_           = binary_search( mat_->loffset[pkg2->index_u],
-                                   mat_->loffset[pkg2->index_u + 1] - 1,
-                                   pkg2->x,
-                                   mat_,
-                                   0 );
+  int64_t      search_ = binary_search( mat_->loffset[pkg2->index_u], mat_->loffset[pkg2->index_u + 1] - 1, pkg2->x, mat_, 0 );
   if( search_ != -1 ) {
-    pkg2->pos_row = pkg2->pos_row / THREADS;
-    int64_t search__ =
-      binary_search( intersection_mat_->loffset[pkg2->pos_row],
-                     intersection_mat_->loffset[pkg2->pos_row + 1] - 1,
-                     pkg2->pos_col,
-                     mat_,
-                     1 );
+    pkg2->pos_row    = pkg2->pos_row / THREADS;
+    int64_t search__ = binary_search(
+      intersection_mat_->loffset[pkg2->pos_row], intersection_mat_->loffset[pkg2->pos_row + 1] - 1, pkg2->pos_col, mat_, 1
+    );
     if( search__ != -1 ) {
       intersection_mat_->lvalue[search__]++;
     }
@@ -432,10 +403,7 @@ void* jaccard_phase2_poll( int* mytid ) {
 
       while( mb_request[mythread][i].pkt[recvcnt].valid ) {
         switch( mb_request[mythread][i].pkt[recvcnt].mb_type ) {
-        case REQUEST:
-          jaccard_phase2_recv( mb_request[mythread][i].pkt[recvcnt].pkt,
-                               mythread );
-          break;
+        case REQUEST: jaccard_phase2_recv( mb_request[mythread][i].pkt[recvcnt].pkt, mythread ); break;
         case RESPONSE: break;
         case FORZA_DONE: mb_request[mythread][i].mbdone++; break;
         case FORZA_BARRIER: fbarriers[mythread]++; break;
@@ -493,10 +461,7 @@ void* bfs_poll_thread( int* mytid ) {
 
       while( mb_request[mythread][i].pkt[recvcnt].valid ) {
         switch( mb_request[mythread][i].pkt[recvcnt].mb_type ) {
-        case REQUEST:
-          bfs_recv_process( mb_request[mythread][i].pkt[recvcnt].pkt,
-                            mythread );
-          break;
+        case REQUEST: bfs_recv_process( mb_request[mythread][i].pkt[recvcnt].pkt, mythread ); break;
         case RESPONSE: break;
         case FORZA_DONE: mb_request[mythread][i].mbdone = 1; break;
         case FORZA_BARRIER: fbarriers[mythread]++; break;

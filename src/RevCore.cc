@@ -16,19 +16,19 @@ namespace SST::RevCPU {
 
 using MemSegment = RevMem::MemSegment;
 
-RevCore::RevCore( unsigned                    Id,
-                  RevOpts*                    Opts,
-                  unsigned                    NumHarts,
-                  RevMem*                     Mem,
-                  RevLoader*                  Loader,
-                  std::function< uint32_t() > GetNewTID,
-                  SST::Output*                Output ) :
-  Halted( false ),
-  Stalled( false ), SingleStep( false ), CrackFault( false ), ALUFault( false ),
-  fault_width( 0 ), id( Id ), HartToDecodeID( 0 ), HartToExecID( 0 ),
-  numHarts( NumHarts ), opts( Opts ), mem( Mem ), coProc( nullptr ),
-  loader( Loader ), zNic( nullptr ), GetNewThreadID( std::move( GetNewTID ) ),
-  output( Output ), feature( nullptr ), sfetch( nullptr ), Tracer( nullptr ) {
+RevCore::RevCore(
+  unsigned                  Id,
+  RevOpts*                  Opts,
+  unsigned                  NumHarts,
+  RevMem*                   Mem,
+  RevLoader*                Loader,
+  std::function<uint32_t()> GetNewTID,
+  SST::Output*              Output
+)
+  : Halted( false ), Stalled( false ), SingleStep( false ), CrackFault( false ), ALUFault( false ), fault_width( 0 ), id( Id ),
+    HartToDecodeID( 0 ), HartToExecID( 0 ), numHarts( NumHarts ), opts( Opts ), mem( Mem ), coProc( nullptr ), loader( Loader ),
+    zNic( nullptr ), GetNewThreadID( std::move( GetNewTID ) ), output( Output ), feature( nullptr ), sfetch( nullptr ),
+    Tracer( nullptr ) {
 
   // initialize the machine model for the target core
   std::string Machine;
@@ -1623,28 +1623,18 @@ unsigned RevCore::GetNextHartToDecodeID() const {
   // Loop from HartToDecodeID + 1 to end of Harts
   for( ; nextID < Harts.size(); nextID++ ) {
     if( HartsClearToDecode[nextID] ) {
-      output->verbose( CALL_INFO,
-                       6,
-                       0,
-                       "Core %" PRIu32 "; Hart switch from %" PRIu32
-                       " to %" PRIu32 "\n",
-                       id,
-                       HartToDecodeID,
-                       nextID );
+      output->verbose(
+        CALL_INFO, 6, 0, "Core %" PRIu32 "; Hart switch from %" PRIu32 " to %" PRIu32 "\n", id, HartToDecodeID, nextID
+      );
       return nextID;  // if nextID is clear, return it
     }
   }
   // Second loop from 0 to HartToDecodeID
   for( nextID = 0; nextID < originalHartID; nextID++ ) {
     if( HartsClearToDecode[nextID] ) {
-      output->verbose( CALL_INFO,
-                       6,
-                       0,
-                       "Core %" PRIu32 "; Hart switch from %" PRIu32
-                       " to %" PRIu32 "\n",
-                       id,
-                       HartToDecodeID,
-                       nextID );
+      output->verbose(
+        CALL_INFO, 6, 0, "Core %" PRIu32 "; Hart switch from %" PRIu32 " to %" PRIu32 "\n", id, HartToDecodeID, nextID
+      );
       return nextID;
     }
   }

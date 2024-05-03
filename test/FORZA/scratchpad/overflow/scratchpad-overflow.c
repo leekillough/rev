@@ -16,8 +16,8 @@ int main( int argc, char** argv ) {
 
   // This should
   if( addr == NULL ) {
-    const char msg[41]   = "alloc failed (as it should have)\n";
-    uint8_t bytesWritten = rev_write( STDOUT_FILENO, &msg[0], sizeof( msg ) );
+    const char msg[41]      = "alloc failed (as it should have)\n";
+    uint8_t    bytesWritten = rev_write( STDOUT_FILENO, &msg[0], sizeof( msg ) );
     return 0;
   } else {
     const char msg[50] = "scratchpad alloc succeeded but it shouldn't have\n";

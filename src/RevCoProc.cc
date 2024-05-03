@@ -26,20 +26,15 @@ RevCoProc::~RevCoProc() {
   delete output;
 }
 
-bool RevCoProc::sendSuccessResp( Forza::zopAPI*   zNic,
-                                 Forza::zopEvent* zev,
-                                 uint16_t         SrcHart ) {
+bool RevCoProc::sendSuccessResp( Forza::zopAPI* zNic, Forza::zopEvent* zev, uint16_t SrcHart ) {
   if( !zNic )
     return false;
   if( !zev )
     return false;
 
   output->verbose(
-    CALL_INFO,
-    9,
-    0,
-    "[FORZA][RZA][MZOP]: Building MZOP success response for WRITE @ ID=%d\n",
-    (unsigned) ( zev->getID() ) );
+    CALL_INFO, 9, 0, "[FORZA][RZA][MZOP]: Building MZOP success response for WRITE @ ID=%d\n", (unsigned) ( zev->getID() )
+  );
 
   // create a new event
   SST::Forza::zopEvent* rsp_zev = new SST::Forza::zopEvent();
@@ -61,7 +56,7 @@ bool RevCoProc::sendSuccessResp( Forza::zopAPI*   zNic,
   rsp_zev->setSrcPrec( (uint8_t) ( zNic->getPrecinctID() ) );
 
   // set the payload
-  std::vector< uint64_t > payload;
+  std::vector<uint64_t> payload;
   payload.push_back( 0x00ull );  // ACS
   rsp_zev->setPayload( payload );
 
@@ -71,21 +66,15 @@ bool RevCoProc::sendSuccessResp( Forza::zopAPI*   zNic,
   return true;
 }
 
-bool RevCoProc::sendSuccessResp( Forza::zopAPI*   zNic,
-                                 Forza::zopEvent* zev,
-                                 uint16_t         SrcHart,
-                                 uint64_t         Data ) {
+bool RevCoProc::sendSuccessResp( Forza::zopAPI* zNic, Forza::zopEvent* zev, uint16_t SrcHart, uint64_t Data ) {
   if( zNic == nullptr )
     return false;
   if( zev == nullptr )
     return false;
 
   output->verbose(
-    CALL_INFO,
-    9,
-    0,
-    "[FORZA][RZA][]: Building LOAD or HZOP response for MSG @ ID=%d\n",
-    (unsigned) ( zev->getID() ) );
+    CALL_INFO, 9, 0, "[FORZA][RZA][]: Building LOAD or HZOP response for MSG @ ID=%d\n", (unsigned) ( zev->getID() )
+  );
 
   uint64_t Addr = 0x00ull;
   zev->getFLIT( Z_FLIT_ADDR, &Addr );
@@ -110,7 +99,7 @@ bool RevCoProc::sendSuccessResp( Forza::zopAPI*   zNic,
   rsp_zev->setSrcPrec( (uint8_t) ( zNic->getPrecinctID() ) );
 
   // set the payload
-  std::vector< uint64_t > payload;
+  std::vector<uint64_t> payload;
   payload.push_back( 0x00ull );  // ACS
   payload.push_back( Data );     // load response data
   rsp_zev->setPayload( payload );
@@ -179,18 +168,13 @@ bool RevSimpleCoProc::ClockTick( SST::Cycle_t cycle ) {
 // ---------------------------------------------------------------
 // RZALSCoproc
 // ---------------------------------------------------------------
-RZALSCoProc::RZALSCoProc( ComponentId_t id, Params& params, RevCore* parent ) :
-  RevCoProc( id, params, parent ), Mem( nullptr ), zNic( nullptr ) {
+RZALSCoProc::RZALSCoProc( ComponentId_t id, Params& params, RevCore* parent )
+  : RevCoProc( id, params, parent ), Mem( nullptr ), zNic( nullptr ) {
 
-  std::string ClockFreq = params.find< std::string >( "clock", "1Ghz" );
-  registerClock(
-    ClockFreq,
-    new Clock::Handler< RZALSCoProc >( this, &RZALSCoProc::ClockTick ) );
-  output->output( "Registering RZALSCoProc with frequency=%s\n",
-                  ClockFreq.c_str() );
-  MarkLoadCompleteFunc = [=]( const MemReq& req ) {
-    this->MarkLoadComplete( req );
-  };
+  std::string ClockFreq = params.find<std::string>( "clock", "1Ghz" );
+  registerClock( ClockFreq, new Clock::Handler<RZALSCoProc>( this, &RZALSCoProc::ClockTick ) );
+  output->output( "Registering RZALSCoProc with frequency=%s\n", ClockFreq.c_str() );
+  MarkLoadCompleteFunc = [=]( const MemReq& req ) { this->MarkLoadComplete( req ); };
 
   // register the stats
   registerStats();
@@ -198,7 +182,7 @@ RZALSCoProc::RZALSCoProc( ComponentId_t id, Params& params, RevCore* parent ) :
 
 RZALSCoProc::~RZALSCoProc() {
   for( auto it = LoadQ.begin(); it != LoadQ.end(); ++it ) {
-    auto z = std::get< LOADQ_ZEV >( *it );
+    auto z = std::get<LOADQ_ZEV>( *it );
     delete z;
   }
   LoadQ.clear();
@@ -223,7 +207,7 @@ void RZALSCoProc::registerStats() {
          "MZOP_SSW",
          "MZOP_SDMA",
        } ) {
-    stats.push_back( registerStatistic< uint64_t >( stat ) );
+    stats.push_back( registerStatistic<uint64_t>( stat ) );
   }
 }
 
@@ -233,10 +217,7 @@ void RZALSCoProc::recordStat( RZALSCoProc::mzopStats Stat, uint64_t Data ) {
   }
 }
 
-bool RZALSCoProc::IssueInst( RevFeature* F,
-                             RevRegFile* R,
-                             RevMem*     M,
-                             uint32_t    Inst ) {
+bool RZALSCoProc::IssueInst( RevFeature* F, RevRegFile* R, RevMem* M, uint32_t Inst ) {
   return true;
 }
 
@@ -262,21 +243,14 @@ void RZALSCoProc::CheckLSQueue() {
     if( Alloc.getState( rs2 ) == _H_DIRTY ) {
       // load to register has occurred, time to build a response
       if( !sendSuccessResp( zNic, zev, Z_MZOP_PIPE_HART, Alloc.GetX( rs2 ) ) ) {
-        output->fatal(
-          CALL_INFO,
-          -1,
-          "[FORZA][RZA][MZOP]: Failed to send success response for ZOP ID=%d\n",
-          zev->getID() );
+        output->fatal( CALL_INFO, -1, "[FORZA][RZA][MZOP]: Failed to send success response for ZOP ID=%d\n", zev->getID() );
       }
       Alloc.clearReg( rs2 );
 
       // clear the request from the ZRqst map
       uint64_t Addr = 0x00ull;
       if( !zev->getFLIT( Z_FLIT_ADDR, &Addr ) ) {
-        output->fatal(
-          CALL_INFO,
-          -1,
-          "[FORZA][RZA] Erroneous packet contents for ZOP in CheckLSQueue\n" );
+        output->fatal( CALL_INFO, -1, "[FORZA][RZA] Erroneous packet contents for ZOP in CheckLSQueue\n" );
       }
       Mem->clearZRqst( Addr );
       delete zev;
@@ -319,17 +293,12 @@ bool RZALSCoProc::handleMZOP( Forza::zopEvent* zev, bool& flag ) {
       -1,
       "[FORZA][RZA][MZOP]: MZOP packet has no address FLIT: Type=%s, ID=%d\n",
       zNic->msgTToStr( zev->getType() ).c_str(),
-      zev->getID() );
+      zev->getID()
+    );
   }
 
   // used only for load operations
-  MemReq req{ Addr,
-              (uint16_t) ( Rs2 ),
-              RevRegClass::RegGPR,
-              Z_MZOP_PIPE_HART,
-              MemOp::MemOpREAD,
-              true,
-              MarkLoadCompleteFunc };
+  MemReq req{ Addr, (uint16_t) ( Rs2 ), RevRegClass::RegGPR, Z_MZOP_PIPE_HART, MemOp::MemOpREAD, true, MarkLoadCompleteFunc };
 
   // set the address
   Alloc.SetX( Rs1, Addr );
@@ -338,11 +307,7 @@ bool RZALSCoProc::handleMZOP( Forza::zopEvent* zev, bool& flag ) {
   // unsigned loads
   case Forza::zopOpc::Z_MZOP_LB:
     Alloc.SetX( Rs2, 0x00ull );
-    Mem->ReadVal( Z_MZOP_PIPE_HART,
-                  Addr,
-                  reinterpret_cast< uint8_t* >( Alloc.getRegAddr( Rs2 ) ),
-                  req,
-                  RevFlag::F_NONE );
+    Mem->ReadVal( Z_MZOP_PIPE_HART, Addr, reinterpret_cast<uint8_t*>( Alloc.getRegAddr( Rs2 ) ), req, RevFlag::F_NONE );
     zev->setMemReq( req );
     LoadQ.push_back( std::make_pair( zev, Rs2 ) );
     flag = false;
@@ -350,11 +315,7 @@ bool RZALSCoProc::handleMZOP( Forza::zopEvent* zev, bool& flag ) {
     break;
   case Forza::zopOpc::Z_MZOP_LH:
     Alloc.SetX( Rs2, 0x00ull );
-    Mem->ReadVal( Z_MZOP_PIPE_HART,
-                  Addr,
-                  reinterpret_cast< uint16_t* >( Alloc.getRegAddr( Rs2 ) ),
-                  req,
-                  RevFlag::F_NONE );
+    Mem->ReadVal( Z_MZOP_PIPE_HART, Addr, reinterpret_cast<uint16_t*>( Alloc.getRegAddr( Rs2 ) ), req, RevFlag::F_NONE );
     zev->setMemReq( req );
     LoadQ.push_back( std::make_pair( zev, Rs2 ) );
     flag = false;
@@ -362,11 +323,7 @@ bool RZALSCoProc::handleMZOP( Forza::zopEvent* zev, bool& flag ) {
     break;
   case Forza::zopOpc::Z_MZOP_LW:
     Alloc.SetX( Rs2, 0x00ull );
-    Mem->ReadVal( Z_MZOP_PIPE_HART,
-                  Addr,
-                  reinterpret_cast< uint32_t* >( Alloc.getRegAddr( Rs2 ) ),
-                  req,
-                  RevFlag::F_NONE );
+    Mem->ReadVal( Z_MZOP_PIPE_HART, Addr, reinterpret_cast<uint32_t*>( Alloc.getRegAddr( Rs2 ) ), req, RevFlag::F_NONE );
     zev->setMemReq( req );
     LoadQ.push_back( std::make_pair( zev, Rs2 ) );
     flag = false;
@@ -374,8 +331,7 @@ bool RZALSCoProc::handleMZOP( Forza::zopEvent* zev, bool& flag ) {
     break;
   case Forza::zopOpc::Z_MZOP_LD:
     Alloc.SetX( Rs2, 0x00ull );
-    Mem->ReadVal(
-      Z_MZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs2 ), req, RevFlag::F_NONE );
+    Mem->ReadVal( Z_MZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs2 ), req, RevFlag::F_NONE );
     zev->setMemReq( req );
     LoadQ.push_back( std::make_pair( zev, Rs2 ) );
     flag = false;
@@ -384,11 +340,7 @@ bool RZALSCoProc::handleMZOP( Forza::zopEvent* zev, bool& flag ) {
   // signed loads
   case Forza::zopOpc::Z_MZOP_LSB:
     Alloc.SetX( Rs2, 0x00ull );
-    Mem->ReadVal( Z_MZOP_PIPE_HART,
-                  Addr,
-                  reinterpret_cast< int8_t* >( Alloc.getRegAddr( Rs2 ) ),
-                  req,
-                  RevFlag::F_SEXT64 );
+    Mem->ReadVal( Z_MZOP_PIPE_HART, Addr, reinterpret_cast<int8_t*>( Alloc.getRegAddr( Rs2 ) ), req, RevFlag::F_SEXT64 );
     zev->setMemReq( req );
     LoadQ.push_back( std::make_pair( zev, Rs2 ) );
     flag = false;
@@ -396,11 +348,7 @@ bool RZALSCoProc::handleMZOP( Forza::zopEvent* zev, bool& flag ) {
     break;
   case Forza::zopOpc::Z_MZOP_LSH:
     Alloc.SetX( Rs2, 0x00ull );
-    Mem->ReadVal( Z_MZOP_PIPE_HART,
-                  Addr,
-                  reinterpret_cast< int16_t* >( Alloc.getRegAddr( Rs2 ) ),
-                  req,
-                  RevFlag::F_SEXT64 );
+    Mem->ReadVal( Z_MZOP_PIPE_HART, Addr, reinterpret_cast<int16_t*>( Alloc.getRegAddr( Rs2 ) ), req, RevFlag::F_SEXT64 );
     zev->setMemReq( req );
     LoadQ.push_back( std::make_pair( zev, Rs2 ) );
     flag = false;
@@ -408,11 +356,7 @@ bool RZALSCoProc::handleMZOP( Forza::zopEvent* zev, bool& flag ) {
     break;
   case Forza::zopOpc::Z_MZOP_LSW:
     Alloc.SetX( Rs2, 0x00ull );
-    Mem->ReadVal( Z_MZOP_PIPE_HART,
-                  Addr,
-                  reinterpret_cast< int32_t* >( Alloc.getRegAddr( Rs2 ) ),
-                  req,
-                  RevFlag::F_SEXT64 );
+    Mem->ReadVal( Z_MZOP_PIPE_HART, Addr, reinterpret_cast<int32_t*>( Alloc.getRegAddr( Rs2 ) ), req, RevFlag::F_SEXT64 );
     zev->setMemReq( req );
     LoadQ.push_back( std::make_pair( zev, Rs2 ) );
     flag = false;
@@ -427,9 +371,10 @@ bool RZALSCoProc::handleMZOP( Forza::zopEvent* zev, bool& flag ) {
         -1,
         "[FORZA][RZA][MZOP]: MZOP packet has no data FLIT: Type=%s, ID=%d\n",
         zNic->msgTToStr( zev->getType() ).c_str(),
-        zev->getID() );
+        zev->getID()
+      );
     }
-    Mem->Write( Z_MZOP_PIPE_HART, Addr, static_cast< uint8_t >( Data ) );
+    Mem->Write( Z_MZOP_PIPE_HART, Addr, static_cast<uint8_t>( Data ) );
     flag = true;
     recordStat( MZOP_SB, 1 );
     break;
@@ -440,9 +385,10 @@ bool RZALSCoProc::handleMZOP( Forza::zopEvent* zev, bool& flag ) {
         -1,
         "[FORZA][RZA][MZOP]: MZOP packet has no data FLIT: Type=%s, ID=%d\n",
         zNic->msgTToStr( zev->getType() ).c_str(),
-        zev->getID() );
+        zev->getID()
+      );
     }
-    Mem->Write( Z_MZOP_PIPE_HART, Addr, static_cast< uint16_t >( Data ) );
+    Mem->Write( Z_MZOP_PIPE_HART, Addr, static_cast<uint16_t>( Data ) );
     flag = true;
     recordStat( MZOP_SH, 1 );
     break;
@@ -453,9 +399,10 @@ bool RZALSCoProc::handleMZOP( Forza::zopEvent* zev, bool& flag ) {
         -1,
         "[FORZA][RZA][MZOP]: MZOP packet has no data FLIT: Type=%s, ID=%d\n",
         zNic->msgTToStr( zev->getType() ).c_str(),
-        zev->getID() );
+        zev->getID()
+      );
     }
-    Mem->Write( Z_MZOP_PIPE_HART, Addr, static_cast< uint32_t >( Data ) );
+    Mem->Write( Z_MZOP_PIPE_HART, Addr, static_cast<uint32_t>( Data ) );
     flag = true;
     recordStat( MZOP_SW, 1 );
     break;
@@ -466,7 +413,8 @@ bool RZALSCoProc::handleMZOP( Forza::zopEvent* zev, bool& flag ) {
         -1,
         "[FORZA][RZA][MZOP]: MZOP packet has no data FLIT: Type=%s, ID=%d\n",
         zNic->msgTToStr( zev->getType() ).c_str(),
-        zev->getID() );
+        zev->getID()
+      );
     }
     Mem->Write( Z_MZOP_PIPE_HART, Addr, Data );
     flag = true;
@@ -479,9 +427,10 @@ bool RZALSCoProc::handleMZOP( Forza::zopEvent* zev, bool& flag ) {
         -1,
         "[FORZA][RZA][MZOP]: MZOP packet has no data FLIT: Type=%s, ID=%d\n",
         zNic->msgTToStr( zev->getType() ).c_str(),
-        zev->getID() );
+        zev->getID()
+      );
     }
-    Mem->Write( Z_MZOP_PIPE_HART, Addr, static_cast< int8_t >( Data ) );
+    Mem->Write( Z_MZOP_PIPE_HART, Addr, static_cast<int8_t>( Data ) );
     flag = true;
     recordStat( MZOP_SSB, 1 );
     break;
@@ -492,9 +441,10 @@ bool RZALSCoProc::handleMZOP( Forza::zopEvent* zev, bool& flag ) {
         -1,
         "[FORZA][RZA][MZOP]: MZOP packet has no data FLIT: Type=%s, ID=%d\n",
         zNic->msgTToStr( zev->getType() ).c_str(),
-        zev->getID() );
+        zev->getID()
+      );
     }
-    Mem->Write( Z_MZOP_PIPE_HART, Addr, static_cast< int16_t >( Data ) );
+    Mem->Write( Z_MZOP_PIPE_HART, Addr, static_cast<int16_t>( Data ) );
     flag = true;
     recordStat( MZOP_SSH, 1 );
     break;
@@ -505,9 +455,10 @@ bool RZALSCoProc::handleMZOP( Forza::zopEvent* zev, bool& flag ) {
         -1,
         "[FORZA][RZA][MZOP]: MZOP packet has no data FLIT: Type=%s, ID=%d\n",
         zNic->msgTToStr( zev->getType() ).c_str(),
-        zev->getID() );
+        zev->getID()
+      );
     }
-    Mem->Write( Z_MZOP_PIPE_HART, Addr, static_cast< int32_t >( Data ) );
+    Mem->Write( Z_MZOP_PIPE_HART, Addr, static_cast<int32_t>( Data ) );
     flag = true;
     recordStat( MZOP_SSW, 1 );
     break;
@@ -520,12 +471,14 @@ bool RZALSCoProc::handleMZOP( Forza::zopEvent* zev, bool& flag ) {
     for( i = 0; i < RealFlitLen; i++ ) {
       Data = 0x00ull;
       if( !zev->getFLIT( ( Z_FLIT_DATA ) + i, &Data ) ) {
-        output->fatal( CALL_INFO,
-                       -1,
-                       "[FORZA][RZA][MZOP]: MZOP packet has no DMA data FLIT: "
-                       "Type=%s, ID=%d\n",
-                       zNic->msgTToStr( zev->getType() ).c_str(),
-                       zev->getID() );
+        output->fatal(
+          CALL_INFO,
+          -1,
+          "[FORZA][RZA][MZOP]: MZOP packet has no DMA data FLIT: "
+          "Type=%s, ID=%d\n",
+          zNic->msgTToStr( zev->getType() ).c_str(),
+          zev->getID()
+        );
       }
 
       for( j = 0; j < 8; j++ ) {
@@ -542,11 +495,7 @@ bool RZALSCoProc::handleMZOP( Forza::zopEvent* zev, bool& flag ) {
     break;
   default:
     // not an MZOP
-    output->verbose( CALL_INFO,
-                     9,
-                     0,
-                     "[FORZA][RZA][MZOP]: Erroneous MZOP opcode=%d\n",
-                     (unsigned) ( zev->getOpc() ) );
+    output->verbose( CALL_INFO, 9, 0, "[FORZA][RZA][MZOP]: Erroneous MZOP opcode=%d\n", (unsigned) ( zev->getOpc() ) );
     return false;
     break;
   }
@@ -554,11 +503,7 @@ bool RZALSCoProc::handleMZOP( Forza::zopEvent* zev, bool& flag ) {
   if( flag ) {
     // this was a write, signal a success response
     if( !sendSuccessResp( zNic, zev, Z_MZOP_PIPE_HART ) ) {
-      output->fatal(
-        CALL_INFO,
-        -1,
-        "[FORZA][RZA][MZOP]: Failed to send success response for ZOP ID=%d\n",
-        zev->getID() );
+      output->fatal( CALL_INFO, -1, "[FORZA][RZA][MZOP]: Failed to send success response for ZOP ID=%d\n", zev->getID() );
     }
     // go ahead and clear the RS2 as we dont need it for WRITE requests
     Alloc.clearReg( Rs2 );
@@ -575,10 +520,8 @@ bool RZALSCoProc::InjectZOP( Forza::zopEvent* zev, bool& flag ) {
   if( zev->getType() != Forza::zopMsgT::Z_MZOP ) {
     // wrong ZOP type injected
     output->fatal(
-      CALL_INFO,
-      -1,
-      "[FORZA][RZA][MZOP]: Cannot handle ZOP message of type: %s\n",
-      zNic->msgTToStr( zev->getType() ).c_str() );
+      CALL_INFO, -1, "[FORZA][RZA][MZOP]: Cannot handle ZOP message of type: %s\n", zNic->msgTToStr( zev->getType() ).c_str()
+    );
   }
 
   return handleMZOP( zev, flag );
@@ -587,20 +530,12 @@ bool RZALSCoProc::InjectZOP( Forza::zopEvent* zev, bool& flag ) {
 // ---------------------------------------------------------------
 // RZAAMOCoproc
 // ---------------------------------------------------------------
-RZAAMOCoProc::RZAAMOCoProc( ComponentId_t id,
-                            Params&       params,
-                            RevCore*      parent ) :
-  RevCoProc( id, params, parent ),
-  Mem( nullptr ), zNic( nullptr ) {
-  std::string ClockFreq = params.find< std::string >( "clock", "1Ghz" );
-  registerClock(
-    ClockFreq,
-    new Clock::Handler< RZAAMOCoProc >( this, &RZAAMOCoProc::ClockTick ) );
-  output->output( "Registering RZAAMOCoProc with frequency=%s\n",
-                  ClockFreq.c_str() );
-  MarkLoadCompleteFunc = [=]( const MemReq& req ) {
-    this->MarkLoadComplete( req );
-  };
+RZAAMOCoProc::RZAAMOCoProc( ComponentId_t id, Params& params, RevCore* parent )
+  : RevCoProc( id, params, parent ), Mem( nullptr ), zNic( nullptr ) {
+  std::string ClockFreq = params.find<std::string>( "clock", "1Ghz" );
+  registerClock( ClockFreq, new Clock::Handler<RZAAMOCoProc>( this, &RZAAMOCoProc::ClockTick ) );
+  output->output( "Registering RZAAMOCoProc with frequency=%s\n", ClockFreq.c_str() );
+  MarkLoadCompleteFunc = [=]( const MemReq& req ) { this->MarkLoadComplete( req ); };
 
   // register the stats
   registerStats();
@@ -608,7 +543,7 @@ RZAAMOCoProc::RZAAMOCoProc( ComponentId_t id,
 
 RZAAMOCoProc::~RZAAMOCoProc() {
   for( auto it = AMOQ.begin(); it != AMOQ.end(); ++it ) {
-    auto z = std::get< AMOQ_ZEV >( *it );
+    auto z = std::get<AMOQ_ZEV>( *it );
     delete z;
   }
   AMOQ.clear();
@@ -616,43 +551,29 @@ RZAAMOCoProc::~RZAAMOCoProc() {
 
 void RZAAMOCoProc::registerStats() {
   for( auto* stat : {
-         "HZOP_32_BASE_ADD",   "HZOP_32_BASE_AND",   "HZOP_32_BASE_OR",
-         "HZOP_32_BASE_XOR",   "HZOP_32_BASE_SMAX",  "HZOP_32_BASE_MAX",
-         "HZOP_32_BASE_SMIN",  "HZOP_32_BASE_MIN",   "HZOP_32_BASE_SWAP",
-         "HZOP_32_BASE_CAS",   "HZOP_32_BASE_FADD",  "HZOP_32_BASE_FSUB",
-         "HZOP_32_BASE_FRSUB", "HZOP_64_BASE_ADD",   "HZOP_64_BASE_AND",
-         "HZOP_64_BASE_OR",    "HZOP_64_BASE_XOR",   "HZOP_64_BASE_SMAX",
-         "HZOP_64_BASE_MAX",   "HZOP_64_BASE_SMIN",  "HZOP_64_BASE_MIN",
-         "HZOP_64_BASE_SWAP",  "HZOP_64_BASE_CAS",   "HZOP_64_BASE_FADD",
-         "HZOP_64_BASE_FSUB",  "HZOP_64_BASE_FRSUB", "HZOP_32_M_ADD",
-         "HZOP_32_M_AND",      "HZOP_32_M_OR",       "HZOP_32_M_XOR",
-         "HZOP_32_M_SMAX",     "HZOP_32_M_MAX",      "HZOP_32_M_SMIN",
-         "HZOP_32_M_MIN",      "HZOP_32_M_SWAP",     "HZOP_32_M_CAS",
-         "HZOP_32_M_FADD",     "HZOP_32_M_FSUB",     "HZOP_32_M_FRSUB",
-         "HZOP_64_M_ADD",      "HZOP_64_M_AND",      "HZOP_64_M_OR",
-         "HZOP_64_M_XOR",      "HZOP_64_M_SMAX",     "HZOP_64_M_MAX",
-         "HZOP_64_M_SMIN",     "HZOP_64_M_MIN",      "HZOP_64_M_SWAP",
-         "HZOP_64_M_CAS",      "HZOP_64_M_FADD",     "HZOP_64_M_FSUB",
-         "HZOP_64_M_FRSUB",    "HZOP_32_S_ADD",      "HZOP_32_S_AND",
-         "HZOP_32_S_OR",       "HZOP_32_S_XOR",      "HZOP_32_S_SMAX",
-         "HZOP_32_S_MAX",      "HZOP_32_S_SMIN",     "HZOP_32_S_MIN",
-         "HZOP_32_S_SWAP",     "HZOP_32_S_CAS",      "HZOP_32_S_FADD",
-         "HZOP_32_S_FSUB",     "HZOP_32_S_FRSUB",    "HZOP_64_S_ADD",
-         "HZOP_64_S_AND",      "HZOP_64_S_OR",       "HZOP_64_S_XOR",
-         "HZOP_64_S_SMAX",     "HZOP_64_S_MAX",      "HZOP_64_S_SMIN",
-         "HZOP_64_S_MIN",      "HZOP_64_S_SWAP",     "HZOP_64_S_CAS",
-         "HZOP_64_S_FADD",     "HZOP_64_S_FSUB",     "HZOP_64_S_FRSUB",
-         "HZOP_32_MS_ADD",     "HZOP_32_MS_AND",     "HZOP_32_MS_OR",
-         "HZOP_32_MS_XOR",     "HZOP_32_MS_SMAX",    "HZOP_32_MS_MAX",
-         "HZOP_32_MS_SMIN",    "HZOP_32_MS_MIN",     "HZOP_32_MS_SWAP",
-         "HZOP_32_MS_CAS",     "HZOP_32_MS_FADD",    "HZOP_32_MS_FSUB",
-         "HZOP_32_MS_FRSUB",   "HZOP_64_MS_ADD",     "HZOP_64_MS_AND",
-         "HZOP_64_MS_OR",      "HZOP_64_MS_XOR",     "HZOP_64_MS_SMAX",
-         "HZOP_64_MS_MAX",     "HZOP_64_MS_SMIN",    "HZOP_64_MS_MIN",
-         "HZOP_64_MS_SWAP",    "HZOP_64_MS_CAS",     "HZOP_64_MS_FADD",
-         "HZOP_64_MS_FSUB",    "HZOP_64_MS_FRSUB",
+         "HZOP_32_BASE_ADD",   "HZOP_32_BASE_AND",  "HZOP_32_BASE_OR",    "HZOP_32_BASE_XOR",  "HZOP_32_BASE_SMAX",
+         "HZOP_32_BASE_MAX",   "HZOP_32_BASE_SMIN", "HZOP_32_BASE_MIN",   "HZOP_32_BASE_SWAP", "HZOP_32_BASE_CAS",
+         "HZOP_32_BASE_FADD",  "HZOP_32_BASE_FSUB", "HZOP_32_BASE_FRSUB", "HZOP_64_BASE_ADD",  "HZOP_64_BASE_AND",
+         "HZOP_64_BASE_OR",    "HZOP_64_BASE_XOR",  "HZOP_64_BASE_SMAX",  "HZOP_64_BASE_MAX",  "HZOP_64_BASE_SMIN",
+         "HZOP_64_BASE_MIN",   "HZOP_64_BASE_SWAP", "HZOP_64_BASE_CAS",   "HZOP_64_BASE_FADD", "HZOP_64_BASE_FSUB",
+         "HZOP_64_BASE_FRSUB", "HZOP_32_M_ADD",     "HZOP_32_M_AND",      "HZOP_32_M_OR",      "HZOP_32_M_XOR",
+         "HZOP_32_M_SMAX",     "HZOP_32_M_MAX",     "HZOP_32_M_SMIN",     "HZOP_32_M_MIN",     "HZOP_32_M_SWAP",
+         "HZOP_32_M_CAS",      "HZOP_32_M_FADD",    "HZOP_32_M_FSUB",     "HZOP_32_M_FRSUB",   "HZOP_64_M_ADD",
+         "HZOP_64_M_AND",      "HZOP_64_M_OR",      "HZOP_64_M_XOR",      "HZOP_64_M_SMAX",    "HZOP_64_M_MAX",
+         "HZOP_64_M_SMIN",     "HZOP_64_M_MIN",     "HZOP_64_M_SWAP",     "HZOP_64_M_CAS",     "HZOP_64_M_FADD",
+         "HZOP_64_M_FSUB",     "HZOP_64_M_FRSUB",   "HZOP_32_S_ADD",      "HZOP_32_S_AND",     "HZOP_32_S_OR",
+         "HZOP_32_S_XOR",      "HZOP_32_S_SMAX",    "HZOP_32_S_MAX",      "HZOP_32_S_SMIN",    "HZOP_32_S_MIN",
+         "HZOP_32_S_SWAP",     "HZOP_32_S_CAS",     "HZOP_32_S_FADD",     "HZOP_32_S_FSUB",    "HZOP_32_S_FRSUB",
+         "HZOP_64_S_ADD",      "HZOP_64_S_AND",     "HZOP_64_S_OR",       "HZOP_64_S_XOR",     "HZOP_64_S_SMAX",
+         "HZOP_64_S_MAX",      "HZOP_64_S_SMIN",    "HZOP_64_S_MIN",      "HZOP_64_S_SWAP",    "HZOP_64_S_CAS",
+         "HZOP_64_S_FADD",     "HZOP_64_S_FSUB",    "HZOP_64_S_FRSUB",    "HZOP_32_MS_ADD",    "HZOP_32_MS_AND",
+         "HZOP_32_MS_OR",      "HZOP_32_MS_XOR",    "HZOP_32_MS_SMAX",    "HZOP_32_MS_MAX",    "HZOP_32_MS_SMIN",
+         "HZOP_32_MS_MIN",     "HZOP_32_MS_SWAP",   "HZOP_32_MS_CAS",     "HZOP_32_MS_FADD",   "HZOP_32_MS_FSUB",
+         "HZOP_32_MS_FRSUB",   "HZOP_64_MS_ADD",    "HZOP_64_MS_AND",     "HZOP_64_MS_OR",     "HZOP_64_MS_XOR",
+         "HZOP_64_MS_SMAX",    "HZOP_64_MS_MAX",    "HZOP_64_MS_SMIN",    "HZOP_64_MS_MIN",    "HZOP_64_MS_SWAP",
+         "HZOP_64_MS_CAS",     "HZOP_64_MS_FADD",   "HZOP_64_MS_FSUB",    "HZOP_64_MS_FRSUB",
        } ) {
-    stats.push_back( registerStatistic< uint64_t >( stat ) );
+    stats.push_back( registerStatistic<uint64_t>( stat ) );
   }
 }
 
@@ -662,10 +583,7 @@ void RZAAMOCoProc::recordStat( RZAAMOCoProc::hzopStats Stat, uint64_t Data ) {
   }
 }
 
-bool RZAAMOCoProc::IssueInst( RevFeature* F,
-                              RevRegFile* R,
-                              RevMem*     M,
-                              uint32_t    Inst ) {
+bool RZAAMOCoProc::IssueInst( RevFeature* F, RevRegFile* R, RevMem* M, uint32_t Inst ) {
   return true;
 }
 
@@ -701,7 +619,8 @@ bool RZAAMOCoProc::handleHZOP( Forza::zopEvent* zev, bool& flag ) {
       -1,
       "[FORZA][RZA][HZOP]: HZOP packet has no address FLIT: Type=%s, ID=%d\n",
       zNic->msgTToStr( zev->getType() ).c_str(),
-      zev->getID() );
+      zev->getID()
+    );
   }
 
   // preload the data
@@ -711,17 +630,12 @@ bool RZAAMOCoProc::handleHZOP( Forza::zopEvent* zev, bool& flag ) {
       -1,
       "[FORZA][RZA][HZOP]: HZOP packet has no data FLIT: Type=%s, ID=%d\n",
       zNic->msgTToStr( zev->getType() ).c_str(),
-      zev->getID() );
+      zev->getID()
+    );
   }
 
   // setup the MemReq
-  MemReq req{ Addr,
-              (uint16_t) ( Rs2 ),
-              RevRegClass::RegGPR,
-              Z_MZOP_PIPE_HART,
-              MemOp::MemOpAMO,
-              true,
-              MarkLoadCompleteFunc };
+  MemReq req{ Addr, (uint16_t) ( Rs2 ), RevRegClass::RegGPR, Z_MZOP_PIPE_HART, MemOp::MemOpAMO, true, MarkLoadCompleteFunc };
 
   // set the registers
   Alloc.SetX( Rs1, Data );
@@ -731,174 +645,143 @@ bool RZAAMOCoProc::handleHZOP( Forza::zopEvent* zev, bool& flag ) {
   switch( zev->getOpc() ) {
   // 32bit base
   case Forza::zopOpc::Z_HAC_32_BASE_ADD:
-    Mem->AMOVal( Z_HZOP_PIPE_HART,
-                 Addr,
-                 reinterpret_cast< uint32_t* >( Alloc.getRegAddr( Rs1 ) ),
-                 reinterpret_cast< uint32_t* >( Alloc.getRegAddr( Rs2 ) ),
-                 req,
-                 RevFlag::F_AMOADD );
+    Mem->AMOVal(
+      Z_HZOP_PIPE_HART,
+      Addr,
+      reinterpret_cast<uint32_t*>( Alloc.getRegAddr( Rs1 ) ),
+      reinterpret_cast<uint32_t*>( Alloc.getRegAddr( Rs2 ) ),
+      req,
+      RevFlag::F_AMOADD
+    );
     recordStat( HZOP_32_BASE_ADD, 1 );
     break;
   case Forza::zopOpc::Z_HAC_32_BASE_AND:
-    Mem->AMOVal( Z_HZOP_PIPE_HART,
-                 Addr,
-                 reinterpret_cast< uint32_t* >( Alloc.getRegAddr( Rs1 ) ),
-                 reinterpret_cast< uint32_t* >( Alloc.getRegAddr( Rs2 ) ),
-                 req,
-                 RevFlag::F_AMOAND );
+    Mem->AMOVal(
+      Z_HZOP_PIPE_HART,
+      Addr,
+      reinterpret_cast<uint32_t*>( Alloc.getRegAddr( Rs1 ) ),
+      reinterpret_cast<uint32_t*>( Alloc.getRegAddr( Rs2 ) ),
+      req,
+      RevFlag::F_AMOAND
+    );
     recordStat( HZOP_32_BASE_AND, 1 );
     break;
   case Forza::zopOpc::Z_HAC_32_BASE_OR:
-    Mem->AMOVal( Z_HZOP_PIPE_HART,
-                 Addr,
-                 reinterpret_cast< uint32_t* >( Alloc.getRegAddr( Rs1 ) ),
-                 reinterpret_cast< uint32_t* >( Alloc.getRegAddr( Rs2 ) ),
-                 req,
-                 RevFlag::F_AMOOR );
+    Mem->AMOVal(
+      Z_HZOP_PIPE_HART,
+      Addr,
+      reinterpret_cast<uint32_t*>( Alloc.getRegAddr( Rs1 ) ),
+      reinterpret_cast<uint32_t*>( Alloc.getRegAddr( Rs2 ) ),
+      req,
+      RevFlag::F_AMOOR
+    );
     recordStat( HZOP_32_BASE_OR, 1 );
     break;
   case Forza::zopOpc::Z_HAC_32_BASE_XOR:
-    Mem->AMOVal( Z_HZOP_PIPE_HART,
-                 Addr,
-                 reinterpret_cast< uint32_t* >( Alloc.getRegAddr( Rs1 ) ),
-                 reinterpret_cast< uint32_t* >( Alloc.getRegAddr( Rs2 ) ),
-                 req,
-                 RevFlag::F_AMOXOR );
+    Mem->AMOVal(
+      Z_HZOP_PIPE_HART,
+      Addr,
+      reinterpret_cast<uint32_t*>( Alloc.getRegAddr( Rs1 ) ),
+      reinterpret_cast<uint32_t*>( Alloc.getRegAddr( Rs2 ) ),
+      req,
+      RevFlag::F_AMOXOR
+    );
     recordStat( HZOP_32_BASE_XOR, 1 );
     break;
   case Forza::zopOpc::Z_HAC_32_BASE_SMAX:
-    Mem->AMOVal( Z_HZOP_PIPE_HART,
-                 Addr,
-                 reinterpret_cast< uint32_t* >( Alloc.getRegAddr( Rs1 ) ),
-                 reinterpret_cast< uint32_t* >( Alloc.getRegAddr( Rs2 ) ),
-                 req,
-                 RevFlag::F_AMOMAX );
+    Mem->AMOVal(
+      Z_HZOP_PIPE_HART,
+      Addr,
+      reinterpret_cast<uint32_t*>( Alloc.getRegAddr( Rs1 ) ),
+      reinterpret_cast<uint32_t*>( Alloc.getRegAddr( Rs2 ) ),
+      req,
+      RevFlag::F_AMOMAX
+    );
     recordStat( HZOP_32_BASE_SMAX, 1 );
     break;
   case Forza::zopOpc::Z_HAC_32_BASE_MAX:
-    Mem->AMOVal( Z_HZOP_PIPE_HART,
-                 Addr,
-                 reinterpret_cast< uint32_t* >( Alloc.getRegAddr( Rs1 ) ),
-                 reinterpret_cast< uint32_t* >( Alloc.getRegAddr( Rs2 ) ),
-                 req,
-                 RevFlag::F_AMOMAXU );
+    Mem->AMOVal(
+      Z_HZOP_PIPE_HART,
+      Addr,
+      reinterpret_cast<uint32_t*>( Alloc.getRegAddr( Rs1 ) ),
+      reinterpret_cast<uint32_t*>( Alloc.getRegAddr( Rs2 ) ),
+      req,
+      RevFlag::F_AMOMAXU
+    );
     recordStat( HZOP_32_BASE_MAX, 1 );
     break;
   case Forza::zopOpc::Z_HAC_32_BASE_SMIN:
-    Mem->AMOVal( Z_HZOP_PIPE_HART,
-                 Addr,
-                 reinterpret_cast< uint32_t* >( Alloc.getRegAddr( Rs1 ) ),
-                 reinterpret_cast< uint32_t* >( Alloc.getRegAddr( Rs2 ) ),
-                 req,
-                 RevFlag::F_AMOMIN );
+    Mem->AMOVal(
+      Z_HZOP_PIPE_HART,
+      Addr,
+      reinterpret_cast<uint32_t*>( Alloc.getRegAddr( Rs1 ) ),
+      reinterpret_cast<uint32_t*>( Alloc.getRegAddr( Rs2 ) ),
+      req,
+      RevFlag::F_AMOMIN
+    );
     recordStat( HZOP_32_BASE_SMIN, 1 );
     break;
   case Forza::zopOpc::Z_HAC_32_BASE_MIN:
-    Mem->AMOVal( Z_HZOP_PIPE_HART,
-                 Addr,
-                 reinterpret_cast< uint32_t* >( Alloc.getRegAddr( Rs1 ) ),
-                 reinterpret_cast< uint32_t* >( Alloc.getRegAddr( Rs2 ) ),
-                 req,
-                 RevFlag::F_AMOMINU );
+    Mem->AMOVal(
+      Z_HZOP_PIPE_HART,
+      Addr,
+      reinterpret_cast<uint32_t*>( Alloc.getRegAddr( Rs1 ) ),
+      reinterpret_cast<uint32_t*>( Alloc.getRegAddr( Rs2 ) ),
+      req,
+      RevFlag::F_AMOMINU
+    );
     recordStat( HZOP_32_BASE_MIN, 1 );
     break;
   case Forza::zopOpc::Z_HAC_32_BASE_SWAP:
-    Mem->AMOVal( Z_HZOP_PIPE_HART,
-                 Addr,
-                 reinterpret_cast< uint32_t* >( Alloc.getRegAddr( Rs1 ) ),
-                 reinterpret_cast< uint32_t* >( Alloc.getRegAddr( Rs2 ) ),
-                 req,
-                 RevFlag::F_AMOSWAP );
+    Mem->AMOVal(
+      Z_HZOP_PIPE_HART,
+      Addr,
+      reinterpret_cast<uint32_t*>( Alloc.getRegAddr( Rs1 ) ),
+      reinterpret_cast<uint32_t*>( Alloc.getRegAddr( Rs2 ) ),
+      req,
+      RevFlag::F_AMOSWAP
+    );
     recordStat( HZOP_32_BASE_SWAP, 1 );
     break;
   // 64bit base
   case Forza::zopOpc::Z_HAC_64_BASE_ADD:
-    Mem->AMOVal( Z_HZOP_PIPE_HART,
-                 Addr,
-                 Alloc.getRegAddr( Rs1 ),
-                 Alloc.getRegAddr( Rs2 ),
-                 req,
-                 RevFlag::F_AMOADD );
+    Mem->AMOVal( Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, RevFlag::F_AMOADD );
     recordStat( HZOP_64_BASE_ADD, 1 );
     break;
   case Forza::zopOpc::Z_HAC_64_BASE_AND:
-    Mem->AMOVal( Z_HZOP_PIPE_HART,
-                 Addr,
-                 Alloc.getRegAddr( Rs1 ),
-                 Alloc.getRegAddr( Rs2 ),
-                 req,
-                 RevFlag::F_AMOAND );
+    Mem->AMOVal( Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, RevFlag::F_AMOAND );
     recordStat( HZOP_64_BASE_AND, 1 );
     break;
   case Forza::zopOpc::Z_HAC_64_BASE_OR:
-    Mem->AMOVal( Z_HZOP_PIPE_HART,
-                 Addr,
-                 Alloc.getRegAddr( Rs1 ),
-                 Alloc.getRegAddr( Rs2 ),
-                 req,
-                 RevFlag::F_AMOOR );
+    Mem->AMOVal( Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, RevFlag::F_AMOOR );
     recordStat( HZOP_64_BASE_OR, 1 );
     break;
   case Forza::zopOpc::Z_HAC_64_BASE_XOR:
-    Mem->AMOVal( Z_HZOP_PIPE_HART,
-                 Addr,
-                 Alloc.getRegAddr( Rs1 ),
-                 Alloc.getRegAddr( Rs2 ),
-                 req,
-                 RevFlag::F_AMOXOR );
+    Mem->AMOVal( Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, RevFlag::F_AMOXOR );
     recordStat( HZOP_64_BASE_XOR, 1 );
     break;
   case Forza::zopOpc::Z_HAC_64_BASE_SMAX:
-    Mem->AMOVal( Z_HZOP_PIPE_HART,
-                 Addr,
-                 Alloc.getRegAddr( Rs1 ),
-                 Alloc.getRegAddr( Rs2 ),
-                 req,
-                 RevFlag::F_AMOMAX );
+    Mem->AMOVal( Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, RevFlag::F_AMOMAX );
     recordStat( HZOP_64_BASE_SMAX, 1 );
     break;
   case Forza::zopOpc::Z_HAC_64_BASE_MAX:
-    Mem->AMOVal( Z_HZOP_PIPE_HART,
-                 Addr,
-                 Alloc.getRegAddr( Rs1 ),
-                 Alloc.getRegAddr( Rs2 ),
-                 req,
-                 RevFlag::F_AMOMAXU );
+    Mem->AMOVal( Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, RevFlag::F_AMOMAXU );
     recordStat( HZOP_64_BASE_MAX, 1 );
     break;
   case Forza::zopOpc::Z_HAC_64_BASE_SMIN:
-    Mem->AMOVal( Z_HZOP_PIPE_HART,
-                 Addr,
-                 Alloc.getRegAddr( Rs1 ),
-                 Alloc.getRegAddr( Rs2 ),
-                 req,
-                 RevFlag::F_AMOMIN );
+    Mem->AMOVal( Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, RevFlag::F_AMOMIN );
     recordStat( HZOP_64_BASE_SMIN, 1 );
     break;
   case Forza::zopOpc::Z_HAC_64_BASE_MIN:
-    Mem->AMOVal( Z_HZOP_PIPE_HART,
-                 Addr,
-                 Alloc.getRegAddr( Rs1 ),
-                 Alloc.getRegAddr( Rs2 ),
-                 req,
-                 RevFlag::F_AMOMINU );
+    Mem->AMOVal( Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, RevFlag::F_AMOMINU );
     recordStat( HZOP_64_BASE_MIN, 1 );
     break;
   case Forza::zopOpc::Z_HAC_64_BASE_SWAP:
-    Mem->AMOVal( Z_HZOP_PIPE_HART,
-                 Addr,
-                 Alloc.getRegAddr( Rs1 ),
-                 Alloc.getRegAddr( Rs2 ),
-                 req,
-                 RevFlag::F_AMOSWAP );
+    Mem->AMOVal( Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, RevFlag::F_AMOSWAP );
     recordStat( HZOP_64_BASE_SWAP, 1 );
     break;
   default:
-    output->verbose( CALL_INFO,
-                     9,
-                     0,
-                     "[FORZA][RZA][HZOP]: Erroneous HZOP opcode=%d\n",
-                     (unsigned) ( zev->getOpc() ) );
+    output->verbose( CALL_INFO, 9, 0, "[FORZA][RZA][HZOP]: Erroneous HZOP opcode=%d\n", (unsigned) ( zev->getOpc() ) );
     return false;
     break;
   }
@@ -910,14 +793,11 @@ bool RZAAMOCoProc::handleHZOP( Forza::zopEvent* zev, bool& flag ) {
 }
 
 bool RZAAMOCoProc::InjectZOP( Forza::zopEvent* zev, bool& flag ) {
-  if( ( zev->getType() != Forza::zopMsgT::Z_HZOPAC ) &&
-      ( zev->getType() != Forza::zopMsgT::Z_HZOPV ) ) {
+  if( ( zev->getType() != Forza::zopMsgT::Z_HZOPAC ) && ( zev->getType() != Forza::zopMsgT::Z_HZOPV ) ) {
     // wrong ZOP type injected
     output->fatal(
-      CALL_INFO,
-      -1,
-      "[FORZA][RZA][HZOP]: Cannot handle ZOP message of type: %s\n",
-      zNic->msgTToStr( zev->getType() ).c_str() );
+      CALL_INFO, -1, "[FORZA][RZA][HZOP]: Cannot handle ZOP message of type: %s\n", zNic->msgTToStr( zev->getType() ).c_str()
+    );
   }
 
   return handleHZOP( zev, flag );
@@ -931,18 +811,14 @@ void RZAAMOCoProc::CheckLSQueue() {
   // packet with the appropriate data
 
   for( auto it = AMOQ.begin(); it != AMOQ.end(); ++it ) {
-    auto zev = std::get< AMOQ_ZEV >( *it );
-    auto rs1 = std::get< AMOQ_RS1 >( *it );
-    auto rs2 = std::get< AMOQ_RS2 >( *it );
+    auto zev = std::get<AMOQ_ZEV>( *it );
+    auto rs1 = std::get<AMOQ_RS1>( *it );
+    auto rs2 = std::get<AMOQ_RS2>( *it );
 
     if( Alloc.getState( rs2 ) == _H_DIRTY ) {
       // load to register has occurred, time to build a response
       if( !sendSuccessResp( zNic, zev, Z_HZOP_PIPE_HART, Alloc.GetX( rs2 ) ) ) {
-        output->fatal(
-          CALL_INFO,
-          -1,
-          "[FORZA][RZA][HZOP]: Failed to send success response for ZOP ID=%d\n",
-          zev->getID() );
+        output->fatal( CALL_INFO, -1, "[FORZA][RZA][HZOP]: Failed to send success response for ZOP ID=%d\n", zev->getID() );
       }
 
       // clear the hazards
@@ -952,10 +828,7 @@ void RZAAMOCoProc::CheckLSQueue() {
       // clear the request from the ZRqst map
       uint64_t Addr = 0x00ull;
       if( !zev->getFLIT( Z_FLIT_ADDR, &Addr ) ) {
-        output->fatal(
-          CALL_INFO,
-          -1,
-          "[FORZA][RZA] Erroneous packet contents for ZOP in CheckLSQueue\n" );
+        output->fatal( CALL_INFO, -1, "[FORZA][RZA] Erroneous packet contents for ZOP in CheckLSQueue\n" );
       }
       Mem->clearZRqst( Addr );
       delete zev;

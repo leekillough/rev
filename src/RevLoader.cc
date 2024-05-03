@@ -15,17 +15,10 @@ namespace SST::RevCPU {
 
 using MemSegment = RevMem::MemSegment;
 
-RevLoader::RevLoader( std::string  Exe,
-                      std::string  Args,
-                      RevMem*      Mem,
-                      SST::Output* Output,
-                      bool         R ) :
-  exe( Exe ),
-  args( Args ), mem( Mem ), output( Output ), RV32Entry( 0x00l ),
-  RV64Entry( 0x00ull ), isRZA( R ) {
+RevLoader::RevLoader( std::string Exe, std::string Args, RevMem* Mem, SST::Output* Output, bool R )
+  : exe( Exe ), args( Args ), mem( Mem ), output( Output ), RV32Entry( 0x00l ), RV64Entry( 0x00ull ), isRZA( R ) {
   if( isRZA ) {
-    output->verbose(
-      CALL_INFO, 4, 0, "RZA device: Executing the full loader\n" );
+    output->verbose( CALL_INFO, 4, 0, "RZA device: Executing the full loader\n" );
   }
   if( !LoadElf() )
     output->fatal( CALL_INFO, -1, "Error: failed to load executable into memory\n" );

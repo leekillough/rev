@@ -13,8 +13,7 @@ void forza_thread_init( void* FArgs_recv, sparsemat_t* mat_chunk ) {
   tail_ptr  = (uint64_t**) forza_scratchpad_alloc( 1 * sizeof( ForzaPkt* ) );
   *tail_ptr = (uint64_t*) &qaddr;
   head_ptr  = (uint64_t*) &qaddr;
-  forza_zen_setup(
-    (uint64_t) &qaddr, qsize * sizeof( ForzaPkt ), (uint64_t) tail_ptr );
+  forza_zen_setup( (uint64_t) &qaddr, qsize * sizeof( ForzaPkt ), (uint64_t) tail_ptr );
 
   // forza_zone_barrier(GLOBAL_ACTORS+1);
   barrier( MY_ACTOR );
@@ -33,8 +32,8 @@ int main( int argc, char** argv ) {
   FArgs.ThreadType = 0;
   FArgs.ActorID    = MY_ACTOR;
   // int MY_ACTOR = 0;
-  mat = (sparsemat_t*) forza_malloc( GLOBAL_ACTORS * sizeof( sparsemat_t ) );
-  cnt = (int64_t*) forza_malloc( GLOBAL_ACTORS * sizeof( int64_t ) );
+  mat              = (sparsemat_t*) forza_malloc( GLOBAL_ACTORS * sizeof( sparsemat_t ) );
+  cnt              = (int64_t*) forza_malloc( GLOBAL_ACTORS * sizeof( int64_t ) );
 
   if( MY_ACTOR == 0 ) {
 
@@ -45,7 +44,6 @@ int main( int argc, char** argv ) {
 
   // forza_zone_barrier(GLOBAL_ACTORS+1);
   barrier( MY_ACTOR );
-
 
   forza_thread_init( (void*) &FArgs, &mat[MY_ACTOR] );
   // forza_thread_create(&actor_threads[0], (void *) forza_thread_init, (void *) &FArgs);
