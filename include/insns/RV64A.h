@@ -49,13 +49,7 @@ class RV64A : public RevExt {
                 true,
                 R->GetMarkLoadComplete() );
     R->LSQueue->insert( req.LSQHashPair() );
-    M->LR( F->GetHartToExecID(),
-           R->RV64[Inst.rs1],
-           &R->RV64[Inst.rd],
-           Inst.aq,
-           Inst.rl,
-           req,
-           RevFlag::F_SEXT64 );
+    M->LR( F->GetHartToExecID(), R->RV64[Inst.rs1], &R->RV64[Inst.rd], Inst.aq, Inst.rl, req, RevFlag::F_SEXT64 );
     R->AdvancePC( Inst );
     return true;
   }
@@ -126,20 +120,11 @@ class RV64A : public RevExt {
       flags |= uint32_t( RevFlag::F_RL );
     }
 
-    MemReq req( R->RV64[Inst.rs1],
-                Inst.rd,
-                RevRegClass::RegGPR,
-                F->GetHartToExecID(),
-                MemOp::MemOpAMO,
-                true,
-                R->GetMarkLoadComplete() );
+    MemReq req(
+      R->RV64[Inst.rs1], Inst.rd, RevRegClass::RegGPR, F->GetHartToExecID(), MemOp::MemOpAMO, true, R->GetMarkLoadComplete()
+    );
     R->LSQueue->insert( req.LSQHashPair() );
-    M->AMOVal( F->GetHartToExecID(),
-               R->RV64[Inst.rs1],
-               &R->RV64[Inst.rs2],
-               &R->RV64[Inst.rd],
-               req,
-               RevFlag{ flags } );
+    M->AMOVal( F->GetHartToExecID(), R->RV64[Inst.rs1], &R->RV64[Inst.rs2], &R->RV64[Inst.rd], req, RevFlag{ flags } );
 
     R->AdvancePC( Inst );
 
@@ -148,15 +133,15 @@ class RV64A : public RevExt {
     return true;
   }
 
-  static constexpr auto& amoaddd  = amooperd< RevFlag::F_AMOADD >;
-  static constexpr auto& amoswapd = amooperd< RevFlag::F_AMOSWAP >;
-  static constexpr auto& amoxord  = amooperd< RevFlag::F_AMOXOR >;
-  static constexpr auto& amoandd  = amooperd< RevFlag::F_AMOAND >;
-  static constexpr auto& amoord   = amooperd< RevFlag::F_AMOOR >;
-  static constexpr auto& amomind  = amooperd< RevFlag::F_AMOMIN >;
-  static constexpr auto& amomaxd  = amooperd< RevFlag::F_AMOMAX >;
-  static constexpr auto& amominud = amooperd< RevFlag::F_AMOMINU >;
-  static constexpr auto& amomaxud = amooperd< RevFlag::F_AMOMAXU >;
+  static constexpr auto& amoaddd  = amooperd<RevFlag::F_AMOADD>;
+  static constexpr auto& amoswapd = amooperd<RevFlag::F_AMOSWAP>;
+  static constexpr auto& amoxord  = amooperd<RevFlag::F_AMOXOR>;
+  static constexpr auto& amoandd  = amooperd<RevFlag::F_AMOAND>;
+  static constexpr auto& amoord   = amooperd<RevFlag::F_AMOOR>;
+  static constexpr auto& amomind  = amooperd<RevFlag::F_AMOMIN>;
+  static constexpr auto& amomaxd  = amooperd<RevFlag::F_AMOMAX>;
+  static constexpr auto& amominud = amooperd<RevFlag::F_AMOMINU>;
+  static constexpr auto& amomaxud = amooperd<RevFlag::F_AMOMAXU>;
 
   // ----------------------------------------------------------------------
   //
@@ -189,8 +174,7 @@ class RV64A : public RevExt {
 
 public:
   /// RV64A: standard constructor
-  RV64A( RevFeature* Feature, RevMem* RevMem, SST::Output* Output ) :
-    RevExt( "RV64A", Feature, RevMem, Output ) {
+  RV64A( RevFeature* Feature, RevMem* RevMem, SST::Output* Output ) : RevExt( "RV64A", Feature, RevMem, Output ) {
     SetTable( std::move( RV64ATable ) );
   }
 };  // end class RV64A
