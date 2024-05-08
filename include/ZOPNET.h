@@ -1,7 +1,7 @@
 //
 // _ZOPNet_h_
 //
-// Copyright (C) 2017-2023 Tactical Computing Laboratories, LLC
+// Copyright (C) 2017-2024 Tactical Computing Laboratories, LLC
 // All Rights Reserved
 // contact@tactcomplabs.com
 //
@@ -41,6 +41,7 @@ namespace SST::Forza {
 #define Z_SHIFT_BLOCK      59
 #define Z_SHIFT_TYPE       60
 #define Z_SHIFT_APPID      32
+#define Z_SHIFT_PKTRES     36
 
 #define Z_MASK_HARTID      0b111111111
 #define Z_MASK_ZCID        0b1111
@@ -52,7 +53,8 @@ namespace SST::Forza {
 #define Z_MASK_FLITLEN     0b11111111
 #define Z_MASK_BLOCK       0b1
 #define Z_MASK_TYPE        0b1111
-#define Z_MASK_APPID       0xFFFFFFFF
+#define Z_MASK_APPID       0xF
+#define Z_MASK_PKTRES      0xFFFFFFF
 
 #define Z_FLIT_OPC         0
 #define Z_FLIT_CREDIT      0
@@ -63,6 +65,7 @@ namespace SST::Forza {
 #define Z_FLIT_APPID       1
 #define Z_FLIT_DEST        0
 #define Z_FLIT_SRC         1
+#define Z_FLIT_PKTRES      1
 
 #define Z_FLIT_ACS         2
 #define Z_FLIT_ADDR        3
@@ -263,10 +266,11 @@ enum class zopOpc : uint8_t {
 
   // -- MESSAGING --
   Z_MSG_SENDP         = 0b00000000,  /// zopOpc: MESSAGING Send with payload
-  Z_MSG_SENDAS = 0b00000001,  /// zopOpc: MESSAGING Send with address and size
-  Z_MSG_CREDIT = 0b11110000,  /// zopOpc: MESSAGING Credit replenishment
-  Z_MSG_ZENSET = 0b11110001,  /// zopOpc: MESSAGING ZEN Setup
-  Z_MSG_ZQMSET = 0b11110100,  /// zopOpc: MESSAGING ZQM Setup
+  Z_MSG_SENDAS  = 0b00000001,  /// zopOpc: MESSAGING Send with address and size
+  Z_MSG_MBXDONE = 0b00000010,  /// zopOpc: MESSAGING Send mailbox done
+  Z_MSG_CREDIT  = 0b11110000,  /// zopOpc: MESSAGING Credit replenishment
+  Z_MSG_ZENSET  = 0b11110001,  /// zopOpc: MESSAGING ZEN Setup
+  Z_MSG_ZQMSET  = 0b11110100,  /// zopOpc: MESSAGING ZQM Setup
   Z_MSG_ZQMHARTDONE =
     0b11110101,                /// zopOpc: MESSAGING ZQM Notify HART completion
   Z_MSG_ACK     = 0b11110010,  /// zopOpc: MESSAGING Send Ack
@@ -495,8 +499,13 @@ public:
   }
 
   /// zopEvent: set the application id
-  void setAppID( uint32_t A ) {
-    AppID = A;
+  void setAppID( uint8_t A ) {
+    AppID = A & Z_MASK_APPID;
+  }
+
+  /// zopEvent: set the packet reserved
+  void setPktRes( uint32_t X ) {
+    PktRes = X;
   }
 
   /// zopEvent: set the destination hart
@@ -647,8 +656,13 @@ public:
   }
 
   /// zopEvent: get the application id
-  uint32_t getAppID() {
+  uint8_t getAppID() {
     return AppID;
+  }
+
+  /// zopEvent: get the packet reserved field
+  uint32_t getPktRes() {
+    return PktRes;
   }
 
   /// zopEvent: determine whether the fence has been encountered
@@ -699,7 +713,9 @@ public:
                            Z_MASK_PRECINCT );
 
     AppID =
-      (uint32_t) ( ( Packet[Z_FLIT_APPID] >> Z_SHIFT_APPID ) & Z_MASK_APPID );
+      (uint8_t) ( ( Packet[Z_FLIT_APPID] >> Z_SHIFT_APPID ) & Z_MASK_APPID );
+    PktRes = (uint32_t) ( ( Packet[Z_FLIT_PKTRES] >> Z_SHIFT_PKTRES ) &
+                          Z_MASK_PKTRES );
   }
 
   /// zopEvent: encode this event and set the appropriate internal packet structures
@@ -738,6 +754,8 @@ public:
 
     Packet[Z_FLIT_APPID] |=
       ( (uint64_t) ( AppID & Z_MASK_APPID ) << Z_SHIFT_APPID );
+    Packet[Z_FLIT_PKTRES] |=
+      ( (uint64_t) ( PktRes & Z_MASK_PKTRES ) << Z_SHIFT_PKTRES );
   }
 
 private:
@@ -760,7 +778,8 @@ private:
   uint8_t  ID;      ///< zopEvent: message ID
   uint8_t  Credit;  ///< zopEvent: credit piggyback
   zopOpc   Opc;     ///< zopEvent: opcode
-  uint32_t AppID;   ///< zopEvent: application source
+  uint8_t  AppID;   ///< zopEvent: application source
+  uint32_t PktRes;  ///< zopEvent: packet reserved space (28 bits)
 
   bool Read;              ///< zopEvent: sets this request as a read request
   bool FenceEncountered;  ///< zopEvent: whether this ZOP's fence has been seen
