@@ -1,7 +1,7 @@
 //
 // _ZOPNet_h_
 //
-// Copyright (C) 2017-2023 Tactical Computing Laboratories, LLC
+// Copyright (C) 2017-2024 Tactical Computing Laboratories, LLC
 // All Rights Reserved
 // contact@tactcomplabs.com
 //
@@ -41,6 +41,7 @@ namespace SST::Forza {
 #define Z_SHIFT_BLOCK      59
 #define Z_SHIFT_TYPE       60
 #define Z_SHIFT_APPID      32
+#define Z_SHIFT_PKTRES     36
 
 #define Z_MASK_HARTID      0b111111111
 #define Z_MASK_ZCID        0b1111
@@ -52,7 +53,8 @@ namespace SST::Forza {
 #define Z_MASK_FLITLEN     0b11111111
 #define Z_MASK_BLOCK       0b1
 #define Z_MASK_TYPE        0b1111
-#define Z_MASK_APPID       0xFFFFFFFF
+#define Z_MASK_APPID       0xF
+#define Z_MASK_PKTRES      0xFFFFFFF
 
 #define Z_FLIT_OPC         0
 #define Z_FLIT_CREDIT      0
@@ -63,6 +65,7 @@ namespace SST::Forza {
 #define Z_FLIT_APPID       1
 #define Z_FLIT_DEST        0
 #define Z_FLIT_SRC         1
+#define Z_FLIT_PKTRES      1
 
 #define Z_FLIT_ACS         2
 #define Z_FLIT_ADDR        3
@@ -263,10 +266,11 @@ enum class zopOpc : uint8_t {
 
   // -- MESSAGING --
   Z_MSG_SENDP         = 0b00000000,  /// zopOpc: MESSAGING Send with payload
-  Z_MSG_SENDAS = 0b00000001,  /// zopOpc: MESSAGING Send with address and size
-  Z_MSG_CREDIT = 0b11110000,  /// zopOpc: MESSAGING Credit replenishment
-  Z_MSG_ZENSET = 0b11110001,  /// zopOpc: MESSAGING ZEN Setup
-  Z_MSG_ZQMSET = 0b11110100,  /// zopOpc: MESSAGING ZQM Setup
+  Z_MSG_SENDAS  = 0b00000001,  /// zopOpc: MESSAGING Send with address and size
+  Z_MSG_MBXDONE = 0b00000010,  /// zopOpc: MESSAGING Send mailbox done
+  Z_MSG_CREDIT  = 0b11110000,  /// zopOpc: MESSAGING Credit replenishment
+  Z_MSG_ZENSET  = 0b11110001,  /// zopOpc: MESSAGING ZEN Setup
+  Z_MSG_ZQMSET  = 0b11110100,  /// zopOpc: MESSAGING ZQM Setup
   Z_MSG_ZQMHARTDONE =
     0b11110101,                /// zopOpc: MESSAGING ZQM Notify HART completion
   Z_MSG_ACK     = 0b11110010,  /// zopOpc: MESSAGING Send Ack
@@ -495,8 +499,13 @@ public:
   }
 
   /// zopEvent: set the application id
-  void setAppID( uint32_t A ) {
-    AppID = A;
+  void setAppID( uint8_t A ) {
+    AppID = A & Z_MASK_APPID;
+  }
+
+  /// zopEvent: set the packet reserved
+  void setPktRes( uint32_t X ) {
+    PktRes = X;
   }
 
   /// zopEvent: set the destination hart
@@ -647,8 +656,13 @@ public:
   }
 
   /// zopEvent: get the application id
-  uint32_t getAppID() {
+  uint8_t getAppID() {
     return AppID;
+  }
+
+  /// zopEvent: get the packet reserved field
+  uint32_t getPktRes() {
+    return PktRes;
   }
 
   /// zopEvent: determine whether the fence has been encountered
@@ -699,7 +713,9 @@ public:
                            Z_MASK_PRECINCT );
 
     AppID =
-      (uint32_t) ( ( Packet[Z_FLIT_APPID] >> Z_SHIFT_APPID ) & Z_MASK_APPID );
+      (uint8_t) ( ( Packet[Z_FLIT_APPID] >> Z_SHIFT_APPID ) & Z_MASK_APPID );
+    PktRes = (uint32_t) ( ( Packet[Z_FLIT_PKTRES] >> Z_SHIFT_PKTRES ) &
+                          Z_MASK_PKTRES );
   }
 
   /// zopEvent: encode this event and set the appropriate internal packet structures
@@ -738,11 +754,13 @@ public:
 
     Packet[Z_FLIT_APPID] |=
       ( (uint64_t) ( AppID & Z_MASK_APPID ) << Z_SHIFT_APPID );
+    Packet[Z_FLIT_PKTRES] |=
+      ( (uint64_t) ( PktRes & Z_MASK_PKTRES ) << Z_SHIFT_PKTRES );
   }
 
 private:
   std::vector< uint64_t >
-           Packet;  ///< zopEvent: data payload: serialized payload
+    Packet;  ///< zopEvent: data payload: serialized payload
 
   // -- private, non-serialized data members
   uint16_t DestHart;  ///< zopEvent: destination hart id
@@ -760,9 +778,10 @@ private:
   uint8_t  ID;      ///< zopEvent: message ID
   uint8_t  Credit;  ///< zopEvent: credit piggyback
   zopOpc   Opc;     ///< zopEvent: opcode
-  uint32_t AppID;   ///< zopEvent: application source
+  uint8_t  AppID;   ///< zopEvent: application source
+  uint32_t PktRes;  ///< zopEvent: packet reserved space (28 bits)
 
-  bool     Read;          ///< zopEvent: sets this request as a read request
+  bool Read;              ///< zopEvent: sets this request as a read request
   bool FenceEncountered;  ///< zopEvent: whether this ZOP's fence has been seen
   uint64_t*           Target;  ///< zopEvent: target for the read request
   SST::RevCPU::MemReq req;     ///< zopEvent: read response handler
@@ -812,13 +831,13 @@ public:
     send( zopEvent* ev, zopCompID dest, zopPrecID zone, unsigned precinct ) = 0;
 
   /// zopAPI : send a zone barrier request
-  virtual void     send_zone_barrier( unsigned hart, unsigned endpoints )   = 0;
+  virtual void send_zone_barrier( unsigned hart, unsigned endpoints )       = 0;
 
   /// zopAPI: query the nic to see if the barrier is complete
-  virtual bool     isBarrierComplete( unsigned Hart )                       = 0;
+  virtual bool isBarrierComplete( unsigned Hart )                           = 0;
 
   /// zopAPI: query the NIC to see if it already exists in a barrier state
-  virtual bool     hasBarrier( unsigned Hart )                              = 0;
+  virtual bool hasBarrier( unsigned Hart )                                  = 0;
 
   /// zopAPI : retrieve the number of potential endpoints
   virtual unsigned getNumDestinations()                                     = 0;
@@ -827,37 +846,37 @@ public:
   virtual SST::Interfaces::SimpleNetwork::nid_t getAddress()                = 0;
 
   /// zopAPI: set the type of the endpoint
-  virtual void          setEndpointType( zopCompID type )                   = 0;
+  virtual void setEndpointType( zopCompID type )                            = 0;
 
   /// zopAPI: get the type of the endpoint
-  virtual zopCompID     getEndpointType()                                   = 0;
+  virtual zopCompID getEndpointType()                                       = 0;
 
   /// zopAPI: set the number of harts
-  virtual void          setNumHarts( unsigned Hart )                        = 0;
+  virtual void setNumHarts( unsigned Hart )                                 = 0;
 
   /// zopAPI: set the precinct ID
-  virtual void          setPrecinctID( unsigned Precinct )                  = 0;
+  virtual void setPrecinctID( unsigned Precinct )                           = 0;
 
   /// zopAPI: set the zone ID
-  virtual void          setZoneID( unsigned Zone )                          = 0;
+  virtual void setZoneID( unsigned Zone )                                   = 0;
 
   /// zopAPI: get the precinct ID
-  virtual unsigned      getPrecinctID()                                     = 0;
+  virtual unsigned getPrecinctID()                                          = 0;
 
   /// zopAPI: get the zone ID
-  virtual unsigned      getZoneID()                                         = 0;
+  virtual unsigned getZoneID()                                              = 0;
 
   /// zopAPI: get the number of ZAPs
-  virtual unsigned      getNumZaps()                                        = 0;
+  virtual unsigned getNumZaps()                                             = 0;
 
   /// zopAPI: get the number of zones in this precinct
-  virtual unsigned      getNumZones()                                       = 0;
+  virtual unsigned getNumZones()                                            = 0;
 
   /// zopAPI: get the number of precincts
-  virtual unsigned      getNumPrecincts()                                   = 0;
+  virtual unsigned getNumPrecincts()                                        = 0;
 
   /// zopAPI: clear the message Id hazard
-  virtual void          clearMsgID( unsigned Hart, uint8_t Id )             = 0;
+  virtual void clearMsgID( unsigned Hart, uint8_t Id )                      = 0;
 
   /// zopAPI: convert the precinct ID to zopPrecID
   SST::Forza::zopPrecID getPCID( unsigned Z ) {
@@ -1018,13 +1037,13 @@ public:
     send( zopEvent* ev, zopCompID dest, zopPrecID zone, unsigned precinct );
 
   /// zopNIC: send a zone barrier request
-  virtual void     send_zone_barrier( unsigned hart, unsigned endpoints );
+  virtual void send_zone_barrier( unsigned hart, unsigned endpoints );
 
   /// zopNIC: query the nic to see if the barrier is complete
-  virtual bool     isBarrierComplete( unsigned Hart );
+  virtual bool isBarrierComplete( unsigned Hart );
 
   /// zopNIC: query the NIC to see if it already exists in a barrier state
-  virtual bool     hasBarrier( unsigned Hart );
+  virtual bool hasBarrier( unsigned Hart );
 
   /// zopNIC: get the number of destinations
   virtual unsigned getNumDestinations();
@@ -1043,15 +1062,15 @@ public:
   }
 
   /// zopNIC: handle load responses
-  void         handleLoadResponse( zopEvent*           ev,
-                                   uint64_t*           Target,
-                                   SST::Forza::zopOpc  Opc,
-                                   SST::RevCPU::MemReq Req,
-                                   uint8_t             ID,
-                                   uint16_t            SrcHart );
+  void handleLoadResponse( zopEvent*           ev,
+                           uint64_t*           Target,
+                           SST::Forza::zopOpc  Opc,
+                           SST::RevCPU::MemReq Req,
+                           uint8_t             ID,
+                           uint16_t            SrcHart );
 
   /// zopNIC: callback function for the SimpleNetwork interface
-  bool         msgNotify( int virtualNetwork );
+  bool msgNotify( int virtualNetwork );
 
   /// zopNIC: initialize the number of Harts
   virtual void setNumHarts( unsigned Hart );
@@ -1099,22 +1118,22 @@ public:
 
 private:
   /// zopNIC: registers all the statistics with SST
-  void             registerStats();
+  void registerStats();
 
   /// zopNIC: adds a statistic value to the desired entry
-  void             recordStat( zopNIC::zopStats Stat, uint64_t Data );
+  void recordStat( zopNIC::zopStats Stat, uint64_t Data );
 
   /// zopNIC: retrieve the zopStat entry from the target zopEvent
   zopNIC::zopStats getStatFromPacket( zopEvent* ev );
 
   /// zopNIC: test the fence condition
-  bool             handleFence( zopEvent* ev );
+  bool handleFence( zopEvent* ev );
 
   /// zopNIC: handle the barrier packet
-  bool             handleBarrier( zopEvent* ev );
+  bool handleBarrier( zopEvent* ev );
 
-  SST::Output      output;                ///< zopNIC: SST output object
-  SST::Interfaces::SimpleNetwork* iFace;  ///< zopNIC: SST network interface
+  SST::Output                     output;  ///< zopNIC: SST output object
+  SST::Interfaces::SimpleNetwork* iFace;   ///< zopNIC: SST network interface
   SST::Event::HandlerBase*        msgHandler;  ///< zopNIC: SST message handler
   bool      initBroadcastSent;  ///< zopNIC: has the broadcast msg been sent
   unsigned  numDest;            ///< zopNIC: number of destination endpoints
