@@ -12,7 +12,8 @@ int main() {
 #if 0
   uint64_t qaddr = 0;
   uint64_t tail_ptr = 1;
-  forza_zen_setup(qaddr, (uint64_t)512, tail_ptr);
+  uint64_t mbox_id = 0;
+  forza_zen_setup(qaddr, (uint64_t)512, tail_ptr, mbox_id);
 
   uint64_t head_ptr = qaddr;
   while(head_ptr != tail_ptr){

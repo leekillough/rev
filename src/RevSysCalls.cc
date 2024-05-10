@@ -5054,11 +5054,12 @@ EcallStatus RevCore::ECALL_forza_zen_credit_release() {
   return EcallStatus::SUCCESS;
 }
 
-// 4005, forza_zen_setup(uint64_t addr, size_t size, uint64_t tailptr);
+// 4005, forza_zen_setup(uint64_t addr, size_t size, uint64_t tailptr, uint64_t mbox_id);
 EcallStatus RevCore::ECALL_forza_zen_setup() {
   uint64_t addr    = (uint64_t) RegFile->GetX< uint64_t >( RevReg::a0 );
   size_t   size    = (size_t) RegFile->GetX< size_t >( RevReg::a1 );
   uint64_t tailptr = (uint64_t) RegFile->GetX< uint64_t >( RevReg::a2 );
+  uint64_t mbox_id = (uint64_t) RegFile->GetX< uint64_t >( RevReg::a3 );
   output->verbose( CALL_INFO,
                    2,
                    0,
@@ -5066,6 +5067,13 @@ EcallStatus RevCore::ECALL_forza_zen_setup() {
                    " on hart %" PRIu32 "\n",
                    GetActiveThreadID(),
                    HartToExecID );
+
+  // This value should be a construction of the following
+  //   bits[63:60] - Application ID (currently fixed to 0)
+  //   bits[59:8] - Reserved (expect to use some of these in the future for a logical/physical HART ID mapping)
+  //   bits[7:0] - Mailbox ID being setup
+  mbox_id &= 0x0FFUL;
+  uint64_t app_mbox_id      = mbox_id;
 
   // TODO: Forza library will pass the memory base address and size allocated by each actor to inform/initialize zen.
 
@@ -5098,14 +5106,17 @@ EcallStatus RevCore::ECALL_forza_zen_setup() {
   zev->setSrcZCID( SrcZCID );
   zev->setSrcPCID( SrcPCID );
   zev->setSrcHart( SrcHart );
+  zev->setAppID( 0 );
+  zev->setPktRes( (uint8_t) mbox_id );
 
   // set the payload, do actual send setup thing : FIXME
   // read ZEN::processSetupMsgs
   std::vector< uint64_t > payload;
-  payload.push_back( 0x00ull );  // acs_pair = payload[0]
-  payload.push_back( addr );     // mem_start_addr = payload[1]
-  payload.push_back( size );     // size = payload[3]
-  payload.push_back( tailptr );  // TODO: FIXME scratch_tail = payload[4]
+  payload.push_back( 0x00ull );      // acs_pair = payload[0]
+  payload.push_back( addr );         // mem_start_addr = payload[1]
+  payload.push_back( size );         // size = payload[2]
+  payload.push_back( tailptr );      // scratch_tail = payload[3]
+  payload.push_back( app_mbox_id );  // see def above; payload[4]
   zev->setPayload( payload );
 
   if( !zNic ) {

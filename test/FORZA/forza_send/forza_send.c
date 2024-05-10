@@ -13,8 +13,9 @@ int main() {
   uint64_t qaddr;
   uint64_t tail_ptr;
   uint64_t *pkt = (uint64_t *)forza_scratchpad_alloc(16 * sizeof(uint64_t));
-  forza_zen_setup(qaddr, 16, tail_ptr);
-  forza_zen_setup((uint64_t)pkt, (uint64_t)16, (uint64_t)pkt);
+  uint64_t mbox_id = 0;
+  forza_zen_setup(qaddr, 16, tail_ptr, mbox_id);
+  forza_zen_setup((uint64_t)pkt, (uint64_t)16, (uint64_t)pkt, mbox_id);
   uint64_t size = sizeof(uint64_t);
   uint64_t dst = 1;
   forza_send(dst, pkt, size);

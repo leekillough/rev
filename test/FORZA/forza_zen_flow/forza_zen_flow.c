@@ -22,9 +22,11 @@ int main( int argc, char** argv ) {
   uint64_t* cur_recv_ptr = &qaddr[0];
 
   // Buffer needs to be memory for now
+  uint64_t mbox_id       = 0;
   forza_zen_setup( (uint64_t) cur_recv_ptr,
                    qsize * sizeof( uint64_t ),
-                   (uint64_t) my_tail_ptr );
+                   (uint64_t) my_tail_ptr,
+                   mbox_id );
 
   forza_zone_barrier( 2 );  // two executing harts
 
