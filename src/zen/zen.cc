@@ -230,7 +230,7 @@ void ZEN::handleIncomingZOP(SST::Event *event) {
   }else if((ev->getType() == SST::Forza::zopMsgT::Z_MSG) &&
            (ev->getOpc() == SST::Forza::zopOpc::Z_MSG_ZENSET)){
     //std::cout << "SETUP REQUEST" << std::endl;
-    setup_reqs.push_back(ev);
+    setup_reqs.push(ev);
   }else if((ev->getType() == SST::Forza::zopMsgT::Z_MSG) &&
            (ev->getOpc() == SST::Forza::zopOpc::Z_MSG_CREDIT)){
     //std::cout << "CREDIT REQUEST" << std::endl;
@@ -907,27 +907,34 @@ void ZEN::processZAPCredits() {
 }
 
 void ZEN::processSetupMsgs(){
-  uint64_t cur_processed = 0;
-  //output.verbose(CALL_INFO, 9, 0, "Progress setup msg\n");
-  for( unsigned i = 0; i < setup_reqs.size(); ++i ){
-
-    std::vector<uint64_t> payload = setup_reqs[i]->getPayload();
-    uint64_t hart_id = setup_reqs[i]->getSrcHart();
-    uint64_t zap_id = setup_reqs[i]->getSrcZCID();
+  if (setup_reqs.empty())
+    return;
+  
+  //output.verbose(CALL_INFO, 9, 0, "Process Zen Setup Packet\n");
+  for( unsigned i = 0; i < process_per_cycle; ++i ){
+    auto *ev = setup_reqs.front();
+    uint64_t hart_id = ev->getSrcHart();
+    uint64_t zap_id = ev->getSrcZCID();
+    std::vector<uint64_t> payload = ev->getPayload();
+    // TODO: Change to some kind of tuple
+    //   Need to have zap, hart, logical hart, app id, mbox id
     std::pair<uint64_t, uint64_t> hart_zap_id = std::make_pair(zap_id, hart_id);
-    auto *ev = setup_reqs[i];
+   
 
-    output.verbose(CALL_INFO, 9, 0, "setup pkt size %zu for hart %" PRIu64 "\n",
-                   payload.size(), hart_id);
-    if( (setup_reqs[i]->getPayload().size() < 5) ||
-        (hart_tables.find(hart_zap_id) != hart_tables.end()) ){
-      // From ZIP setup is assumed to be validated at ZIP
+    // Sanity check that payload length is correct and that we don't have a matching mailbox configuration
+    // in this module already
+    // TODO: Fix the find comparison (after tuple is defined)
+    if( (payload.size() < 5) ) {//||
+      //(hart_tables.find(hart_zap_id) != hart_tables.end()) ){
+      output.fatal(CALL_INFO, -1, "Invalid ZEN setup packet");
+      /*
       sendNACK(ev->getSrcHart(),
                ev->getSrcZCID(),
                ev->getSrcPCID(),
                ev->getSrcPrec(),
                ev->getID(),
                m_zop_iface);
+      */
     }
 
     // TODO: Specify payload format
@@ -937,38 +944,39 @@ void ZEN::processSetupMsgs(){
     // uint64_t mem_end_addr = mem_start_addr + size - 1;
     uint64_t mem_end_addr = mem_start_addr + size;
     uint64_t scratch_tail = payload[3];
+    uint8_t app_id = (uint8_t)((payload[4] >> 60) & 0b1111);
+    uint8_t mbx_id = (uint8_t)(payload[4] & 0xFFUL);
+    uint64_t credits = 1000;
     // TODO: payload[4] is the mailbox ID that we are setting up
-    hart_tables[hart_zap_id] = new ZENTableRow(acs_pair, mem_start_addr,
+    hart_tables[hart_zap_id] = new ZenMailboxMetadata(acs_pair, mem_start_addr,
                                                mem_end_addr, size,
-                                               scratch_tail, 1000);
+                                               scratch_tail, credits,
+                                               app_id, mbx_id);
+
     sendACK(ev->getSrcHart(),
             ev->getSrcZCID(),
             ev->getSrcPCID(),
             ev->getSrcPrec(),
             ev->getID(),
             m_zop_iface);
+    
+    output.verbose(CALL_INFO, 9, 0, "ZEN Setup packet; payload size %zu for zap, hart, mbox %" PRIu64 ", %" PRIu64 ", %" PRIu8 "\n",
+                   payload.size(), zap_id, hart_id, mbx_id);
 
     // Need to set the scratch tail to the start of the memory buffer
     uint8_t zcid = ev->getSrcZCID();
     sendMsgToScratchpad(hart_id, zcid, scratch_tail, 1, mem_start_addr); 
 
-    output.verbose(CALL_INFO, 9, 0, "setup hart table %" PRIu64 ", start addr 0x%" PRIx64 ", end addr 0x%" PRIx64 "\n",
+    output.verbose(CALL_INFO, 9, 0, "Zen Setup, HartID %" PRIu64 ", start addr 0x%" PRIx64 ", end addr 0x%" PRIx64 "\n",
                    hart_id, mem_start_addr, mem_end_addr);
-    output.verbose(CALL_INFO, 9, 0, "setup hart table %" PRIu64 ", start addr 0x%" PRIx64 ", end addr 0x%" PRIx64 "\n",
+    output.verbose(CALL_INFO, 9, 0, "Zen Setup-Metadata table %" PRIu64 ", start addr 0x%" PRIx64 ", end addr 0x%" PRIx64 "\n",
                    hart_id, hart_tables[hart_zap_id]->mem_head,
                    hart_tables[hart_zap_id]->mem_tail);
-    delete setup_reqs[i];
-    setup_reqs[i] = NULL;
-    cur_processed++;
-    if( cur_processed > process_per_cycle ){
+
+    setup_reqs.pop();
+    if (setup_reqs.empty())
       break;
-    }
   }
-  setup_reqs.erase(std::remove_if(
-    setup_reqs.begin(), setup_reqs.end(),
-    [](auto x) {
-        return !x;
-    }), setup_reqs.end());
 }
 
 void ZEN::processZIPQueue() {

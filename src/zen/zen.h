@@ -10,6 +10,7 @@
 #include "ZOPNET.h"
 #include <string>
 #include <bitset>
+#include <queue>
 
 #define _ZEN_DEFAULT_ZIP_CREDITS_   100
 
@@ -47,9 +48,9 @@ namespace SST::Forza{
   };
 
   // --------------------------------------------
-  // ZENTableRow
+  // ZenMailboxMetadata
   // --------------------------------------------
-  class ZENTableRow {
+  class ZenMailboxMetadata {
   public:
     uint64_t acs_pair;
     uint64_t mem_head;
@@ -60,8 +61,19 @@ namespace SST::Forza{
     bool empty;
     uint64_t scratch_tail;
     uint64_t credits;
-    ZENTableRow(uint64_t acs, uint64_t mh, uint64_t mt, uint64_t ms, uint64_t st, uint64_t c) :
-      acs_pair(acs), mem_head(mh), mem_tail(mt), mem_size(ms), empty(true), scratch_tail(st), credits(c) {
+    uint8_t app_id;
+    uint8_t mbox_id;
+    ZenMailboxMetadata(uint64_t acs, uint64_t mh, uint64_t mt, uint64_t ms, uint64_t st, uint64_t c, uint8_t app, uint8_t mbox) :
+      acs_pair(acs), 
+      mem_head(mh), 
+      mem_tail(mt), 
+      mem_size(ms), 
+      empty(true), 
+      scratch_tail(st), 
+      credits(c),
+      app_id(app),
+      mbox_id(mbox)
+      {
         mem_cur_head = mh;
         mem_cur_tail = mh;
         empty = true;
@@ -239,14 +251,14 @@ namespace SST::Forza{
     zopMsgID *zoneMsgID;            ///< ZEN: manually allocated message IDs
 
     uint64_t zip_credits;
-    std::map<std::pair<uint64_t, uint64_t>, ZENTableRow*> hart_tables;
-    std::map<uint64_t, ZENTableRow*> zone_tables;
-    std::map<uint64_t, ZENTableRow*> precinct_tables;
+    std::map<std::pair<uint64_t, uint64_t>, ZenMailboxMetadata*> hart_tables;
+    std::map<uint64_t, ZenMailboxMetadata*> zone_tables;
+    std::map<uint64_t, ZenMailboxMetadata*> precinct_tables;
     std::map<std::pair<uint64_t, uint64_t>, std::vector<ZENEntry*>> zen_queue;
     std::map<uint64_t, std::vector<ZENEntry*> > zone_queue;
     std::map<uint64_t, std::vector<ZENEntry*> > precinct_queue;
     std::vector<SST::Forza::zopEvent*> mem_acks;
-    std::vector<SST::Forza::zopEvent*> setup_reqs;
+    std::queue<SST::Forza::zopEvent*> setup_reqs;
     std::vector<SST::Forza::zopEvent*> zap_credits;
     std::map<uint8_t, ZENEntry*> outstanding_mem_req;
 
