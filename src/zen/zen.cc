@@ -919,7 +919,7 @@ void ZEN::processSetupMsgs(){
 
     output.verbose(CALL_INFO, 9, 0, "setup pkt size %zu for hart %" PRIu64 "\n",
                    payload.size(), hart_id);
-    if( (setup_reqs[i]->getPayload().size() < 4) ||
+    if( (setup_reqs[i]->getPayload().size() < 5) ||
         (hart_tables.find(hart_zap_id) != hart_tables.end()) ){
       // From ZIP setup is assumed to be validated at ZIP
       sendNACK(ev->getSrcHart(),
@@ -937,6 +937,7 @@ void ZEN::processSetupMsgs(){
     // uint64_t mem_end_addr = mem_start_addr + size - 1;
     uint64_t mem_end_addr = mem_start_addr + size;
     uint64_t scratch_tail = payload[3];
+    // TODO: payload[4] is the mailbox ID that we are setting up
     hart_tables[hart_zap_id] = new ZENTableRow(acs_pair, mem_start_addr,
                                                mem_end_addr, size,
                                                scratch_tail, 1000);
