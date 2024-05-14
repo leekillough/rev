@@ -194,6 +194,12 @@ namespace SST::Forza{
     /// ZEN: handle incoming precinct ZOP messages
     void handleIncomingPrecZOP(SST::Event *ev);
 
+    /// ZEN: helper functions for zop types entering from zone noc
+    void helper_handleFromZoneMsgZop(SST::Forza::zopEvent *ev);
+
+    /// ZEN: helper functions for zop types entering from precinct noc
+    void helper_handleFromPrecMsgZop(SST::Forza::zopEvent *ev);
+
     /// ZEN: processes incoming setup messages
     void processSetupMsgs();
 
@@ -230,6 +236,23 @@ namespace SST::Forza{
     /// ZEN: processes the zip message queue
     void processZIPQueue();
 
+    /// ZEN: determine if zop dest precinct and zone match me
+    bool isDestLocal(SST::Forza::zopEvent *ev)
+    {
+      if ( (ev->getDestPCID() == Zone) &&
+           (ev->getDestPrec() == Precinct) )
+          return true;
+      return false;
+    }
+
+    bool isSrcLocal(SST::Forza::zopEvent *ev)
+    {
+      if ( (ev->getSrcPCID() == Zone) &&
+           (ev->getSrcPrec() == Precinct) )
+          return true;
+      return false;
+    }
+
     // private data members
     SST::Output output;                   ///< ZEN: SST output handler
     SST::Forza::zopAPI* m_zop_iface;      ///< ZEN: ZOP Network interfaces for zone network
@@ -250,19 +273,68 @@ namespace SST::Forza{
 
     zopMsgID *zoneMsgID;            ///< ZEN: manually allocated message IDs
 
+    /*
+      This is incremented in handleIncomingPrecZOP()
+    */
     uint64_t zip_credits;
+
+    // Pair is {AppID, Zap, Hart}, MboxId
     std::map<std::pair<uint64_t, uint64_t>, ZenMailboxMetadata*> hart_tables;
+    
+    // TODO: These should be nothing more than credit counters
     std::map<uint64_t, ZenMailboxMetadata*> zone_tables;
     std::map<uint64_t, ZenMailboxMetadata*> precinct_tables;
+
+    /* 
+      Add to map: handleIncomingZOP() - destination is same zone; basically the default
+        case for messaging types in this function
+      Add to map: handleIncomingPrecZOP() - destination is unchecked (but assumed to be this zone)
+    */
     std::map<std::pair<uint64_t, uint64_t>, std::vector<ZENEntry*>> zen_queue;
+
+    /*
+      Add to map: handleIncomingZOP() - destination is same precinct, diff zone
+    */
     std::map<uint64_t, std::vector<ZENEntry*> > zone_queue;
+
+    /*
+      Add to map: handleIncomingZOP() - destination is diff precinct
+    */
     std::map<uint64_t, std::vector<ZENEntry*> > precinct_queue;
+
+
+    /*
+      Add to vector: handleIncomingZOP() - RZA response
+    */
     std::vector<SST::Forza::zopEvent*> mem_acks;
+
+    /*
+      Add to queue: handleIncomingZOP() - ZEN setup message
+    */
     std::queue<SST::Forza::zopEvent*> setup_reqs;
+
+    /*
+      Add to vector: handleIncomingZOP() - Credit message
+      Add to vector: handleIncomingPrecZOP() - Credit message
+    */
     std::vector<SST::Forza::zopEvent*> zap_credits;
+
+
     std::map<uint8_t, ZENEntry*> outstanding_mem_req;
 
+    /* 
+      Add to queue: handleIncomingPrecZOP() - source precinct != my_precinct
+      This is for incoming messages; precessing this queue will send out credit packets
+        Depending on implementation of credits, we may need to be returning some to the 
+        ZIP for anything that came from outside this precinct
+    */
     std::queue<SST::Forza::zopEvent*> zipQ;
+
+    // Messages placed here are heading to the precinct NoC
+    std::queue<SST::Forza::zopEvent*> to_precinct_noc_q;
+
+    // Messages placed here are being forward onto zone NOC
+    std::queue<SST::Forza::zopEvent*> to_zone_noc_q;
 
   }; // class SST::ZEN
 } // namespace SST::Forza

@@ -103,6 +103,7 @@ void ZEN::finish() {
   output.verbose(CALL_INFO, 10, 0, "Finish()\n");
 }
 
+/* This suffers many of the same issues as handleIncomingZOP() */
 void ZEN::handleIncomingPrecZOP(SST::Event *event) {
   SST::Forza::zopEvent* ev = static_cast<SST::Forza::zopEvent*>(event);
 
@@ -112,36 +113,90 @@ void ZEN::handleIncomingPrecZOP(SST::Event *event) {
                  ev->getSrcHart(), ev->getSrcZCID(), ev->getSrcPCID(),
                  m_zop_iface->endPToStr(m_zop_iface->getEndpointType()).c_str());
 
-  if( (zopCompID)(ev->getSrcZCID()) == zopCompID::Z_PREC_ZIP ){
-    if( (ev->getType() == SST::Forza::zopMsgT::Z_MSG) &&
-        (ev->getOpc() == SST::Forza::zopOpc::Z_MSG_CREDIT)){
-      zip_credits += ev->getCredit();
-    }
-  }else if( ev->getSrcPrec() != m_prec_iface->getPrecinctID() ){
-    zipQ.push(ev);
-  }else{
-    if(ev->getType() == SST::Forza::zopMsgT::Z_MSG &&
-       ((ev->getOpc() == SST::Forza::zopOpc::Z_MSG_SENDP) ||
-        (ev->getOpc() == SST::Forza::zopOpc::Z_MSG_SENDAS))) {
-      // incoming SEND from outside the zone
-      std::pair<uint64_t, uint64_t> hart_zap_id =
-        std::make_pair(ev->getDestZCID(), ev->getDestHart());
-      if( zen_queue[hart_zap_id].size() < zen_queue_size_limit ){
-        zen_queue[hart_zap_id].push_back(new ZENEntry(ev,
-                                                      ZENStatus::UNPROCESSED,
-                                                      true));
-      } else {
-        output.verbose(CALL_INFO, 7, 0,
-                       "Destination %d queue full\n",
-                       ev->getDestHart());
-        // is this dead code as well?
-        // sendNACKToZIP(ev->getSrcHart(), ev->getSrcZCID(), ev->getID());
-        return;
-      }
-    }
+  if (!isDestLocal(ev))
+    output.fatal(CALL_INFO, -1, "ZEN %s: received a packet from precinct NoC not for this zone.\n",
+        getName().c_str());
+
+  // TODO: Do all non-messaging packets need to send a credit back to the ZIP if the packet 
+  //   is from a different precinct?
+  // TODO: Also review how messaging packets are handled and if they need to return ZIP
+  //  credits as well
+
+  switch(ev->getType()){
+    case SST::Forza::zopMsgT::Z_MSG:
+      // Messaging type; destined for a HART in this zone
+      helper_handleFromZoneMsgZop(ev);
+      break;
+
+    case SST::Forza::zopMsgT::Z_RESP:
+      // RZA Response
+      // TODO: Scrape credits if we're doing so
+      // Put onto zone NoC
+      to_zone_noc_q.push_back(ev);
+      break;
+
+    case SST::Forza::zopMsgT::Z_MZOP: [[fallthrough]];
+    case SST::Forza::zopMsgT::Z_HZOPAC: [[fallthrough]];
+    case SST::Forza::zopMsgT::Z_HZOPV: [[fallthrough]];
+    case SST::Forza::zopMsgT::Z_RZOP:
+      // Memory zop type - forward on to zone NoC
+      to_zone_noc_q.push_back(ev);
+      break;
+
+    case SST::Forza::zopMsgT::Z_TMIG:
+      // Thread migration type; for now, thrown an error
+      //    Forward to ZQM
+      output.fatal(CALL_INFO, -1, "ZEN %s: received a thread migration packet (unhandled)\n",
+        getName().c_str());
+      break;
+
+    case SST::Forza::zopMsgT::Z_EXCP:
+      // Exception type; for now, throw an error
+      output.fatal(CALL_INFO, -1, "ZEN %s: received an exception packet (unhandled)\n",
+        getName().c_str());
+      break;
+
+    default: // Z_TMGT, Z_SYSC, Z_FENCE: don't expect to see here (as of now)
+      output.fatal(CALL_INFO, -1, "ZEN %s: received an unexpected packet type\n",
+        getName().c_str());
+      break;
   }
 }
 
+void ZEN::helper_handleFromPrecMsgZop(SST::Forza::zopEvent *ev)
+{
+  // There are several of these that the ZEN needs to handle;
+  switch(ev->getOpc()){
+    case SST::Forza::zopOpc::Z_MSG_SENDP: [[fallthrough]];
+    case SST::Forza::zopOpc::Z_MSG_SENDAS:
+      // handle messaging zop
+      output.fatal(CALL_INFO, -1, "ZEN %s: not yet implemented\n",
+        getName().c_str());
+      break;
+
+    case SST::Forza::zopOpc::Z_MSG_MBXDONE:
+      // Might be able to handle the same as SENDP - don't see why we can't offhand
+      output.fatal(CALL_INFO, -1, "ZEN %s: not yet implemented\n",
+        getName().c_str());
+      break;
+
+    case SST::Forza::zopOpc::Z_MSG_CREDIT:
+      // Handle credit msg
+      zap_credits.push_back(ev);
+      break;
+
+    default:
+      output.fatal(CALL_INFO, -1, "ZEN %s: received an unexpected messaging packet opcode from zone NoC\n",
+                 getName().c_str());
+      break;
+  }
+}
+
+/* TODO: This function is now less broken.
+    As we can have {h,m,r} zops that pass through we need to handle those
+    Excption message types can be an error for now, but could be valid (need to do a bit more research)
+    Thread Mgmt, syscall, and fence types are not expected to be seen here (as of now)
+*/
 void ZEN::handleIncomingZOP(SST::Event *event) {
   bool from_zip = false;
   SST::Forza::zopEvent* ev = static_cast<SST::Forza::zopEvent*>(event);
@@ -152,92 +207,90 @@ void ZEN::handleIncomingZOP(SST::Event *event) {
                  ev->getSrcHart(), ev->getSrcZCID(), ev->getSrcPCID(), ev->getID(),
                  m_zop_iface->endPToStr(m_zop_iface->getEndpointType()).c_str());
 
-  if( (ev->getType() != SST::Forza::zopMsgT::Z_MSG) &&
-      (ev->getType() != SST::Forza::zopMsgT::Z_RESP) ){
-    output.verbose(CALL_INFO, 9, 0, "Invalid msg type %s, expected %s or %s\n",
-                   m_zop_iface->msgTToStr(ev->getType()).c_str(),
-                   m_zop_iface->msgTToStr(SST::Forza::zopMsgT::Z_MSG).c_str(),
-                   m_zop_iface->msgTToStr(SST::Forza::zopMsgT::Z_RESP).c_str());
-    sendNACK(ev->getSrcHart(),
-             ev->getSrcZCID(),
-             ev->getSrcPCID(),
-             ev->getSrcPrec(),
-             ev->getID(),
-             m_zop_iface);
-    return;
+  // Sanity check for incoming packets
+  if (!isSrcLocal(ev))
+    output.fatal(CALL_INFO, -1, "ZEN %s: received a packet from zone NoC with non-local source.\n",
+        getName().c_str());
+
+  switch(ev->getType()){
+    case SST::Forza::zopMsgT::Z_MSG:
+      // Messaging type; can stay here or out to precinct
+      helper_handleFromZoneMsgZop(ev);
+      break;
+
+    case SST::Forza::zopMsgT::Z_RESP:
+      // RZA Response, strictly from local RZA; consumed by this block
+      if(ev->getSrcZCID() != SST::Forza::zopCompID::Z_RZA)
+        output.fatal(CALL_INFO, -1, "ZEN %s: received an RZA response packet not from the RZA\n",
+                     getName().c_str());
+      mem_acks.push_back(ev);
+      break;
+
+    case SST::Forza::zopMsgT::Z_MZOP: [[fallthrough]];
+    case SST::Forza::zopMsgT::Z_HZOPAC: [[fallthrough]];
+    case SST::Forza::zopMsgT::Z_HZOPV: [[fallthrough]];
+    case SST::Forza::zopMsgT::Z_RZOP:
+      // Memory zop type - should be strictly outgoing to precinct NoC
+      if (isDestLocal(ev))
+        output.fatal(CALL_INFO, -1, "ZEN %s: received a memory zop with local dest\n",
+                     getName().c_str());
+      // TODO: Handle credits?
+      // Put packet in outgoing queue
+      to_precinct_noc_q.push_back(ev);
+      break;
+
+    case SST::Forza::zopMsgT::Z_TMIG:
+      // Thread migration type; for now, thrown an error
+      //    Should be to a different zone (any precinct);
+      //    and just pass through here
+      output.fatal(CALL_INFO, -1, "ZEN %s: received a thread migration packet (unhandled)\n",
+        getName().c_str());
+      break;
+
+    case SST::Forza::zopMsgT::Z_EXCP:
+      // Exception type; for now, throw an error
+      output.fatal(CALL_INFO, -1, "ZEN %s: received an exception packet (unhandled)\n",
+        getName().c_str());
+      break;
+
+    default: // Z_TMGT, Z_SYSC, Z_FENCE: don't expect to see here (as of now)
+      output.fatal(CALL_INFO, -1, "ZEN %s: received an unexpected packet type\n",
+        getName().c_str());
+      break;
   }
+}
 
-  if( ev->getType() == SST::Forza::zopMsgT::Z_MSG &&
-      (ev->getOpc() == SST::Forza::zopOpc::Z_MSG_SENDP ||
-       ev->getOpc() == SST::Forza::zopOpc::Z_MSG_SENDAS) ){
-    if( (ev->getDestPCID() != m_zop_iface->getZoneID()) &&
-        (ev->getDestPrec() == m_zop_iface->getPrecinctID()) ){
-      if( zone_queue[ev->getDestPCID()].size() < zen_queue_size_limit ){
-        zone_queue[ev->getDestPCID()].push_back(new ZENEntry(ev,
-                                                             ZENStatus::UNPROCESSED,
-                                                             false));
-      }else{
-        output.verbose(CALL_INFO, 1, 0, "Destination %d queue full\n", ev->getDestHart());
-        sendNACK(ev->getSrcHart(),
-                 ev->getSrcZCID(),
-                 ev->getSrcPCID(),
-                 ev->getSrcPrec(),
-                 ev->getID(),
-                 m_zop_iface);
-        return;
-      }
-    }else if( ev->getDestPrec() != m_zop_iface->getPrecinctID() ){
-      if( precinct_queue[ev->getDestPCID()].size() < zen_queue_size_limit ){
-        precinct_queue[ev->getDestPCID()].push_back(new ZENEntry(ev,
-                                                                 ZENStatus::UNPROCESSED,
-                                                                 false));
-      }else{
-        output.verbose(CALL_INFO, 1, 0, "Destination %d queue full\n", ev->getDestHart());
-        sendNACK(ev->getSrcHart(),
-                 ev->getSrcZCID(),
-                 ev->getSrcPCID(),
-                 ev->getSrcPrec(),
-                 ev->getID(),
-                 m_zop_iface);
-        return;
-      }
-    }else{
-      if (m_zop_iface->getPCID(ev->getSrcPCID()) == zopPrecID::Z_ZIP) {
-        from_zip = true;
-      }
+void ZEN::helper_handleFromZoneMsgZop(SST::Forza::zopEvent *ev)
+{
+  // There are several of these that the ZEN needs to handle
+  switch(ev->getOpc()){
+    case SST::Forza::zopOpc::Z_MSG_SENDP: [[fallthrough]];
+    case SST::Forza::zopOpc::Z_MSG_SENDAS:
+      // handle messaging zop
+      output.fatal(CALL_INFO, -1, "ZEN %s: not yet implemented\n",
+        getName().c_str());
+      break;
 
-      std::pair<uint64_t, uint64_t> hart_zap_id = std::make_pair(ev->getDestZCID(),
-                                                                 ev->getDestHart());
-      if( zen_queue[hart_zap_id].size() < zen_queue_size_limit){
-        zen_queue[hart_zap_id].push_back(new ZENEntry(ev,
-                                                      ZENStatus::UNPROCESSED,
-                                                      from_zip));
-      }else{
-        output.verbose(CALL_INFO, 1, 0, "Destination %d queue full\n", ev->getDestHart());
-        sendNACK(ev->getSrcHart(),
-                 ev->getSrcZCID(),
-                 ev->getSrcPCID(),
-                 ev->getSrcPrec(),
-                 ev->getID(),
-                 m_zop_iface);
-        return;
-      }
-    }
-  }else if ((ev->getType() == SST::Forza::zopMsgT::Z_RESP) &&
-            (ev->getSrcZCID() == (uint8_t)(SST::Forza::zopCompID::Z_RZA))){ // this was added to ignore ACKs from ZAPs
-    //std::cout << "RESP REQUEST" << std::endl;
-    mem_acks.push_back(ev);
-  }else if((ev->getType() == SST::Forza::zopMsgT::Z_MSG) &&
-           (ev->getOpc() == SST::Forza::zopOpc::Z_MSG_ZENSET)){
-    //std::cout << "SETUP REQUEST" << std::endl;
-    setup_reqs.push(ev);
-  }else if((ev->getType() == SST::Forza::zopMsgT::Z_MSG) &&
-           (ev->getOpc() == SST::Forza::zopOpc::Z_MSG_CREDIT)){
-    //std::cout << "CREDIT REQUEST" << std::endl;
-    zap_credits.push_back(ev);
-  }else{
-    // delete the event as it needs to drop on the floor
-    delete ev;
+    case SST::Forza::zopOpc::Z_MSG_MBXDONE:
+      // Might be able to handle the same as SENDP - don't see why we can't offhand
+      output.fatal(CALL_INFO, -1, "ZEN %s: not yet implemented\n",
+        getName().c_str());
+      break;
+
+    case SST::Forza::zopOpc::Z_MSG_CREDIT:
+      // Handle credit msg
+      zap_credits.push_back(ev);
+      break;
+
+    case SST::Forza::zopOpc::Z_MSG_ZENSET:
+      // Handle zen setup msg
+      setup_reqs.push(ev);
+      break;
+    
+    default:
+      output.fatal(CALL_INFO, -1, "ZEN %s: received an unexpected messaging packet opcode from zone NoC\n",
+                 getName().c_str());
+      break;
   }
 }
 
@@ -915,18 +968,15 @@ void ZEN::processSetupMsgs(){
     auto *ev = setup_reqs.front();
     uint64_t hart_id = ev->getSrcHart();
     uint64_t zap_id = ev->getSrcZCID();
+    uint64_t hdr_app_id = ev->getAppID();
     std::vector<uint64_t> payload = ev->getPayload();
-    // TODO: Change to some kind of tuple
-    //   Need to have zap, hart, logical hart, app id, mbox id
-    std::pair<uint64_t, uint64_t> hart_zap_id = std::make_pair(zap_id, hart_id);
-   
 
-    // Sanity check that payload length is correct and that we don't have a matching mailbox configuration
-    // in this module already
-    // TODO: Fix the find comparison (after tuple is defined)
-    if( (payload.size() < 5) ) {//||
-      //(hart_tables.find(hart_zap_id) != hart_tables.end()) ){
+    // Sanity check that payload length is correct
+    if( (payload.size() < 5) )
       output.fatal(CALL_INFO, -1, "Invalid ZEN setup packet");
+
+    // Changed the sanity checks to fatal errors, so no need for a NACK right now
+    // Keeping in case we change them from fatal errors
       /*
       sendNACK(ev->getSrcHart(),
                ev->getSrcZCID(),
@@ -935,7 +985,6 @@ void ZEN::processSetupMsgs(){
                ev->getID(),
                m_zop_iface);
       */
-    }
 
     // TODO: Specify payload format
     uint64_t acs_pair = payload[0];
@@ -944,14 +993,24 @@ void ZEN::processSetupMsgs(){
     // uint64_t mem_end_addr = mem_start_addr + size - 1;
     uint64_t mem_end_addr = mem_start_addr + size;
     uint64_t scratch_tail = payload[3];
-    uint8_t app_id = (uint8_t)((payload[4] >> 60) & 0b1111);
-    uint8_t mbx_id = (uint8_t)(payload[4] & 0xFFUL);
+    uint8_t app_id = (uint8_t)((payload[4] >> 60) & Z_MASK_APPID);
+    uint8_t mbx_id = (uint8_t)(payload[4] & Z_MASK_PKTRES);
     uint64_t credits = 1000;
-    // TODO: payload[4] is the mailbox ID that we are setting up
-    hart_tables[hart_zap_id] = new ZenMailboxMetadata(acs_pair, mem_start_addr,
-                                               mem_end_addr, size,
-                                               scratch_tail, credits,
-                                               app_id, mbx_id);
+    // Payload[4] is the mailbox ID that we are setting up
+ 
+    // Need to have zap, hart, logical hart, app id, mbox id
+    // Let's make a pair that is {AppID, Zap, Hart}, MboxId
+    uint64_t pair1 = (hdr_app_id << (Z_SHIFT_HARTID + Z_SHIFT_ZCID)) | (zap_id << Z_SHIFT_HARTID) | (hart_id);  
+    std::pair<uint64_t, uint64_t> hart_mbox_id = std::make_pair(pair1, mbx_id);
+    // Ensure we don't already have this pair
+    if (hart_tables.find(hart_mbox_id) != hart_tables.end())
+      output.fatal(CALL_INFO, -1, "Found a matching Hart/MBox pair");
+
+
+    hart_tables[hart_mbox_id] = new ZenMailboxMetadata(acs_pair, mem_start_addr,
+                                                       mem_end_addr, size,
+                                                       scratch_tail, credits,
+                                                       app_id, mbx_id);
 
     sendACK(ev->getSrcHart(),
             ev->getSrcZCID(),
