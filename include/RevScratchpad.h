@@ -1,7 +1,7 @@
 //
 // _RevScratchpad_h_
 //
-// Copyright (C) 2017-2023 Tactical Computing Laboratories, LLC
+// Copyright (C) 2017-2024 Tactical Computing Laboratories, LLC
 // All Rights Reserved
 // contact@tactcomplabs.com
 //
@@ -10,7 +10,6 @@
 
 #ifndef _SST_REVCPU_REVSCRATCHPAD_H_
 #define _SST_REVCPU_REVSCRATCHPAD_H_
-
 
 #include "../common/include/RevCommon.h"
 #include "SST.h"
@@ -25,12 +24,8 @@ namespace SST::RevCPU {
 
 class RevScratchpad {
 public:
-  RevScratchpad( const unsigned ZapNum,
-                 size_t         Size,
-                 size_t         ChunkSize,
-                 SST::Output*   Output ) :
-    ZapNum( ZapNum ),
-    Size( Size ), ChunkSize( ChunkSize ), output( Output ) {
+  RevScratchpad( const unsigned ZapNum, size_t Size, size_t ChunkSize, SST::Output* Output )
+    : ZapNum( ZapNum ), Size( Size ), ChunkSize( ChunkSize ), output( Output ) {
     // Create the byte array
     // TODO: Verify this is correct
     BaseAddr += ZapNum * Size;
@@ -39,28 +34,24 @@ public:
     TopAddr = BaseAddr + Size - 1;
   }
 
-  uint64_t GetBaseAddr() const {
-    return BaseAddr;
-  }
+  uint64_t GetBaseAddr() const { return BaseAddr; }
 
-  uint64_t GetTopAddr() const {
-    return TopAddr;
-  }
+  uint64_t GetTopAddr() const { return TopAddr; }
 
-  size_t GetSize() const {
-    return Size;
-  }
+  size_t GetSize() const { return Size; }
 
   uint64_t Alloc( size_t SizeRequested ) {
     // Make sure we have enough space
     if( SizeRequested > Size ) {
-      output->verbose( CALL_INFO,
-                       11,
-                       0,
-                       "Error: Requested allocation size %zu is larger than "
-                       "the scratchpad size %zu\n",
-                       SizeRequested,
-                       Size );
+      output->verbose(
+        CALL_INFO,
+        11,
+        0,
+        "Error: Requested allocation size %zu is larger than "
+        "the scratchpad size %zu\n",
+        SizeRequested,
+        Size
+      );
       return _INVALID_ADDR_;
     }
     uint64_t AllocedAt;
@@ -70,12 +61,7 @@ public:
     // find N contiguous chunks
     size_t FirstChunk = FindContiguousChunks( numChunks );
     if( FirstChunk == FreeList.size() ) {
-      output->verbose(
-        CALL_INFO,
-        1,
-        0,
-        "Error: Unable to find %zu contiguous chunks in the scratchpad\n",
-        numChunks );
+      output->verbose( CALL_INFO, 1, 0, "Error: Unable to find %zu contiguous chunks in the scratchpad\n", numChunks );
       AllocedAt = _INVALID_ADDR_;
     } else {
       AllocedAt = BaseAddr + FirstChunk * ChunkSize;
@@ -93,25 +79,20 @@ public:
     size_t numChunks    = ( Size + ChunkSize - 1 ) / ChunkSize;
     // Make sure were not trying to free beyond the end of the scratchpad
     if( BaseChunkNum + numChunks > FreeList.size() ) {
-      output->fatal( CALL_INFO,
-                     6,
-                     "Error: Attempting to free memory starting at 0x%" PRIx64
-                     " with size %zu\n"
-                     "While this scratchpad starts at 0x%" PRIx64
-                     " and ends at 0x%" PRIx64 "\n",
-                     Addr,
-                     Size,
-                     BaseAddr,
-                     TopAddr );
+      output->fatal(
+        CALL_INFO,
+        6,
+        "Error: Attempting to free memory starting at 0x%" PRIx64 " with size %zu\n"
+        "While this scratchpad starts at 0x%" PRIx64 " and ends at 0x%" PRIx64 "\n",
+        Addr,
+        Size,
+        BaseAddr,
+        TopAddr
+      );
     }
     // Free the chunks
     for( size_t i = BaseChunkNum; i < BaseChunkNum + numChunks; ++i ) {
-      output->verbose( CALL_INFO,
-                       4,
-                       0,
-                       "Freeing chunk %zu which is at 0x%" PRIx64 "\n",
-                       i,
-                       BaseAddr + i * ChunkSize );
+      output->verbose( CALL_INFO, 4, 0, "Freeing chunk %zu which is at 0x%" PRIx64 "\n", i, BaseAddr + i * ChunkSize );
       FreeList.set( i );
     }
     return;
@@ -134,9 +115,7 @@ public:
     return FreeList.size();  // special value indicating "not found"
   }
 
-  bool Contains( uint64_t Addr ) {
-    return ( Addr >= BaseAddr && Addr < BaseAddr + Size );
-  }
+  bool Contains( uint64_t Addr ) { return ( Addr >= BaseAddr && Addr < BaseAddr + Size ); }
 
   /// RevScratchpad: Attempts to allocate numBytes in the scratchpad
   uint64_t ScratchpadAlloc( size_t numBytes );
@@ -147,30 +126,24 @@ public:
     uint64_t      Addr,
     size_t        Len,
     void*         Target,
-    const MemReq& req );  //Interfaces::StandardMem::Request::flags_t flags);
+    const MemReq& req
+  );  //Interfaces::StandardMem::Request::flags_t flags);
 
   /// RevScratchpad: Attempts to allocate numBytes in the scratchpad
-  bool WriteMem(
-    unsigned    Hart,
-    uint64_t    Addr,
-    size_t      Len,
-    const void* Data );  // Interfaces::StandardMem::Request::flags_t flags);
+  bool WriteMem( unsigned Hart, uint64_t Addr, size_t Len,
+                 const void* Data );  // Interfaces::StandardMem::Request::flags_t flags);
 
-  ~RevScratchpad() {
-    delete[] BackingMem;
-  }
+  ~RevScratchpad() { delete[] BackingMem; }
 
 private:
-  unsigned                                        ZapNum;
-  size_t                                          Size;
-  size_t                                          ChunkSize;
-  std::bitset< _SCRATCHPAD_SIZE_ / _CHUNK_SIZE_ > FreeList;
-  char*                                           BackingMem =
-    nullptr;  ///< RevMem: Scratchpad memory container for FORZA
-  uint64_t BaseAddr =
-    _SCRATCHPAD_BASE_;   ///< RevMem: Base address of the scratchpad
-  uint64_t     TopAddr;  ///< RevScratchpad: Base address of the scratchpad
-  SST::Output* output;   ///< RevScratchpad: Output stream
+  unsigned                                      ZapNum;
+  size_t                                        Size;
+  size_t                                        ChunkSize;
+  std::bitset<_SCRATCHPAD_SIZE_ / _CHUNK_SIZE_> FreeList;
+  char*                                         BackingMem = nullptr;            ///< RevMem: Scratchpad memory container for FORZA
+  uint64_t                                      BaseAddr   = _SCRATCHPAD_BASE_;  ///< RevMem: Base address of the scratchpad
+  uint64_t                                      TopAddr;                         ///< RevScratchpad: Base address of the scratchpad
+  SST::Output*                                  output;                          ///< RevScratchpad: Output stream
 };
 }  // namespace SST::RevCPU
 

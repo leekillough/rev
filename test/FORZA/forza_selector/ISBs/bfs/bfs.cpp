@@ -1,9 +1,9 @@
 #include "../../libs/selector.forza.h"
 #include "stdlib.h"
 
-class BFSSelector : public hclib::Selector< visitmsg > {
-  std::vector< int64_t >* nextFrontier;
-  int64_t*                pred_glob;
+class BFSSelector : public hclib::Selector<visitmsg> {
+  std::vector<int64_t>* nextFrontier;
+  int64_t*              pred_glob;
 
   void process( visitmsg m, int sender_rank ) {
     // code ported to forzalib and not keeping a version here for ease of
@@ -12,9 +12,7 @@ class BFSSelector : public hclib::Selector< visitmsg > {
 
 public:
   BFSSelector() {
-    mbx[0].process = [this]( visitmsg pkt, int sender_rank ) {
-      this->process( pkt, sender_rank );
-    };
+    mbx[0].process = [this]( visitmsg pkt, int sender_rank ) { this->process( pkt, sender_rank ); };
   }
 };
 
@@ -37,16 +35,13 @@ void* bfs_selector( int* mytid ) {
     hclib::finish( [=]() {
       bfss_ptr->start( ActorID );
       for( int64_t i = 0; i < frontierTail[ActorID]; i++ ) {
-        for( int j = A2->loffset[frontier[ActorID][i]];
-             j < A2->loffset[frontier[ActorID][i] + 1];
-             j++ ) {
+        for( int j = A2->loffset[frontier[ActorID][i]]; j < A2->loffset[frontier[ActorID][i] + 1]; j++ ) {
           int column  = A2->lnonzero[j];
           int dest    = column % THREADS;
 
           visitmsg* m = (visitmsg*) forza_malloc( 1 * sizeof( visitmsg ) );
           m->vloc     = column / THREADS;
           m->vfrom    = frontier[ActorID][i];
-
 
           bfss_ptr->send( REQUEST, m, dest, ActorID );
         }
@@ -77,7 +72,6 @@ int main( int argc, char* argv[] ) {
   print_args[0] = &ptr0;
   forza_fprintf( 1, "argv[0] address - %p\n", print_args );
 
-
   void* ptr     = (void*) argv[1];
   print_args[0] = &ptr;
   forza_fprintf( 1, "argv[1] address - %p\n", print_args );
@@ -99,15 +93,13 @@ int main( int argc, char* argv[] ) {
     mb_request[i] = (mailbox*) forza_malloc( TOTAL_PEs * sizeof( mailbox ) );
   }
 
-  mat      = (sparsemat_t*) forza_malloc( TOTAL_PEs * sizeof( sparsemat_t ) );
+  mat          = (sparsemat_t*) forza_malloc( TOTAL_PEs * sizeof( sparsemat_t ) );
 
-  frontier = (int64_t**) forza_malloc( TOTAL_PEs * sizeof( int64_t* ) );
+  frontier     = (int64_t**) forza_malloc( TOTAL_PEs * sizeof( int64_t* ) );
   nextFrontier = (int64_t**) forza_malloc( TOTAL_PEs * sizeof( int64_t* ) );
   for( int i = 0; i < TOTAL_PEs; i++ ) {
-    frontier[i] =
-      (int64_t*) forza_malloc( BFS_FRONTIER_SIZE * sizeof( int64_t ) );
-    nextFrontier[i] =
-      (int64_t*) forza_malloc( BFS_FRONTIER_SIZE * sizeof( int64_t ) );
+    frontier[i]     = (int64_t*) forza_malloc( BFS_FRONTIER_SIZE * sizeof( int64_t ) );
+    nextFrontier[i] = (int64_t*) forza_malloc( BFS_FRONTIER_SIZE * sizeof( int64_t ) );
   }
   nvisited         = (int64_t*) forza_malloc( TOTAL_PEs * sizeof( int64_t ) );
   visited_size     = (int64_t*) forza_malloc( TOTAL_PEs * sizeof( int64_t ) );
@@ -141,7 +133,6 @@ int main( int argc, char* argv[] ) {
 
   forza_fprintf( 1, "FORZA initilize done.......\n", print_args );
 
-
   const char* deps[] = { "system", "bale_actor" };
   hclib::launch( deps, 2, [=] {
     forza_thread_t pt[2 * THREADS];
@@ -162,7 +153,6 @@ int main( int argc, char* argv[] ) {
     for( int i = 0; i < THREADS; i++ ) {
       forza_thread_create( &pt[i + THREADS], (void*) bfs_poll_thread, &tid[i] );
     }
-
 
     for( int i = 0; i < THREADS; i++ ) {
       forza_thread_join( pt[i + THREADS] );

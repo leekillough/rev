@@ -1,13 +1,10 @@
 #include "../../libs/selector.forza.h"
 #include "stdlib.h"
 
-class TriangleSelector : public hclib::Selector< TrianglePkt > {
+class TriangleSelector : public hclib::Selector<TrianglePkt> {
 public:
-  TriangleSelector( int64_t* cnts, sparsemat_t* mat ) :
-    cnt_( cnts ), mat_( mat ) {
-    mbx[REQUEST].process = [this]( TrianglePkt pkt, int sender_rank ) {
-      this->req_process( pkt, sender_rank );
-    };
+  TriangleSelector( int64_t* cnts, sparsemat_t* mat ) : cnt_( cnts ), mat_( mat ) {
+    mbx[REQUEST].process = [this]( TrianglePkt pkt, int sender_rank ) { this->req_process( pkt, sender_rank ); };
   }
 
 private:
@@ -18,14 +15,12 @@ private:
   void req_process( TrianglePkt pkg, int sender_rank ) {
     int64_t tempCount = 0;
 
-    for( int64_t k = mat_->loffset[pkg.vj]; k < mat_->loffset[pkg.vj + 1];
-         k++ ) {
+    for( int64_t k = mat_->loffset[pkg.vj]; k < mat_->loffset[pkg.vj + 1]; k++ ) {
       if( pkg.w == mat_->lnonzero[k] ) {
         tempCount++;
         break;
       }
-      if( pkg.w <
-          mat_->lnonzero[k] ) {  // requires that nonzeros are increasing
+      if( pkg.w < mat_->lnonzero[k] ) {  // requires that nonzeros are increasing
         break;
       }
     }
@@ -36,10 +31,9 @@ private:
 };
 
 void* triangle_selector( int* mytid ) {
-  int ActorID = *( mytid );
+  int ActorID                   = *( mytid );
 
-  TriangleSelector* triSelector =
-    new TriangleSelector( &cnt[ActorID], &mat[ActorID] );
+  TriangleSelector* triSelector = new TriangleSelector( &cnt[ActorID], &mat[ActorID] );
 
   hclib::finish( [=]() {
     triSelector->start( ActorID );
@@ -49,25 +43,22 @@ void* triangle_selector( int* mytid ) {
     TrianglePkt pkg;
 
     for( l_i = 0; l_i < mat[ActorID].lnumrows; l_i++ ) {
-      for( k = mat[ActorID].loffset[l_i]; k < mat[ActorID].loffset[l_i + 1];
-           k++ ) {
+      for( k = mat[ActorID].loffset[l_i]; k < mat[ActorID].loffset[l_i + 1]; k++ ) {
         // L_i = l_i * THREADS + ActorID;
         L_j    = mat[ActorID].lnonzero[k];
 
         pe     = L_j % THREADS;
         pkg.vj = L_j / THREADS;
-        for( kk = mat[ActorID].loffset[l_i]; kk < mat[ActorID].loffset[l_i + 1];
-             kk++ ) {
+        for( kk = mat[ActorID].loffset[l_i]; kk < mat[ActorID].loffset[l_i + 1]; kk++ ) {
           pkg.w = mat[ActorID].lnonzero[kk];
 
           if( pkg.w > L_j ) {
             break;
           }
 
-          TrianglePkt* tpkt =
-            (TrianglePkt*) forza_malloc( 1 * sizeof( TrianglePkt ) );
-          tpkt->w  = pkg.w;
-          tpkt->vj = pkg.vj;
+          TrianglePkt* tpkt = (TrianglePkt*) forza_malloc( 1 * sizeof( TrianglePkt ) );
+          tpkt->w           = pkg.w;
+          tpkt->vj          = pkg.vj;
 
           triSelector->send( REQUEST, tpkt, pe, ActorID );
         }
@@ -87,7 +78,6 @@ int main( int argc, char* argv[] ) {
   void* ptr0    = (void*) argv[0];
   print_args[0] = &ptr0;
   forza_fprintf( 1, "argv[0] address - %p\n", print_args );
-
 
   void* ptr     = (void*) argv[1];
   print_args[0] = &ptr;
@@ -133,8 +123,7 @@ int main( int argc, char* argv[] ) {
     }
 
     for( int i = 0; i < THREADS; i++ ) {
-      forza_thread_create(
-        &pt[i + THREADS], (void*) forza_poll_thread, &tid[i] );
+      forza_thread_create( &pt[i + THREADS], (void*) forza_poll_thread, &tid[i] );
     }
 
     for( int i = 0; i < THREADS; i++ ) {

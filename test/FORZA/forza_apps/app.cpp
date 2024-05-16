@@ -1,12 +1,9 @@
 #include "forza_selector.h"
 
-class TriangleSelector : public hclib::Selector< TrianglePkt > {
+class TriangleSelector : public hclib::Selector<TrianglePkt> {
 public:
-  TriangleSelector( int64_t* cnts, sparsemat_t* mat ) :
-    cnt_( cnts ), mat_( mat ) {
-    mbx[REQUEST].process = [this]( TrianglePkt pkt, int sender_rank ) {
-      this->req_process( pkt, sender_rank );
-    };
+  TriangleSelector( int64_t* cnts, sparsemat_t* mat ) : cnt_( cnts ), mat_( mat ) {
+    mbx[REQUEST].process = [this]( TrianglePkt pkt, int sender_rank ) { this->req_process( pkt, sender_rank ); };
   }
 
 private:
@@ -17,14 +14,12 @@ private:
   void req_process( TrianglePkt pkg, int sender_rank ) {
     int64_t tempCount = 0;
 
-    for( int64_t k = mat_->loffset[pkg.vj]; k < mat_->loffset[pkg.vj + 1];
-         k++ ) {
+    for( int64_t k = mat_->loffset[pkg.vj]; k < mat_->loffset[pkg.vj + 1]; k++ ) {
       if( pkg.w == mat_->lnonzero[k] ) {
         tempCount++;
         break;
       }
-      if( pkg.w <
-          mat_->lnonzero[k] ) {  // requires that nonzeros are increasing
+      if( pkg.w < mat_->lnonzero[k] ) {  // requires that nonzeros are increasing
         break;
       }
     }
@@ -35,10 +30,9 @@ private:
 };
 
 int forza_packet_send( int mytid, sparsemat_t* mmat ) {
-  int ActorID = mytid;
+  int ActorID                   = mytid;
 
-  TriangleSelector* triSelector =
-    new TriangleSelector( &cnt[ActorID], &mat[ActorID] );
+  TriangleSelector* triSelector = new TriangleSelector( &cnt[ActorID], &mat[ActorID] );
 
   // forza_fprintf(1, "AJAY\n", print_args);
 
@@ -48,8 +42,7 @@ int forza_packet_send( int mytid, sparsemat_t* mmat ) {
     int64_t l_i, L_j;
 
     TrianglePkt  pkg;
-    TrianglePkt* tpkt =
-      (TrianglePkt*) forza_malloc( 1 * sizeof( TrianglePkt ) );
+    TrianglePkt* tpkt = (TrianglePkt*) forza_malloc( 1 * sizeof( TrianglePkt ) );
 
     // assert(mmat->lnumrows == 8);
 
@@ -80,7 +73,6 @@ int forza_packet_send( int mytid, sparsemat_t* mmat ) {
   } );
 
   // forza_fprintf(1, "AJAY\n", print_args);
-
 
   return 0;
 }

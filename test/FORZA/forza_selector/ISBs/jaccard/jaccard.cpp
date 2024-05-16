@@ -1,13 +1,10 @@
 #include "../../libs/selector.forza.h"
 #include "stdlib.h"
 
-class JaccardSelector : public hclib::Selector< JaccardPkt > {
+class JaccardSelector : public hclib::Selector<JaccardPkt> {
 public:
-  JaccardSelector( sparsemat_t* mat, sparsemat_t* intersection_mat ) :
-    mat_( mat ), intersection_mat_( intersection_mat ) {
-    mbx[0].process = [this]( JaccardPkt pkt, int sender_rank ) {
-      this->req_process( pkt, sender_rank );
-    };
+  JaccardSelector( sparsemat_t* mat, sparsemat_t* intersection_mat ) : mat_( mat ), intersection_mat_( intersection_mat ) {
+    mbx[0].process = [this]( JaccardPkt pkt, int sender_rank ) { this->req_process( pkt, sender_rank ); };
   }
 
 private:
@@ -17,19 +14,12 @@ private:
 
   void req_process( JaccardPkt pkg, int sender_rank ) {
     // JaccardPkt pkg2;
-    int64_t search_ = binary_search( mat_->loffset[pkg.index_u],
-                                     mat_->loffset[pkg.index_u + 1] - 1,
-                                     pkg.x,
-                                     mat_,
-                                     0 );
+    int64_t search_ = binary_search( mat_->loffset[pkg.index_u], mat_->loffset[pkg.index_u + 1] - 1, pkg.x, mat_, 0 );
     if( search_ != -1 ) {
-      pkg.pos_row = pkg.pos_row / THREADS;
-      int64_t search__ =
-        binary_search( intersection_mat_->loffset[pkg.pos_row],
-                       intersection_mat_->loffset[pkg.pos_row + 1] - 1,
-                       pkg.pos_col,
-                       mat_,
-                       1 );
+      pkg.pos_row      = pkg.pos_row / THREADS;
+      int64_t search__ = binary_search(
+        intersection_mat_->loffset[pkg.pos_row], intersection_mat_->loffset[pkg.pos_row + 1] - 1, pkg.pos_col, mat_, 1
+      );
       if( search__ != -1 ) {
         intersection_mat_->lvalue[search__]++;
       }
@@ -37,16 +27,11 @@ private:
   }
 };
 
-class DegreeSelector : public hclib::Selector< DegreePkt > {
+class DegreeSelector : public hclib::Selector<DegreePkt> {
 public:
-  DegreeSelector( sparsemat_t* mat, sparsemat_t* kmer_mat ) :
-    mat_( mat ), kmer_mat_( kmer_mat ) {
-    mbx[0].process = [this]( DegreePkt pkt, int sender_rank ) {
-      this->req_process( pkt, sender_rank );
-    };
-    mbx[1].process = [this]( DegreePkt pkt, int sender_rank ) {
-      this->resp_process( pkt, sender_rank );
-    };
+  DegreeSelector( sparsemat_t* mat, sparsemat_t* kmer_mat ) : mat_( mat ), kmer_mat_( kmer_mat ) {
+    mbx[0].process = [this]( DegreePkt pkt, int sender_rank ) { this->req_process( pkt, sender_rank ); };
+    mbx[1].process = [this]( DegreePkt pkt, int sender_rank ) { this->resp_process( pkt, sender_rank ); };
   }
 
 private:
@@ -61,16 +46,13 @@ private:
     send( RESPONSE, &pkg2, sender_rank, 0 );  // dummy send
   }
 
-  void resp_process( DegreePkt pkg, int sender_rank ) {
-    mat_->lnonzero[pkg.src_idx] = pkg.i;
-  }
+  void resp_process( DegreePkt pkg, int sender_rank ) { mat_->lnonzero[pkg.src_idx] = pkg.i; }
 };
 
 void* get_edge_degrees( int* mytid ) {
-  int ActorID = *( mytid );
+  int ActorID                    = *( mytid );
 
-  DegreeSelector* degreeSelector =
-    new DegreeSelector( &mat[ActorID], &kmer_mat[ActorID] );
+  DegreeSelector* degreeSelector = new DegreeSelector( &mat[ActorID], &kmer_mat[ActorID] );
 
   hclib::finish( [=]() {
     degreeSelector->start( ActorID );
@@ -87,8 +69,7 @@ void* get_edge_degrees( int* mytid ) {
         dpkt->i         = degPKG.i;
         dpkt->src_idx   = degPKG.src_idx;
         dpkt->sender_pe = ActorID;
-        degreeSelector->send(
-          REQUEST, dpkt, L->lnonzero[k] % THREADS, ActorID );
+        degreeSelector->send( REQUEST, dpkt, L->lnonzero[k] % THREADS, ActorID );
       }
     }
 
@@ -99,12 +80,11 @@ void* get_edge_degrees( int* mytid ) {
 }
 
 void* jaccard_selector( int* mytid ) {
-  int ActorID = *( mytid );
+  int ActorID                  = *( mytid );
 
-  JaccardSelector* jacSelector =
-    new JaccardSelector( &kmer_mat[ActorID], &mat[ActorID] );
+  JaccardSelector* jacSelector = new JaccardSelector( &kmer_mat[ActorID], &mat[ActorID] );
 
-  sparsemat_t* A2 = &kmer_mat[ActorID];
+  sparsemat_t* A2              = &kmer_mat[ActorID];
 
   hclib::finish( [=]() {
     jacSelector->start( ActorID );
@@ -118,24 +98,22 @@ void* jaccard_selector( int* mytid ) {
 
         for( int64_t i_rows = row_num; i_rows < A2->numrows; i_rows++ ) {
           // calculate intersection
-          pkg.index_u = i_rows / THREADS;
-          pkg.x       = v_nonzero;
-          pkg.pos_row = i_rows;
-          pkg.pos_col = row_num;
+          pkg.index_u      = i_rows / THREADS;
+          pkg.x            = v_nonzero;
+          pkg.pos_row      = i_rows;
+          pkg.pos_col      = row_num;
 
-          JaccardPkt* jpkt =
-            (JaccardPkt*) forza_malloc( 1 * sizeof( JaccardPkt ) );
-          jpkt->index_u = pkg.index_u;
-          jpkt->x       = pkg.x;
-          jpkt->pos_row = pkg.pos_row;
-          jpkt->pos_col = pkg.pos_col;
+          JaccardPkt* jpkt = (JaccardPkt*) forza_malloc( 1 * sizeof( JaccardPkt ) );
+          jpkt->index_u    = pkg.index_u;
+          jpkt->x          = pkg.x;
+          jpkt->pos_row    = pkg.pos_row;
+          jpkt->pos_col    = pkg.pos_col;
           jacSelector->send( REQUEST, jpkt, i_rows % THREADS, ActorID );
         }
       }
     }
     jacSelector->done( REQUEST, ActorID );
   } );
-
 
   return NULL;
 }
@@ -147,7 +125,6 @@ int main( int argc, char* argv[] ) {
   void* ptr0    = (void*) argv[0];
   print_args[0] = &ptr0;
   forza_fprintf( 1, "argv[0] address - %p\n", print_args );
-
 
   void* ptr     = (void*) argv[1];
   print_args[0] = &ptr;
@@ -209,8 +186,7 @@ int main( int argc, char* argv[] ) {
     }
 
     for( int i = 0; i < THREADS; i++ ) {
-      forza_thread_create(
-        &pt[i + THREADS], (void*) jaccard_phase1_poll, &tid[i] );
+      forza_thread_create( &pt[i + THREADS], (void*) jaccard_phase1_poll, &tid[i] );
     }
 
     for( int i = 0; i < THREADS; i++ ) {
@@ -233,8 +209,7 @@ int main( int argc, char* argv[] ) {
     forza_fprintf( 1, "Phase 2\n", print_args );
 
     for( int i = 0; i < THREADS; i++ ) {
-      forza_thread_create(
-        &pt[i + ( 2 * THREADS )], (void*) jaccard_selector, &tid[i] );
+      forza_thread_create( &pt[i + ( 2 * THREADS )], (void*) jaccard_selector, &tid[i] );
     }
 
     for( int i = 0; i < THREADS; i++ ) {
@@ -242,8 +217,7 @@ int main( int argc, char* argv[] ) {
     }
 
     for( int i = 0; i < THREADS; i++ ) {
-      forza_thread_create(
-        &pt[i + ( 3 * THREADS )], (void*) jaccard_phase2_poll, &tid[i] );
+      forza_thread_create( &pt[i + ( 3 * THREADS )], (void*) jaccard_phase2_poll, &tid[i] );
     }
 
     for( int i = 0; i < THREADS; i++ ) {
@@ -256,16 +230,12 @@ int main( int argc, char* argv[] ) {
   sparsemat_t* Jaccard_mat = &mat[testID];
   sparsemat_t* Atest       = &kmer_mat[testID];
 
-
   for( int64_t v = 0; v < Jaccard_mat->lnumrows; v++ ) {
     int64_t deg_v = Atest->loffset[v + 1] - Atest->loffset[v];
-    for( int64_t k = Jaccard_mat->loffset[v]; k < Jaccard_mat->loffset[v + 1];
-         k++ ) {
+    for( int64_t k = Jaccard_mat->loffset[v]; k < Jaccard_mat->loffset[v + 1]; k++ ) {
 
       Jaccard_mat->lvalue[k] =
-        (double) Jaccard_mat->lvalue[k] /
-        ( (double) Jaccard_mat->lnonzero[k] + (double) deg_v -
-          (double) Jaccard_mat->lvalue[k] );
+        (double) Jaccard_mat->lvalue[k] / ( (double) Jaccard_mat->lnonzero[k] + (double) deg_v - (double) Jaccard_mat->lvalue[k] );
 
       if( Jaccard_mat->lvalue[k] ) {
         print_args[0] = (void*) &testID;

@@ -57,8 +57,7 @@ typedef struct ForzaThreadArgs_ {
 } ForzaThreadArgs;
 
 typedef struct sparsemat_t_ {
-  int64_t
-    local;  //!< 0/1 flag specifies whether this is a local or distributed matrix
+  int64_t local;     //!< 0/1 flag specifies whether this is a local or distributed matrix
   int64_t numrows;   //!< the total number of rows in the matrix
   int64_t lnumrows;  //!< the number of rows on this PE
                      // note lnumrows = (numrows / NPES) + {0 or 1}
@@ -67,14 +66,11 @@ typedef struct sparsemat_t_ {
   int64_t nnz;       //!< total number of nonzeros in the matrix
   int64_t lnnz;      //!< the number of nonzeros on this PE
   //int64_t * offset;      //!< the row offsets into the array of nonzeros
-  int64_t loffset
-    [PKT_QUEUE_SIZE];  //!< the row offsets for the row with affinity to this PE
+  int64_t loffset[PKT_QUEUE_SIZE];  //!< the row offsets for the row with affinity to this PE
   //int64_t * nonzero;     //!< the global array of column indices of nonzeros
-  int64_t lnonzero
-    [PKT_QUEUE_SIZE];  //!< local array of column indices (for rows on this PE).
+  int64_t lnonzero[PKT_QUEUE_SIZE];  //!< local array of column indices (for rows on this PE).
   //double * value;        //!< the global array of values of nonzeros. Optional.
-  double lvalue
-    [PKT_QUEUE_SIZE];  //!< local array of values (values for rows on this PE)
+  double lvalue[PKT_QUEUE_SIZE];  //!< local array of values (values for rows on this PE)
 } sparsemat_t;
 
 static sparsemat_t* mat;
@@ -113,8 +109,7 @@ static uint64_t forza_file_read( char* filename, char* buf, size_t count ) {
   return i;
 }
 
-static void
-  generate_graph( sparsemat_t* mmfile, bool iskmer, bool isbfs, int mynode ) {
+static void generate_graph( sparsemat_t* mmfile, bool iskmer, bool isbfs, int mynode ) {
   char buffer1[BUF_SIZE];
   char buffer2[BUF_SIZE][10];
   char path[40];
@@ -138,7 +133,6 @@ static void
     }
   }
 
-
   uint64_t bytesRead = forza_file_read( path, buffer1, 50000 );
   buffer1[bytesRead] = '\0';
 
@@ -157,8 +151,7 @@ static void
     j++;
   }
 
-  mmfile[mynode].local =
-    my_atoi( buffer2[0] );  //my_atoi should be replaced with sscanf
+  mmfile[mynode].local    = my_atoi( buffer2[0] );  //my_atoi should be replaced with sscanf
   mmfile[mynode].numrows  = my_atoi( buffer2[1] );
   mmfile[mynode].lnumrows = my_atoi( buffer2[2] );
   mmfile[mynode].numcols  = my_atoi( buffer2[3] );
@@ -257,8 +250,7 @@ static int forza_thread_join( forza_thread_t tid ) {
 //     forza_free(p, 2);
 // }
 
-static void
-  forza_packet_poll( int mytid, uint64_t** tail_ptr, uint64_t* head_ptr ) {
+static void forza_packet_poll( int mytid, uint64_t** tail_ptr, uint64_t* head_ptr ) {
   // int MY_ACTOR = mytid;
   uint64_t poll_done = 0;
   // int qsize = 100;
