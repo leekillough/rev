@@ -47,8 +47,25 @@ namespace SST::Forza{
     }
   };
 
+  // Modified version of ZENEntry above
+  class MemReturnEntry {
+    public:
+      SST::Forza::zopEvent *msg;
+      std::vector<uint16_t> msg_ids;
+      MemReturnEntry(SST::Forza::zopEvent *m, std::vector<uint16_t>v) :
+        msg(m),
+        std::vector<uint16_t>msg_ids(v)
+        { /* empty constructor */}
+  }
+
   // --------------------------------------------
   // ZenMailboxMetadata
+  // TODO: For sanity checking, we need the packet
+  // size for this mailbox and ensure the buffer
+  // pointers align on that boundary - software isn't going
+  // to be happy if a full packet isn't in contiguous memory
+  // Oh, and remember that we store the full ZOP in memory so 
+  // we can return a credit
   // --------------------------------------------
   class ZenMailboxMetadata {
   public:
@@ -63,7 +80,8 @@ namespace SST::Forza{
     uint64_t credits;
     uint8_t app_id;
     uint8_t mbox_id;
-    ZenMailboxMetadata(uint64_t acs, uint64_t mh, uint64_t mt, uint64_t ms, uint64_t st, uint64_t c, uint8_t app, uint8_t mbox) :
+    ZenMailboxMetadata(uint64_t acs, uint64_t mh, uint64_t mt, uint64_t ms, 
+                       uint64_t st, uint64_t c, uint8_t app, uint8_t mbox) :
       acs_pair(acs), 
       mem_head(mh), 
       mem_tail(mt), 
@@ -78,6 +96,11 @@ namespace SST::Forza{
         mem_cur_tail = mh;
         empty = true;
       }
+
+      /// @brief  Get current wr ptr and update it to the next addr
+      /// @param size packet size we're writing
+      /// @return write address (aka mem_cur_tail)
+      uint64_t getRzaWriteAddr(uint8_t size);
   };
 
   // --------------------------------------------
@@ -158,6 +181,8 @@ namespace SST::Forza{
                   uint8_t pcid, uint16_t prec, uint8_t id,
                   SST::Forza::zopAPI *iface);
 
+    void sendACK(SST::Forza::zopEvent *ev, bool to_zone_noc);
+
     /// ZEN: send a DMA store to the zone's RZA
     void sendMsgToRZADMA(uint64_t acs, uint64_t addr,
                          std::vector<uint64_t> src_payload, uint8_t cur_msg_id,
@@ -188,10 +213,10 @@ namespace SST::Forza{
     /// ZEN: handle incoming RZA messages
     void handleIncomingRZAMsg();
 
-    /// ZEN: handle incoming ZOP messages
+    /// ZEN: handle incoming ZOP messages (from zone NoC)
     void handleIncomingZOP(SST::Event *ev);
 
-    /// ZEN: handle incoming precinct ZOP messages
+    /// ZEN: handle incoming precinct ZOP messages (from precinct NoC)
     void handleIncomingPrecZOP(SST::Event *ev);
 
     /// ZEN: helper functions for zop types entering from zone noc
@@ -236,6 +261,29 @@ namespace SST::Forza{
     /// ZEN: processes the zip message queue
     void processZIPQueue();
 
+    void processFromZoneMsgQueue();
+
+    /// ZEN: Create a metadata hash consisting of {AppID, Zap, Hart}
+    /// For now - physical HART == logical HART; long run this is probably
+    /// logical thread ID instead of physical HART
+    uint64_t getMetadataHash(SST::Forza::zopEvent *ev){
+      uint64_t rv = 0;
+      uint64_t hart_id = ev->getSrcHart();
+      uint64_t zap_id = ev->getSrcZCID();
+      uint64_t hdr_app_id = ev->getAppID();
+      rv =  (hdr_app_id << (Z_SHIFT_HARTID + Z_SHIFT_ZCID)) | (zap_id << Z_SHIFT_HARTID) | (hart_id);
+      return rv; 
+      // TODO: Look at just returning the metadata lookup pair.
+    }
+
+    ZenMailboxMetadata* getMboxEntry(SST::Forza::zopEvent *ev){
+      uint64_t metadata_hash = getMetadataHash(ev);
+      auto metadata_entry = hart_metadata_table.find(std::pair<uint64_t, uint64_t>(metadata_hash, ev->getPktRes()));
+      if (metadata_entry == hart_metadata_table.end())
+        output.fatal(CALL_INFO, -1, "Could not find table entry for zop.\n"); // TODO: Add add'l debug info if needed
+      return metadata_entry;
+    }
+
     /// ZEN: determine if zop dest precinct and zone match me
     bool isDestLocal(SST::Forza::zopEvent *ev)
     {
@@ -251,6 +299,23 @@ namespace SST::Forza{
            (ev->getSrcPrec() == Precinct) )
           return true;
       return false;
+    }
+
+    void setMeAsZopSrc(SST::Forza::zopEvent *ev)
+    {
+      SST::Forza::zopAPI *iface = isSrcLocal(ev) ? m_zop_iface : m_prec_iface;
+      ev->setSrcHart(0);
+      ev->setSrcZCID(SST::Forza::zopCompID::Z_ZEN);
+      ev->setSrcPCID(Zone);
+      ev->setSrcPrec(Precinct);
+    }
+
+    void setDestFromSrcInfo(SST::Forza::zopEvent *dest_packet, SST::Forza::zopEvent *src_packet)
+    {
+        dest_packet->setDestHart(src_packet->getDestHart());
+        dest_packet->setDestZCID(src_packet->getDestZCID());
+        dest_packet->setDestPCID(src_packet->getSrcPCID());
+        dest_packet->setDestPrec(src_packet->getSrcPrec());
     }
 
     // private data members
@@ -279,7 +344,7 @@ namespace SST::Forza{
     uint64_t zip_credits;
 
     // Pair is {AppID, Zap, Hart}, MboxId
-    std::map<std::pair<uint64_t, uint64_t>, ZenMailboxMetadata*> hart_tables;
+    std::map<std::pair<uint64_t, uint64_t>, ZenMailboxMetadata*> hart_metadata_table;
     
     // TODO: These should be nothing more than credit counters
     std::map<uint64_t, ZenMailboxMetadata*> zone_tables;
@@ -291,6 +356,11 @@ namespace SST::Forza{
       Add to map: handleIncomingPrecZOP() - destination is unchecked (but assumed to be this zone)
     */
     std::map<std::pair<uint64_t, uint64_t>, std::vector<ZENEntry*>> zen_queue;
+
+    /*
+      Creating a new data structure to handle MSG.SENDP and MSG.MBXDONE messages
+    */
+    std::queue<SST::Forza::zopEvent*> from_zone_messaging_queue;
 
     /*
       Add to map: handleIncomingZOP() - destination is same precinct, diff zone
@@ -335,6 +405,13 @@ namespace SST::Forza{
 
     // Messages placed here are being forward onto zone NOC
     std::queue<SST::Forza::zopEvent*> to_zone_noc_q;
+
+    // Messages placed here are for the local RZA
+    std::queue<SST::Forza::zopEvent*> to_rza_q;
+
+    // Messages awaiting return from RZA
+    // what type of data struct?
+    std::map<uint16_t, MemReturnEntry*> rza_ret_wait_map;
 
   }; // class SST::ZEN
 } // namespace SST::Forza
