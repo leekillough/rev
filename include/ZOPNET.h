@@ -357,7 +357,7 @@ class zopMsgID {
 public:
   // zopMsgID: constructor
   zopMsgID() : NumFree( 64 ) {
-    for( uint8_t i = 0; i < 64; i++ ) {
+    for( uint16_t i = 0; i < 64; i++ ) {
       Mask[i] = false;
     }
   }
@@ -371,14 +371,14 @@ public:
   }
 
   /// zopMsgID: clear the message id
-  void clearMsgId( uint8_t I ) {
+  void clearMsgId( uint16_t I ) {
     Mask[I] = false;
     NumFree++;
   }
 
   // zopMsgID: retrieve a new message id
-  uint8_t getMsgId() {
-    for( uint8_t i = 0; i < 64; i++ ) {
+  uint16_t getMsgId() {
+    for( uint16_t i = 0; i < 64; i++ ) {
       if( Mask[i] == false ) {
         NumFree--;
         Mask[i] = true;
@@ -386,6 +386,16 @@ public:
       }
     }
     return 64;  // this is an erroneous id
+  }
+
+  void getSetOfMsgIds(std::vector<uint16_t> &v, uint8_t num_to_get){
+    for (uint8_t i = 0; i < num_to_get; i++){
+      uint8_t rv = this->getMsgId();
+      if (rv >= 64) //sanity check
+        output.fatal(CALL_INFO, -1, "Failed to get valid msg_id: i=%" PRIu8 ", num_to_get=%" PRIu8 
+                     "rv=%" PRIu8 "\n", i, num_to_get, rv);
+      v.push_back(rv)
+    }
   }
 
 private:
@@ -568,6 +578,11 @@ public:
       P.push_back( Packet[i] );
     }
     return P;
+  }
+
+  /// zopEvent: get the length of the payload
+  uint8_t getPayloadLength() {
+    return (this->getLength - 2);
   }
 
   /// zopEvent: get the memory request handler
