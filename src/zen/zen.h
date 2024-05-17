@@ -47,7 +47,10 @@ namespace SST::Forza{
     }
   };
 
-  // Modified version of ZENEntry above
+  // Modified version of ZENEntry above; this probably needs to be 
+  // expanded if we're not using DMA (right now, I'm forcing the use
+  // of DMA).  Might need to track my_id, parent_id, sequence_counter, 
+  // originating zop
   class MemReturnEntry {
     public:
       SST::Forza::zopEvent *msg;
@@ -184,14 +187,26 @@ namespace SST::Forza{
     void sendACK(SST::Forza::zopEvent *ev, bool to_zone_noc);
 
     /// ZEN: send a DMA store to the zone's RZA
+    void sendSdmaToRza(ZenMailboxMetadata *mbox_info, SST::Forza::zopEvent *ev,
+                       std::vector<uint64_t> store_payload, uint16_t msg_id,
+                       uint64_t wr_addr);
+    void sendSdmaToRzaAsSequence(ZenMailboxMetadata *mbox_info, SST::Forza::zopEvent *ev,
+                                 std::vector<uint64_t> store_payload, 
+                                 std::vector<uint16_t> msg_ids, uint64_t wr_addr);
+
+    /// ZEN: send a DMA store to the zone's RZA
+    /* planning on deletion of this function
     void sendMsgToRZADMA(uint64_t acs, uint64_t addr,
                          std::vector<uint64_t> src_payload, uint8_t cur_msg_id,
                          uint64_t hart_id, uint64_t queue_loc);
+    */
 
     /// ZEN: send a normal store operation to the zone's RZA
+    /* planning on deletion of this function
     void sendMsgToRZANonDMA(uint64_t acs, uint64_t addr, uint64_t src_payload,
                             uint8_t cur_msg_id, uint64_t hart_id,
                             uint64_t queue_loc);
+    */
 
     /// ZEN: sends a scratchpad WRITE to the target ZAP device
     void sendMsgToScratchpad(uint64_t dest, uint64_t zcid,
@@ -303,12 +318,20 @@ namespace SST::Forza{
 
     void setMeAsZopSrc(SST::Forza::zopEvent *ev)
     {
-      SST::Forza::zopAPI *iface = isSrcLocal(ev) ? m_zop_iface : m_prec_iface;
+      //SST::Forza::zopAPI *iface = isSrcLocal(ev) ? m_zop_iface : m_prec_iface;
       ev->setSrcHart(0);
       ev->setSrcZCID(SST::Forza::zopCompID::Z_ZEN);
       ev->setSrcPCID(Zone);
       ev->setSrcPrec(Precinct);
     }
+
+    void setLocalRzaAsZopDest(SST::Forza::zopEvent *ev)
+    {
+      ev->setDestHart(Z_MZOP_PIPE_HART);
+      ev->setDestZCID(SST::Forza::zopCompID::Z_RZA);
+      ev->setDestPCID(Zone);
+      ev->setDestPrec(Precinct);
+    }    
 
     void setDestFromSrcInfo(SST::Forza::zopEvent *dest_packet, SST::Forza::zopEvent *src_packet)
     {
@@ -376,7 +399,7 @@ namespace SST::Forza{
     /*
       Add to vector: handleIncomingZOP() - RZA response
     */
-    std::vector<SST::Forza::zopEvent*> mem_acks;
+    std::vector<SST::Forza::zopEvent*> mem_acks; // TODO: turn into queue
 
     /*
       Add to queue: handleIncomingZOP() - ZEN setup message
@@ -410,7 +433,7 @@ namespace SST::Forza{
     std::queue<SST::Forza::zopEvent*> to_rza_q;
 
     // Messages awaiting return from RZA
-    // what type of data struct?
+    // key is msg_ids[0]
     std::map<uint16_t, MemReturnEntry*> rza_ret_wait_map;
 
   }; // class SST::ZEN

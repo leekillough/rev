@@ -44,6 +44,9 @@ ZEN::ZEN(ComponentId_t id, Params& params)
   process_per_cycle = params.find<uint64_t>("processPerCycle", 100000);
   precinct_nic_enabled = params.find<bool>("enablePrecinctNIC", true);
 
+  output.output("ZEN[%s] Forcing enableDMA to true.\n", getName().c_str());
+  dma_enabled = true;
+
   // register the clock handler
   registerClock(cpuFreq, new Clock::Handler<ZEN>(this, &ZEN::clock));
   output.output("ZEN[%s] Registering clock with frequency=%s\n",
@@ -125,6 +128,8 @@ void ZEN::handleIncomingPrecZOP(SST::Event *event) {
                  m_zop_iface->msgTToStr(ev->getType()).c_str(),
                  ev->getSrcHart(), ev->getSrcZCID(), ev->getSrcPCID(),
                  m_zop_iface->endPToStr(m_zop_iface->getEndpointType()).c_str());
+
+  output.fatal(CALL_INFO, -1, "Zen is not handling anything from the precinct NoC\n");
 
   if (!isDestLocal(ev))
     output.fatal(CALL_INFO, -1, "ZEN %s: received a packet from precinct NoC not for this zone.\n",
@@ -300,7 +305,9 @@ void ZEN::helper_handleFromZoneMsgZop(SST::Forza::zopEvent *ev)
 
     case SST::Forza::zopOpc::Z_MSG_CREDIT:
       // Handle credit msg
-      zap_credits.push_back(ev);
+      output.fatal(CALL_INFO, -1, "ZEN %s: not yet implemented\n",
+        getName().c_str());
+      //zap_credits.push_back(ev);
       break;
 
     case SST::Forza::zopOpc::Z_MSG_ZENSET:
@@ -315,6 +322,46 @@ void ZEN::helper_handleFromZoneMsgZop(SST::Forza::zopEvent *ev)
   }
 }
 
+void ZEN::sendSdmaToRza(ZenMailboxMetadata *mbox_info, SST::Forza::zopEvent *ev,
+                        std::vector<uint64_t> store_payload, uint16_t msg_id,
+                        uint64_t wr_addr)
+{
+  output.verbose(CALL_INFO, 9, 0, "Send StoreDMA to RZA\n");
+  auto *rzaMsg = new SST::Forza::zopEvent();
+  // Set packet header info
+  rzaMsg->setType(SST::Forza::zopMsgT::Z_MZOP);
+  rzaMsg->setOpc(SST::Forza::zopOpc::Z_MZOP_SDMA);
+  setMeAsZopSrc(rzaMsg);
+  setLocalRzaAsZopDest(rzaMsg);
+  rzaMsg->setID(msg_id);
+  rzaMsg->setAppID(mbox_info->app_id);
+  rzaMsg->setPayload(store_payload);
+  rzaMsg->encodeEvent();
+  m_zop_iface->send(rzaMsg, zopCompID::Z_RZA);
+}
+
+// NOT USED 
+void ZEN::sendSdmaToRzaAsSequence(ZenMailboxMetadata *mbox_info, SST::Forza::zopEvent *ev,
+                                  std::vector<uint64_t> store_payload, 
+                                  std::vector<uint16_t> msg_ids, uint64_t wr_addr)
+{
+  output.verbose(CALL_INFO, 9, 0, "Send StoreDMA to RZA as Sequence\n");
+  for (uint8_t i = 0; i < msg_ids.size(); i++){
+    auto *rzaMsg = new SST::Forza::zopEvent();
+    // Set packet header info
+    rzaMsg->setType(SST::Forza::zopMsgT::Z_MZOP);
+    rzaMsg->setOpc(SST::Forza::zopOpc::Z_MZOP_SD);
+    setMeAsZopSrc(rzaMsg);
+    setLocalRzaAsZopDest(rzaMsg);
+    rzaMsg->setID(msg_ids.at(i));
+    rzaMsg->setAppID(mbox_info->app_id);
+    rzaMsg->setPayload(store_payload.at(i));
+    rzaMsg->encodeEvent();
+    m_zop_iface->send(rzaMsg, zopCompID::Z_RZA);
+  }
+}
+
+#if 0
 void ZEN::sendMsgToRZADMA(uint64_t acs, uint64_t addr,
                           std::vector<uint64_t> src_payload,
                           uint8_t cur_msg_id, uint64_t hart_id,
@@ -326,10 +373,8 @@ void ZEN::sendMsgToRZADMA(uint64_t acs, uint64_t addr,
   rzaMsg->setType(SST::Forza::zopMsgT::Z_MZOP);
   rzaMsg->setID(cur_msg_id);
   rzaMsg->setOpc(SST::Forza::zopOpc::Z_MZOP_SDMA);
-  rzaMsg->setSrcHart((uint16_t)(zopCompID::Z_ZEN));
-  rzaMsg->setSrcZCID((uint8_t)(m_zop_iface->getEndpointType()));
-  rzaMsg->setSrcPCID((uint8_t)(m_zop_iface->getPCID(m_zop_iface->getZoneID())));
-  rzaMsg->setSrcPrec((uint8_t)(m_zop_iface->getPrecinctID()));
+
+  setMeAsZopSrc(rzaMsg);
   rzaMsg->setDestHart(Z_MZOP_PIPE_HART);
   rzaMsg->setDestZCID((uint8_t)(SST::Forza::zopCompID::Z_RZA));
   rzaMsg->setDestPCID((uint8_t)(m_zop_iface->getPCID(m_zop_iface->getZoneID())));
@@ -344,6 +389,7 @@ void ZEN::sendMsgToRZADMA(uint64_t acs, uint64_t addr,
   rzaMsg->encodeEvent();
   m_zop_iface->send(rzaMsg, zopCompID::Z_RZA);
 }
+#endif
 
 void ZEN::sendHZOPToRZA(uint64_t acs, uint64_t addr, uint64_t src_addr,
                         uint64_t size, uint8_t cur_msg_id, uint64_t hart_id,
@@ -379,6 +425,7 @@ void ZEN::sendHZOPToRZA(uint64_t acs, uint64_t addr, uint64_t src_addr,
   m_zop_iface->send(rzaMsg, zopCompID::Z_RZA);
 }
 
+#if 0
 void ZEN::sendMsgToRZANonDMA(uint64_t acs, uint64_t addr, uint64_t src_payload,
                              uint8_t cur_msg_id, uint64_t hart_id,
                              uint64_t queue_loc) {
@@ -405,6 +452,7 @@ void ZEN::sendMsgToRZANonDMA(uint64_t acs, uint64_t addr, uint64_t src_payload,
   rzaMsg->encodeEvent();
   m_zop_iface->send(rzaMsg, zopCompID::Z_RZA);
 }
+#endif
 
 void ZEN::sendMsgToScratchpad(uint64_t dest, uint64_t zcid,
                               uint64_t scratch_addr, uint64_t size,
@@ -519,8 +567,32 @@ void ZEN::handleIncomingRZAMsg() {
   //std::cout << "handleIncomingRZAMsg(): num messages = " << mem_acks.size() << std::endl;
   uint64_t cur_processed = 0;
   for (unsigned i = 0; i < mem_acks.size(); ++i) {
-    uint8_t inc_msg_id = mem_acks.at(i)->getID();
-    output.verbose(CALL_INFO, 1, 0, "progress status msg_id %hu\n", inc_msg_id);
+    uint16_t inc_msg_id = mem_acks.at(i)->getID();
+    output.verbose(CALL_INFO, 9, 0, "ZEN %s Process incoming RZA message msg_id %hu\n",
+                  getName().c_str(), inc_msg_id);
+
+    // Find inc_msg_id in the rza_ret_wait_map
+    auto ret_map_itr = rza_ret_wait_map.find(inc_msg_id);
+    if (ret_map_itr = rza_ret_wait_map.end()){
+      output.fatal(CALL_INFO, -1, "ZEN did not find inc_msg_id=%" PRIu16 " in map\n", inc_msg_id);
+    }
+
+    // Get my original ZOP
+    auto *ev = ret_map_iter.second().msg;
+    output.verbose(CALL_INFO, 9, 0, "ZEN %s dealing with rza return for zop msg_id=%" PRIu16 "\n",
+                   getName().c_str(), ev->getID());
+
+    // Do some clean up from the return packet
+    zoneMsgID->clearMsgId(inc_msg_id);
+    delete rev_map_itr.second();
+    rza_ret_wait_map.erase(ret_map_itr);
+
+    // Need to update my tail pointer in the scratch pad
+    //  If I wait to send the ACK until I'm here, then I don't need to store
+    //  the tail pointer...but, if I do send the ACK earlier, I probably do need
+    // to track it...and what were we sticking there...don't recall. blech.
+
+    // Now send the ACK; more logic will be necessary if/when doing store sequences
 
     //if( auto search = outstanding_mem_req.find(inc_msg_id); search != outstanding_mem_req.end() ){
     if( outstanding_mem_req.count(inc_msg_id) ){
@@ -852,156 +924,53 @@ void ZEN::prepSendRZAHZOP() {
   }
 }
 
-// TODO: Figure out how to utilize the zoneMsgID class and what all it implies - especially for 
-// mapping sends/receives - definitely a question for John
-
-// Basically, this is the prep stage of sending a message...which shouldn't be much more
-// than doing some address calcs and getting message IDs (as needed)...seems like there is
-// way the heck more code in here than necessary.
-
-/* Function Logic:
-  Pull message off of to_rza_q - just get front
-  Get payload length
-  If DMA enabled: 1 msg_id needed
-  Else: 1 msg_id per payload word in packet  
-  Attempt to get msg_ids
-  If !msg_ids, return
-  Look up packet zop message metadata
-  Get destination address (could be some nasty logic here - check how done in ZQM)
-  Send ZOPs to RZA (buffer must have enough space)
-  TBD: How to enqueue the wait for the return -
-    - Upon return, have to update scratchpad pointer, metadata, and free message ids
-    - Will need to know packet legnth
-    - Save the original zop?  Yes; easier to get back into the metadata table
-    - The ZenEntry class is probably close...should just need the following:
-      - original zop
-      - msg_ids
-      - status(?)
-      - Rest of stuff in that class can come from the metadata table; easy enough
-        to look up as long as we have the original zop.
-  Remove message from to_rza_q
-*/
-
-// Let's go see what the sendMsg{} funcs do...create the zop and push it out to the 
-// zone NoC.  Well that's easy
-
-// NOTE: We need to be saving the full ZOP to memory; we will need the header info
+// NOTE: We save the full ZOP to memory; we will need the header info
 // (especially the src location) to send credits back
 void ZEN::prepSendRZAStore() {
-
   if (to_rza_q.empty())
     return;
 
   for (uint64_t i = 0; i < process_per_cycle; i++){
     auto *ev = to_rza_q.front();
-    uint8_t num_msg_ids_req = ( dma_enabled ) ? 1 : (ev->getLength());
+    // Need to add 2 words to length for acs and wr_addr
+    uint8_t num_msg_ids_req = ( dma_enabled ) ? 1 : (ev->getLength() + 2);
     if (num_msg_ids_req > zoneMsgID->getNumFree()){
       // Not enough free message IDs to send the packet...done for now
       break;
     }
 
-    std::vector<uint16_t> msg_ids;
-    zoneMsgID->getSetOfMsgIds(msg_ids, num_msg_ids_req);
+    // Get a set of message ids
+    std::vector<uint16_t> msg_ids = zoneMsgID->getSetOfMsgIds(num_msg_ids_req);
 
-    // TODO: Get destination address for memory zop(s)
+    // Get destination address for memory zop(s)
     auto mbox_info = getMboxEntry(ev);
     uint64_t wr_addr = mbox_info.getRzaWriteAddr(ev->getLength());
     output.verbose(CALL_INFO, 9, 0, "Store messaging packet to RZA; packet_size=%" PRIu8 ", wr_addr=%"
                    PRIu64 "\n", ev->getLength(), wr_addr);
 
-    // TODO: Send memory zops
-    std::vector<uint64_t> store_payload = ev->getPacket();
-    if ( dma_enabled ){
-      // send single zop with payload vector
-    } else {
-      // send many zops with payload[j]
-    }
+    // Send memory zops
+    std::vector<uint64_t> store_payload;
+    store_payload.push_back(ev->acs_pair);
+    store_payload.push_back(wr_addr);
+    store_payload.insert(std::end(store_payload),
+                         std::begin(ev->getPacket()),
+                         std::end(ev->getPacket()));
+    if ( dma_enabled )
+      sendSdmaToRza(mbox_info, ev, store_payload, msg_ids[0], wr_addr);
+    else
+      sendSdmaToRzaAsSequence(mbox_info, ev, store_payload, msg_ids, wr_addr);
 
     // Create MemReturnEntry and put into data struct to await the RZA return
+    // TODO: This need substantial improvement if we're turning a store into a 
+    // full sequence of ZOPs
     auto *mem_retentry = new MemReturnEntry(ev, msg_ids);
-    rza_ret_wait_map.insert(std::pair<uint16_t, MemReturnEntry*>(msg_ids[0], mem_retentry);
+    rza_ret_wait_map.insert(std::pair<uint16_t, MemReturnEntry*>(msg_ids[0], mem_retentry));
 
     // Finished with this packet
     to_rza_q.pop();
     if (to_rza_q.empty())
       break;
   }
-#if 0
-  // Send with payload
-  uint64_t cur_processed = 0;
-  for( unsigned zap_id = 0; zap_id < m_num_zaps; ++zap_id ){
-    for( unsigned harts = 0; harts < m_num_harts; ++harts ){
-      std::pair<uint64_t, uint64_t> hart_zap_id = std::make_pair(zap_id, harts);
-      for( unsigned i = 0; i < zen_queue[hart_zap_id].size(); ++i ){
-        // attempt to allocate a message ID
-        uint8_t next_msg_id = 64;
-        if( zoneMsgID->getNumFree() > 0 ){
-          next_msg_id = zoneMsgID->getMsgId();
-        }else{
-          // no free message ID's
-          return ;
-        }
-
-        if( (zen_queue[hart_zap_id][i]->status == ZENStatus::RZA_ADDR_ASSIGNED) &&
-            (zen_queue[hart_zap_id][i]->msg->getOpc() == SST::Forza::zopOpc::Z_MSG_SENDP)) {
-          uint64_t rza_addr = zen_queue[hart_zap_id][i]->rza_start_addr;
-          std::vector<uint64_t> payload = zen_queue[hart_zap_id][i]->msg->getPayload();
-
-          if( dma_enabled ){
-
-            sendMsgToRZADMA(getWriteACS(hart_metadata_table[hart_zap_id]->acs_pair),
-                            rza_addr, payload, next_msg_id, harts, i);
-            zen_queue[hart_zap_id][i]->tail = rza_addr;
-            outstanding_mem_req[next_msg_id] = zen_queue[hart_zap_id][i];
-            output.verbose(CALL_INFO, 9, 0,
-                           "Free msg_id %d in [%u,%u]\n",
-                           next_msg_id, harts, i);
-            zen_queue[hart_zap_id][i]->msg_ids.push_back(next_msg_id);
-            zen_queue[hart_zap_id][i]->status = MZOP_SENT;
-          }else{
-            std::vector<uint8_t> ids;
-            // check to see if we have enough free message ID's
-            if( zoneMsgID->getNumFree() < (payload.size()-1) ){
-              // not enough available message ID's
-              zoneMsgID->clearMsgId(next_msg_id);
-              return ;
-            }
-
-            // retrieve all the necessary message ID's
-            ids.push_back(next_msg_id);
-            for( unsigned j=1; j<payload.size(); j++ ){
-              ids.push_back(zoneMsgID->getMsgId());
-            }
-
-            // build all the messages
-            for( unsigned j=0; j<payload.size(); j++ ){
-              output.verbose(CALL_INFO, 9, 0,
-                            "sendMsgToRZANonDMA msg_id=%hu\n", ids[j]);
-              sendMsgToRZANonDMA(getWriteACS(hart_metadata_table[hart_zap_id]->acs_pair),
-                                 rza_addr, payload[j],
-                                 ids[j],  harts, i);
-              zen_queue[hart_zap_id][i]->tail = rza_addr;
-              outstanding_mem_req[ids[j]] = zen_queue[hart_zap_id][i];
-              zen_queue[hart_zap_id][i]->msg_ids.push_back(ids[j]);
-              rza_addr += DW_OFFSET;
-              if( rza_addr > hart_metadata_table[hart_zap_id]->mem_tail ){
-                rza_addr = hart_metadata_table[hart_zap_id]->mem_head;
-              }
-            }
-            zen_queue[hart_zap_id][i]->status = MZOP_SENT;
-          }
-        }
-      }
-      cur_processed++;
-      if( cur_processed > process_per_cycle ){
-        return ;
-      }
-    }
-    if( cur_processed > process_per_cycle ){
-      return ;
-    }
-  }
-  #endif
 }
 
 void ZEN::processZAPCredits() {
@@ -1205,7 +1174,8 @@ void ZEN::processFromZoneMsgQueue(){
     // See if credits available from metadata table
     // if no credits, send nack
     // else, send ack and continue processing
-    sendAck(ev, true);
+    sendAck(ev, true);  // TODO: This may need to wait until we get an ACK from 
+                        // the RZA.
 
     // This packet is going to a local mailbox
     to_rza_q.push(ev);
