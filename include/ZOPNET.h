@@ -388,7 +388,8 @@ public:
     return 64;  // this is an erroneous id
   }
 
-  void getSetOfMsgIds(std::vector<uint16_t> &v, uint8_t num_to_get){
+  std::vector<uint16_t> getSetOfMsgIds(uint8_t num_to_get){
+    std::vector<uint16_t> v, 
     for (uint8_t i = 0; i < num_to_get; i++){
       uint8_t rv = this->getMsgId();
       if (rv >= 64) //sanity check
@@ -396,6 +397,7 @@ public:
                      "rv=%" PRIu8 "\n", i, num_to_get, rv);
       v.push_back(rv)
     }
+    return v;
   }
 
 private:
