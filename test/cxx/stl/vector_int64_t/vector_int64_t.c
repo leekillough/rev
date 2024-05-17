@@ -19,9 +19,7 @@
 #define M 20
 
 // fill in pre-sized std vector -- tests out the [] access operator
-static inline void fill_vector( std::vector< int64_t, Allocator< int64_t > >& v,
-                                int start_pos,
-                                int count ) {
+static inline void fill_vector( std::vector<int64_t, Allocator<int64_t>>& v, int start_pos, int count ) {
   int end_pos = start_pos + count;
   for( int i = start_pos; i < end_pos; i++ ) {
     v[i] = i;
@@ -29,8 +27,7 @@ static inline void fill_vector( std::vector< int64_t, Allocator< int64_t > >& v,
 }
 
 // fill a vector using push_back
-static inline void fill_push_back_vector(
-  std::vector< int64_t, Allocator< int64_t > >& v, int start_num, int count ) {
+static inline void fill_push_back_vector( std::vector<int64_t, Allocator<int64_t>>& v, int start_num, int count ) {
   int end_num = start_num + count;
   for( int i = start_num; i < end_num; i++ ) {
     v.push_back( i );
@@ -38,7 +35,7 @@ static inline void fill_push_back_vector(
 }
 
 void test_reserve() {
-  std::vector< int64_t, Allocator< int64_t > > v;
+  std::vector<int64_t, Allocator<int64_t>> v;
   v.reserve( N );
 
   assert( v.capacity() == N );
@@ -57,12 +54,11 @@ void test_reserve() {
 
     // Now check if the reallocation works when the vector grows larger than capacity
     v.push_back( N );
-  assert( v.data() != initial_address && v.size() == ( N + 1 ) &&
-          v.capacity() >= ( N + 1 ) );
+  assert( v.data() != initial_address && v.size() == ( N + 1 ) && v.capacity() >= ( N + 1 ) );
 }
 
 void test_resize() {
-  std::vector< int64_t, Allocator< int64_t > > v;
+  std::vector<int64_t, Allocator<int64_t>> v;
   v.resize( N );
 
   assert( v.size() == N );
@@ -81,7 +77,7 @@ void test_resize() {
 }
 
 void test_begin_and_end() {
-  std::vector< int64_t, Allocator< int64_t > > v;
+  std::vector<int64_t, Allocator<int64_t>> v;
   fill_push_back_vector( v, 0, N );
 
   int64_t i = 0;
@@ -91,7 +87,7 @@ void test_begin_and_end() {
 }
 
 void test_erase() {
-  std::vector< int64_t, Allocator< int64_t > > v;
+  std::vector<int64_t, Allocator<int64_t>> v;
   fill_push_back_vector( v, 0, N );
   assert( v.size() == N );
 
@@ -108,7 +104,7 @@ void test_erase() {
 }
 
 void test_at() {
-  std::vector< int64_t, Allocator< int64_t > > v;
+  std::vector<int64_t, Allocator<int64_t>> v;
   fill_push_back_vector( v, 0, N );
 
   int check = -1;

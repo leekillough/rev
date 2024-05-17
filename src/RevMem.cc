@@ -22,20 +22,14 @@ namespace SST::RevCPU {
 
 using MemSegment = RevMem::MemSegment;
 
-RevMem::RevMem( uint64_t     MemSize,
-                RevOpts*     Opts,
-                RevMemCtrl*  Ctrl,
-                SST::Output* Output ) :
-  memSize( MemSize ),
-  opts( Opts ), ctrl( Ctrl ), output( Output ), zNic( nullptr ),
-  isRZA( false ) {
+RevMem::RevMem( uint64_t MemSize, RevOpts* Opts, RevMemCtrl* Ctrl, SST::Output* Output )
+  : memSize( MemSize ), opts( Opts ), ctrl( Ctrl ), output( Output ), zNic( nullptr ), isRZA( false ) {
   // Note: this constructor assumes the use of the memHierarchy backend
   pageSize        = 262144;  //Page Size (in Bytes)
   addrShift       = lg( pageSize );
   nextPage        = 0;
   PhysAddrCheck   = false;
   PhysAddrLogging = false;
-
 
   // We initialize StackTop to the size of memory minus 1024 bytes
   // This allocates 1024 bytes for program header information to contain
@@ -46,9 +40,8 @@ RevMem::RevMem( uint64_t     MemSize,
   AddMemSegAt( stacktop, 1024 );
 }
 
-RevMem::RevMem( uint64_t MemSize, RevOpts* Opts, SST::Output* Output ) :
-  memSize( MemSize ), opts( Opts ), ctrl( nullptr ), output( Output ),
-  zNic( nullptr ), isRZA( false ) {
+RevMem::RevMem( uint64_t MemSize, RevOpts* Opts, SST::Output* Output )
+  : memSize( MemSize ), opts( Opts ), ctrl( nullptr ), output( Output ), zNic( nullptr ), isRZA( false ) {
 
   // allocate the backing memory, zeroing it
   physMem         = new char[memSize]{};
@@ -59,8 +52,7 @@ RevMem::RevMem( uint64_t MemSize, RevOpts* Opts, SST::Output* Output ) :
   PhysAddrLogging = false;
 
   if( !physMem )
-    output->fatal(
-      CALL_INFO, -1, "Error: could not allocate backing memory\n" );
+    output->fatal( CALL_INFO, -1, "Error: could not allocate backing memory\n" );
 
   // We initialize StackTop to the size of memory minus 1024 bytes
   // This allocates 1024 bytes for program header information to contain
@@ -88,20 +80,15 @@ void RevMem::HandleMemFault( unsigned width ) {
 
   // write the fault (read-modify-write)
   *Addr |= rval;
-  output->verbose( CALL_INFO,
-                   5,
-                   0,
-                   "FAULT:MEM: Memory fault %u bits at address : 0x%" PRIxPTR
-                   "\n",
-                   width,
-                   reinterpret_cast< uintptr_t >( Addr ) );
+  output->verbose(
+    CALL_INFO, 5, 0, "FAULT:MEM: Memory fault %u bits at address : 0x%" PRIxPTR "\n", width, reinterpret_cast<uintptr_t>( Addr )
+  );
 }
 
 bool RevMem::SetFuture( uint64_t Addr ) {
   FutureRes.push_back( Addr );
   std::sort( FutureRes.begin(), FutureRes.end() );
-  FutureRes.erase( std::unique( FutureRes.begin(), FutureRes.end() ),
-                   FutureRes.end() );
+  FutureRes.erase( std::unique( FutureRes.begin(), FutureRes.end() ), FutureRes.end() );
   return true;
 }
 
@@ -124,36 +111,27 @@ bool RevMem::StatusFuture( uint64_t Addr ) {
   return false;
 }
 
-bool RevMem::LRBase( unsigned      Hart,
-                     uint64_t      Addr,
-                     size_t        Len,
-                     void*         Target,
-                     uint8_t       aq,
-                     uint8_t       rl,
-                     const MemReq& req,
-                     RevFlag       flags ) {
+bool RevMem::LRBase(
+  unsigned Hart, uint64_t Addr, size_t Len, void* Target, uint8_t aq, uint8_t rl, const MemReq& req, RevFlag flags
+) {
   for( auto it = LRSC.begin(); it != LRSC.end(); ++it ) {
-    if( ( Hart == std::get< LRSC_HART >( *it ) ) &&
-        ( Addr == std::get< LRSC_ADDR >( *it ) ) ) {
+    if( ( Hart == std::get<LRSC_HART>( *it ) ) && ( Addr == std::get<LRSC_ADDR>( *it ) ) ) {
       // existing reservation; return w/ error
-      uint32_t* Tmp = reinterpret_cast< uint32_t* >( Target );
+      uint32_t* Tmp = reinterpret_cast<uint32_t*>( Target );
       Tmp[0]        = 0x01ul;
       return false;
-    } else if( ( Hart != std::get< LRSC_HART >( *it ) ) &&
-               ( Addr == std::get< LRSC_ADDR >( *it ) ) ) {
+    } else if( ( Hart != std::get<LRSC_HART>( *it ) ) && ( Addr == std::get<LRSC_ADDR>( *it ) ) ) {
       // existing reservation; return w/ error
-      uint32_t* Tmp = reinterpret_cast< uint32_t* >( Target );
+      uint32_t* Tmp = reinterpret_cast<uint32_t*>( Target );
       Tmp[0]        = 0x01ul;
       return false;
     }
   }
 
   // didn't find a colliding object; add it
-  LRSC.push_back( std::tuple< unsigned, uint64_t, unsigned, uint64_t* >(
-    Hart,
-    Addr,
-    (unsigned) ( aq | ( rl << 1 ) ),
-    reinterpret_cast< uint64_t* >( Target ) ) );
+  LRSC.push_back( std::tuple<unsigned, uint64_t, unsigned, uint64_t*>(
+    Hart, Addr, (unsigned) ( aq | ( rl << 1 ) ), reinterpret_cast<uint64_t*>( Target )
+  ) );
 
   // now handle the memory operation
   uint64_t pageNum  = Addr >> addrShift;
@@ -166,8 +144,7 @@ bool RevMem::LRBase( unsigned      Hart,
   char* DataMem     = (char*) ( Target );
 
   if( ctrl ) {
-    ctrl->sendREADLOCKRequest(
-      Hart, Addr, (uint64_t) ( BaseMem ), Len, Target, req, flags );
+    ctrl->sendREADLOCKRequest( Hart, Addr, (uint64_t) ( BaseMem ), Len, Target, req, flags );
   } else {
     memcpy( DataMem, BaseMem, Len );
     // clear the hazard
@@ -177,23 +154,14 @@ bool RevMem::LRBase( unsigned      Hart,
   return true;
 }
 
-bool RevMem::SCBase( unsigned Hart,
-                     uint64_t Addr,
-                     size_t   Len,
-                     void*    Data,
-                     void*    Target,
-                     uint8_t  aq,
-                     uint8_t  rl,
-                     RevFlag  flags ) {
-  std::vector< std::tuple< unsigned, uint64_t, unsigned, uint64_t* > >::iterator
-    it;
+bool RevMem::SCBase( unsigned Hart, uint64_t Addr, size_t Len, void* Data, void* Target, uint8_t aq, uint8_t rl, RevFlag flags ) {
+  std::vector<std::tuple<unsigned, uint64_t, unsigned, uint64_t*>>::iterator it;
 
   for( it = LRSC.begin(); it != LRSC.end(); ++it ) {
-    if( ( Hart == std::get< LRSC_HART >( *it ) ) &&
-        ( Addr == std::get< LRSC_ADDR >( *it ) ) ) {
+    if( ( Hart == std::get<LRSC_HART>( *it ) ) && ( Addr == std::get<LRSC_ADDR>( *it ) ) ) {
       // existing reservation; test to see if the value matches
-      uint64_t* TmpTarget = std::get< LRSC_VAL >( *it );
-      uint64_t* TmpData   = static_cast< uint64_t* >( Data );
+      uint64_t* TmpTarget = std::get<LRSC_VAL>( *it );
+      uint64_t* TmpData   = static_cast<uint64_t*>( Data );
 
       if( Len == 32 ) {
         uint32_t A = 0;
@@ -203,7 +171,7 @@ bool RevMem::SCBase( unsigned Hart,
           B |= uint32_t( TmpData[i] ) << i;
         }
         if( ( A & B ) == 0 ) {
-          static_cast< uint32_t* >( Target )[0] = 1;
+          static_cast<uint32_t*>( Target )[0] = 1;
           return false;
         }
       } else {
@@ -214,7 +182,7 @@ bool RevMem::SCBase( unsigned Hart,
           B |= TmpData[i] << i;
         }
         if( ( A & B ) == 0 ) {
-          static_cast< uint64_t* >( Target )[0] = 1;
+          static_cast<uint64_t*>( Target )[0] = 1;
           return false;
         }
       }
@@ -225,7 +193,7 @@ bool RevMem::SCBase( unsigned Hart,
 
       // write zeros to target
       for( unsigned i = 0; i < Len; i++ ) {
-        uint64_t* Tmp = reinterpret_cast< uint64_t* >( Target );
+        uint64_t* Tmp = reinterpret_cast<uint64_t*>( Target );
         Tmp[i]        = 0x0;
       }
 
@@ -236,7 +204,7 @@ bool RevMem::SCBase( unsigned Hart,
   }
 
   // failed, write a nonzero value to target
-  uint32_t* Tmp = reinterpret_cast< uint32_t* >( Target );
+  uint32_t* Tmp = reinterpret_cast<uint32_t*>( Target );
   Tmp[0]        = 0x1;
 
   return false;
@@ -288,7 +256,7 @@ void RevMem::AddToTLB( uint64_t vAddr, uint64_t physAddr ) {
     // Insert the vAddr and physAddr into the TLB and LRU list
     LRUQueue.push_front( vAddr );
     TLB.insert( {
-      vAddr, {physAddr, LRUQueue.begin()}
+      vAddr, { physAddr, LRUQueue.begin() }
     } );
   }
 }
@@ -304,28 +272,22 @@ uint64_t RevMem::CalcPhysAddr( uint64_t pageNum, uint64_t vAddr ) {
       if( isValidVirtAddr( vAddr ) ) {
         if( pageMap.count( pageNum ) == 0 ) {
           // First touch of this page, mark it as in use
-          pageMap[pageNum] = std::pair< uint32_t, bool >( nextPage, true );
-          physAddr = ( nextPage << addrShift ) + ( ( pageSize - 1 ) & vAddr );
+          pageMap[pageNum] = std::pair<uint32_t, bool>( nextPage, true );
+          physAddr         = ( nextPage << addrShift ) + ( ( pageSize - 1 ) & vAddr );
 #ifdef _REV_DEBUG_
-          std::cout << "First Touch for page:" << pageNum
-                    << " addrShift:" << addrShift << " vAddr: 0x" << std::hex
-                    << vAddr << " PhsyAddr: 0x" << physAddr << std::dec
-                    << " Next Page: " << nextPage << std::endl;
+          std::cout << "First Touch for page:" << pageNum << " addrShift:" << addrShift << " vAddr: 0x" << std::hex << vAddr
+                    << " PhsyAddr: 0x" << physAddr << std::dec << " Next Page: " << nextPage << std::endl;
 #endif
           nextPage++;
         } else if( pageMap.count( pageNum ) == 1 ) {
           //We've accessed this page before, just get the physical address
-          physAddr = ( pageMap[pageNum].first << addrShift ) +
-                     ( ( pageSize - 1 ) & vAddr );
+          physAddr = ( pageMap[pageNum].first << addrShift ) + ( ( pageSize - 1 ) & vAddr );
 #ifdef _REV_DEBUG_
-          std::cout << "Access for page:" << pageNum
-                    << " addrShift:" << addrShift << " vAddr: 0x" << std::hex
-                    << vAddr << " PhsyAddr: 0x" << physAddr << std::dec
-                    << " Next Page: " << nextPage << std::endl;
+          std::cout << "Access for page:" << pageNum << " addrShift:" << addrShift << " vAddr: 0x" << std::hex << vAddr
+                    << " PhsyAddr: 0x" << physAddr << std::dec << " Next Page: " << nextPage << std::endl;
 #endif
         } else {
-          output->fatal(
-            CALL_INFO, -1, "Error: Page allocated multiple times\n" );
+          output->fatal( CALL_INFO, -1, "Error: Page allocated multiple times\n" );
         }
 
         // updatePhysHistory for security test
@@ -335,11 +297,7 @@ uint64_t RevMem::CalcPhysAddr( uint64_t pageNum, uint64_t vAddr ) {
         if( PhysAddrCheck ) {
           auto [validate, reason] = validatePhysAddr( physAddr, 0 );
           if( !validate ) {
-            output->fatal( CALL_INFO,
-                           -1,
-                           "Invalid Physical Address Access %lu Reason %s\n",
-                           physAddr,
-                           reason.c_str() );
+            output->fatal( CALL_INFO, -1, "Invalid Physical Address Access %lu Reason %s\n", physAddr, reason.c_str() );
           }
         }
       } else {
@@ -353,13 +311,13 @@ uint64_t RevMem::CalcPhysAddr( uint64_t pageNum, uint64_t vAddr ) {
           std::cout << *Seg << std::endl;
         }
 
-        output->fatal( CALL_INFO,
-                       11,
-                       "Segmentation Fault: Virtual address 0x%" PRIx64
-                       " (PhysAddr = 0x%" PRIx64
-                       ") was not found in any mem segments\n",
-                       vAddr,
-                       physAddr );
+        output->fatal(
+          CALL_INFO,
+          11,
+          "Segmentation Fault: Virtual address 0x%" PRIx64 " (PhysAddr = 0x%" PRIx64 ") was not found in any mem segments\n",
+          vAddr,
+          physAddr
+        );
       }
     }
     AddToTLB( vAddr, physAddr );
@@ -383,9 +341,8 @@ bool RevMem::isValidVirtAddr( const uint64_t vAddr ) {
   return false;
 }
 
-uint64_t RevMem::AddMemSegAt( const uint64_t& BaseAddr,
-                              const uint64_t& SegSize ) {
-  MemSegs.emplace_back( std::make_shared< MemSegment >( BaseAddr, SegSize ) );
+uint64_t RevMem::AddMemSegAt( const uint64_t& BaseAddr, const uint64_t& SegSize ) {
+  MemSegs.emplace_back( std::make_shared<MemSegment>( BaseAddr, SegSize ) );
   return BaseAddr;
 }
 
@@ -394,15 +351,12 @@ uint64_t RevMem::AddMemSegAt( const uint64_t& BaseAddr,
 // vector because there will be no FreeMemSegs that contain addresses in the static segments)
 //
 // AllocMem is the only way that a user can allocate & deallocate memory
-uint64_t RevMem::AddRoundedMemSeg( uint64_t        BaseAddr,
-                                   const uint64_t& SegSize,
-                                   size_t          RoundUpSize ) {
+uint64_t RevMem::AddRoundedMemSeg( uint64_t BaseAddr, const uint64_t& SegSize, size_t RoundUpSize ) {
   size_t RoundedSegSize = 0;
 
   // Make sure we're not dividing by zero
   if( RoundUpSize == 0 ) {
-    output->fatal(
-      CALL_INFO, -1, "Error: RoundUpSize must be greater than 0\n" );
+    output->fatal( CALL_INFO, -1, "Error: RoundUpSize must be greater than 0\n" );
   }
 
   uint64_t Remainder = SegSize % RoundUpSize;
@@ -426,14 +380,15 @@ uint64_t RevMem::AddRoundedMemSeg( uint64_t        BaseAddr,
         Seg->setSize( Seg->getSize() + BytesToExpandBy );
       } else {
         // If it contains the top address, we don't need to do anything
-        output->verbose( CALL_INFO,
-                         10,
-                         99,
-                         "Warning: Memory segment already allocated that "
-                         "contains the requested rounded allocation at %" PRIx64
-                         "of size %" PRIu64 " Bytes\n",
-                         BaseAddr,
-                         SegSize );
+        output->verbose(
+          CALL_INFO,
+          10,
+          99,
+          "Warning: Memory segment already allocated that "
+          "contains the requested rounded allocation at %" PRIx64 "of size %" PRIu64 " Bytes\n",
+          BaseAddr,
+          SegSize
+        );
       }
       // Return the containing segments Base Address
       BaseAddr = Seg->getBaseAddr();
@@ -453,18 +408,16 @@ uint64_t RevMem::AddRoundedMemSeg( uint64_t        BaseAddr,
   if( !Added ) {
     // BaseAddr & RoundedTopAddr not a part of a segment
     // Add rounded segment
-    MemSegs.emplace_back(
-      std::make_shared< MemSegment >( BaseAddr, RoundedSegSize ) );
+    MemSegs.emplace_back( std::make_shared<MemSegment>( BaseAddr, RoundedSegSize ) );
   }
 
   return BaseAddr;
 }
 
-std::shared_ptr< MemSegment > RevMem::AddThreadMem() {
+std::shared_ptr<MemSegment> RevMem::AddThreadMem() {
   // Calculate the BaseAddr of the segment
   uint64_t BaseAddr = NextThreadMemAddr - ThreadMemSize;
-  ThreadMemSegs.emplace_back(
-    std::make_shared< MemSegment >( BaseAddr, ThreadMemSize ) );
+  ThreadMemSegs.emplace_back( std::make_shared<MemSegment>( BaseAddr, ThreadMemSize ) );
   // Page boundary between
   NextThreadMemAddr = BaseAddr - pageSize - 1;
   return ThreadMemSegs.back();
@@ -481,11 +434,7 @@ void RevMem::SetTLSInfo( const uint64_t& BaseAddr, const uint64_t& Size ) {
 // vector to see if there is a free segment that will fit the new data
 // If there is not a free segment, it will allocate a new segment at the end of the heap
 uint64_t RevMem::AllocMem( const uint64_t& SegSize ) {
-  output->verbose( CALL_INFO,
-                   10,
-                   99,
-                   "Attempting to allocate %" PRIu64 " bytes on the heap\n",
-                   SegSize );
+  output->verbose( CALL_INFO, 10, 99, "Attempting to allocate %" PRIu64 " bytes on the heap\n", SegSize );
 
   uint64_t NewSegBaseAddr = 0;
   // Check if there is a free segment that can fit the new data
@@ -497,8 +446,7 @@ uint64_t RevMem::AllocMem( const uint64_t& SegSize ) {
     if( oldFreeSegSize > SegSize ) {
       // New data will start where the free segment started
       NewSegBaseAddr = FreeSeg->getBaseAddr();
-      MemSegs.emplace_back(
-        std::make_shared< MemSegment >( NewSegBaseAddr, SegSize ) );
+      MemSegs.emplace_back( std::make_shared<MemSegment>( NewSegBaseAddr, SegSize ) );
       FreeSeg->setBaseAddr( FreeSeg->getBaseAddr() + SegSize );
       FreeSeg->setSize( oldFreeSegSize - SegSize );
       return NewSegBaseAddr;
@@ -508,8 +456,7 @@ uint64_t RevMem::AllocMem( const uint64_t& SegSize ) {
     else if( oldFreeSegSize == SegSize ) {
       // New data will start where the free segment started
       NewSegBaseAddr = FreeSeg->getBaseAddr();
-      MemSegs.emplace_back(
-        std::make_shared< MemSegment >( NewSegBaseAddr, SegSize ) );
+      MemSegs.emplace_back( std::make_shared<MemSegment>( NewSegBaseAddr, SegSize ) );
       FreeMemSegs.erase( FreeMemSegs.begin() + i );
       return NewSegBaseAddr;
     }
@@ -523,8 +470,7 @@ uint64_t RevMem::AllocMem( const uint64_t& SegSize ) {
   if( !NewSegBaseAddr ) {
     NewSegBaseAddr = heapend;
   }
-  MemSegs.emplace_back(
-    std::make_shared< MemSegment >( NewSegBaseAddr, SegSize ) );
+  MemSegs.emplace_back( std::make_shared<MemSegment>( NewSegBaseAddr, SegSize ) );
 
   ExpandHeap( SegSize );
 
@@ -534,14 +480,9 @@ uint64_t RevMem::AllocMem( const uint64_t& SegSize ) {
 // AllocMemAt differs from AddMemSegAt because it first searches the FreeMemSegs
 // vector to see if there is a free segment that will fit the new data
 // If its unable to allocate at the location requested it will error. This may change in the future.
-uint64_t RevMem::AllocMemAt( const uint64_t& BaseAddr,
-                             const uint64_t& SegSize ) {
+uint64_t RevMem::AllocMemAt( const uint64_t& BaseAddr, const uint64_t& SegSize ) {
   int ret = 0;
-  output->verbose( CALL_INFO,
-                   10,
-                   99,
-                   "Attempting to allocate %" PRIu64 " bytes on the heap",
-                   SegSize );
+  output->verbose( CALL_INFO, 10, 99, "Attempting to allocate %" PRIu64 " bytes on the heap", SegSize );
 
   // Check if this range exists in the FreeMemSegs vector
   for( unsigned i = 0; i < FreeMemSegs.size(); i++ ) {
@@ -549,8 +490,7 @@ uint64_t RevMem::AllocMemAt( const uint64_t& BaseAddr,
     if( FreeSeg->contains( BaseAddr, SegSize ) ) {
       // Check if were allocating on a boundary of FreeSeg
       // if not, were allocating in the middle
-      if( FreeSeg->getBaseAddr() != BaseAddr &&
-          FreeSeg->getTopAddr() != ( BaseAddr + SegSize ) ) {
+      if( FreeSeg->getBaseAddr() != BaseAddr && FreeSeg->getTopAddr() != ( BaseAddr + SegSize ) ) {
         // Before: |-------------------- FreeSeg --------------------|
         // After:  |--- FreeSeg ---|- AllocedSeg -|--- NewFreeSeg ---|
 
@@ -564,21 +504,18 @@ uint64_t RevMem::AllocMemAt( const uint64_t& BaseAddr,
         // Create New FreeSeg that fills the upper part of the old FreeSeg
         uint64_t NewFreeSegBaseAddr = BaseAddr + SegSize;
         size_t   NewFreeSegSize     = OldFreeSegTop - NewFreeSegBaseAddr;
-        FreeMemSegs.emplace_back( std::make_shared< MemSegment >(
-          NewFreeSegBaseAddr, NewFreeSegSize ) );
+        FreeMemSegs.emplace_back( std::make_shared<MemSegment>( NewFreeSegBaseAddr, NewFreeSegSize ) );
       }
 
       // If were allocating at the beginning of a FreeSeg (That doesn't take up the whole segment)
-      else if( FreeSeg->getBaseAddr() == BaseAddr &&
-               FreeSeg->getTopAddr() != ( BaseAddr + SegSize ) ) {
+      else if( FreeSeg->getBaseAddr() == BaseAddr && FreeSeg->getTopAddr() != ( BaseAddr + SegSize ) ) {
         // - Before: |--------------- FreeSeg --------------|
         // - After:  |---- AllocedSeg ----|---- FreeSeg ----|
         FreeSeg->setBaseAddr( BaseAddr + SegSize );
       }
 
       // If were allocating at the end of a FreeSeg (ie. TopAddr is last allocated address)
-      else if( FreeSeg->getBaseAddr() != BaseAddr &&
-               FreeSeg->getTopAddr() == ( BaseAddr + SegSize ) ) {
+      else if( FreeSeg->getBaseAddr() != BaseAddr && FreeSeg->getTopAddr() == ( BaseAddr + SegSize ) ) {
         // - Before: |--------------- FreeSeg --------------|
         // - After:  |---- FreeSeg ----|---- AllocedSeg ----|
         FreeSeg->setSize( FreeSeg->getSize() - SegSize );
@@ -601,21 +538,23 @@ uint64_t RevMem::AllocMemAt( const uint64_t& BaseAddr,
     for( auto Seg : MemSegs ) {
       // Check if either the baseAddr or topAddr of the potential new segment exists inside of an already allocated segment
       if( Seg->contains( BaseAddr ) || Seg->contains( BaseAddr + SegSize ) ) {
-        output->fatal( CALL_INFO,
-                       11,
-                       "Error: Attempting to allocate memory at address 0x%lx "
-                       "of size 0x%lx which contains memory that is"
-                       "already allocated in the segment with BaseAddr = 0x%lx "
-                       "and Size 0x%lx\n",
-                       BaseAddr,
-                       SegSize,
-                       Seg->getBaseAddr(),
-                       Seg->getSize() );
+        output->fatal(
+          CALL_INFO,
+          11,
+          "Error: Attempting to allocate memory at address 0x%lx "
+          "of size 0x%lx which contains memory that is"
+          "already allocated in the segment with BaseAddr = 0x%lx "
+          "and Size 0x%lx\n",
+          BaseAddr,
+          SegSize,
+          Seg->getBaseAddr(),
+          Seg->getSize()
+        );
       } else {
         continue;
       }
     }
-    MemSegs.emplace_back( std::make_shared< MemSegment >( BaseAddr, SegSize ) );
+    MemSegs.emplace_back( std::make_shared<MemSegment>( BaseAddr, SegSize ) );
   }
 
   return ret;
@@ -631,16 +570,9 @@ bool RevMem::FenceMem( unsigned Hart ) {
   return true;  // base RevMem support does nothing here
 }
 
-bool RevMem::AMOMem( unsigned      Hart,
-                     uint64_t      Addr,
-                     size_t        Len,
-                     void*         Data,
-                     void*         Target,
-                     const MemReq& req,
-                     RevFlag       flags ) {
+bool RevMem::AMOMem( unsigned Hart, uint64_t Addr, size_t Len, void* Data, void* Target, const MemReq& req, RevFlag flags ) {
 #ifdef _REV_DEBUG_
-  std::cout << "AMO of " << Len << " Bytes Starting at 0x" << std::hex << Addr
-            << std::dec << std::endl;
+  std::cout << "AMO of " << Len << " Bytes Starting at 0x" << std::hex << Addr << std::dec << std::endl;
 #endif
 
   if( ctrl ) {
@@ -649,14 +581,7 @@ bool RevMem::AMOMem( unsigned      Hart,
     uint64_t physAddr = CalcPhysAddr( pageNum, Addr );
     char*    BaseMem  = &physMem[physAddr];
 
-    ctrl->sendAMORequest( Hart,
-                          Addr,
-                          (uint64_t) ( BaseMem ),
-                          Len,
-                          static_cast< char* >( Data ),
-                          Target,
-                          req,
-                          flags );
+    ctrl->sendAMORequest( Hart, Addr, (uint64_t) ( BaseMem ), Len, static_cast<char*>( Data ), Target, req, flags );
   } else if( zNic && !isRZA ) {
     // send a ZOP request to the RZA
     ZOP_AMOMem( Hart, Addr, Len, Data, Target, req, flags );
@@ -698,11 +623,9 @@ bool RevMem::AMOMem( unsigned      Hart,
   return true;
 }
 
-bool RevMem::WriteMem(
-  unsigned Hart, uint64_t Addr, size_t Len, const void* Data, RevFlag flags ) {
+bool RevMem::WriteMem( unsigned Hart, uint64_t Addr, size_t Len, const void* Data, RevFlag flags ) {
 #ifdef _REV_DEBUG_
-  std::cout << "Writing " << Len << " Bytes Starting at 0x" << std::hex << Addr
-            << std::dec << std::endl;
+  std::cout << "Writing " << Len << " Bytes Starting at 0x" << std::hex << Addr << std::dec << std::endl;
 #endif
 
   if( IsAddrInScratchpad( Addr ) ) {
@@ -710,11 +633,9 @@ bool RevMem::WriteMem(
   } else {
 
     if( Addr == 0xDEADBEEF ) {
-      std::cout << "Found special write. Val = " << std::hex << *(int*) ( Data )
-                << std::dec << std::endl;
+      std::cout << "Found special write. Val = " << std::hex << *(int*) ( Data ) << std::dec << std::endl;
     }
-    RevokeFuture(
-      Addr );  // revoke the future if it is present; ignore the return
+    RevokeFuture( Addr );  // revoke the future if it is present; ignore the return
     uint64_t pageNum     = Addr >> addrShift;
     uint64_t physAddr    = CalcPhysAddr( pageNum, Addr );
 
@@ -732,8 +653,7 @@ bool RevMem::WriteMem(
       std::cout << "Warning: Writing off end of page... " << std::endl;
 #endif
       if( ctrl ) {
-        ctrl->sendWRITERequest(
-          Hart, Addr, (uint64_t) ( BaseMem ), Len, DataMem, flags );
+        ctrl->sendWRITERequest( Hart, Addr, (uint64_t) ( BaseMem ), Len, DataMem, flags );
       } else if( zNic && !isRZA ) {
         ZOP_WRITEMem( Hart, Addr, Len, DataMem, flags );
       } else {
@@ -745,8 +665,7 @@ bool RevMem::WriteMem(
       if( ctrl ) {
         // write the memory using RevMemCtrl
         unsigned Cur = ( Len - span );
-        ctrl->sendWRITERequest(
-          Hart, Addr, (uint64_t) ( BaseMem ), Len, &( DataMem[Cur] ), flags );
+        ctrl->sendWRITERequest( Hart, Addr, (uint64_t) ( BaseMem ), Len, &( DataMem[Cur] ), flags );
       } else if( zNic && !isRZA ) {
         unsigned Cur = ( Len - span );
         ZOP_WRITEMem( Hart, Addr, Len, &( DataMem[Cur] ), flags );
@@ -761,8 +680,7 @@ bool RevMem::WriteMem(
     } else {
       if( ctrl ) {
         // write the memory using RevMemCtrl
-        ctrl->sendWRITERequest(
-          Hart, Addr, (uint64_t) ( BaseMem ), Len, DataMem, flags );
+        ctrl->sendWRITERequest( Hart, Addr, (uint64_t) ( BaseMem ), Len, DataMem, flags );
       } else if( zNic && !isRZA ) {
         ZOP_WRITEMem( Hart, Addr, Len, DataMem, flags );
       } else {
@@ -777,21 +695,15 @@ bool RevMem::WriteMem(
   return true;
 }
 
-bool RevMem::WriteMem( unsigned    Hart,
-                       uint64_t    Addr,
-                       size_t      Len,
-                       const void* Data ) {
+bool RevMem::WriteMem( unsigned Hart, uint64_t Addr, size_t Len, const void* Data ) {
 #ifdef _REV_DEBUG_
   if( !isRZA ) {
-    std::cout << "Writing " << Len << " Bytes Starting at 0x" << std::hex
-              << Addr << std::dec << std::endl;
+    std::cout << "Writing " << Len << " Bytes Starting at 0x" << std::hex << Addr << std::dec << std::endl;
   } else {
-    std::cout << "RZA Writing " << Len << " Bytes Starting at 0x" << std::hex
-              << Addr << std::dec << std::endl;
-    const char* bytearray = static_cast< const char* >( Data );
+    std::cout << "RZA Writing " << Len << " Bytes Starting at 0x" << std::hex << Addr << std::dec << std::endl;
+    const char* bytearray = static_cast<const char*>( Data );
     for( size_t i = 0; i < Len; i++ ) {
-      std::cout << "Byte[ " << i << "] = " << std::hex << bytearray[i]
-                << std::dec << std::endl;
+      std::cout << "Byte[ " << i << "] = " << std::hex << bytearray[i] << std::dec << std::endl;
     }
   }
 #endif
@@ -802,11 +714,9 @@ bool RevMem::WriteMem( unsigned    Hart,
     scratchpad->WriteMem( Hart, Addr, Len, Data );  // , 0);
   } else {
     if( Addr == 0xDEADBEEF ) {
-      std::cout << "Found special write. Val = " << std::hex << *(int*) ( Data )
-                << std::dec << std::endl;
+      std::cout << "Found special write. Val = " << std::hex << *(int*) ( Data ) << std::dec << std::endl;
     }
-    RevokeFuture(
-      Addr );  // revoke the future if it is present; ignore the return
+    RevokeFuture( Addr );  // revoke the future if it is present; ignore the return
     uint64_t pageNum     = Addr >> addrShift;
     uint64_t physAddr    = CalcPhysAddr( pageNum, Addr );
 
@@ -822,32 +732,22 @@ bool RevMem::WriteMem( unsigned    Hart,
       adjPhysAddr   = CalcPhysAddr( adjPageNum, ( ( Addr + Len ) - span ) );
 
 #ifdef _REV_DEBUG_
-      std::cout << "ENDOFPAGE = " << std::hex << endOfPage << std::dec
-                << std::endl;
+      std::cout << "ENDOFPAGE = " << std::hex << endOfPage << std::dec << std::endl;
       for( unsigned i = 0; i < ( Len - span ); i++ ) {
-        std::cout << "WRITE TO: " << std::hex << (uint64_t) ( &BaseMem[i] )
-                  << std::dec << "; FROM LOGICAL PHYS=" << std::hex
-                  << physAddr + i << std::dec << "; DATA=" << std::hex
-                  << (uint8_t) ( BaseMem[i] ) << std::dec
-                  << "; VIRTUAL ADDR=" << std::hex << Addr + i << std::dec
-                  << std::endl;
+        std::cout << "WRITE TO: " << std::hex << (uint64_t) ( &BaseMem[i] ) << std::dec << "; FROM LOGICAL PHYS=" << std::hex
+                  << physAddr + i << std::dec << "; DATA=" << std::hex << (uint8_t) ( BaseMem[i] ) << std::dec
+                  << "; VIRTUAL ADDR=" << std::hex << Addr + i << std::dec << std::endl;
       }
 
       std::cout << "TOTAL WRITE = " << Len << " Bytes" << std::endl;
-      std::cout << "PHYS Writing " << Len - span << " Bytes Starting at 0x"
-                << std::hex << physAddr << std::dec
-                << "; translates to: " << std::hex << (uint64_t) ( BaseMem )
-                << std::dec << std::endl;
-      std::cout << "ADJ PHYS Writing " << span << " Bytes Starting at 0x"
-                << std::hex << adjPhysAddr << std::dec
-                << "; translates to: " << std::hex
-                << (uint64_t) ( &physMem[adjPhysAddr] ) << std::dec
-                << std::endl;
+      std::cout << "PHYS Writing " << Len - span << " Bytes Starting at 0x" << std::hex << physAddr << std::dec
+                << "; translates to: " << std::hex << (uint64_t) ( BaseMem ) << std::dec << std::endl;
+      std::cout << "ADJ PHYS Writing " << span << " Bytes Starting at 0x" << std::hex << adjPhysAddr << std::dec
+                << "; translates to: " << std::hex << (uint64_t) ( &physMem[adjPhysAddr] ) << std::dec << std::endl;
       std::cout << "Warning: Writing off end of page... " << std::endl;
 #endif
       if( ctrl ) {
-        ctrl->sendWRITERequest(
-          Hart, Addr, (uint64_t) ( BaseMem ), Len, DataMem, RevFlag::F_NONE );
+        ctrl->sendWRITERequest( Hart, Addr, (uint64_t) ( BaseMem ), Len, DataMem, RevFlag::F_NONE );
       } else if( zNic && !isRZA ) {
         ZOP_WRITEMem( Hart, Addr, Len, DataMem, RevFlag::F_NONE );
       } else {
@@ -859,12 +759,7 @@ bool RevMem::WriteMem( unsigned    Hart,
       if( ctrl ) {
         // write the memory using RevMemCtrl
         unsigned Cur = ( Len - span );
-        ctrl->sendWRITERequest( Hart,
-                                Addr,
-                                (uint64_t) ( BaseMem ),
-                                Len,
-                                &( DataMem[Cur] ),
-                                RevFlag::F_NONE );
+        ctrl->sendWRITERequest( Hart, Addr, (uint64_t) ( BaseMem ), Len, &( DataMem[Cur] ), RevFlag::F_NONE );
       } else if( zNic && !isRZA ) {
         unsigned Cur = ( Len - span );
         ZOP_WRITEMem( Hart, Addr, Len, &( DataMem[Cur] ), RevFlag::F_NONE );
@@ -874,13 +769,9 @@ bool RevMem::WriteMem( unsigned    Hart,
         for( unsigned i = 0; i < span; i++ ) {
           BaseMem[i] = DataMem[Cur];
 #ifdef _REV_DEBUG_
-          std::cout << "ADJ WRITE TO: " << std::hex
-                    << (uint64_t) ( &BaseMem[i] ) << std::dec
-                    << "; FROM LOGICAL PHYS=" << std::hex << adjPhysAddr + i
-                    << std::dec << "; DATA=" << std::hex
-                    << (uint8_t) ( BaseMem[i] ) << std::dec
-                    << "; VIRTUAL ADDR=" << std::hex << Addr + Cur << std::dec
-                    << std::endl;
+          std::cout << "ADJ WRITE TO: " << std::hex << (uint64_t) ( &BaseMem[i] ) << std::dec << "; FROM LOGICAL PHYS=" << std::hex
+                    << adjPhysAddr + i << std::dec << "; DATA=" << std::hex << (uint8_t) ( BaseMem[i] ) << std::dec
+                    << "; VIRTUAL ADDR=" << std::hex << Addr + Cur << std::dec << std::endl;
 #endif
           Cur++;
         }
@@ -888,8 +779,7 @@ bool RevMem::WriteMem( unsigned    Hart,
     } else {
       if( ctrl ) {
         // write the memory using RevMemCtrl
-        ctrl->sendWRITERequest(
-          Hart, Addr, (uint64_t) ( BaseMem ), Len, DataMem, RevFlag::F_NONE );
+        ctrl->sendWRITERequest( Hart, Addr, (uint64_t) ( BaseMem ), Len, DataMem, RevFlag::F_NONE );
       } else if( zNic && !isRZA ) {
         ZOP_WRITEMem( Hart, Addr, Len, DataMem, RevFlag::F_NONE );
       } else {
@@ -906,8 +796,7 @@ bool RevMem::WriteMem( unsigned    Hart,
 
 bool RevMem::ReadMem( uint64_t Addr, size_t Len, void* Data ) {
 #ifdef _REV_DEBUG_
-  std::cout << "OLD READMEM: Reading " << Len << " Bytes Starting at 0x"
-            << std::hex << Addr << std::dec << std::endl;
+  std::cout << "OLD READMEM: Reading " << Len << " Bytes Starting at 0x" << std::hex << Addr << std::dec << std::endl;
 #endif
   uint64_t pageNum     = Addr >> addrShift;
   uint64_t physAddr    = CalcPhysAddr( pageNum, Addr );
@@ -943,15 +832,9 @@ bool RevMem::ReadMem( uint64_t Addr, size_t Len, void* Data ) {
   return true;
 }
 
-bool RevMem::ReadMem( unsigned      Hart,
-                      uint64_t      Addr,
-                      size_t        Len,
-                      void*         Target,
-                      const MemReq& req,
-                      RevFlag       flags ) {
+bool RevMem::ReadMem( unsigned Hart, uint64_t Addr, size_t Len, void* Target, const MemReq& req, RevFlag flags ) {
 #ifdef _REV_DEBUG_
-  std::cout << "NEW READMEM: Reading " << Len << " Bytes Starting at 0x"
-            << std::hex << Addr << std::dec << std::endl;
+  std::cout << "NEW READMEM: Reading " << Len << " Bytes Starting at 0x" << std::hex << Addr << std::dec << std::endl;
 #endif
 
   // FORZA: Check if scratchpad read
@@ -965,15 +848,14 @@ bool RevMem::ReadMem( unsigned      Hart,
     uint64_t adjPhysAddr = 0;
     uint64_t endOfPage   = ( pageMap[pageNum].first << addrShift ) + pageSize;
     char*    BaseMem     = &physMem[physAddr];
-    char*    DataMem     = static_cast< char* >( Target );
+    char*    DataMem     = static_cast<char*>( Target );
 
     if( ( physAddr + Len ) > endOfPage ) {
       uint32_t span = ( physAddr + Len ) - endOfPage;
       adjPageNum    = ( ( Addr + Len ) - span ) >> addrShift;
       adjPhysAddr   = CalcPhysAddr( adjPageNum, ( ( Addr + Len ) - span ) );
       if( ctrl ) {
-        ctrl->sendREADRequest(
-          Hart, Addr, (uint64_t) ( BaseMem ), Len, Target, req, flags );
+        ctrl->sendREADRequest( Hart, Addr, (uint64_t) ( BaseMem ), Len, Target, req, flags );
       } else if( zNic && !isRZA ) {
         ZOP_READMem( Hart, Addr, Len, Target, req, flags );
       } else {
@@ -999,8 +881,7 @@ bool RevMem::ReadMem( unsigned      Hart,
 #endif
     } else {
       if( ctrl ) {
-        ctrl->sendREADRequest(
-          Hart, Addr, (uint64_t) ( BaseMem ), Len, Target, req, flags );
+        ctrl->sendREADRequest( Hart, Addr, (uint64_t) ( BaseMem ), Len, Target, req, flags );
       } else if( zNic && !isRZA ) {
         ZOP_READMem( Hart, Addr, Len, Target, req, flags );
       } else {
@@ -1022,8 +903,7 @@ bool RevMem::FlushLine( unsigned Hart, uint64_t Addr ) {
   uint64_t pageNum  = Addr >> addrShift;
   uint64_t physAddr = CalcPhysAddr( pageNum, Addr );
   if( ctrl ) {
-    ctrl->sendFLUSHRequest(
-      Hart, Addr, physAddr, getLineSize(), false, RevFlag::F_NONE );
+    ctrl->sendFLUSHRequest( Hart, Addr, physAddr, getLineSize(), false, RevFlag::F_NONE );
   }
   // else, this is effectively a nop
   return true;
@@ -1033,8 +913,7 @@ bool RevMem::InvLine( unsigned Hart, uint64_t Addr ) {
   uint64_t pageNum  = Addr >> addrShift;
   uint64_t physAddr = CalcPhysAddr( pageNum, Addr );
   if( ctrl ) {
-    ctrl->sendFLUSHRequest(
-      Hart, Addr, physAddr, getLineSize(), true, RevFlag::F_NONE );
+    ctrl->sendFLUSHRequest( Hart, Addr, physAddr, getLineSize(), true, RevFlag::F_NONE );
   }
   // else, this is effectively a nop
   return true;
@@ -1045,8 +924,7 @@ bool RevMem::CleanLine( unsigned Hart, uint64_t Addr ) {
   uint64_t physAddr = CalcPhysAddr( pageNum, Addr );
   if( ctrl ) {
     ctrl->sendFENCE( Hart );
-    ctrl->sendFLUSHRequest(
-      Hart, Addr, physAddr, getLineSize(), false, RevFlag::F_NONE );
+    ctrl->sendFLUSHRequest( Hart, Addr, physAddr, getLineSize(), false, RevFlag::F_NONE );
   }
   // else, this is effectively a nop
   return true;
@@ -1078,13 +956,7 @@ bool RevMem::CleanLine( unsigned Hart, uint64_t Addr ) {
 // 3. Deallocating memory that hasn't been allocated
 // - |---- FreeSeg ----| ==> SegFault :/
 uint64_t RevMem::DeallocMem( uint64_t BaseAddr, uint64_t Size ) {
-  output->verbose(
-    CALL_INFO,
-    10,
-    99,
-    "Attempting to deallocate %lul bytes starting at BaseAddr = 0x%lx\n",
-    Size,
-    BaseAddr );
+  output->verbose( CALL_INFO, 10, 99, "Attempting to deallocate %lul bytes starting at BaseAddr = 0x%lx\n", Size, BaseAddr );
 
   int ret = -1;
   // Search through allocated segments for the segment that begins on the baseAddr
@@ -1106,12 +978,12 @@ uint64_t RevMem::DeallocMem( uint64_t BaseAddr, uint64_t Size ) {
           "is 0x%lx",
           BaseAddr,
           BaseAddr + Size,
-          AllocedSeg->getTopAddr() );
+          AllocedSeg->getTopAddr()
+        );
       }
       // (2.) Check if we're only deallocating a part of a segment
       else if( Size < AllocedSeg->getSize() ) {
-        output->verbose(
-          CALL_INFO, 10, 99, "  => partial deallocation detected\n" );
+        output->verbose( CALL_INFO, 10, 99, "  => partial deallocation detected\n" );
         uint64_t oldAllocedSize = AllocedSeg->getSize();
         // Free data starts where alloced data used to
         // Before: |------------------- AllocedSeg ------------------------|
@@ -1146,8 +1018,7 @@ uint64_t RevMem::DeallocMem( uint64_t BaseAddr, uint64_t Size ) {
         // We can merge the two segments
         // by setting the Size of the FreeSeg to be the sum of the two
         // and NOT creating a new FreeMemSeg
-        output->verbose(
-          CALL_INFO, 10, 99, "  => merging with previous free segment\n" );
+        output->verbose( CALL_INFO, 10, 99, "  => merging with previous free segment\n" );
         FreeSeg->setSize( FreeSeg->getSize() + Size );
         // Dealloc success, return 0
         hasMerged = true;
@@ -1155,15 +1026,13 @@ uint64_t RevMem::DeallocMem( uint64_t BaseAddr, uint64_t Size ) {
       }
     }
     if( !hasMerged ) {
-      output->verbose(
-        CALL_INFO, 10, 99, "  => allocating new free segment\n" );
+      output->verbose( CALL_INFO, 10, 99, "  => allocating new free segment\n" );
       // If we get here, the address that precedes the newly freed data is not free
       // We need to create a new FreeMemSeg that starts at the baseAddr of the previously
       // allocated data and is `Size` bytes long
       // - Before: |--------------------|--- AllocedSeg ---|
       // - After:  |---- NewFreeSeg ----|--- AllocedSeg ---|
-      FreeMemSegs.emplace_back(
-        std::make_shared< MemSegment >( BaseAddr, Size ) );
+      FreeMemSegs.emplace_back( std::make_shared<MemSegment>( BaseAddr, Size ) );
     }
   }
 
@@ -1176,16 +1045,17 @@ uint64_t RevMem::DeallocMem( uint64_t BaseAddr, uint64_t Size ) {
 void RevMem::InitHeap( const uint64_t& EndOfStaticData ) {
   if( EndOfStaticData == 0x00ull ) {
     // Program didn't contain .text, .data, or .bss sections
-    output->fatal( CALL_INFO,
-                   7,
-                   "The loader was unable"
-                   "to find a .text section in your executable. This is a bug."
-                   "EndOfStaticData = 0x%lx which is less than or equal to 0",
-                   EndOfStaticData );
+    output->fatal(
+      CALL_INFO,
+      7,
+      "The loader was unable"
+      "to find a .text section in your executable. This is a bug."
+      "EndOfStaticData = 0x%lx which is less than or equal to 0",
+      EndOfStaticData
+    );
   } else {
     // Mark heap as free
-    FreeMemSegs.emplace_back(
-      std::make_shared< MemSegment >( EndOfStaticData + 1, maxHeapSize ) );
+    FreeMemSegs.emplace_back( std::make_shared<MemSegment>( EndOfStaticData + 1, maxHeapSize ) );
 
     heapend    = EndOfStaticData + 1;
     heapstart  = EndOfStaticData + 1;
@@ -1205,14 +1075,15 @@ uint64_t RevMem::ExpandHeap( uint64_t Size ) {
 
   // Check if we are out of heap space (ie. heapend >= bottom of stack)
   if( NewHeapEnd > maxHeapSize ) {
-    output->fatal( CALL_INFO,
-                   7,
-                   "Out Of Memory --- Attempted to expand heap to 0x%" PRIx64
-                   " which goes beyond the maxHeapSize = 0x%x set in the "
-                   "python configuration. "
-                   "If unset, this value will be equal to 1/4 of memSize.\n",
-                   NewHeapEnd,
-                   maxHeapSize );
+    output->fatal(
+      CALL_INFO,
+      7,
+      "Out Of Memory --- Attempted to expand heap to 0x%" PRIx64 " which goes beyond the maxHeapSize = 0x%x set in the "
+      "python configuration. "
+      "If unset, this value will be equal to 1/4 of memSize.\n",
+      NewHeapEnd,
+      maxHeapSize
+    );
   }
   // update the heapend
   heapend = NewHeapEnd;
@@ -1224,15 +1095,11 @@ uint64_t RevMem::ExpandHeap( uint64_t Size ) {
 // ---- FORZA Interfaces
 // ----------------------------------------------------
 
-void RevMem::InitScratchpad( const unsigned ZapNum,
-                             size_t         ScratchpadSize,
-                             size_t         ChunkSize ) {
+void RevMem::InitScratchpad( const unsigned ZapNum, size_t ScratchpadSize, size_t ChunkSize ) {
   // Allocate the scratchpad memory
-  scratchpad = std::make_shared< RevScratchpad >(
-    ZapNum, _SCRATCHPAD_SIZE_, _CHUNK_SIZE_, output );
+  scratchpad = std::make_shared<RevScratchpad>( ZapNum, _SCRATCHPAD_SIZE_, _CHUNK_SIZE_, output );
   if( !scratchpad ) {
-    output->fatal(
-      CALL_INFO, -1, "Error: could not allocate backing memory\n" );
+    output->fatal( CALL_INFO, -1, "Error: could not allocate backing memory\n" );
   }
 }
 
@@ -1255,31 +1122,21 @@ uint64_t RevMem::ScratchpadAlloc( size_t numBytes ) {
 
   // Sanity check: Make sure that if the allocation succeeded (Addr != _INVALID_ADDR_) its in the scratchpad
   if( Addr != _INVALID_ADDR_ && !scratchpad->Contains( Addr ) ) {
-    output->fatal( CALL_INFO,
-                   11,
-                   "Error: Scratchpad allocated address 0x%" PRIx64
-                   " is not in the scratchpad. The scratchpad"
-                   " is defined as addresses 0x%" PRIx64 " to 0x%" PRIx64 ".\n",
-                   Addr,
-                   scratchpad->GetBaseAddr(),
-                   scratchpad->GetTopAddr() );
+    output->fatal(
+      CALL_INFO,
+      11,
+      "Error: Scratchpad allocated address 0x%" PRIx64 " is not in the scratchpad. The scratchpad"
+      " is defined as addresses 0x%" PRIx64 " to 0x%" PRIx64 ".\n",
+      Addr,
+      scratchpad->GetBaseAddr(),
+      scratchpad->GetTopAddr()
+    );
   }
 
   if( Addr == _INVALID_ADDR_ ) {
-    output->verbose(
-      CALL_INFO,
-      4,
-      11,
-      "Error: Scratchpad allocation failed. Requested %zu bytes.\n",
-      numBytes );
+    output->verbose( CALL_INFO, 4, 11, "Error: Scratchpad allocation failed. Requested %zu bytes.\n", numBytes );
   } else {
-    output->verbose(
-      CALL_INFO,
-      4,
-      99,
-      "Allocated 0x%zu bytes in the scratchpad at address 0x%" PRIx64 "\n",
-      numBytes,
-      Addr );
+    output->verbose( CALL_INFO, 4, 99, "Allocated 0x%zu bytes in the scratchpad at address 0x%" PRIx64 "\n", numBytes, Addr );
   }
   return Addr;
 }
@@ -1291,7 +1148,8 @@ void RevMem::ScratchpadFree( uint64_t Addr, size_t size ) {
       -1,
       "Error: Request to perform a free in the scratchpad at address 0x%" PRIx64
       ", however, this address is not in the scratchpad.",
-      Addr );
+      Addr
+    );
   }
   scratchpad->Free( Addr, size );
   return;
@@ -1299,7 +1157,7 @@ void RevMem::ScratchpadFree( uint64_t Addr, size_t size ) {
 
 SST::Forza::zopOpc RevMem::flagToZOP( uint32_t flags, size_t Len ) {
 
-  static const std::tuple< RevCPU::RevFlag, size_t, Forza::zopOpc > table[] = {
+  static const std::tuple<RevCPU::RevFlag, size_t, Forza::zopOpc> table[] = {
     { RevCPU::RevFlag::F_AMOADD, 4,  Forza::zopOpc::Z_HAC_32_BASE_ADD},
     { RevCPU::RevFlag::F_AMOXOR, 4,  Forza::zopOpc::Z_HAC_32_BASE_XOR},
     { RevCPU::RevFlag::F_AMOAND, 4,  Forza::zopOpc::Z_HAC_32_BASE_AND},
@@ -1321,9 +1179,8 @@ SST::Forza::zopOpc RevMem::flagToZOP( uint32_t flags, size_t Len ) {
   };
 
   for( auto& flag : table ) {
-    if( ( flags & (uint32_t) ( std::get< 0 >( flag ) ) ) &&
-        ( Len == std::get< 1 >( flag ) ) ) {
-      return std::get< 2 >( flag );
+    if( ( flags & (uint32_t) ( std::get<0>( flag ) ) ) && ( Len == std::get<1>( flag ) ) ) {
+      return std::get<2>( flag );
       break;
     }
   }
@@ -1334,79 +1191,69 @@ SST::Forza::zopOpc RevMem::flagToZOP( uint32_t flags, size_t Len ) {
 
 SST::Forza::zopOpc RevMem::memToZOP( uint32_t flags, size_t Len, bool Write ) {
 
-  static const std::tuple< RevCPU::RevFlag, size_t, bool, Forza::zopOpc >
-    table[] = {
-      {  RevFlag::F_NONE, 1, false,  SST::Forza::zopOpc::Z_MZOP_LB},
-      {  RevFlag::F_NONE, 2, false,  SST::Forza::zopOpc::Z_MZOP_LH},
-      {  RevFlag::F_NONE, 4, false,  SST::Forza::zopOpc::Z_MZOP_LW},
-      {  RevFlag::F_NONE, 8, false,  SST::Forza::zopOpc::Z_MZOP_LD},
+  static const std::tuple<RevCPU::RevFlag, size_t, bool, Forza::zopOpc> table[] = {
+    {  RevFlag::F_NONE, 1, false,  SST::Forza::zopOpc::Z_MZOP_LB},
+    {  RevFlag::F_NONE, 2, false,  SST::Forza::zopOpc::Z_MZOP_LH},
+    {  RevFlag::F_NONE, 4, false,  SST::Forza::zopOpc::Z_MZOP_LW},
+    {  RevFlag::F_NONE, 8, false,  SST::Forza::zopOpc::Z_MZOP_LD},
 
-      {RevFlag::F_ZEXT64, 1, false,  SST::Forza::zopOpc::Z_MZOP_LB},
-      {RevFlag::F_ZEXT64, 2, false,  SST::Forza::zopOpc::Z_MZOP_LH},
-      {RevFlag::F_ZEXT64, 4, false,  SST::Forza::zopOpc::Z_MZOP_LW},
-      {RevFlag::F_ZEXT64, 8, false,  SST::Forza::zopOpc::Z_MZOP_LD},
+    {RevFlag::F_ZEXT64, 1, false,  SST::Forza::zopOpc::Z_MZOP_LB},
+    {RevFlag::F_ZEXT64, 2, false,  SST::Forza::zopOpc::Z_MZOP_LH},
+    {RevFlag::F_ZEXT64, 4, false,  SST::Forza::zopOpc::Z_MZOP_LW},
+    {RevFlag::F_ZEXT64, 8, false,  SST::Forza::zopOpc::Z_MZOP_LD},
 
-      {RevFlag::F_SEXT64, 1, false, SST::Forza::zopOpc::Z_MZOP_LSB},
-      {RevFlag::F_SEXT64, 2, false, SST::Forza::zopOpc::Z_MZOP_LSH},
-      {RevFlag::F_SEXT64, 4, false, SST::Forza::zopOpc::Z_MZOP_LSW},
+    {RevFlag::F_SEXT64, 1, false, SST::Forza::zopOpc::Z_MZOP_LSB},
+    {RevFlag::F_SEXT64, 2, false, SST::Forza::zopOpc::Z_MZOP_LSH},
+    {RevFlag::F_SEXT64, 4, false, SST::Forza::zopOpc::Z_MZOP_LSW},
 
-      {  RevFlag::F_NONE, 1,  true,  SST::Forza::zopOpc::Z_MZOP_SB},
-      {  RevFlag::F_NONE, 2,  true,  SST::Forza::zopOpc::Z_MZOP_SH},
-      {  RevFlag::F_NONE, 4,  true,  SST::Forza::zopOpc::Z_MZOP_SW},
-      {  RevFlag::F_NONE, 8,  true,  SST::Forza::zopOpc::Z_MZOP_SD},
+    {  RevFlag::F_NONE, 1,  true,  SST::Forza::zopOpc::Z_MZOP_SB},
+    {  RevFlag::F_NONE, 2,  true,  SST::Forza::zopOpc::Z_MZOP_SH},
+    {  RevFlag::F_NONE, 4,  true,  SST::Forza::zopOpc::Z_MZOP_SW},
+    {  RevFlag::F_NONE, 8,  true,  SST::Forza::zopOpc::Z_MZOP_SD},
 
-      {RevFlag::F_ZEXT64, 1,  true,  SST::Forza::zopOpc::Z_MZOP_SB},
-      {RevFlag::F_ZEXT64, 2,  true,  SST::Forza::zopOpc::Z_MZOP_SH},
-      {RevFlag::F_ZEXT64, 4,  true,  SST::Forza::zopOpc::Z_MZOP_SW},
-      {RevFlag::F_ZEXT64, 8,  true,  SST::Forza::zopOpc::Z_MZOP_SD},
+    {RevFlag::F_ZEXT64, 1,  true,  SST::Forza::zopOpc::Z_MZOP_SB},
+    {RevFlag::F_ZEXT64, 2,  true,  SST::Forza::zopOpc::Z_MZOP_SH},
+    {RevFlag::F_ZEXT64, 4,  true,  SST::Forza::zopOpc::Z_MZOP_SW},
+    {RevFlag::F_ZEXT64, 8,  true,  SST::Forza::zopOpc::Z_MZOP_SD},
 
-      {RevFlag::F_SEXT64, 1,  true, SST::Forza::zopOpc::Z_MZOP_SSB},
-      {RevFlag::F_SEXT64, 2,  true, SST::Forza::zopOpc::Z_MZOP_SSH},
-      {RevFlag::F_SEXT64, 4,  true, SST::Forza::zopOpc::Z_MZOP_SSW},
+    {RevFlag::F_SEXT64, 1,  true, SST::Forza::zopOpc::Z_MZOP_SSB},
+    {RevFlag::F_SEXT64, 2,  true, SST::Forza::zopOpc::Z_MZOP_SSH},
+    {RevFlag::F_SEXT64, 4,  true, SST::Forza::zopOpc::Z_MZOP_SSW},
   };
 
   for( auto& flag : table ) {
     if( flags == 0 ) {
       // match on null flags
-      if( ( std::get< 0 >( flag ) == RevFlag::F_NONE ) &&
-          ( Len == std::get< 1 >( flag ) ) &&
-          ( Write == std::get< 2 >( flag ) ) ) {
-        return std::get< 3 >( flag );
+      if( ( std::get<0>( flag ) == RevFlag::F_NONE ) && ( Len == std::get<1>( flag ) ) && ( Write == std::get<2>( flag ) ) ) {
+        return std::get<3>( flag );
         break;
       }
     } else {
       // match on non-null flags
-      if( ( flags & (uint32_t) ( std::get< 0 >( flag ) ) ) &&
-          ( Len == std::get< 1 >( flag ) ) &&
-          ( Write == std::get< 2 >( flag ) ) ) {
-        return std::get< 3 >( flag );
+      if( ( flags & (uint32_t) ( std::get<0>( flag ) ) ) && ( Len == std::get<1>( flag ) ) && ( Write == std::get<2>( flag ) ) ) {
+        return std::get<3>( flag );
         break;
       }
     }
   }
 
-  output->verbose( CALL_INFO,
-                   4,
-                   0,
-                   "WARNING: Failed to convert memory request to MZOP opcode; "
-                   "flags=%d, len=%lu, write=%d\n",
-                   flags,
-                   Len,
-                   Write );
+  output->verbose(
+    CALL_INFO,
+    4,
+    0,
+    "WARNING: Failed to convert memory request to MZOP opcode; "
+    "flags=%d, len=%lu, write=%d\n",
+    flags,
+    Len,
+    Write
+  );
   return SST::Forza::zopOpc::Z_NULL_OPC;
 }
 
-bool RevMem::ZOP_AMOMem( unsigned      Hart,
-                         uint64_t      Addr,
-                         size_t        Len,
-                         void*         Data,
-                         void*         Target,
-                         const MemReq& req,
-                         RevFlag       flags ) {
+bool RevMem::ZOP_AMOMem( unsigned Hart, uint64_t Addr, size_t Len, void* Data, void* Target, const MemReq& req, RevFlag flags ) {
 
 #ifdef _REV_DEBUG_
-  std::cout << "ZOP_AMO of " << Len << " Bytes Starting at 0x" << std::hex
-            << Addr << std::dec << std::endl;
+  std::cout << "ZOP_AMO of " << Len << " Bytes Starting at 0x" << std::hex << Addr << std::dec << std::endl;
 #endif
 
   // create a new event
@@ -1415,8 +1262,7 @@ bool RevMem::ZOP_AMOMem( unsigned      Hart,
   // set all the fields
   zev->setType( SST::Forza::zopMsgT::Z_HZOPAC );
   zev->setNB( 0 );
-  zev->setID(
-    Hart );  // -- we set this to the Hart temporarily.  The zNic will set the actual message ID
+  zev->setID( Hart );  // -- we set this to the Hart temporarily.  The zNic will set the actual message ID
   zev->setCredit( 0 );
   zev->setOpc( flagToZOP( (uint32_t) ( flags ), Len ) );
   zev->setAppID( 0 );
@@ -1430,13 +1276,13 @@ bool RevMem::ZOP_AMOMem( unsigned      Hart,
   zev->setSrcPrec( (uint8_t) ( zNic->getPrecinctID() ) );
 
   zev->setMemReq( req );
-  zev->setTarget( static_cast< uint64_t* >( Target ) );
+  zev->setTarget( static_cast<uint64_t*>( Target ) );
 
   // set the payload
-  std::vector< uint64_t > payload;
+  std::vector<uint64_t> payload;
   payload.push_back( 0x00ull );  //  ACS: FIXME
   payload.push_back( Addr );     //  address
-  payload.push_back( *( static_cast< uint64_t* >( Data ) ) );
+  payload.push_back( *( static_cast<uint64_t*>( Data ) ) );
   zev->setPayload( payload );
 
   // inject the new packet
@@ -1445,15 +1291,9 @@ bool RevMem::ZOP_AMOMem( unsigned      Hart,
   return true;
 }
 
-bool RevMem::ZOP_READMem( unsigned      Hart,
-                          uint64_t      Addr,
-                          size_t        Len,
-                          void*         Target,
-                          const MemReq& req,
-                          RevFlag       flags ) {
+bool RevMem::ZOP_READMem( unsigned Hart, uint64_t Addr, size_t Len, void* Target, const MemReq& req, RevFlag flags ) {
 #ifdef _REV_DEBUG_
-  std::cout << "ZOP_READ of " << Len << " Bytes Starting at 0x" << std::hex
-            << Addr << std::dec << std::endl;
+  std::cout << "ZOP_READ of " << Len << " Bytes Starting at 0x" << std::hex << Addr << std::dec << std::endl;
 #endif
 
   // create a new event
@@ -1462,8 +1302,7 @@ bool RevMem::ZOP_READMem( unsigned      Hart,
   // set all the fields : FIXME
   zev->setType( SST::Forza::zopMsgT::Z_MZOP );
   zev->setNB( 0 );
-  zev->setID(
-    Hart );  // -- we set this to the Hart temporarily.  The zNic will set the actual message ID
+  zev->setID( Hart );  // -- we set this to the Hart temporarily.  The zNic will set the actual message ID
   zev->setCredit( 0 );
   zev->setOpc( memToZOP( (uint32_t) ( flags ), Len, false ) );
   zev->setAppID( 0 );
@@ -1477,10 +1316,10 @@ bool RevMem::ZOP_READMem( unsigned      Hart,
   zev->setSrcPrec( (uint8_t) ( zNic->getPrecinctID() ) );
 
   zev->setMemReq( req );
-  zev->setTarget( static_cast< uint64_t* >( Target ) );
+  zev->setTarget( static_cast<uint64_t*>( Target ) );
 
   // set the payload
-  std::vector< uint64_t > payload;
+  std::vector<uint64_t> payload;
   payload.push_back( 0x00ull );  //  ACS: FIXME
   payload.push_back( Addr );     //  address
   zev->setPayload( payload );
@@ -1491,11 +1330,9 @@ bool RevMem::ZOP_READMem( unsigned      Hart,
   return true;
 }
 
-bool RevMem::ZOP_WRITEMem(
-  unsigned Hart, uint64_t Addr, size_t Len, void* Data, RevFlag flags ) {
+bool RevMem::ZOP_WRITEMem( unsigned Hart, uint64_t Addr, size_t Len, void* Data, RevFlag flags ) {
 #ifdef _REV_DEBUG_
-  std::cout << "ZOP_WRITEMem request of " << Len << " Bytes Starting at 0x"
-            << std::hex << Addr << std::dec << std::endl;
+  std::cout << "ZOP_WRITEMem request of " << Len << " Bytes Starting at 0x" << std::hex << Addr << std::dec << std::endl;
 #endif
 
   // check to see if this is a write request of <= 8 bytes
@@ -1515,19 +1352,12 @@ bool RevMem::ZOP_WRITEMem(
     } else if( CurLen >= 1 ) {
       CurLen = 1;
     } else {
-      output->fatal(
-        CALL_INFO, -1, "Error: requesting to write 0 bytes in ZOP packet\n" );
+      output->fatal( CALL_INFO, -1, "Error: requesting to write 0 bytes in ZOP packet\n" );
     }
 
     while( BytesWritten != Len ) {
       // dispatch the next write operation
-      if( !__ZOP_WRITEMemBase(
-            Hart,
-            CurAddr,
-            CurLen,
-            CurData,
-            flags,
-            memToZOP( (uint32_t) ( flags ), CurLen, true ) ) ) {
+      if( !__ZOP_WRITEMemBase( Hart, CurAddr, CurLen, CurData, flags, memToZOP( (uint32_t) ( flags ), CurLen, true ) ) ) {
         return false;
       }
 
@@ -1535,7 +1365,7 @@ bool RevMem::ZOP_WRITEMem(
 
       // adjust the current address, length, etc
       CurAddr += (uint64_t) ( CurLen );
-      CurData = ( static_cast< uint64_t* >( CurData ) + (uint64_t) ( CurLen ) );
+      CurData = ( static_cast<uint64_t*>( CurData ) + (uint64_t) ( CurLen ) );
 
       CurLen  = Len - BytesWritten;
       if( CurLen == 8 ) {
@@ -1556,38 +1386,31 @@ bool RevMem::ZOP_WRITEMem(
   return true;
 }
 
-bool RevMem::__ZOP_WRITEMemLarge(
-  unsigned Hart, uint64_t Addr, size_t Len, void* Data, RevFlag flags ) {
+bool RevMem::__ZOP_WRITEMemLarge( unsigned Hart, uint64_t Addr, size_t Len, void* Data, RevFlag flags ) {
 #ifdef _REV_DEBUG_
-  std::cout << "ZOP_WRITE_LARGE of " << Len << " Bytes Starting at 0x"
-            << std::hex << Addr << std::dec << std::endl;
+  std::cout << "ZOP_WRITE_LARGE of " << Len << " Bytes Starting at 0x" << std::hex << Addr << std::dec << std::endl;
 #endif
   if( Len < Z_MZOP_DMA_MAX ) {
     if( ( Len % 8 ) == 0 ) {
       // aligned to a FLIT
-      return __ZOP_WRITEMemBase(
-        Hart, Addr, Len, Data, flags, SST::Forza::zopOpc::Z_MZOP_SDMA );
+      return __ZOP_WRITEMemBase( Hart, Addr, Len, Data, flags, SST::Forza::zopOpc::Z_MZOP_SDMA );
     } else {
       // not aligned to a FLIT, break it up
       // split it into two requests aligned to an 8-byte FLIT
       // first request will be the nearest FLIT-aligned value
       size_t NewLen = ( ( Len / 8 ) * 8 );
-      if( !__ZOP_WRITEMemBase( Hart,
-                               Addr,
-                               NewLen,
-                               Data,
-                               flags,
-                               SST::Forza::zopOpc::Z_MZOP_SDMA ) ) {
+      if( !__ZOP_WRITEMemBase( Hart, Addr, NewLen, Data, flags, SST::Forza::zopOpc::Z_MZOP_SDMA ) ) {
         return false;
       }
 
       // second "set" of requests will handle the tail
-      if( !ZOP_WRITEMem( Hart,
-                         Addr + (uint64_t) ( NewLen ),
-                         Len - NewLen,
-                         (void*) ( reinterpret_cast< uint64_t >( Data ) +
-                                   (uint64_t) ( NewLen ) ),
-                         flags ) ) {
+      if( !ZOP_WRITEMem(
+            Hart,
+            Addr + (uint64_t) ( NewLen ),
+            Len - NewLen,
+            (void*) ( reinterpret_cast<uint64_t>( Data ) + (uint64_t) ( NewLen ) ),
+            flags
+          ) ) {
         return false;
       }
     }
@@ -1599,12 +1422,13 @@ bool RevMem::__ZOP_WRITEMemLarge(
     }
 
     // second "set" of requests will handle the tail
-    if( !ZOP_WRITEMem( Hart,
-                       Addr + (uint64_t) ( Z_MZOP_DMA_MAX ),
-                       Len - (size_t) ( Z_MZOP_DMA_MAX ),
-                       (void*) ( reinterpret_cast< uint64_t >( Data ) +
-                                 (uint64_t) ( Z_MZOP_DMA_MAX ) ),
-                       flags ) ) {
+    if( !ZOP_WRITEMem(
+          Hart,
+          Addr + (uint64_t) ( Z_MZOP_DMA_MAX ),
+          Len - (size_t) ( Z_MZOP_DMA_MAX ),
+          (void*) ( reinterpret_cast<uint64_t>( Data ) + (uint64_t) ( Z_MZOP_DMA_MAX ) ),
+          flags
+        ) ) {
       return false;
     }
   }
@@ -1618,15 +1442,9 @@ bool RevMem::__ZOP_WRITEMemLarge(
 //       such as the RevLoader, initiate cache line writes.  Since FORZA does
 //       not support cache line writes, the user-facing ZOP_WRITEMem method
 //       should be used to break cache lines into individual <= 8byte operations.
-bool RevMem::__ZOP_WRITEMemBase( unsigned           Hart,
-                                 uint64_t           Addr,
-                                 size_t             Len,
-                                 void*              Data,
-                                 RevFlag            flags,
-                                 SST::Forza::zopOpc opc ) {
+bool RevMem::__ZOP_WRITEMemBase( unsigned Hart, uint64_t Addr, size_t Len, void* Data, RevFlag flags, SST::Forza::zopOpc opc ) {
 #ifdef _REV_DEBUG_
-  std::cout << "ZOP_WRITEMemBase of " << Len << " Bytes Starting at 0x"
-            << std::hex << Addr << std::dec
+  std::cout << "ZOP_WRITEMemBase of " << Len << " Bytes Starting at 0x" << std::hex << Addr << std::dec
             << " with opc=" << (unsigned) ( opc ) << std::endl;
 #endif
 
@@ -1639,8 +1457,7 @@ bool RevMem::__ZOP_WRITEMemBase( unsigned           Hart,
   // set all the fields : FIXME
   zev->setType( SST::Forza::zopMsgT::Z_MZOP );
   zev->setNB( 0 );
-  zev->setID(
-    Hart );  // -- we set this to the Hart temporarily.  The zNic will set the actual message ID
+  zev->setID( Hart );  // -- we set this to the Hart temporarily.  The zNic will set the actual message ID
   zev->setCredit( 0 );
   zev->setOpc( opc );
   zev->setAppID( 0 );
@@ -1654,40 +1471,38 @@ bool RevMem::__ZOP_WRITEMemBase( unsigned           Hart,
   zev->setSrcPrec( (uint8_t) ( zNic->getPrecinctID() ) );
 
   // set the payload
-  std::vector< uint64_t > payload;
+  std::vector<uint64_t> payload;
   payload.push_back( 0x00ull );  //  ACS: FIXME
   payload.push_back( Addr );     //  address
 
   // build the payload
   if( Len == 1 ) {
     // standard write
-    uint8_t* Tmp = reinterpret_cast< uint8_t* >( Data );
+    uint8_t* Tmp = reinterpret_cast<uint8_t*>( Data );
     //std::cout << "1-Byte = 0x" << std::hex << Tmp[0] << std::dec << std::endl;
     payload.push_back( (uint64_t) ( Tmp[0] ) );
   } else if( Len == 2 ) {
-    uint16_t* Tmp = reinterpret_cast< uint16_t* >( Data );
+    uint16_t* Tmp = reinterpret_cast<uint16_t*>( Data );
     //std::cout << "2-Byte = 0x" << std::hex << Tmp[0] << std::dec << std::endl;
     payload.push_back( (uint64_t) ( Tmp[0] ) );
   } else if( Len == 4 ) {
-    uint32_t* Tmp = reinterpret_cast< uint32_t* >( Data );
+    uint32_t* Tmp = reinterpret_cast<uint32_t*>( Data );
     //std::cout << "4-Byte = 0x" << std::hex << Tmp[0] << std::dec << std::endl;
     payload.push_back( (uint64_t) ( Tmp[0] ) );
   } else if( Len == 8 ) {
-    uint64_t* Tmp = reinterpret_cast< uint64_t* >( Data );
+    uint64_t* Tmp = reinterpret_cast<uint64_t*>( Data );
     //std::cout << "8-Byte = 0x" << std::hex << Tmp[0] << std::dec << std::endl;
     payload.push_back( Tmp[0] );
   } else {
     // large write
-    uint64_t* Tmp = reinterpret_cast< uint64_t* >( Data );
+    uint64_t* Tmp = reinterpret_cast<uint64_t*>( Data );
 
 #ifdef _REV_DEBUG_
-    std::cout << "DMA Payload @ 0x" << std::hex << Addr << std::dec
-              << std::endl;
+    std::cout << "DMA Payload @ 0x" << std::hex << Addr << std::dec << std::endl;
 #endif
     for( unsigned i = 0; i < ( Len / 8 ); i++ ) {
 #ifdef _REV_DEBUG_
-      std::cout << "DMA TmpPayload @ 0x " << std::hex << Tmp << std::dec
-                << " = 0x" << std::hex << Tmp[0] << std::endl;
+      std::cout << "DMA TmpPayload @ 0x " << std::hex << Tmp << std::dec << " = 0x" << std::hex << Tmp[0] << std::endl;
 #endif
       payload.push_back( Tmp[0] );
       Tmp += 1ull;
@@ -1695,8 +1510,7 @@ bool RevMem::__ZOP_WRITEMemBase( unsigned           Hart,
 #ifdef _REV_DEBUG_
     // print and igbore the ACS and Address
     for( unsigned i = 2; i < payload.size(); i++ ) {
-      std::cout << "DMA Payload[" << i << "] = @Addr= 0x" << std::hex
-                << Addr + ( ( i - 2 ) * 8 ) << std::dec << " = " << std::hex
+      std::cout << "DMA Payload[" << i << "] = @Addr= 0x" << std::hex << Addr + ( ( i - 2 ) * 8 ) << std::dec << " = " << std::hex
                 << payload[i] << std::dec << std::endl;
     }
 #endif
@@ -1724,8 +1538,7 @@ bool RevMem::__ZOP_FENCEHart( unsigned Hart ) {
   // set all the fields : FIXME
   zev->setType( SST::Forza::zopMsgT::Z_FENCE );
   zev->setNB( 0 );
-  zev->setID(
-    Hart );  // -- we set this to the Hart temporarily.  The zNic will set the actual message ID
+  zev->setID( Hart );  // -- we set this to the Hart temporarily.  The zNic will set the actual message ID
   zev->setCredit( 0 );
   zev->setOpc( SST::Forza::zopOpc::Z_FENCE_HART );
   zev->setAppID( 0 );
@@ -1744,10 +1557,7 @@ bool RevMem::__ZOP_FENCEHart( unsigned Hart ) {
   return true;
 }
 
-bool RevMem::ZOP_ThreadMigrate( unsigned                Hart,
-                                std::vector< uint64_t > Payload,
-                                unsigned                Zone,
-                                unsigned                Precinct ) {
+bool RevMem::ZOP_ThreadMigrate( unsigned Hart, std::vector<uint64_t> Payload, unsigned Zone, unsigned Precinct ) {
 #ifdef _REV_DEBUG_
   std::cout << "ZOP_THREADMIGRATE" << std::endl;
 #endif
@@ -1796,8 +1606,7 @@ bool RevMem::ZOP_ThreadMigrate( unsigned                Hart,
 
   zev->setPayload( Payload );
 
-  zNic->send(
-    zev, SST::Forza::zopCompID::Z_ZQM, zNic->getPCID( Zone ), Precinct );
+  zNic->send( zev, SST::Forza::zopCompID::Z_ZQM, zNic->getPCID( Zone ), Precinct );
 
   return true;
 }
@@ -1822,14 +1631,9 @@ bool RevMem::isLocalAddr( uint64_t vAddr, unsigned& Zone, unsigned& Precinct ) {
       ( TmpLocalBit != 0 ) ) {                         // view bit set to 1
     Zone     = TmpZone;
     Precinct = TmpPrecinct;
-    output->verbose( CALL_INFO,
-                     7,
-                     0,
-                     "[FORZA][ZAP] Triggering ThreadMigrate on vAddr=0x%" PRIx64
-                     "to Zone=%d;Precinct=%d\n",
-                     vAddr,
-                     Zone,
-                     Precinct );
+    output->verbose(
+      CALL_INFO, 7, 0, "[FORZA][ZAP] Triggering ThreadMigrate on vAddr=0x%" PRIx64 "to Zone=%d;Precinct=%d\n", vAddr, Zone, Precinct
+    );
     return false;
   }
 
@@ -1839,11 +1643,7 @@ bool RevMem::isLocalAddr( uint64_t vAddr, unsigned& Zone, unsigned& Precinct ) {
 // Handles an RZA response message
 // This specifically handles MZOP and HZOP responses
 bool RevMem::handleRZAResponse( Forza::zopEvent* zev ) {
-  output->verbose( CALL_INFO,
-                   5,
-                   0,
-                   "[FORZA][ZAP] Handling ZOP Response in RevMem; ID=%d\n",
-                   (uint32_t) ( zev->getID() ) );
+  output->verbose( CALL_INFO, 5, 0, "[FORZA][ZAP] Handling ZOP Response in RevMem; ID=%d\n", (uint32_t) ( zev->getID() ) );
   auto req = zev->getMemReq();
   req.MarkLoadComplete();
   return true;
@@ -1870,8 +1670,7 @@ void RevMem::updatePhysHistoryfromInput( const std::string& InputFile ) {
   }
   std::ifstream input( InputFile );
   if( !input.is_open() ) {
-    output->fatal(
-      CALL_INFO, -1, "Error: failed to read PhysAddrHistory InputFile" );
+    output->fatal( CALL_INFO, -1, "Error: failed to read PhysAddrHistory InputFile" );
   }
 
   std::string line;
@@ -1885,23 +1684,16 @@ void RevMem::updatePhysHistoryfromInput( const std::string& InputFile ) {
     std::istringstream iss( line );
     char               delim = ',';
 
-    if( !( iss >> physAddr >> delim && getline( iss, type, delim ) &&
-           getline( iss, validStr, delim ) ) ) {
-      output->fatal( CALL_INFO,
-                     -1,
-                     "Error: Parsing error in line (missing fields): %s\n",
-                     line.c_str() );
+    if( !( iss >> physAddr >> delim && getline( iss, type, delim ) && getline( iss, validStr, delim ) ) ) {
+      output->fatal( CALL_INFO, -1, "Error: Parsing error in line (missing fields): %s\n", line.c_str() );
       continue;
     }
 
     valid = ( validStr == "True" );
 
-    std::vector< int > appIDs;
+    std::vector<int> appIDs;
     if( iss.eof() || iss.fail() ) {
-      output->fatal( CALL_INFO,
-                     -1,
-                     "Error: Parsing error in line (missing AppID): %s\n",
-                     line.c_str() );
+      output->fatal( CALL_INFO, -1, "Error: Parsing error in line (missing AppID): %s\n", line.c_str() );
       continue;
     }
     while( iss.peek() != std::istringstream::traits_type::eof() ) {
@@ -1916,10 +1708,7 @@ void RevMem::updatePhysHistoryfromInput( const std::string& InputFile ) {
     }
 
     if( appIDs.empty() ) {
-      output->fatal( CALL_INFO,
-                     -1,
-                     "Error: Parsing error in line (no AppIDs found): %s\n",
-                     line.c_str() );
+      output->fatal( CALL_INFO, -1, "Error: Parsing error in line (no AppIDs found): %s\n", line.c_str() );
       continue;
     }
 
@@ -1937,16 +1726,14 @@ void RevMem::updatePhysHistorytoOutput() {
   std::ofstream outputfile( outputFile );
   // std::cout<<"output File Name "<<outputFile<<"\n";
   if( !outputfile.is_open() )
-    output->fatal(
-      CALL_INFO, -1, "Error: failed to write PhysAddrHistory OutputFile" );
+    output->fatal( CALL_INFO, -1, "Error: failed to write PhysAddrHistory OutputFile" );
 
   //PhysAddr,Private/Shared, True/False,appID
   outputfile << "PhysAddr,Type,Valid,AppID\n";
 
   for( const auto& element : OutputPhysAddrHist ) {
-    outputfile << element.first << "," << std::get< 0 >( element.second ) << ","
-               << ( std::get< 1 >( element.second ) ? "True" : "False" ) << ","
-               << std::get< 2 >( element.second ) << "\n";
+    outputfile << element.first << "," << std::get<0>( element.second ) << ","
+               << ( std::get<1>( element.second ) ? "True" : "False" ) << "," << std::get<2>( element.second ) << "\n";
   }
 
   outputfile.close();
@@ -1967,8 +1754,7 @@ void RevMem::updatePhysHistory( uint64_t pAddr, int appID ) {
   OutputPhysAddrHist[PhysAddrChunk] = std::make_tuple( Type, Valid, appID );
 }
 
-std::pair< bool, std::string > RevMem::validatePhysAddr( uint64_t pAddr,
-                                                         int      appID ) {
+std::pair<bool, std::string> RevMem::validatePhysAddr( uint64_t pAddr, int appID ) {
   bool        ret        = true;
   std::string reason     = "";
 
@@ -1978,12 +1764,11 @@ std::pair< bool, std::string > RevMem::validatePhysAddr( uint64_t pAddr,
     // key exists
     const auto& [type, valid, ownerappID] = it->second;
 
-    if( std::find( ownerappID.begin(), ownerappID.end(), appID ) ==
-        ownerappID.end() ) {
+    if( std::find( ownerappID.begin(), ownerappID.end(), appID ) == ownerappID.end() ) {
       // AppID is not in the ownerappID vector
       ret                  = false;
       std::string appIDstr = std::to_string( appID );
-      reason = "Invalid app " + appIDstr + " access, Owner appIDs are ";
+      reason               = "Invalid app " + appIDstr + " access, Owner appIDs are ";
       for( const auto& id : ownerappID ) {
         reason += std::to_string( id ) + " ";
       }

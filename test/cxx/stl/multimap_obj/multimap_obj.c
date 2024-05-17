@@ -11,8 +11,7 @@
     asm( ".byte 0x00" ); \
   }
 
-typedef std::basic_string< char, std::char_traits< char >, Allocator< char > >
-  revString;
+typedef std::basic_string<char, std::char_traits<char>, Allocator<char>> revString;
 
 class WikiDataEdge {
 public:
@@ -20,20 +19,16 @@ public:
   uint64_t dst;
   uint64_t type;
 
-  WikiDataEdge( uint64_t s, uint64_t d, uint64_t t ) :
-    src( s ), dst( d ), type( t ) {
-  }
+  WikiDataEdge( uint64_t s, uint64_t d, uint64_t t ) : src( s ), dst( d ), type( t ) {}
 
-  WikiDataEdge() {
-  }
+  WikiDataEdge() {}
 };
 
 using TestMultiMap = std::multimap<
-  uint64_t,               // key
-  WikiDataEdge,           // value
-  std::less< uint64_t >,  // sorting method
-  Allocator<
-    std::pair< const uint64_t, WikiDataEdge > > >;  // revalloc Allocator
+  uint64_t,                                             // key
+  WikiDataEdge,                                         // value
+  std::less<uint64_t>,                                  // sorting method
+  Allocator<std::pair<const uint64_t, WikiDataEdge>>>;  // revalloc Allocator
 
 void testInsertion() {
   TestMultiMap m;

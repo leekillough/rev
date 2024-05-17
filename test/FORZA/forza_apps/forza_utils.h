@@ -8,7 +8,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-
 #define BUF_SIZE          50000
 #define MAX_PRINT_ARGS    5
 #define PKT_QUEUE_SIZE    1000
@@ -25,16 +24,11 @@ static char revbuf[4096] = { 0 };
 static char revbufhead   = 0;
 
 static void* forza_malloc( size_t size ) {
-  return (void*) rev_mmap( 0,
-                           size,
-                           PROT_READ | PROT_WRITE | PROT_EXEC,
-                           MAP_PRIVATE | MAP_ANONYMOUS,
-                           -1,
-                           0 );
+  return (void*) rev_mmap( 0, size, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0 );
 }
 
 static void* forza_free( void* ptr, size_t size ) {
-  std::size_t addr = reinterpret_cast< std::size_t >( ptr );
+  std::size_t addr = reinterpret_cast<std::size_t>( ptr );
   return (void*) rev_munmap( addr, size );
 }
 
@@ -75,9 +69,10 @@ static const double rounders[MAX_PRECISION + 1] = {
   0.00000000005  // 10
 };
 
-static void
-  printfloat( fd_t   fd,
-              double f )  //, int precision), can add precision back later
+static void printfloat(
+  fd_t   fd,
+  double f
+)  //, int precision), can add precision back later
 {
   char  buf[40];
   char* ptr = buf;
@@ -226,12 +221,10 @@ static void forza_fprintf( fd_t fd, const char* fmt, volatile void** args ) {
         forza_putc( fd, val );
       } else if( c == 'l' ) {
         //this is not how long really works, need to reimplement for print codes longer than 1 char
-        printint(
-          fd, *( (long*) ( *idx ) ), 10, 1 );  //print the long, base 10, signed
+        printint( fd, *( (long*) ( *idx ) ), 10, 1 );  //print the long, base 10, signed
         idx++;
-      } else if( c == 'f' ) {  // double precision only
-        printfloat(
-          fd, *( (double*) ( *idx ) ) );  //print the long, base 10, signed
+      } else if( c == 'f' ) {                       // double precision only
+        printfloat( fd, *( (double*) ( *idx ) ) );  //print the long, base 10, signed
         idx++;
       } else if( c == '%' ) {
         forza_putc( fd, c );
