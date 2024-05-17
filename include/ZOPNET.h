@@ -421,8 +421,8 @@ public:
                      zopCompID Type,
                      unsigned  ZoneID,
                      unsigned  PrecinctID ) :
-    Event(),
-    Read( false ), FenceEncountered( false ), Target( nullptr ) {
+    Event(), Read( false ), FenceEncountered( false ), ClearMsgID( false ),
+    Target( nullptr ) {
     Packet.push_back( (uint64_t) ( Type ) );
     Packet.push_back( (uint64_t) ( srcId ) );
     Packet.push_back( (uint64_t) ( ZoneID ) );
@@ -431,13 +431,15 @@ public:
 
   /// zopEvent: raw event constructor
   explicit zopEvent() :
-    Event(), Read( false ), FenceEncountered( false ), Target( nullptr ) {
+    Event(), Read( false ), FenceEncountered( false ), ClearMsgID( false ),
+    Target( nullptr ) {
     Packet.push_back( 0x00ull );
     Packet.push_back( 0x00ull );
   }
 
   explicit zopEvent( zopMsgT T, zopOpc O ) :
-    Event(), Read( false ), FenceEncountered( false ), Target( nullptr ) {
+    Event(), Read( false ), FenceEncountered( false ), ClearMsgID( false ),
+    Target( nullptr ) {
     Packet.push_back( 0x00ul );
     Packet.push_back( 0x00ul );
     Type = T;
@@ -572,6 +574,12 @@ public:
   /// zopEvent: set the fence encountered flag
   void setFence() {
     FenceEncountered = true;
+  }
+
+  /// zopEvent: sets the ClearMsgID flag: default=false;
+  ///           true=manually triggers msgID clearing back to the caller
+  void setClearMsgID( bool r ) {
+    ClearMsgID = r;
   }
 
   /// zopEvent: retrieve the data payload from the packet
@@ -899,6 +907,8 @@ private:
 
   bool Read;              ///< zopEvent: sets this request as a read request
   bool FenceEncountered;  ///< zopEvent: whether this ZOP's fence has been seen
+  bool
+    ClearMsgID;  ///< zopEvent: determines whether to manually trigger msgID clears
   uint64_t*           Target;  ///< zopEvent: target for the read request
   SST::RevCPU::MemReq req;     ///< zopEvent: read response handler
 
@@ -907,7 +917,7 @@ public:
   void serialize_order( SST::Core::Serialization::serializer& ser ) override {
     // we only serialize the raw packet
     Event::serialize_order( ser );
-    ser& Packet;
+    ser & Packet;
   }
 
   // zopEvent: implements the nic serialization
