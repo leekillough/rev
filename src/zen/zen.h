@@ -77,7 +77,8 @@ namespace SST::Forza{
     uint64_t mem_tail;
     uint64_t mem_size;
     uint64_t mem_cur_head;
-    uint64_t mem_cur_tail;
+    uint64_t mem_cur_tail; //sent to scratchpad
+    uint64_t mem_wr_ptr;  //used to send SDMA packets
     bool empty;
     uint64_t scratch_tail;
     uint64_t credits;
@@ -88,22 +89,24 @@ namespace SST::Forza{
       acs_pair(acs), 
       mem_head(mh), 
       mem_tail(mt), 
-      mem_size(ms), 
+      mem_size(ms),
+      mem_cur_head(mh),
+      mem_cur_tail(mh),
+      mem_wr_ptr(mh),      
       empty(true), 
       scratch_tail(st), 
       credits(c),
       app_id(app),
       mbox_id(mbox)
-      {
-        mem_cur_head = mh;
-        mem_cur_tail = mh;
-        empty = true;
-      }
+      { /* empty constructor */}
 
       /// @brief  Get current wr ptr and update it to the next addr
       /// @param size packet size we're writing
-      /// @return write address (aka mem_cur_tail)
+      /// @return write address (aka mem_wr_ptr)
       uint64_t getRzaWriteAddr(uint8_t size);
+
+      // Pretty much the same as above, but for mem_cur_tail
+      uint64_t getSpTailAddr(uint8_t size);
   };
 
   // --------------------------------------------
@@ -175,14 +178,19 @@ namespace SST::Forza{
     // private class members
 
     /// ZEN: Send a NACK message back to the to target device
+    // No NACKs for now
+    /*
     void sendNACK(uint16_t hart, uint8_t zcid,
                   uint8_t pcid, uint16_t prec, uint8_t id,
                   SST::Forza::zopAPI *iface);
+    */
 
     /// ZEN: Send an ACK message back to the to target device
+    /* Remove this version
     void sendACK(uint16_t hart, uint8_t zcid,
                   uint8_t pcid, uint16_t prec, uint8_t id,
                   SST::Forza::zopAPI *iface);
+    */
 
     void sendACK(SST::Forza::zopEvent *ev, bool to_zone_noc);
 
@@ -190,6 +198,7 @@ namespace SST::Forza{
     void sendSdmaToRza(ZenMailboxMetadata *mbox_info, SST::Forza::zopEvent *ev,
                        std::vector<uint64_t> store_payload, uint16_t msg_id,
                        uint64_t wr_addr);
+
     void sendSdmaToRzaAsSequence(ZenMailboxMetadata *mbox_info, SST::Forza::zopEvent *ev,
                                  std::vector<uint64_t> store_payload, 
                                  std::vector<uint16_t> msg_ids, uint64_t wr_addr);
@@ -208,21 +217,30 @@ namespace SST::Forza{
                             uint64_t queue_loc);
     */
 
+    /// ZEN: send message to scratchpad
+    void sendMsgToScratchpad(SST::Forza::zopEvent *ev, std::vector<uint64_t> payload, uint16_t msg_id);
+
     /// ZEN: sends a scratchpad WRITE to the target ZAP device
+    /* planning on deletion of this version
     void sendMsgToScratchpad(uint64_t dest, uint64_t zcid,
                              uint64_t scratch_addr, uint64_t size,
                              uint64_t addr);
+    */
 
     /// ZEN: processes the egress queue
-    void processEgressQueue();
+    // Don't need for now
+    //void processEgressQueue();
 
     /// ZEN: process the precinct egress queue
-    void processPrecinctEgressQueue();
+    // Don't need for now
+    //void processPrecinctEgressQueue();
 
     /// ZEN: process the zone egress queue
-    void processZoneEgressQueue();
+    // Don't need for now
+    //void processZoneEgressQueue();
 
     /// ZEN: processes messages to perform writes to a ZAP:HART Scratchpad
+    // TODO: Update this
     void notifyHARTScratchpad();
 
     /// ZEN: handle incoming RZA messages
@@ -244,7 +262,8 @@ namespace SST::Forza{
     void processSetupMsgs();
 
     /// ZEN: process the ZEN credits
-    void processZAPCredits();
+    // Dropping these packets on the floor for now
+    //void processZAPCredits();
 
     /// ZEN: retrieves an RZA tail queue address
     int getRZATailQueue(uint64_t zap_id, uint64_t harts,
@@ -257,24 +276,34 @@ namespace SST::Forza{
     uint64_t  getWriteACS(uint64_t);
 
     /// ZEN: preps to send the RZA an HZOP (really, a DMA MZOP)
-    void prepSendRZAHZOP();
+    // Don't need for now
+    //void prepSendRZAHZOP();
 
     /// ZEN: preps to send the RZA a STORE
     void prepSendRZAStore();
 
-    /// ZEN: send HZOPs to the RZA
+    /// ZEN: send HZOPs to the RZA - per comments, Broken
+    /*
     void sendHZOPToRZA(uint64_t acs, uint64_t addr, uint64_t src_addr,
                        uint64_t size, uint8_t cur_msg_id,
                        uint64_t hart_id, uint64_t queue_loc);
+    */
 
     /// ZEN: forwards a packet to the precinct ZIP device
-    void forwardPktToZIP(Forza::zopEvent *ev);
+    // Comment out for now
+    //void forwardPktToZIP(Forza::zopEvent *ev);
 
     /// ZEN: forwards a packet to a remote ZEN device
-    void forwardPktToExtZEN(Forza::zopEvent *ev);
+    // Why needed? anything going to an external ZEN should go to
+    // the precinct crossbar (may need to know how that works)
+    //void forwardPktToExtZEN(Forza::zopEvent *ev);
 
     /// ZEN: processes the zip message queue
-    void processZIPQueue();
+    // Not using for now
+    //void processZIPQueue();
+
+    /// ZEN: deal with an ack returning from the scratchpad
+    void handleScratchpadAck(uint16_t msg_id);
 
     void processFromZoneMsgQueue();
 
@@ -335,8 +364,8 @@ namespace SST::Forza{
 
     void setDestFromSrcInfo(SST::Forza::zopEvent *dest_packet, SST::Forza::zopEvent *src_packet)
     {
-        dest_packet->setDestHart(src_packet->getDestHart());
-        dest_packet->setDestZCID(src_packet->getDestZCID());
+        dest_packet->setDestHart(src_packet->getSrcHart());
+        dest_packet->setDestZCID(src_packet->getSrcZCID());
         dest_packet->setDestPCID(src_packet->getSrcPCID());
         dest_packet->setDestPrec(src_packet->getSrcPrec());
     }
@@ -370,15 +399,15 @@ namespace SST::Forza{
     std::map<std::pair<uint64_t, uint64_t>, ZenMailboxMetadata*> hart_metadata_table;
     
     // TODO: These should be nothing more than credit counters
-    std::map<uint64_t, ZenMailboxMetadata*> zone_tables;
-    std::map<uint64_t, ZenMailboxMetadata*> precinct_tables;
+    //std::map<uint64_t, ZenMailboxMetadata*> zone_tables;
+    //std::map<uint64_t, ZenMailboxMetadata*> precinct_tables;
 
     /* 
       Add to map: handleIncomingZOP() - destination is same zone; basically the default
         case for messaging types in this function
       Add to map: handleIncomingPrecZOP() - destination is unchecked (but assumed to be this zone)
     */
-    std::map<std::pair<uint64_t, uint64_t>, std::vector<ZENEntry*>> zen_queue;
+    //std::map<std::pair<uint64_t, uint64_t>, std::vector<ZENEntry*>> zen_queue;
 
     /*
       Creating a new data structure to handle MSG.SENDP and MSG.MBXDONE messages
@@ -388,18 +417,18 @@ namespace SST::Forza{
     /*
       Add to map: handleIncomingZOP() - destination is same precinct, diff zone
     */
-    std::map<uint64_t, std::vector<ZENEntry*> > zone_queue;
+    //std::map<uint64_t, std::vector<ZENEntry*> > zone_queue;
 
     /*
       Add to map: handleIncomingZOP() - destination is diff precinct
     */
-    std::map<uint64_t, std::vector<ZENEntry*> > precinct_queue;
+    //std::map<uint64_t, std::vector<ZENEntry*> > precinct_queue;
 
 
     /*
       Add to vector: handleIncomingZOP() - RZA response
     */
-    std::vector<SST::Forza::zopEvent*> mem_acks; // TODO: turn into queue
+    std::queue<SST::Forza::zopEvent*> mem_acks; 
 
     /*
       Add to queue: handleIncomingZOP() - ZEN setup message
@@ -410,10 +439,10 @@ namespace SST::Forza{
       Add to vector: handleIncomingZOP() - Credit message
       Add to vector: handleIncomingPrecZOP() - Credit message
     */
-    std::vector<SST::Forza::zopEvent*> zap_credits;
+    //std::vector<SST::Forza::zopEvent*> zap_credits;
 
 
-    std::map<uint8_t, ZENEntry*> outstanding_mem_req;
+    //std::map<uint8_t, ZENEntry*> outstanding_mem_req;
 
     /* 
       Add to queue: handleIncomingPrecZOP() - source precinct != my_precinct
@@ -435,6 +464,14 @@ namespace SST::Forza{
     // Messages awaiting return from RZA
     // key is msg_ids[0]
     std::map<uint16_t, MemReturnEntry*> rza_ret_wait_map;
+
+    // Messages for updating the scratchpad
+    std::queue<SST::Forza::zopEvent*> update_scratchpad_q;
+
+    // Vector of outstanding scratchpad transactions
+    // I would expect this to generally operate in FIFO order, but
+    // it's not a system requirement (Zap traffic may influence)
+    std::vector<uint16_t> outstanding_spad_reqs;
 
   }; // class SST::ZEN
 } // namespace SST::Forza
