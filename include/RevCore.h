@@ -210,6 +210,11 @@ public:
     zNic = Z;
   }
 
+  ///< RevCore: Set the ZOP NIC msg id generator
+  void setZNicMsgIds( Forza::zopMsgID* Z ) {
+    zNicMsgIds = Z;
+  }
+
   ///< RevCore: Add a co-processor to the RevCore
   void SetCoProc( RevCoProc* coproc );
 
@@ -366,6 +371,7 @@ private:
   RevCoProc*     coProc;    ///< RevCore: attached co-processor
   RevLoader*     loader;    ///< RevCore: loader object
   Forza::zopAPI* zNic;      ///< RevCore: ZOPNic object
+  Forza::zopMsgID* zNicMsgIds;  ///< RevCore: FORZA ZOP NIC Message ID handler
 
   // Function pointer to the GetNewThreadID function in RevCPU (monotonically increasing thread ID counter)
   std::function< uint32_t() > GetNewThreadID;

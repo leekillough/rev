@@ -366,6 +366,7 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params ) : SST::Compon
       RevCore* tmpNewRevCore = new RevCore(
         i, Opts, numHarts, Mem, Loader, this->GetNewTID(), &output );
       tmpNewRevCore->setZNic( zNic );
+      tmpNewRevCore->setZNicMsgIds( zNicMsgIds );
       Procs.push_back( tmpNewRevCore );
     }
   }
@@ -1148,9 +1149,13 @@ void RevCPU::handleZOPMessageZAP( Forza::zopEvent* zev ) {
   case Forza::zopMsgT::Z_TMIG: handleZOPThreadMigrate( zev ); break;
   case Forza::zopMsgT::Z_MZOP: handleZOPMZOP( zev ); break;
   case Forza::zopMsgT::Z_MSG:
-    output.verbose( CALL_INFO, 9, 0, "Received ZOP Z_MSG with id=%" PRIu16
-                    "; opc=%" PRIu8 "; deleting zop\n",
-                    zev->getID(), (uint8_t)zev->getOpc() );
+    output.verbose( CALL_INFO,
+                    9,
+                    0,
+                    "Received ZOP Z_MSG with id=%" PRIu16 "; opc=%" PRIu8
+                    "; deleting zop\n",
+                    zev->getID(),
+                    (uint8_t) zev->getOpc() );
     delete zev;
     break;
   default:

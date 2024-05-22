@@ -391,12 +391,12 @@ public:
   }
 
   // Return an empty vector if not enough IDs available
-  std::vector<uint16_t> getSetOfMsgIds(uint16_t num_to_get){
-    std::vector<uint16_t> v;
-    if (num_to_get <= NumFree){
-      for (uint16_t i = 0; i < num_to_get; i++)
-        v.push_back(this->getMsgId());
-    } 
+  std::vector< uint16_t > getSetOfMsgIds( uint16_t num_to_get ) {
+    std::vector< uint16_t > v;
+    if( num_to_get <= NumFree ) {
+      for( uint16_t i = 0; i < num_to_get; i++ )
+        v.push_back( this->getMsgId() );
+    }
     return v;
   }
 
@@ -584,7 +584,7 @@ public:
 
   /// zopEvent: get the length of the payload
   uint8_t getPayloadLength() {
-    return (this->getLength - 2);
+    return ( Length - 2 );
   }
 
   /// zopEvent: get the memory request handler
