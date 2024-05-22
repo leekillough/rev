@@ -82,6 +82,8 @@ namespace SST::Forza {
 #define Z_ACS_WRITE        0xFFFFFFFF00000000ULL
 #define Z_ACS_READ         0xFFFFFFFFFFFFFFFFULL
 
+#define Z_MAX_MSG_IDS      64
+
 // --------------------------------------------
 // zopMsgT : ZOP Type
 // --------------------------------------------
@@ -356,8 +358,8 @@ enum class zopPrecID : uint8_t {
 class zopMsgID {
 public:
   // zopMsgID: constructor
-  zopMsgID() : NumFree( 64 ) {
-    for( uint16_t i = 0; i < 64; i++ ) {
+  zopMsgID() : NumFree( Z_MAX_MSG_IDS ) {
+    for( uint16_t i = 0; i < Z_MAX_MSG_IDS; i++ ) {
       Mask[i] = false;
     }
   }
@@ -378,31 +380,29 @@ public:
 
   // zopMsgID: retrieve a new message id
   uint16_t getMsgId() {
-    for( uint16_t i = 0; i < 64; i++ ) {
+    for( uint16_t i = 0; i < Z_MAX_MSG_IDS; i++ ) {
       if( Mask[i] == false ) {
         NumFree--;
         Mask[i] = true;
         return i;
       }
     }
-    return 64;  // this is an erroneous id
+    return Z_MAX_MSG_IDS;  // this is an erroneous id
   }
 
-  std::vector<uint16_t> getSetOfMsgIds(uint8_t num_to_get){
-    std::vector<uint16_t> v, 
-    for (uint8_t i = 0; i < num_to_get; i++){
-      uint8_t rv = this->getMsgId();
-      if (rv >= 64) //sanity check
-        output.fatal(CALL_INFO, -1, "Failed to get valid msg_id: i=%" PRIu8 ", num_to_get=%" PRIu8 
-                     "rv=%" PRIu8 "\n", i, num_to_get, rv);
-      v.push_back(rv)
-    }
+  // Return an empty vector if not enough IDs available
+  std::vector<uint16_t> getSetOfMsgIds(uint16_t num_to_get){
+    std::vector<uint16_t> v;
+    if (num_to_get <= NumFree){
+      for (uint16_t i = 0; i < num_to_get; i++)
+        v.push_back(this->getMsgId());
+    } 
     return v;
   }
 
 private:
   unsigned NumFree;
-  bool     Mask[64];
+  bool     Mask[Z_MAX_MSG_IDS];
 };
 
 // --------------------------------------------
