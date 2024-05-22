@@ -1,3 +1,4 @@
+#include "RevCPU.h"
 #include "RevCommon.h"
 #include "RevCore.h"
 #include "RevMem.h"
@@ -5079,11 +5080,18 @@ EcallStatus RevCore::ECALL_forza_zen_setup() {
 
   SST::Forza::zopEvent* zev = new SST::Forza::zopEvent();
 
-  uint16_t msg_id            = zNicMsgIds->getMsgId();
+  if( zNicMsgIds == nullptr ) {
+    output->fatal( CALL_INFO, -2, "null msg ids\n" );
+  }
 
-  uint8_t  SrcZCID          = (uint8_t) ( zNic->getEndpointType() );
-  uint8_t  SrcPCID          = (uint8_t) ( zNic->getPCID( zNic->getZoneID() ) );
-  uint16_t SrcHart          = (uint16_t) HartToExecID;
+  if( zNic == nullptr )
+    output->fatal( CALL_INFO, -3, "null znic\n" );
+
+  uint16_t msg_id  = zNicMsgIds->getMsgId();
+
+  uint8_t  SrcZCID = (uint8_t) ( zNic->getEndpointType() );
+  uint8_t  SrcPCID = (uint8_t) ( zNic->getPCID( zNic->getZoneID() ) );
+  uint16_t SrcHart = (uint16_t) HartToExecID;
 
   output->verbose( CALL_INFO,
                    0,

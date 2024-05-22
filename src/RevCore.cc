@@ -27,8 +27,9 @@ RevCore::RevCore( unsigned                    Id,
   Stalled( false ), SingleStep( false ), CrackFault( false ), ALUFault( false ),
   fault_width( 0 ), id( Id ), HartToDecodeID( 0 ), HartToExecID( 0 ),
   numHarts( NumHarts ), opts( Opts ), mem( Mem ), coProc( nullptr ),
-  loader( Loader ), zNic( nullptr ), GetNewThreadID( std::move( GetNewTID ) ),
-  output( Output ), feature( nullptr ), sfetch( nullptr ), Tracer( nullptr ) {
+  loader( Loader ), zNic( nullptr ), zNicMsgIds( nullptr ),
+  GetNewThreadID( std::move( GetNewTID ) ), output( Output ),
+  feature( nullptr ), sfetch( nullptr ), Tracer( nullptr ) {
 
   // initialize the machine model for the target core
   std::string Machine;

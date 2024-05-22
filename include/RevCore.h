@@ -209,6 +209,11 @@ public:
     zNic = Z;
   }
 
+  ///< RevCore: Set the ZOP NIC msg id generator
+  void setZNicMsgIds( Forza::zopMsgID* Z ) {
+    zNicMsgIds = Z;
+  }
+
   ///< RevCore: Add a co-processor to the RevCore
   void SetCoProc( RevCoProc* coproc );
 
@@ -356,12 +361,13 @@ private:
   std::bitset< _MAX_HARTS_ >
     HartsClearToExecute;  ///< RevCore: Thread is clear to execute (no register dependencides)
 
-  unsigned       numHarts;  ///< RevCore: Number of Harts for this core
-  RevOpts*       opts;      ///< RevCore: options object
-  RevMem*        mem;       ///< RevCore: memory object
-  RevCoProc*     coProc;    ///< RevCore: attached co-processor
-  RevLoader*     loader;    ///< RevCore: loader object
-  Forza::zopAPI* zNic;      ///< RevCore: ZOPNic object
+  unsigned         numHarts;    ///< RevCore: Number of Harts for this core
+  RevOpts*         opts;        ///< RevCore: options object
+  RevMem*          mem;         ///< RevCore: memory object
+  RevCoProc*       coProc;      ///< RevCore: attached co-processor
+  RevLoader*       loader;      ///< RevCore: loader object
+  Forza::zopAPI*   zNic;        ///< RevCore: ZOPNic object
+  Forza::zopMsgID* zNicMsgIds;  ///< RevCore: FORZA ZOP NIC Message ID handler
 
   // Function pointer to the GetNewThreadID function in RevCPU (monotonically increasing thread ID counter)
   std::function< uint32_t() > GetNewThreadID;
