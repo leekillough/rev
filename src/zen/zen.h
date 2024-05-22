@@ -57,9 +57,9 @@ namespace SST::Forza{
       std::vector<uint16_t> msg_ids;
       MemReturnEntry(SST::Forza::zopEvent *m, std::vector<uint16_t>v) :
         msg(m),
-        std::vector<uint16_t>msg_ids(v)
+        msg_ids(v)
         { /* empty constructor */}
-  }
+  };
 
   // --------------------------------------------
   // ZenMailboxMetadata
@@ -322,10 +322,10 @@ namespace SST::Forza{
 
     ZenMailboxMetadata* getMboxEntry(SST::Forza::zopEvent *ev){
       uint64_t metadata_hash = getMetadataHash(ev);
-      auto metadata_entry = hart_metadata_table.find(std::pair<uint64_t, uint64_t>(metadata_hash, ev->getPktRes()));
-      if (metadata_entry == hart_metadata_table.end())
+      auto iter = hart_metadata_table.find(std::pair<uint64_t, uint64_t>(metadata_hash, ev->getPktRes()));
+      if (iter == hart_metadata_table.end())
         output.fatal(CALL_INFO, -1, "Could not find table entry for zop.\n"); // TODO: Add add'l debug info if needed
-      return metadata_entry;
+      return iter->second;
     }
 
     /// ZEN: determine if zop dest precinct and zone match me

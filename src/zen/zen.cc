@@ -14,7 +14,8 @@ uint64_t ZenMailboxMetadata::getRzaWriteAddr(uint8_t size)
   uint64_t wr_ptr = mem_wr_ptr;
   uint64_t next_ptr = wr_ptr + (size * sizeof(uint64_t));
   if (next_ptr > mem_tail) //shouldn't happen
-    output.fatal(CALL_INFO, -1, "Packet will be stored in non-contiguous memory");
+    //output.fatal(CALL_INFO, -1, "Packet will be stored in non-contiguous memory");
+    return (uint64_t)-1;
   else if (next_ptr == mem_tail)
     next_ptr = mem_head;
   
@@ -27,7 +28,8 @@ uint64_t ZenMailboxMetadata::getSpTailAddr(uint8_t size)
   uint64_t wr_ptr = mem_cur_tail;
   uint64_t next_ptr = wr_ptr + (size * sizeof(uint64_t));
   if (next_ptr > mem_tail) //shouldn't happen
-    output.fatal(CALL_INFO, -1, "Packet will be stored in non-contiguous memory");
+    //output.fatal(CALL_INFO, -1, "Packet will be stored in non-contiguous memory");
+    return (uint64_t)-1;
   else if (next_ptr == mem_tail)
     next_ptr = mem_head;
   
@@ -233,7 +235,6 @@ void ZEN::helper_handleFromPrecMsgZop(SST::Forza::zopEvent *ev)
     Thread Mgmt, syscall, and fence types are not expected to be seen here (as of now)
 */
 void ZEN::handleIncomingZOP(SST::Event *event) {
-  bool from_zip = false;
   SST::Forza::zopEvent* ev = static_cast<SST::Forza::zopEvent*>(event);
 
   output.verbose(CALL_INFO, 8, 0, "[ZONE]: %s received msg type %s @ [hart:zcid:pcid:id:type]=[%d:%d:%d:%hu:%s]\n",
@@ -300,7 +301,7 @@ void ZEN::helper_handleFromZoneMsgZop(SST::Forza::zopEvent *ev)
   switch(ev->getOpc()){
     case SST::Forza::zopOpc::Z_MSG_SENDP:
       // handle messaging zop - data in packet
-      from_zone_messaging_queue.push_back(ev);
+      from_zone_messaging_queue.push(ev);
       break;
 
     case SST::Forza::zopOpc::Z_MSG_SENDAS:
@@ -471,8 +472,7 @@ void ZEN::sendMsgToRZANonDMA(uint64_t acs, uint64_t addr, uint64_t src_payload,
 }
 #endif
 
-void ZEN:sendMsgToScatchpad(SST::Forza::zopEvent *ev, std::vector<uint64_t> payload,
-                            uint16_t msg_id)
+void ZEN::sendMsgToScratchpad(SST::Forza::zopEvent *ev, std::vector<uint64_t> payload, uint16_t msg_id)
 {
   output.verbose(CALL_INFO, 9, 0, "Send message to scratchpad\n");
   auto *spd_msg = new SST::Forza::zopEvent();
@@ -483,7 +483,7 @@ void ZEN:sendMsgToScatchpad(SST::Forza::zopEvent *ev, std::vector<uint64_t> payl
   setDestFromSrcInfo(spd_msg, ev);
   spd_msg->setPayload(payload);
   spd_msg->encodeEvent();
-  m_zop_iface->send(spd_msg, ev->getSrcZCID());
+  m_zop_iface->send(spd_msg, (zopCompID)ev->getSrcZCID());
   // An ACK is expected - track it
   outstanding_spad_reqs.push_back(msg_id);
 }
@@ -580,7 +580,7 @@ void ZEN::handleScratchpadAck(uint16_t msg_id)
   size_t start_sz = outstanding_spad_reqs.size();
   outstanding_spad_reqs.erase(std::remove_if(outstanding_spad_reqs.begin(), 
                                              outstanding_spad_reqs.end(), 
-                                             [](uint16_t x){x == msg_id}),
+                                             [msg_id](uint16_t x){return x == msg_id;}),
                               outstanding_spad_reqs.end());
   if (start_sz == outstanding_spad_reqs.size())
     output.fatal(CALL_INFO, -1, "Vector did not change size - no matching ack ID found\n");
@@ -615,19 +615,19 @@ void ZEN::handleIncomingRZAMsg() {
                     getName().c_str(), inc_msg_id);
       // Find inc_msg_id in the rza_ret_wait_map
       auto ret_map_itr = rza_ret_wait_map.find(inc_msg_id);
-      if (ret_map_itr = rza_ret_wait_map.end()){
+      if (ret_map_itr == rza_ret_wait_map.end()){
         output.fatal(CALL_INFO, -1, "ZEN did not find inc_msg_id=%" PRIu16 " in map\n", inc_msg_id);
       }
 
       // Get my original ZOP
-      auto *ev = ret_map_iter.second().msg;
+      auto *ev = ret_map_itr->second->msg;
       output.verbose(CALL_INFO, 9, 0, "ZEN %s dealing with rza return for zop msg_id=%" PRIu16 "\n",
                     getName().c_str(), ev->getID());
       // Push original zop so we can update the scratchpad
       update_scratchpad_q.push(ev);
       
       // Clean up the map components
-      delete ret_map_itr.second(); // delete the MemReturnEntry*
+      delete ret_map_itr->second; // delete the MemReturnEntry*
       rza_ret_wait_map.erase(ret_map_itr);
     }
 
@@ -676,7 +676,7 @@ void ZEN::sendACK(SST::Forza::zopEvent *ev, bool to_zone_noc){
   ack->setID(ev->getID());
   ack->encodeEvent();
   auto iface = (to_zone_noc) ? m_zop_iface : m_prec_iface;
-  iface->send(ack, ack->getDestZCID(), ack->getDestPCID(), ack->getDestPrec());
+  iface->send(ack, (zopCompID)ack->getDestZCID(), (zopPrecID)ack->getDestPCID(), (uint16_t)ack->getDestPrec());
 }
 
 #if 0
@@ -954,13 +954,13 @@ void ZEN::prepSendRZAStore() {
 
     // Get destination address for memory zop(s)
     auto mbox_info = getMboxEntry(ev);
-    uint64_t wr_addr = mbox_info.getRzaWriteAddr(ev->getLength());
+    uint64_t wr_addr = mbox_info->getRzaWriteAddr(ev->getLength());
     output.verbose(CALL_INFO, 9, 0, "Store messaging packet to RZA; packet_size=%" PRIu8 ", wr_addr=%"
                    PRIu64 "\n", ev->getLength(), wr_addr);
 
     // Send memory zops
     std::vector<uint64_t> store_payload;
-    store_payload.push_back(ev->acs_pair);
+    store_payload.push_back(mbox_info->acs_pair);
     store_payload.push_back(wr_addr);
     store_payload.insert(std::end(store_payload),
                          std::begin(ev->getPacket()),
@@ -1057,7 +1057,6 @@ void ZEN::processSetupMsgs(){
     auto *ev = setup_reqs.front();
     uint64_t hart_id = ev->getSrcHart();
     uint64_t zap_id = ev->getSrcZCID();
-    uint64_t hdr_app_id = ev->getAppID();
     std::vector<uint64_t> payload = ev->getPayload();
 
     // Sanity check that payload length is correct
@@ -1107,19 +1106,19 @@ void ZEN::processSetupMsgs(){
 
     // Need to set the scratch tail to the start of the memory buffer
     // going to assume we can get a msg_id
-    uint16_t msg_id = zopMsgID()->getMsgId();
-    std::vector<uint64_t> payload;
-    payload.push_back(0);
-    payload.push_back(scratch_tail);
-    payload.push_back(mem_start_addr);
+    uint16_t msg_id = zoneMsgID->getMsgId();
+    std::vector<uint64_t> out_payload;
+    out_payload.push_back(0);
+    out_payload.push_back(scratch_tail);
+    out_payload.push_back(mem_start_addr);
     //sendMsgToScratchpad(hart_id, zcid, scratch_tail, 1, mem_start_addr); 
-    sendMsgToScratchpad(ev, payload, msg_id);
+    sendMsgToScratchpad(ev, out_payload, msg_id);
 
     output.verbose(CALL_INFO, 9, 0, "Zen Setup, HartID %" PRIu64 ", start addr 0x%" PRIx64 ", end addr 0x%" PRIx64 "\n",
                    hart_id, mem_start_addr, mem_end_addr);
     output.verbose(CALL_INFO, 9, 0, "Zen Setup-Metadata table %" PRIu64 ", start addr 0x%" PRIx64 ", end addr 0x%" PRIx64 "\n",
-                   hart_id, hart_metadata_table[hart_zap_id]->mem_head,
-                   hart_metadata_table[hart_zap_id]->mem_tail);
+                   hart_id, hart_metadata_table[hart_mbox_id]->mem_head,
+                   hart_metadata_table[hart_mbox_id]->mem_tail);
 
     setup_reqs.pop();
     if (setup_reqs.empty())
@@ -1191,7 +1190,7 @@ void ZEN::processFromZoneMsgQueue(){
     // else, continue processing
     // TODO: This may need to wait until we get an ACK from 
     //  the RZA (only if we need to return an error code)
-     sendAck(ev, true);  
+     sendACK(ev, true);  
 
     // This packet is going to a local mailbox
     to_rza_q.push(ev);
@@ -1201,13 +1200,13 @@ void ZEN::processFromZoneMsgQueue(){
   } else if ( (ev->getDestPCID() == Zone) && 
               (ev->getDestPrec() != Precinct) ) {
     // Same precinct, different zone
-    to_precinct_noc_q.push_back(ev);
+    to_precinct_noc_q.push(ev);
   } else {
     // Different precinct (don't care on zone)
-    to_precinct_noc_q.push_back(ev);
+    to_precinct_noc_q.push(ev);
   }
 
-  from_messaging_zone_queue.pop();
+  from_zone_messaging_queue.pop();
 }
 
 
