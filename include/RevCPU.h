@@ -328,6 +328,7 @@ private:
   PanExec *PExec{};                     ///< RevCPU: PAN execution context
   RevMemCtrl *Ctrl{};                   ///< RevCPU: Rev memory controller
   Forza::zopAPI *zNic{};                ///< RevCPU: FORZA ZOP NIC
+  Forza::zopMsgID *zNicMsgIds; ///< RevCPU: FORZA ZOP NIC Message ID handler
 
   SST::Clock::Handler<RevCPU>* ClockHandler{};  ///< RevCPU: Clock Handler
 
