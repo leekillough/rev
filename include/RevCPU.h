@@ -316,6 +316,7 @@ private:
   nicAPI*        Nic;   ///< RevCPU: Network interface controller
   RevMemCtrl*    Ctrl;  ///< RevCPU: Rev memory controller
   Forza::zopAPI* zNic;  ///< RevCPU: FORZA ZOP NIC
+  Forza::zopMsgID *zNicMsgIds; ///< RevCPU: FORZA ZOP NIC Message ID handler
 
   std::vector< RevCoProc* > CoProcs;  ///< RevCPU: CoProcessor attached to Rev
 

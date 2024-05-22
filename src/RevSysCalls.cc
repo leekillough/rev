@@ -5079,7 +5079,7 @@ EcallStatus RevCore::ECALL_forza_zen_setup() {
 
   SST::Forza::zopEvent* zev = new SST::Forza::zopEvent();
 
-  uint8_t msg_id            = 0;
+  uint16_t msg_id            = zNicMsgIds->getMsgId();
 
   uint8_t  SrcZCID          = (uint8_t) ( zNic->getEndpointType() );
   uint8_t  SrcPCID          = (uint8_t) ( zNic->getPCID( zNic->getZoneID() ) );
@@ -5122,7 +5122,6 @@ EcallStatus RevCore::ECALL_forza_zen_setup() {
   if( !zNic ) {
     output->fatal( CALL_INFO, -1, "Error : zNic is nullptr\n" );
   }
-  // output->fatal(CALL_INFO, -1, "Error : send not implemented\n" );
   zNic->send( zev, SST::Forza::zopCompID::Z_ZEN );
 
   return EcallStatus::SUCCESS;

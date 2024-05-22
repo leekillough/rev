@@ -36,7 +36,7 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params ) :
   EnableNIC( false ), EnableMemH( false ), EnableCoProc( false ),
   EnableRZA( false ), EnableZopNIC( false ), EnableForzaSecurity( false ),
   DisableCoprocClock( false ), Precinct( 0 ), Zone( 0 ), Nic( nullptr ),
-  Ctrl( nullptr ), zNic( nullptr ), ClockHandler( nullptr ) {
+  Ctrl( nullptr ), zNic( nullptr ), zNicMsgIds( nullptr ), ClockHandler( nullptr ) {
 
   const int Verbosity = params.find< int >( "verbose", 0 );
 
@@ -231,6 +231,9 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params ) :
     // set the message handler for the NoC interface
     zNic->setMsgHandler(
       new Event::Handler< RevCPU >( this, &RevCPU::handleZOPMessage ) );
+
+    // set the message id generator
+    zNicMsgIds = new Forza::zopMsgID();
 
     // now that the NIC has been loaded, we need to ensure that the NIC knows
     // what type of endpoint it is
@@ -1136,6 +1139,12 @@ void RevCPU::handleZOPMessageZAP( Forza::zopEvent* zev ) {
     break;
   case Forza::zopMsgT::Z_TMIG: handleZOPThreadMigrate( zev ); break;
   case Forza::zopMsgT::Z_MZOP: handleZOPMZOP( zev ); break;
+  case Forza::zopMsgT::Z_MSG: 
+    output.verbose( CALL_INFO, 9, 0, "Received ZOP Z_MSG with id=%" PRIu16 
+                    "; opc=%" PRIu8 "; deleting zop\n",
+                    zev->getID(), (uint8_t)zev->getOpc() );
+    delete zev;
+    break;
   default:
     output.fatal( CALL_INFO,
                   -1,

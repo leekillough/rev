@@ -43,8 +43,7 @@ int main( int argc, char** argv ) {
   if( TID == 1 ) {
     // Spin until the zen has put a message into the storage buffer and updated the
     // pointer in the scratchpad
-    while( (uint64_t) cur_recv_ptr == *my_tail_ptr )
-      ;
+    while( (uint64_t) cur_recv_ptr == *my_tail_ptr );
     // Get the receive data and check it
     recv_pkt = *cur_recv_ptr;
     assert( recv_pkt == 690 );
