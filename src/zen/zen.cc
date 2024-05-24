@@ -237,7 +237,7 @@ void ZEN::helper_handleFromPrecMsgZop(SST::Forza::zopEvent *ev)
 void ZEN::handleIncomingZOP(SST::Event *event) {
   SST::Forza::zopEvent* ev = static_cast<SST::Forza::zopEvent*>(event);
 
-  output.verbose(CALL_INFO, 8, 0, "[ZONE]: %s received msg type %s @ [hart:zcid:pcid:id:type]=[%d:%d:%d:%hu:%s]\n",
+  output.verbose(CALL_INFO, 7, 0, "[ZEN]: %s received msg type %s @ [hart:zcid:pcid:id:type]=[%d:%d:%d:%hu:%s]\n",
                  getName().c_str(),
                  m_zop_iface->msgTToStr(ev->getType()).c_str(),
                  ev->getSrcHart(), ev->getSrcZCID(), ev->getSrcPCID(), ev->getID(),
@@ -474,7 +474,6 @@ void ZEN::sendMsgToRZANonDMA(uint64_t acs, uint64_t addr, uint64_t src_payload,
 
 void ZEN::sendMsgToScratchpad(SST::Forza::zopEvent *ev, std::vector<uint64_t> payload, uint16_t msg_id)
 {
-  output.verbose(CALL_INFO, 9, 0, "Send message to scratchpad\n");
   auto *spd_msg = new SST::Forza::zopEvent();
   spd_msg->setType(SST::Forza::zopMsgT::Z_MZOP);
   spd_msg->setOpc(SST::Forza::zopOpc::Z_MZOP_SCSD);
@@ -483,6 +482,7 @@ void ZEN::sendMsgToScratchpad(SST::Forza::zopEvent *ev, std::vector<uint64_t> pa
   setDestFromSrcInfo(spd_msg, ev);
   spd_msg->setPayload(payload);
   spd_msg->encodeEvent();
+  output.verbose(CALL_INFO, 9, 0, "ZENSP Send message to scratchpad with msg_id=%" PRIu16 "\n", msg_id);
   m_zop_iface->send(spd_msg, (zopCompID)ev->getSrcZCID());
   // An ACK is expected - track it
   outstanding_spad_reqs.push_back(msg_id);
@@ -575,7 +575,7 @@ void ZEN::notifyHARTScratchpad() {
 
 void ZEN::handleScratchpadAck(uint16_t msg_id)
 {
-  output.verbose(CALL_INFO, 9, 0, "ZEN %s processing scratchpad ack with id=%" PRIu16 "\n",
+  output.verbose(CALL_INFO, 9, 0, "ZENSP %s processing scratchpad ack with id=%" PRIu16 "\n",
                  getName().c_str(), msg_id);
   size_t start_sz = outstanding_spad_reqs.size();
   outstanding_spad_reqs.erase(std::remove_if(outstanding_spad_reqs.begin(), 
@@ -611,7 +611,7 @@ void ZEN::handleIncomingRZAMsg() {
       handleScratchpadAck(inc_msg_id);
     } else {
       // Turn into a function?  Probably ought to.
-      output.verbose(CALL_INFO, 9, 0, "ZEN %s Process incoming RZA message msg_id %hu\n",
+      output.verbose(CALL_INFO, 9, 0, "ZENRZA %s Process incoming RZA message msg_id %hu\n",
                     getName().c_str(), inc_msg_id);
       // Find inc_msg_id in the rza_ret_wait_map
       auto ret_map_itr = rza_ret_wait_map.find(inc_msg_id);
@@ -677,6 +677,8 @@ void ZEN::sendACK(SST::Forza::zopEvent *ev, bool to_zone_noc){
   ack->encodeEvent();
   auto iface = (to_zone_noc) ? m_zop_iface : m_prec_iface;
   iface->send(ack, (zopCompID)ack->getDestZCID(), (zopPrecID)ack->getDestPCID(), (uint16_t)ack->getDestPrec());
+  output.verbose(CALL_INFO, 9, 0, "TIMTOM ZEN %s sending ACK with msg_id=%" PRIu16 " to ZCID=%" PRIu8 "\n",
+                 getName().c_str(), ev->getID(), ack->getDestZCID());
 }
 
 #if 0
