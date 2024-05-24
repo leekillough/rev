@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2017-2023 Tactical Computing Laboratories, LLC
+# Copyright (C) 2017-2024 Tactical Computing Laboratories, LLC
 # All Rights Reserved
 # contact@tactcomplabs.com
 #
@@ -25,7 +25,7 @@ MEM_SIZE = 1024*1024*1024
 # --------------------------
 zen = sst.Component("zen0", "forzazen.ZEN")
 zen.addParams({
-  "verbose" : 7,              # Verbosity
+  "verbose" : 9,              # Verbosity
   "clockFreq" : "1.0GHz",     # Clock Frequency
   "precinctId" : 0,           # precinct Id
   "zoneId" : 0,               # zone Id

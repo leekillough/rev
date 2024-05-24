@@ -1028,7 +1028,7 @@ void RevCPU::handleZOPMZOP( Forza::zopEvent* zev ) {
   } else {
     // create a response packet with the data
     output.verbose( CALL_INFO,
-                    9,
+                    3,
                     0,
                     "[FORZA][ZAP]: Build STORE response for MSG @ ID=%d\n",
                     (unsigned) ( zev->getID() ) );
@@ -1120,7 +1120,7 @@ void RevCPU::handleZOPThreadMigrate( Forza::zopEvent* zev ) {
 }
 
 void RevCPU::handleZOPMessageZAP( Forza::zopEvent* zev ) {
-  output.verbose( CALL_INFO, 9, 0, "[FORZA][ZAP] Handling ZOP Message\n" );
+  output.verbose( CALL_INFO, 4, 0, "[FORZA][ZAP] Handling ZOP Message TJD\n" );
   switch( zev->getType() ) {
   case Forza::zopMsgT::Z_RESP:
     if( !Mem->handleRZAResponse( zev ) ) {
@@ -1143,12 +1143,13 @@ void RevCPU::handleZOPMessageZAP( Forza::zopEvent* zev ) {
   case Forza::zopMsgT::Z_MZOP: handleZOPMZOP( zev ); break;
   case Forza::zopMsgT::Z_MSG:
     output.verbose( CALL_INFO,
-                    9,
+                    4,
                     0,
                     "Received ZOP Z_MSG with id=%" PRIu16 "; opc=%" PRIu8
-                    "; deleting zop\n",
+                    "; deleting zop; TDYSART\n",
                     zev->getID(),
                     (uint8_t) zev->getOpc() );
+    zNicMsgIds->clearMsgId( zev->getID() );
     delete zev;
     break;
   default:

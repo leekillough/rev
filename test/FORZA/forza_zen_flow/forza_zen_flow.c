@@ -34,6 +34,11 @@ int main( int argc, char** argv ) {
   uint64_t* pkt = (uint64_t*) forza_scratchpad_alloc( 1 * sizeof( uint64_t ) );
   *pkt          = 690;
 
+  forza_zen_setup( (uint64_t) cur_recv_ptr,
+                   qsize * sizeof( uint64_t ),
+                   (uint64_t) my_tail_ptr,
+                   0xc );
+
   if( TID == 0 )
     forza_send( 1, (uint64_t) pkt, sizeof( uint64_t ) );
 
@@ -43,7 +48,8 @@ int main( int argc, char** argv ) {
   if( TID == 1 ) {
     // Spin until the zen has put a message into the storage buffer and updated the
     // pointer in the scratchpad
-    while( (uint64_t) cur_recv_ptr == *my_tail_ptr );
+    while( (uint64_t) cur_recv_ptr == *my_tail_ptr )
+      ;
     // Get the receive data and check it
     recv_pkt = *cur_recv_ptr;
     assert( recv_pkt == 690 );

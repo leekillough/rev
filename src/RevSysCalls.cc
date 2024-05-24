@@ -5099,13 +5099,14 @@ EcallStatus RevCore::ECALL_forza_zen_setup() {
                    "ECALL_forza_zen_setup: addr = 0x%" PRIx64
                    ", size = %" PRIu64 ", tailptr = 0x%" PRIx64
                    ", SrcZCID = %" PRIu8 ", SrcPCID = %" PRIu8
-                   ", SrcHart = %" PRIu16 "\n",
+                   ", SrcHart = %" PRIu16 ", ID=%" PRIu16 "\n",
                    addr,
                    (uint64_t) size,
                    tailptr,
                    SrcZCID,
                    SrcPCID,
-                   SrcHart );
+                   SrcHart,
+                   msg_id );
 
   // set all the fields : FIXME
   zev->setType( SST::Forza::zopMsgT::Z_MSG );

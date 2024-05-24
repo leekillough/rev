@@ -1,7 +1,7 @@
 //
 // _ZOPNET_cc_
 //
-// Copyright (C) 2017-2023 Tactical Computing Laboratories, LLC
+// Copyright (C) 2017-2024 Tactical Computing Laboratories, LLC
 // All Rights Reserved
 // contact@tactcomplabs.com
 //
@@ -412,13 +412,14 @@ void zopNIC::send( zopEvent* ev,
                   9,
                   0,
                   "Sending message from %s @ phys_id=%d to "
-                  "endpoint[hart:zcid:pcid:type]=[%d:%d:%d:%s]\n",
+                  "endpoint[hart:zcid:pcid:type]=[%d:%d:%d:%s], ID=%d\n",
                   getName().c_str(),
                   (uint32_t) ( getAddress() ),
                   ev->getDestHart(),
                   ev->getDestZCID(),
                   ev->getDestPCID(),
-                  endPToStr( TmpDest ).c_str() );
+                  endPToStr( TmpDest ).c_str(),
+                  ev->getID() );
   auto realDest = 0;
   if( ev->getType() == SST::Forza::zopMsgT::Z_MSG &&
       ( ev->getOpc() == SST::Forza::zopOpc::Z_MSG_SENDP ||
@@ -652,15 +653,26 @@ bool zopNIC::msgNotify( int vn ) {
 
   auto P = ev->getPacket();
 
+  // tim debug
+  output.verbose( CALL_INFO,
+                  9,
+                  0,
+                  "TIMMA: %s:%s received zop message of type %s, ID=%d\n",
+                  getName().c_str(),
+                  endPToStr( getEndpointType() ).c_str(),
+                  msgTToStr( ev->getType() ).c_str(),
+                  ev->getID() );
+
   // decode the event
   ev->decodeEvent();
   output.verbose( CALL_INFO,
                   9,
                   0,
-                  "%s:%s received zop message of type %s\n",
+                  "%s:%s received zop message of type %s, ID=%d\n",
                   getName().c_str(),
                   endPToStr( getEndpointType() ).c_str(),
-                  msgTToStr( ev->getType() ).c_str() );
+                  msgTToStr( ev->getType() ).c_str(),
+                  ev->getID() );
 
   // check to see if the test harness has been enabled
   // if so, immediately call the message handler
