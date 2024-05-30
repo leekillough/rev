@@ -33,8 +33,7 @@ void* forza_thread_init( void* test_args )
     tail_ptr  = (uint64_t**) forza_scratchpad_alloc( 1 * sizeof( ForzaPkt* ) );
     *tail_ptr = (uint64_t*) &qaddr;
     head_ptr  = (uint64_t*) &qaddr;
-    forza_zen_setup(
-      (uint64_t) &qaddr, qsize * sizeof( ForzaPkt ), (uint64_t) tail_ptr );
+    forza_zen_setup( (uint64_t) &qaddr, qsize * sizeof( ForzaPkt ), (uint64_t) tail_ptr );
   }
 
   // forza_zone_barrier(LOCAL_ACTORS*THREADS_PER_ACTOR);
@@ -75,15 +74,11 @@ int main( int argc, char** argv ) {
     ACTOR_ID[i]      = i + ACTOR_START_INDEX;
     FArgs.ThreadType = SENDER;
     FArgs.ActorID    = ACTOR_ID[i];
-    forza_thread_create( &actor_threads[( i * LOCAL_ACTORS )],
-                         (void*) forza_thread_init,
-                         (void*) &FArgs );
+    forza_thread_create( &actor_threads[( i * LOCAL_ACTORS )], (void*) forza_thread_init, (void*) &FArgs );
     for( uint64_t j = 1; j < THREADS_PER_ACTOR; j++ ) {
       FArgs.ThreadType = RECEIVER;
       FArgs.ActorID    = ACTOR_ID[i];
-      forza_thread_create( &actor_threads[( i * LOCAL_ACTORS ) + j],
-                           (void*) forza_thread_init,
-                           (void*) &FArgs );
+      forza_thread_create( &actor_threads[( i * LOCAL_ACTORS ) + j], (void*) forza_thread_init, (void*) &FArgs );
     }
   }
 

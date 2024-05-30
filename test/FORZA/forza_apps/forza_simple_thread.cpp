@@ -39,8 +39,7 @@ int main( int argc, char** argv ) {
   ForzaThreadArgs FArgs;
   FArgs.ThreadType = 0;
   FArgs.ActorID    = 13;
-  forza_thread_create(
-    &actor_threads[0], (void*) forza_thread_init, (void*) &FArgs );
+  forza_thread_create( &actor_threads[0], (void*) forza_thread_init, (void*) &FArgs );
   forza_thread_join( actor_threads[0] );
   return 0;
 }

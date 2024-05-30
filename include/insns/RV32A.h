@@ -20,16 +20,15 @@ namespace SST::RevCPU {
 
 class RV32A : public RevExt {
 
-  static bool
-    lrw( RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) {
+  static bool lrw( RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) {
     unsigned Zone     = 0x00;
     unsigned Precinct = 0x00;
-    if( !M->isLocalAddr( R->GetX< uint64_t >( Inst.rs1 ), Zone, Precinct ) ) {
+    if( !M->isLocalAddr( R->GetX<uint64_t>( Inst.rs1 ), Zone, Precinct ) ) {
       // trigger the migration
-      std::vector< uint64_t > P;
+      std::vector<uint64_t> P;
       P.push_back( R->GetPC() );
       for( unsigned i = 1; i < 32; i++ ) {
-        P.push_back( R->GetX< uint64_t >( i ) );
+        P.push_back( R->GetX<uint64_t>( i ) );
       }
       for( unsigned i = 0; i < 32; i++ ) {
         uint64_t t = 0x00ull;
@@ -38,58 +37,51 @@ class RV32A : public RevExt {
         P.push_back( t );
       }
 
-      P.push_back( static_cast< uint64_t >( R->GetThreadID() ) );
+      P.push_back( static_cast<uint64_t>( R->GetThreadID() ) );
       R->SetSCAUSE( RevExceptionCause::THREAD_MIGRATED );
       return M->ZOP_ThreadMigrate( F->GetHartToExecID(), P, Zone, Precinct );
     }
     if( R->IsRV32 ) {
-      MemReq req( uint64_t( R->RV32[Inst.rs1] ),
-                  Inst.rd,
-                  RevRegClass::RegGPR,
-                  F->GetHartToExecID(),
-                  MemOp::MemOpAMO,
-                  true,
-                  R->GetMarkLoadComplete() );
+      MemReq req(
+        uint64_t( R->RV32[Inst.rs1] ),
+        Inst.rd,
+        RevRegClass::RegGPR,
+        F->GetHartToExecID(),
+        MemOp::MemOpAMO,
+        true,
+        R->GetMarkLoadComplete()
+      );
       R->LSQueue->insert( req.LSQHashPair() );
-      M->LR( F->GetHartToExecID(),
-             uint64_t( R->RV32[Inst.rs1] ),
-             &R->RV32[Inst.rd],
-             Inst.aq,
-             Inst.rl,
-             req,
-             RevFlag::F_SEXT32 );
+      M->LR( F->GetHartToExecID(), uint64_t( R->RV32[Inst.rs1] ), &R->RV32[Inst.rd], Inst.aq, Inst.rl, req, RevFlag::F_SEXT32 );
     } else {
-      MemReq req( R->RV64[Inst.rs1],
-                  Inst.rd,
-                  RevRegClass::RegGPR,
-                  F->GetHartToExecID(),
-                  MemOp::MemOpAMO,
-                  true,
-                  R->GetMarkLoadComplete() );
+      MemReq req(
+        R->RV64[Inst.rs1], Inst.rd, RevRegClass::RegGPR, F->GetHartToExecID(), MemOp::MemOpAMO, true, R->GetMarkLoadComplete()
+      );
       R->LSQueue->insert( req.LSQHashPair() );
-      M->LR( F->GetHartToExecID(),
-             R->RV64[Inst.rs1],
-             reinterpret_cast< uint32_t* >( &R->RV64[Inst.rd] ),
-             Inst.aq,
-             Inst.rl,
-             req,
-             RevFlag::F_SEXT64 );
+      M->LR(
+        F->GetHartToExecID(),
+        R->RV64[Inst.rs1],
+        reinterpret_cast<uint32_t*>( &R->RV64[Inst.rd] ),
+        Inst.aq,
+        Inst.rl,
+        req,
+        RevFlag::F_SEXT64
+      );
     }
     R->cost += M->RandCost( F->GetMinCost(), F->GetMaxCost() );
     R->AdvancePC( Inst );
     return true;
   }
 
-  static bool
-    scw( RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) {
+  static bool scw( RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) {
     unsigned Zone     = 0x00;
     unsigned Precinct = 0x00;
-    if( !M->isLocalAddr( R->GetX< uint64_t >( Inst.rs1 ), Zone, Precinct ) ) {
+    if( !M->isLocalAddr( R->GetX<uint64_t>( Inst.rs1 ), Zone, Precinct ) ) {
       // trigger the migration
-      std::vector< uint64_t > P;
+      std::vector<uint64_t> P;
       P.push_back( R->GetPC() );
       for( unsigned i = 1; i < 32; i++ ) {
-        P.push_back( R->GetX< uint64_t >( i ) );
+        P.push_back( R->GetX<uint64_t>( i ) );
       }
       for( unsigned i = 0; i < 32; i++ ) {
         uint64_t t = 0x00ull;
@@ -97,42 +89,37 @@ class RV32A : public RevExt {
         memcpy( &t, &s, sizeof( t ) );
         P.push_back( t );
       }
-      P.push_back( static_cast< uint64_t >( R->GetThreadID() ) );
+      P.push_back( static_cast<uint64_t>( R->GetThreadID() ) );
       R->SetSCAUSE( RevExceptionCause::THREAD_MIGRATED );
       return M->ZOP_ThreadMigrate( F->GetHartToExecID(), P, Zone, Precinct );
     }
     if( R->IsRV32 ) {
-      M->SC( F->GetHartToExecID(),
-             R->RV32[Inst.rs1],
-             &R->RV32[Inst.rs2],
-             &R->RV32[Inst.rd],
-             Inst.aq,
-             Inst.rl,
-             RevFlag::F_SEXT32 );
+      M->SC( F->GetHartToExecID(), R->RV32[Inst.rs1], &R->RV32[Inst.rs2], &R->RV32[Inst.rd], Inst.aq, Inst.rl, RevFlag::F_SEXT32 );
     } else {
-      M->SC( F->GetHartToExecID(),
-             R->RV64[Inst.rs1],
-             reinterpret_cast< uint32_t* >( &R->RV64[Inst.rs2] ),
-             reinterpret_cast< uint32_t* >( &R->RV64[Inst.rd] ),
-             Inst.aq,
-             Inst.rl,
-             RevFlag::F_SEXT64 );
+      M->SC(
+        F->GetHartToExecID(),
+        R->RV64[Inst.rs1],
+        reinterpret_cast<uint32_t*>( &R->RV64[Inst.rs2] ),
+        reinterpret_cast<uint32_t*>( &R->RV64[Inst.rd] ),
+        Inst.aq,
+        Inst.rl,
+        RevFlag::F_SEXT64
+      );
     }
     R->AdvancePC( Inst );
     return true;
   }
 
-  template< RevFlag F_AMO >
-  static bool
-    amooper( RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) {
+  template<RevFlag F_AMO>
+  static bool amooper( RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) {
     unsigned Zone     = 0x00;
     unsigned Precinct = 0x00;
-    if( !M->isLocalAddr( R->GetX< uint64_t >( Inst.rs1 ), Zone, Precinct ) ) {
+    if( !M->isLocalAddr( R->GetX<uint64_t>( Inst.rs1 ), Zone, Precinct ) ) {
       // trigger the migration
-      std::vector< uint64_t > P;
+      std::vector<uint64_t> P;
       P.push_back( R->GetPC() );
       for( unsigned i = 1; i < 32; i++ ) {
-        P.push_back( R->GetX< uint64_t >( i ) );
+        P.push_back( R->GetX<uint64_t>( i ) );
       }
       for( unsigned i = 0; i < 32; i++ ) {
         uint64_t t = 0x00ull;
@@ -141,11 +128,11 @@ class RV32A : public RevExt {
         P.push_back( t );
       }
 
-      P.push_back( static_cast< uint64_t >( R->GetThreadID() ) );
+      P.push_back( static_cast<uint64_t>( R->GetThreadID() ) );
       R->SetSCAUSE( RevExceptionCause::THREAD_MIGRATED );
       return M->ZOP_ThreadMigrate( F->GetHartToExecID(), P, Zone, Precinct );
     }
-    uint32_t flags = static_cast< uint32_t >( F_AMO );
+    uint32_t flags = static_cast<uint32_t>( F_AMO );
 
     if( Inst.aq && Inst.rl ) {
       flags |= uint32_t( RevFlag::F_AQ ) | uint32_t( RevFlag::F_RL );
@@ -156,36 +143,25 @@ class RV32A : public RevExt {
     }
 
     if( R->IsRV32 ) {
-      MemReq req( R->RV32[Inst.rs1],
-                  Inst.rd,
-                  RevRegClass::RegGPR,
-                  F->GetHartToExecID(),
-                  MemOp::MemOpAMO,
-                  true,
-                  R->GetMarkLoadComplete() );
+      MemReq req(
+        R->RV32[Inst.rs1], Inst.rd, RevRegClass::RegGPR, F->GetHartToExecID(), MemOp::MemOpAMO, true, R->GetMarkLoadComplete()
+      );
       R->LSQueue->insert( req.LSQHashPair() );
-      M->AMOVal( F->GetHartToExecID(),
-                 R->RV32[Inst.rs1],
-                 &R->RV32[Inst.rs2],
-                 &R->RV32[Inst.rd],
-                 req,
-                 RevFlag{ flags } );
+      M->AMOVal( F->GetHartToExecID(), R->RV32[Inst.rs1], &R->RV32[Inst.rs2], &R->RV32[Inst.rd], req, RevFlag{ flags } );
     } else {
       flags |= uint32_t( RevFlag::F_SEXT64 );
-      MemReq req( R->RV64[Inst.rs1],
-                  Inst.rd,
-                  RevRegClass::RegGPR,
-                  F->GetHartToExecID(),
-                  MemOp::MemOpAMO,
-                  true,
-                  R->GetMarkLoadComplete() );
+      MemReq req(
+        R->RV64[Inst.rs1], Inst.rd, RevRegClass::RegGPR, F->GetHartToExecID(), MemOp::MemOpAMO, true, R->GetMarkLoadComplete()
+      );
       R->LSQueue->insert( req.LSQHashPair() );
-      M->AMOVal( F->GetHartToExecID(),
-                 R->RV64[Inst.rs1],
-                 reinterpret_cast< int32_t* >( &R->RV64[Inst.rs2] ),
-                 reinterpret_cast< int32_t* >( &R->RV64[Inst.rd] ),
-                 req,
-                 RevFlag{ flags } );
+      M->AMOVal(
+        F->GetHartToExecID(),
+        R->RV64[Inst.rs1],
+        reinterpret_cast<int32_t*>( &R->RV64[Inst.rs2] ),
+        reinterpret_cast<int32_t*>( &R->RV64[Inst.rd] ),
+        req,
+        RevFlag{ flags }
+      );
     }
     // update the cost
     R->cost += M->RandCost( F->GetMinCost(), F->GetMaxCost() );
@@ -193,15 +169,15 @@ class RV32A : public RevExt {
     return true;
   }
 
-  static constexpr auto& amoswapw = amooper< RevFlag::F_AMOSWAP >;
-  static constexpr auto& amoaddw  = amooper< RevFlag::F_AMOADD >;
-  static constexpr auto& amoxorw  = amooper< RevFlag::F_AMOXOR >;
-  static constexpr auto& amoandw  = amooper< RevFlag::F_AMOAND >;
-  static constexpr auto& amoorw   = amooper< RevFlag::F_AMOOR >;
-  static constexpr auto& amominw  = amooper< RevFlag::F_AMOMIN >;
-  static constexpr auto& amomaxw  = amooper< RevFlag::F_AMOMAX >;
-  static constexpr auto& amominuw = amooper< RevFlag::F_AMOMINU >;
-  static constexpr auto& amomaxuw = amooper< RevFlag::F_AMOMAXU >;
+  static constexpr auto& amoswapw = amooper<RevFlag::F_AMOSWAP>;
+  static constexpr auto& amoaddw  = amooper<RevFlag::F_AMOADD>;
+  static constexpr auto& amoxorw  = amooper<RevFlag::F_AMOXOR>;
+  static constexpr auto& amoandw  = amooper<RevFlag::F_AMOAND>;
+  static constexpr auto& amoorw   = amooper<RevFlag::F_AMOOR>;
+  static constexpr auto& amominw  = amooper<RevFlag::F_AMOMIN>;
+  static constexpr auto& amomaxw  = amooper<RevFlag::F_AMOMAX>;
+  static constexpr auto& amominuw = amooper<RevFlag::F_AMOMINU>;
+  static constexpr auto& amomaxuw = amooper<RevFlag::F_AMOMAXU>;
 
   // ----------------------------------------------------------------------
   //
@@ -234,8 +210,7 @@ class RV32A : public RevExt {
 
 public:
   /// RV32A: standard constructor
-  RV32A( RevFeature* Feature, RevMem* RevMem, SST::Output* Output ) :
-    RevExt( "RV32A", Feature, RevMem, Output ) {
+  RV32A( RevFeature* Feature, RevMem* RevMem, SST::Output* Output ) : RevExt( "RV32A", Feature, RevMem, Output ) {
     SetTable( std::move( RV32ATable ) );
   }
 

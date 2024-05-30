@@ -20,11 +20,9 @@
 #define M 40
 
 bool testSize() {
-  std::vector< std::vector< int64_t, Allocator< int64_t > >,
-               Allocator< std::vector< int64_t, Allocator< int64_t > > > >
-    vec = {
-      {1, 2},
-      {3, 4}
+  std::vector<std::vector<int64_t, Allocator<int64_t>>, Allocator<std::vector<int64_t, Allocator<int64_t>>>> vec = {
+    {1, 2},
+    {3, 4}
   };
   if( vec.size() != 2 )
     return false;
@@ -34,9 +32,7 @@ bool testSize() {
 }
 
 bool testResize() {
-  std::vector< std::vector< int64_t, Allocator< int64_t > >,
-               Allocator< std::vector< int64_t, Allocator< int64_t > > > >
-    vec( 2 );
+  std::vector<std::vector<int64_t, Allocator<int64_t>>, Allocator<std::vector<int64_t, Allocator<int64_t>>>> vec( 2 );
   vec.resize( 3 );
   if( vec.size() != 3 )
     return false;
@@ -46,9 +42,7 @@ bool testResize() {
 }
 
 bool testReserve() {
-  std::vector< std::vector< int64_t, Allocator< int64_t > >,
-               Allocator< std::vector< int64_t, Allocator< int64_t > > > >
-    vec;
+  std::vector<std::vector<int64_t, Allocator<int64_t>>, Allocator<std::vector<int64_t, Allocator<int64_t>>>> vec;
   vec.reserve( N );
   assert( vec.capacity() == N );
 
@@ -56,9 +50,8 @@ bool testReserve() {
   bool reserve_failed  = false;
   bool realloc_failed  = false;
   for( int i = 0; i < N; i++ ) {
-    vec.push_back( std::vector< int64_t, Allocator< int64_t > >{ i, i } );
-    if( vec.data() !=
-        initial_address ) {  // the data address must not change for N pushes
+    vec.push_back( std::vector<int64_t, Allocator<int64_t>>{ i, i } );
+    if( vec.data() != initial_address ) {  // the data address must not change for N pushes
       reserve_failed = true;
       break;
     }
@@ -68,9 +61,7 @@ bool testReserve() {
 }
 
 bool testPushBack() {
-  std::vector< std::vector< int64_t, Allocator< int64_t > >,
-               Allocator< std::vector< int64_t, Allocator< int64_t > > > >
-    vec;
+  std::vector<std::vector<int64_t, Allocator<int64_t>>, Allocator<std::vector<int64_t, Allocator<int64_t>>>> vec;
   vec.push_back( { 1, 2 } );
   vec.push_back( { 3 } );
 
@@ -78,10 +69,9 @@ bool testPushBack() {
 }
 
 bool testBeginEnd() {
-  std::vector< std::vector< int64_t, Allocator< int64_t > >,
-               Allocator< std::vector< int64_t, Allocator< int64_t > > > >
-       vec = { { 1 }, { 2 }, { 3 } };
-  auto it  = vec.begin();
+  std::vector<std::vector<int64_t, Allocator<int64_t>>, Allocator<std::vector<int64_t, Allocator<int64_t>>>> vec = {
+    { 1 }, { 2 }, { 3 } };
+  auto it = vec.begin();
   if( it == vec.end() || ( *it )[0] != 1 )
     return false;
 
@@ -93,9 +83,8 @@ bool testBeginEnd() {
 }
 
 bool testAt() {
-  std::vector< std::vector< int64_t, Allocator< int64_t > >,
-               Allocator< std::vector< int64_t, Allocator< int64_t > > > >
-    vec = { { 1 }, { 2 }, { 3 }, { 4 } };
+  std::vector<std::vector<int64_t, Allocator<int64_t>>, Allocator<std::vector<int64_t, Allocator<int64_t>>>> vec = {
+    { 1 }, { 2 }, { 3 }, { 4 } };
   if( vec.at( 0 )[0] != 1 && vec.at( 3 )[0] != 4 ) {
     return false;
   }

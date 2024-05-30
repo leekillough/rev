@@ -63,5 +63,4 @@ void barrier( uint64_t mythread ) {
 //     mbox_addr->busy = 0;
 // }
 
-
 #endif
