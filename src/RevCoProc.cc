@@ -525,6 +525,12 @@ bool RZALSCoProc::handleMZOP( Forza::zopEvent* zev, bool& flag ) {
     // build a bulk write
     Buf = new uint8_t[RealFlitLen * 8];
 
+    output->verbose( CALL_INFO,
+                     5,
+                     0,
+                     "SDMA zop processing; zev->getID()=%" PRIu16 "\n",
+                     zev->getID() );
+
     for( i = 0; i < RealFlitLen; i++ ) {
       Data = 0x00ull;
       if( !zev->getFLIT( ( Z_FLIT_DATA ) + i, &Data ) ) {

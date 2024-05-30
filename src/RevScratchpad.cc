@@ -1,7 +1,7 @@
 //
 // _RevScratchpad_cc_
 //
-// Copyright (C) 2017-2023 Tactical Computing Laboratories, LLC
+// Copyright (C) 2017-2024 Tactical Computing Laboratories, LLC
 // All Rights Reserved
 // contact@tactcomplabs.com
 //
@@ -25,7 +25,7 @@ bool RevScratchpad::ReadMem(
   size_t TopChunkNum  = ( Addr + Len - BaseAddr ) / ChunkSize;
 
   output->verbose( CALL_INFO,
-                   8,
+                   5,
                    0,
                    "Scratchpad Read: Addr = 0x%" PRIx64
                    ", Len = %zu, BaseChunkNum = %zu, TopChunkNum = %zu\n",
@@ -85,7 +85,7 @@ bool RevScratchpad::WriteMem(
   size_t TopChunkNum  = ( Addr + Len - BaseAddr ) / ChunkSize;
 
   output->verbose( CALL_INFO,
-                   8,
+                   5,
                    0,
                    "Scratchpad Write: Addr = 0x%" PRIx64
                    ", Len = %zu, BaseChunkNum = %zu, TopChunkNum = %zu\n",
@@ -93,6 +93,16 @@ bool RevScratchpad::WriteMem(
                    Len,
                    BaseChunkNum,
                    TopChunkNum );
+
+  output->verbose( CALL_INFO,
+                   5,
+                   0,
+                   "Scratchpad Write: Addr = 0x%" PRIx64
+                   ", Len = %zu, BaseAddr = 0x%" PRIx64 ", ChunkSize = %zu\n",
+                   Addr,
+                   Len,
+                   BaseAddr,
+                   ChunkSize );
 
   // Figure out the bounds of this read request... Need to make sure that all chunks involved in the read are allocated
   for( size_t i = BaseChunkNum; i <= TopChunkNum; i++ ) {
