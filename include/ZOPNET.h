@@ -809,7 +809,7 @@ public:
     case zopCompID::Z_ZEN: return "ZEN"; break;
     case zopCompID::Z_ZQM: return "ZQM"; break;
     case zopCompID::Z_PREC_ZIP: return "PREC_ZIP"; break;
-    default: return "UNK"; break;
+    default: return "UNKNOWN"; break;
     }
   }
 
@@ -848,7 +848,7 @@ public:
     case SST::Forza::zopPrecID::Z_ZONE7: return "Zone7"; break;
     case SST::Forza::zopPrecID::Z_PMP: return "PMP"; break;
     case SST::Forza::zopPrecID::Z_ZIP: return "ZIP"; break;
-    default: return "UNK"; break;
+    default: return "UNKNOWN"; break;
     }
   }
 
@@ -870,7 +870,7 @@ public:
     case zopMsgT::Z_SYSC: return "SYSC"; break;
     case zopMsgT::Z_RESP: return "RESP"; break;
     case zopMsgT::Z_EXCP: return "EXCP"; break;
-    default: return "UNK"; break;
+    default: return "UNKNOWN"; break;
     }
   }
 

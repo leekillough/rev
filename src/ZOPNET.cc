@@ -444,8 +444,7 @@ void zopNIC::send( zopEvent* ev,
     }
   }
   ev->encodeEvent();
-  output.output( "ZENSEND: ev->ID == %" PRIu16 "\n\n", ev->getID() );
-  req->dest = realDest;  // FIXME
+  req->dest = realDest;  // FIXME - what needs fixed here?
   req->src  = getAddress();
   req->givePayload( ev );
   sendQ.push_back( req );
@@ -651,17 +650,6 @@ bool zopNIC::msgNotify( int vn ) {
   }
 
   auto P = ev->getPacket();
-
-  // tim debug
-  output.verbose(
-    CALL_INFO,
-    9,
-    0,
-    "ZENSEND-Notify: %s:%s received zop message of type %s, ID=%d\n",
-    getName().c_str(),
-    endPToStr( getEndpointType() ).c_str(),
-    msgTToStr( ev->getType() ).c_str(),
-    ev->getID() );
 
   // decode the event
   ev->decodeEvent();
@@ -893,21 +881,13 @@ bool zopNIC::clockTick( SST::Cycle_t cycle ) {
     if( thisCycle < ReqPerCycle ) {
       zopEvent* ev = static_cast< zopEvent* >( ( *it )->inspectPayload() );
       Hart         = (unsigned) ( ev->getSrcHart() );
-      output.verbose( CALL_INFO,
-                      9,
-                      0,
-                      "Tick: Type=%" PRIu8 ", pre-ifs id=%" PRIu16 "\n",
-                      (uint8_t) Type,
-                      ev->getID() );
       if( Type == SST::Forza::zopCompID::Z_RZA ||
           Type == SST::Forza::zopCompID::Z_ZEN ) {
         // I am an RZA... I don't need to reserve any message IDs
         // ZEN ACKs and NACKs do not use message IDs, ZEN ZOPs to the RZA internally
         // handle message IDs.
         auto P = ev->getPacket();
-        output.output( "Tick: pre-encode id=%" PRIu16 "\n", ev->getID() );
         ev->encodeEvent();
-        output.output( "Tick: post-encode id=%" PRIu16 "\n", ev->getID() );
         if( iFace->spaceToSend( 0, P.size() * 64 ) ) {
           // we have space to send
           recordStat( getStatFromPacket( ev ), 1 );

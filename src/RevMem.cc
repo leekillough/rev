@@ -1526,7 +1526,6 @@ bool RevMem::__ZOP_WRITEMemLarge(unsigned Hart, uint64_t Addr, size_t Len,
   std::cout << "ZOP_WRITE_LARGE of " << Len << " Bytes Starting at 0x"
             << std::hex << Addr << std::dec << std::endl;
 #endif
-  output->verbose( CALL_INFO, 5, 0, "SDMA handling\n" );
   if( Len < Z_MZOP_DMA_MAX ) {
     if( ( Len % 8 ) == 0 ) {
       // aligned to a FLIT
