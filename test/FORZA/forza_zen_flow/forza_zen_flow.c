@@ -59,10 +59,8 @@ int main( int argc, char** argv ) {
     forza_debug_print( cur_recv_ptr[0], cur_recv_ptr[1], cur_recv_ptr[2] );
     recv_pkt = cur_recv_ptr[2];
     assert( recv_pkt == 690 );
-    cur_recv_ptr +=
-      ( 3 *
-        sizeof(
-          uint64_t ) );  // Update my pointer for comparison (this would be needed for the next packet)
+    // Update my pointer for comparison (this would be needed for the next packet)
+    cur_recv_ptr += ( 3 * sizeof( uint64_t ) );
     forza_zen_credit_release( sizeof( uint64_t ) );
   }
 

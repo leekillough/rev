@@ -5108,17 +5108,17 @@ EcallStatus RevCore::ECALL_forza_zen_setup() {
                    SrcHart,
                    msg_id );
 
-  // set all the fields : FIXME
+  // set all the fields
   zev->setType( SST::Forza::zopMsgT::Z_MSG );
   zev->setID( msg_id );
   zev->setOpc( SST::Forza::zopOpc::Z_MSG_ZENSET );
   zev->setSrcZCID( SrcZCID );
   zev->setSrcPCID( SrcPCID );
   zev->setSrcHart( SrcHart );
-  zev->setAppID( 0 );
+  zev->setAppID( 0 );  // FIXME: should come from somewhere else
   zev->setPktRes( (uint8_t) mbox_id );
 
-  // set the payload, do actual send setup thing : FIXME
+  // set the payload, do actual send setup
   // read ZEN::processSetupMsgs
   std::vector< uint64_t > payload;
   payload.push_back( 0x00ull );      // acs_pair = payload[0]
