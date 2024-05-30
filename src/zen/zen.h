@@ -218,7 +218,7 @@ namespace SST::Forza{
     */
 
     /// ZEN: send message to scratchpad
-    void sendMsgToScratchpad(SST::Forza::zopEvent *ev, std::vector<uint64_t> payload, uint16_t msg_id);
+    void sendMsgToScratchpad(SST::Forza::zopEvent *ev, std::vector<uint64_t> payload, uint16_t msg_id, bool destsp_is_src);
 
     /// ZEN: sends a scratchpad WRITE to the target ZAP device
     /* planning on deletion of this version
@@ -310,10 +310,10 @@ namespace SST::Forza{
     /// ZEN: Create a metadata hash consisting of {AppID, Zap, Hart}
     /// For now - physical HART == logical HART; long run this is probably
     /// logical thread ID instead of physical HART
-    uint64_t getMetadataHash(SST::Forza::zopEvent *ev){
+    uint64_t getMetadataHash(SST::Forza::zopEvent *ev, bool use_dest){
       uint64_t rv = 0;
-      uint64_t hart_id = ev->getSrcHart();
-      uint64_t zap_id = ev->getSrcZCID();
+      uint64_t hart_id = (use_dest) ? ev->getDestHart() : ev->getSrcHart();
+      uint64_t zap_id = (use_dest) ? ev->getDestZCID() : ev->getSrcZCID();
       uint64_t hdr_app_id = ev->getAppID();
       rv =  (hdr_app_id << (Z_SHIFT_HARTID + Z_SHIFT_ZCID)) | (zap_id << Z_SHIFT_HARTID) | (hart_id);
       return rv; 
@@ -321,7 +321,15 @@ namespace SST::Forza{
     }
 
     ZenMailboxMetadata* getMboxEntry(SST::Forza::zopEvent *ev){
-      uint64_t metadata_hash = getMetadataHash(ev);
+      uint64_t metadata_hash = getMetadataHash(ev, false);
+      auto iter = hart_metadata_table.find(std::pair<uint64_t, uint64_t>(metadata_hash, ev->getPktRes()));
+      if (iter == hart_metadata_table.end())
+        output.fatal(CALL_INFO, -1, "Could not find table entry for zop.\n"); // TODO: Add add'l debug info if needed
+      return iter->second;
+    }
+
+    ZenMailboxMetadata* getDestMboxEntry(SST::Forza::zopEvent *ev){
+      uint64_t metadata_hash = getMetadataHash(ev, true);
       auto iter = hart_metadata_table.find(std::pair<uint64_t, uint64_t>(metadata_hash, ev->getPktRes()));
       if (iter == hart_metadata_table.end())
         output.fatal(CALL_INFO, -1, "Could not find table entry for zop.\n"); // TODO: Add add'l debug info if needed
@@ -368,6 +376,14 @@ namespace SST::Forza{
         dest_packet->setDestZCID(src_packet->getSrcZCID());
         dest_packet->setDestPCID(src_packet->getSrcPCID());
         dest_packet->setDestPrec(src_packet->getSrcPrec());
+    }
+
+    void setDestFromDestInfo(SST::Forza::zopEvent *dest_packet, SST::Forza::zopEvent *src_packet)
+    {
+        dest_packet->setDestHart(src_packet->getDestHart());
+        dest_packet->setDestZCID(src_packet->getDestZCID());
+        dest_packet->setDestPCID(src_packet->getDestPCID());
+        dest_packet->setDestPrec(src_packet->getDestPrec());
     }
 
     // private data members
