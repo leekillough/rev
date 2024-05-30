@@ -34,13 +34,12 @@ int main( int argc, char** argv ) {
   uint64_t* pkt = (uint64_t*) forza_scratchpad_alloc( 1 * sizeof( uint64_t ) );
   *pkt          = 690;
 
-  forza_zen_setup( (uint64_t) cur_recv_ptr,
-                   qsize * sizeof( uint64_t ),
-                   (uint64_t) my_tail_ptr,
-                   0xc );
-
-  if( TID == 0 )
+  if( TID == 0 ) {
+    forza_debug_print( (uint64_t) cur_recv_ptr,
+                       (uint64_t) my_tail_ptr,
+                       (uint64_t) *my_tail_ptr );
     forza_send( 1, (uint64_t) pkt, sizeof( uint64_t ) );
+  }
 
   // Variable to hold receive data
   uint64_t recv_pkt = 0;
@@ -48,12 +47,22 @@ int main( int argc, char** argv ) {
   if( TID == 1 ) {
     // Spin until the zen has put a message into the storage buffer and updated the
     // pointer in the scratchpad
+    forza_debug_print( (uint64_t) cur_recv_ptr,
+                       (uint64_t) my_tail_ptr,
+                       (uint64_t) *my_tail_ptr );
+
     while( (uint64_t) cur_recv_ptr == *my_tail_ptr )
       ;
-    // Get the receive data and check it
-    recv_pkt = *cur_recv_ptr;
+
+    // Get the receive data and check it; since we write the two header words into the packet,
+    // the third word is the actual data
+    forza_debug_print( cur_recv_ptr[0], cur_recv_ptr[1], cur_recv_ptr[2] );
+    recv_pkt = cur_recv_ptr[2];
     assert( recv_pkt == 690 );
-    cur_recv_ptr++;  // Update my pointer for comparison (this would be needed for the next packet)
+    cur_recv_ptr +=
+      ( 3 *
+        sizeof(
+          uint64_t ) );  // Update my pointer for comparison (this would be needed for the next packet)
     forza_zen_credit_release( sizeof( uint64_t ) );
   }
 
