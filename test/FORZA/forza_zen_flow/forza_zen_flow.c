@@ -26,13 +26,13 @@ int main( int argc, char** argv ) {
   forza_zen_setup( (uint64_t) cur_recv_ptr, qsize * sizeof( uint64_t ), (uint64_t) my_tail_ptr, mbox_id );
 
   forza_zone_barrier( 2 );  // two executing harts
+  forza_debug_print( (uint64_t) cur_recv_ptr, (uint64_t) my_tail_ptr, (uint64_t) *my_tail_ptr );
 
   // Packet to send from thread on zap 0 to zap 1
   uint64_t* pkt = (uint64_t*) forza_scratchpad_alloc( 1 * sizeof( uint64_t ) );
   *pkt          = 690;
 
   if( TID == 0 ) {
-    forza_debug_print( (uint64_t) cur_recv_ptr, (uint64_t) my_tail_ptr, (uint64_t) *my_tail_ptr );
     forza_send( 1, (uint64_t) pkt, sizeof( uint64_t ) );
   }
 
@@ -42,8 +42,6 @@ int main( int argc, char** argv ) {
   if( TID == 1 ) {
     // Spin until the zen has put a message into the storage buffer and updated the
     // pointer in the scratchpad
-    forza_debug_print( (uint64_t) cur_recv_ptr, (uint64_t) my_tail_ptr, (uint64_t) *my_tail_ptr );
-
     while( (uint64_t) cur_recv_ptr == *my_tail_ptr )
       ;
 
