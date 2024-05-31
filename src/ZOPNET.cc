@@ -821,7 +821,11 @@ bool zopNIC::clockTick( SST::Cycle_t cycle ) {
           // we have space to send
           // bypass this process if we're sending a zone barrier
           // zone barriers require no msg id and/or response
-          if( ev->getOpc() != SST::Forza::zopOpc::Z_MSG_ZBAR ) {
+          // tdysart note (31-may-2024): This is where some messages are having their msg_id changed.
+          // Use skip to not update the msg_id for responses from zap to zen (these are scratchpad acks)
+          bool skip =
+            ( ev->getType() == SST::Forza::zopMsgT::Z_RESP ) && ( ev->getDestZCID() == (uint8_t) SST::Forza::zopCompID::Z_ZEN );
+          if( ( ev->getOpc() != SST::Forza::zopOpc::Z_MSG_ZBAR ) && ( !skip ) ) {
             ev->setID( msgId[Hart].getMsgId() );
             auto V = std::make_tuple( Hart, ev->getID(), ev->isRead(), ev->getTarget(), ev->getOpc(), ev->getMemReq() );
             outstanding.push_back( V );
