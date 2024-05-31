@@ -562,7 +562,7 @@ void ZEN::notifyHARTScratchpad() {
 
     auto *ev = update_scratchpad_q.front();
     auto *mbox_info = getDestMboxEntry(ev);
-    uint64_t new_tail_ptr = mbox_info->getSpTailAddr(ev->getLength());
+    uint64_t new_tail_ptr = mbox_info->getSpTailAddr(ev->getLength() + Z_NUM_HEADER_FLITS);
 
     // Have the address to update; now need to create a ZOP to the scratchpad
     // Scratchpad address - Z_FLIT_ADDR
@@ -966,7 +966,7 @@ void ZEN::prepSendRZAStore() {
 
     // Get destination address for memory zop(s)
     auto mbox_info = getDestMboxEntry(ev);
-    uint64_t wr_addr = mbox_info->getRzaWriteAddr(ev->getLength());
+    uint64_t wr_addr = mbox_info->getRzaWriteAddr(ev->getLength() + Z_NUM_HEADER_FLITS);
     output.verbose(CALL_INFO, 9, 0, "Store messaging packet to RZA; packet_size=%" PRIu8 ", wr_addr=0x%"
                    PRIx64 "\n", ev->getLength(), wr_addr);
 
