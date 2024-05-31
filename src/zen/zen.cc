@@ -320,7 +320,7 @@ void ZEN::helper_handleFromZoneMsgZop(SST::Forza::zopEvent *ev)
       // Handle credit msg
       //output.fatal(CALL_INFO, -1, "ZEN %s: CREDIT not yet implemented\n",
       //  getName().c_str());
-      output.verbose(CALL_INFO, 5, 0, "ZEN %s: CREDIT not yet implemented\n",
+      output.verbose(CALL_INFO, 5, 0, "[ERROR] ZEN %s: CREDIT not yet implemented\n",
                      getName().c_str());
       //zap_credits.push_back(ev);
       break;
