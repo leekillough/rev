@@ -322,8 +322,6 @@ private:
 
   bool isRZA;  ///< RevLoader: is this device an RZA?
 
-  uint64_t TLSBaseAddr = 0;
-  uint64_t TLSSize     = 0;
   uint64_t TLSBaseAddr{};
   uint64_t TLSSize{};
 

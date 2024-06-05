@@ -305,11 +305,6 @@ private:
   std::bitset<_MAX_HARTS_>              HartsClearToDecode{};   ///< RevCore: Thread is clear to start (proceed with decode)
   std::bitset<_MAX_HARTS_>              HartsClearToExecute{};  ///< RevCore: Thread is clear to execute (no register dependencides)
 
-  unsigned       numHarts;    ///< RevCore: Number of Harts for this core
-  RevOpts*       opts;        ///< RevCore: options object
-  RevMem*        mem;         ///< RevCore: memory object
-  RevCoProc*     coProc;      ///< RevCore: attached co-processor
-  RevLoader*     loader;      ///< RevCore: loader object
   Forza::zopAPI* zNic;        ///< RevCore: ZOPNic object
   unsigned       numHarts{};  ///< RevCore: Number of Harts for this core
   RevOpts*       opts{};      ///< RevCore: options object
