@@ -511,6 +511,19 @@ public:
   /// FORZA: set the output file name
   void setOutputFile(std::string name);
 
+  /// RevMem: Dump the memory contents
+  void DumpMem(
+    const uint64_t startAddr, const uint64_t numBytes, const uint64_t bytesPerRow = 16, std::ostream& outputStream = std::cout
+  );
+
+  void DumpValidMem( const uint64_t bytesPerRow = 16, std::ostream& outputStream = std::cout );
+
+  void DumpMemSeg(
+    const std::shared_ptr<MemSegment>& MemSeg, const uint64_t bytesPerRow = 16, std::ostream& outputStream = std::cout
+  );
+
+  void DumpThreadMem( const uint64_t bytesPerRow = 16, std::ostream& outputStream = std::cout );
+
 private:
   /// FORZA: convert a standard RISC-V AMO opcode to a ZOP opcode
   Forza::zopOpc flagToZOP(uint32_t flags, size_t Len);
@@ -534,7 +547,7 @@ private:
   bool __ZOP_WRITEMemBase( unsigned Hart, uint64_t Addr, size_t Len, void* Data, RevFlag flags, SST::Forza::zopOpc opc );
 
   /// FORZA: send a HART fence request
-  bool __ZOP_FENCEHart(unsigned Hart);
+  bool __ZOP_FENCEHart( unsigned Hart );
 
 protected:
   char* physMem = nullptr;  ///< RevMem: memory container
@@ -556,10 +569,10 @@ private:
   Forza::zopAPI*                 zNic;        ///< RevMem: FORZA ZOP NIC
   bool                           isRZA;       ///< RevMem: FORZA RZA flag; true if this device is an RZA
 
-  std::vector<std::shared_ptr<MemSegment>> MemSegs;      // Currently Allocated MemSegs
-  std::vector<std::shared_ptr<MemSegment>> FreeMemSegs;  // MemSegs that have been unallocated
-  std::vector<std::shared_ptr<MemSegment>>
-    ThreadMemSegs;  // For each RevThread there is a corresponding MemSeg that contains TLS & Stack
+  std::vector<std::shared_ptr<MemSegment>> MemSegs{};        // Currently Allocated MemSegs
+  std::vector<std::shared_ptr<MemSegment>> FreeMemSegs{};    // MemSegs that have been unallocated
+  std::vector<std::shared_ptr<MemSegment>> ThreadMemSegs{};  // For each RevThread there is a corresponding MemSeg (TLS & Stack)
+  std::map<std::string, std::shared_ptr<MemSegment>> DumpRanges{};  // Mem ranges to dump at points specified in the configuration
 
   uint64_t TLSBaseAddr       = 0;                   ///< RevMem: TLS Base Address
   uint64_t TLSSize           = sizeof( uint32_t );  ///< RevMem: TLS Size (minimum size is enough to write the TID)
@@ -579,9 +592,9 @@ private:
   uint32_t                                      nextPage{};   ///< RevMem: next physical page to be allocated. Will result in index
   /// nextPage * pageSize into physMem
 
-  uint64_t heapend{};        ///< RevMem: End of the heap
   uint64_t brk{};        ///< RevMem: Program BRK FIXME: HACK
   uint64_t mmapRegion{};     ///< RevMem: FIXME: HACK
+  uint64_t heapend{};        ///< RevMem: End of the heap
   uint64_t heapstart{};      ///< RevMem: Start of the heap space
   uint64_t stacktop = 0;   ///< RevMem: top of the stack
 

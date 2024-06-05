@@ -299,15 +299,20 @@ private:
   bool EnableRegFaults{};    ///< RevCPU: Enable register faults
   bool EnableALUFaults{};    ///< RevCPU: Enable ALU faults
 
-  bool EnableMemH;                    ///< RevCPU: Enable memHierarchy
-  bool EnableCoProc;                  ///< RevCPU: Enable a co-processor attached to all cores
-  bool EnableRZA;                     ///< RevCPU: Enables the RZA functionality
-  bool EnableZopNIC;                  ///< RevCPU: Enables the ZONE/ZOP NIC functionality
-  bool EnableForzaSecurity;           ///< RevCPU: Enables the FORZA memory security
+  bool EnableMemH{};                    ///< RevCPU: Enable memHierarchy
+  bool EnableCoProc{};                  ///< RevCPU: Enable a co-processor attached to all cores
+  bool EnableRZA{};                     ///< RevCPU: Enables the RZA functionality
+  bool EnableZopNIC{};                  ///< RevCPU: Enables the ZONE/ZOP NIC functionality
+  bool EnableForzaSecurity{};           ///< RevCPU: Enables the FORZA memory security
   std::string memTrafficInput;        ///< RevCPU: Memory traffic input
   std::string memTrafficOutput;       ///< RevCPU: Memory traffic output
 
   bool DisableCoprocClock{};  ///< RevCPU: Disables manual coproc clocking
+
+  unsigned Precinct{};  ///< RevCPU: FORZA precinct ID
+  unsigned Zone{};      ///< RevCPU: FORZA zone ID
+
+  Forza::zopAPI* zNic{};             ///< RevCPU: FORZA ZOP NIC
 
   TimeConverter* timeConverter{};  ///< RevCPU: SST time conversion handler
   SST::Output    output{};         ///< RevCPU: SST output handler
@@ -345,16 +350,11 @@ private:
   std::vector<Forza::zopEvent*>        ZIQ;    ///< RevCPU: ZOP Issue Queue
   std::map<uint64_t, Forza::zopEvent*> ZRqst;  ///< RevCPU: outstanding ZOP requests
 
-  std::queue<std::pair<uint32_t, char*>> ZeroRqst;   ///< RevCPU: tracks incoming zero address put requests; pair<Size, Data>
-  std::list<std::pair<uint8_t, int>>     TrackTags;  ///< RevCPU: tracks the outgoing messages; pair<Tag, Dest>
-  std::vector<std::tuple<
-    uint8_t,
-    uint64_t,
-    uint32_t>>
-                                    TrackGets;  ///< RevCPU: tracks the outstanding get messages; tuple<Tag, Addr, Sz>
-  std::vector<std::tuple<uint8_t, uint32_t, unsigned, int,
-                         uint64_t>> ReadQueue;  ///< RevCPU: outgoing memory read queue
-
+  std::queue<std::pair<uint32_t, char*>> ZeroRqst{};   ///< RevCPU: tracks incoming zero address put requests; pair<Size, Data>
+  std::list<std::pair<uint8_t, int>>     TrackTags{};  ///< RevCPU: tracks the outgoing messages; pair<Tag, Dest>
+  std::vector<std::tuple<uint8_t, uint64_t, uint32_t>> TrackGets{
+  };  ///< RevCPU: tracks the outstanding get messages; tuple<Tag, Addr, Sz>
+  std::vector<std::tuple<uint8_t, uint32_t, unsigned, int, uint64_t>> ReadQueue{};  ///< RevCPU: outgoing memory read queue
   ///<         - Tag
   ///<         - Size
   ///<         - Cost
