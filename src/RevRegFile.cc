@@ -27,8 +27,7 @@ std::ostream& operator<<( std::ostream& os, const RevRegFile& regFile ) {
     "Argument Register",     "Argument Register",     "Argument Register",     "Callee Saved Register", "Callee Saved Register",
     "Callee Saved Register", "Callee Saved Register", "Callee Saved Register", "Callee Saved Register", "Callee Saved Register",
     "Callee Saved Register", "Callee Saved Register", "Callee Saved Register", "Temporary Register",    "Temporary Register",
-    "Temporary Register",    "Temporary Register"
-  };
+    "Temporary Register",    "Temporary Register" };
 
   // Update table width to accommodate the new "Dep" column
   constexpr int tableWidth = 6 /*Reg*/ + 7 /*Alias*/ + 19 /*Value*/ + 6 /*Dep*/ + 23 /*Info*/ + 11 /*Separators*/;
@@ -36,8 +35,12 @@ std::ostream& operator<<( std::ostream& os, const RevRegFile& regFile ) {
   os << '|' << std::string( tableWidth - 3, '-' ) << '|' << '\n';
 
   // Table header
-  os << "| " << std::setw( 4 ) << "Reg" << " | " << std::setw( 5 ) << "Alias" << " | " << std::setw( 21 ) << "Value" << " | "
-     << std::setw( 4 ) << "Dep" << " | " << std::setw( 21 ) << "Info" << " |\n";
+  os << "| " << std::setw( 4 ) << "Reg"
+     << " | " << std::setw( 5 ) << "Alias"
+     << " | " << std::setw( 21 ) << "Value"
+     << " | " << std::setw( 4 ) << "Dep"
+     << " | " << std::setw( 21 ) << "Info"
+     << " |\n";
   os << "|------|-------|-----------------------|------|-----------------------"
         "|\n";
 

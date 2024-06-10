@@ -16,7 +16,7 @@ FORZA_SYSCALL( 4001, int forza_scratchpad_free( uint64_t addr, size_t size ) );
 FORZA_SYSCALL( 4002, int forza_get_hart_id() );
 FORZA_SYSCALL( 4003, int forza_send( uint64_t dst, uint64_t spaddr, size_t size ) );
 FORZA_SYSCALL( 4004, int forza_zen_credit_release( size_t size ) );
-FORZA_SYSCALL( 4005, int forza_zen_setup( uint64_t addr, size_t size, uint64_t tailptr ) );
+FORZA_SYSCALL( 4005, int forza_zen_setup( uint64_t addr, size_t size, uint64_t tailptr, uint64_t mbox_id ) );
 
 /**
  * @param addr - start of application zone run queue - should be 8byte aligned

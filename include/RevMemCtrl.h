@@ -290,7 +290,7 @@ public:
 protected:
   SST::Output* output;            ///< RevMemCtrl: sst output object
   RevTracer*   Tracer = nullptr;  ///< RevMemCtrl: tracer pointer
-};  // class RevMemCtrl
+};                                // class RevMemCtrl
 
 // ----------------------------------------
 // RevBasicMemCtrl

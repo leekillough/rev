@@ -313,9 +313,10 @@ private:
   unsigned Precinct;  ///< RevCPU: FORZA precinct ID
   unsigned Zone;      ///< RevCPU: FORZA zone ID
 
-  Forza::zopAPI* zNic;             ///< RevCPU: FORZA ZOP NIC
-  TimeConverter* timeConverter{};  ///< RevCPU: SST time conversion handler
-  SST::Output    output{};         ///< RevCPU: SST output handler
+  Forza::zopAPI*   zNic;             ///< RevCPU: FORZA ZOP NIC
+  Forza::zopMsgID* zNicMsgIds;       ///< RevCPU: FORZA ZOP NIC Message ID handler
+  TimeConverter*   timeConverter{};  ///< RevCPU: SST time conversion handler
+  SST::Output      output{};         ///< RevCPU: SST output handler
 
   nicAPI*     Nic{};   ///< RevCPU: Network interface controller
   RevMemCtrl* Ctrl{};  ///< RevCPU: Rev memory controller
@@ -329,8 +330,8 @@ private:
 
   std::queue<std::pair<uint32_t, char*>> ZeroRqst{};   ///< RevCPU: tracks incoming zero address put requests; pair<Size, Data>
   std::list<std::pair<uint8_t, int>>     TrackTags{};  ///< RevCPU: tracks the outgoing messages; pair<Tag, Dest>
-  std::vector<std::tuple<uint8_t, uint64_t, uint32_t>> TrackGets{
-  };  ///< RevCPU: tracks the outstanding get messages; tuple<Tag, Addr, Sz>
+  std::vector<std::tuple<uint8_t, uint64_t, uint32_t>>
+    TrackGets{};  ///< RevCPU: tracks the outstanding get messages; tuple<Tag, Addr, Sz>
   std::vector<std::tuple<uint8_t, uint32_t, unsigned, int, uint64_t>> ReadQueue{};  ///< RevCPU: outgoing memory read queue
   ///<         - Tag
   ///<         - Size

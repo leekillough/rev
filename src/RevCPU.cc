@@ -35,7 +35,7 @@ const char splash_msg[] = "\
 RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params )
   : SST::Component( id ), testStage( 0 ), PrivTag( 0 ), address( -1 ), EnableNIC( false ), EnableMemH( false ),
     EnableCoProc( false ), EnableRZA( false ), EnableZopNIC( false ), EnableForzaSecurity( false ), DisableCoprocClock( false ),
-    Precinct( 0 ), Zone( 0 ), Nic( nullptr ), Ctrl( nullptr ), zNic( nullptr ), ClockHandler( nullptr ) {
+    Precinct( 0 ), Zone( 0 ), zNic( nullptr ), zNicMsgIds( nullptr ), Nic( nullptr ), Ctrl( nullptr ), ClockHandler( nullptr ) {
 
   const int Verbosity = params.find<int>( "verbose", 0 );
 
@@ -201,6 +201,9 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params )
     // set the message handler for the NoC interface
     zNic->setMsgHandler( new Event::Handler<RevCPU>( this, &RevCPU::handleZOPMessage ) );
 
+    // set the message id generator
+    zNicMsgIds = new Forza::zopMsgID();
+
     // now that the NIC has been loaded, we need to ensure that the NIC knows
     // what type of endpoint it is
     if( EnableRZA ) {
@@ -324,6 +327,7 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params )
     for( unsigned i = 0; i < numCores; i++ ) {
       RevCore* tmpNewRevCore = new RevCore( i, Opts, numHarts, Mem, Loader, this->GetNewTID(), &output );
       tmpNewRevCore->setZNic( zNic );
+      tmpNewRevCore->setZNicMsgIds( zNicMsgIds );
       Procs.push_back( tmpNewRevCore );
     }
   }

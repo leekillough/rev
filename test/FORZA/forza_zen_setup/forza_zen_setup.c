@@ -35,7 +35,8 @@ int main( int argc, char** argv ) {
   *tail_ptr               = 0xdeadbeef;
 
   uint64_t* my_buff_start = &mem_buff[0];
-  forza_zen_setup( (uint64_t) my_buff_start, num_buff_entries * sizeof( uint64_t ), (uint64_t) tail_ptr );
+  uint64_t  mbox_id       = 0xa;
+  forza_zen_setup( (uint64_t) my_buff_start, num_buff_entries * sizeof( uint64_t ), (uint64_t) tail_ptr, mbox_id );
 
   uint64_t nzaps = ( forza_get_my_zone() == 0 ) ? forza_get_zaps_per_zone() : 0;
   forza_zone_barrier( nzaps );

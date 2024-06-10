@@ -193,6 +193,9 @@ public:
   ///< RevCore: Set the ZOP NIC handler
   void setZNic( Forza::zopAPI* Z ) { zNic = Z; }
 
+  ///< RevCore: Set the ZOP NIC msg id generator
+  void setZNicMsgIds( Forza::zopMsgID* Z ) { zNicMsgIds = Z; }
+
   ///< RevCore: Add a co-processor to the RevCore
   void SetCoProc( RevCoProc* coproc );
 
@@ -305,19 +308,20 @@ private:
   std::bitset<_MAX_HARTS_>              HartsClearToDecode{};   ///< RevCore: Thread is clear to start (proceed with decode)
   std::bitset<_MAX_HARTS_>              HartsClearToExecute{};  ///< RevCore: Thread is clear to execute (no register dependencides)
 
-  Forza::zopAPI* zNic;        ///< RevCore: ZOPNic object
-  unsigned       numHarts{};  ///< RevCore: Number of Harts for this core
-  RevOpts*       opts{};      ///< RevCore: options object
-  RevMem*        mem{};       ///< RevCore: memory object
-  RevCoProc*     coProc{};    ///< RevCore: attached co-processor
-  RevLoader*     loader{};    ///< RevCore: loader object
+  Forza::zopAPI*   zNic;        ///< RevCore: ZOPNic object
+  Forza::zopMsgID* zNicMsgIds;  ///< RevCore: FORZA ZOP NIC Message ID handler
+  unsigned         numHarts{};  ///< RevCore: Number of Harts for this core
+  RevOpts*         opts{};      ///< RevCore: options object
+  RevMem*          mem{};       ///< RevCore: memory object
+  RevCoProc*       coProc{};    ///< RevCore: attached co-processor
+  RevLoader*       loader{};    ///< RevCore: loader object
 
   // Function pointer to the GetNewThreadID function in RevCPU (monotonically increasing thread ID counter)
   std::function<uint32_t()> GetNewThreadID;
 
   // If a given assigned thread experiences a change of state, it sets the corresponding bit
-  std::vector<std::unique_ptr<RevThread>> ThreadsThatChangedState{
-  };  ///< RevCore: used to signal to RevCPU that the thread assigned to HART has changed state
+  std::vector<std::unique_ptr<RevThread>>
+    ThreadsThatChangedState{};  ///< RevCore: used to signal to RevCPU that the thread assigned to HART has changed state
 
   SST::Output* const             output;       ///< RevCore: output handler
   std::unique_ptr<RevFeature>    featureUP{};  ///< RevCore: feature handler
@@ -326,8 +330,8 @@ private:
   RevCoreStats                   StatsTotal{};  ///< RevCore: collection of total performance stats
   std::unique_ptr<RevPrefetcher> sfetch{};      ///< RevCore: stream instruction prefetcher
 
-  std::shared_ptr<std::unordered_multimap<uint64_t, MemReq>> LSQueue{
-  };  ///< RevCore: Load / Store queue used to track memory operations. Currently only tracks outstanding loads.
+  std::shared_ptr<std::unordered_multimap<uint64_t, MemReq>>
+    LSQueue{};  ///< RevCore: Load / Store queue used to track memory operations. Currently only tracks outstanding loads.
   TimeConverter* timeConverter{};  ///< RevCore: Time converter for RTC
 
   RevRegFile* RegFile        = nullptr;        ///< RevCore: Initial pointer to HartToDecodeID RegFile

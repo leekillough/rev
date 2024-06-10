@@ -67,7 +67,7 @@ zap_cpu0.addParams({
         "startAddr" : "[0:0x00000000]",               # Starting address for core 0
         "memCost" : "[0:1:10]",                       # Memory loads required 1-10 cycles
         "args"    : "0",
-        "program" : os.getenv("REV_EXE", "forza_zen_flow.exe"),  # Target executable
+        "program" : os.getenv("REV_EXE", "forza_multisend.exe"),  # Target executable
         "enableZoneNIC" : 1,                          # [FORZA] Enable the zone NIC
         "precinctId" : 0,                             # [FORZA] precinct ID
         "zoneId" : 0,                                 # [FORZA] zone ID
@@ -86,7 +86,7 @@ zap_cpu1.addParams({
         "startAddr" : "[0:0x00000000]",               # Starting address for core 0
         "memCost" : "[0:1:10]",                       # Memory loads required 1-10 cycles
         "args"    : "1",
-        "program" : os.getenv("REV_EXE", "forza_zen_flow.exe"),  # Target executable
+        "program" : os.getenv("REV_EXE", "forza_multisend.exe"),  # Target executable
         "enableZoneNIC" : 1,                          # [FORZA] Enable the zone NIC
         "precinctId" : 0,                             # [FORZA] precinct ID
         "zoneId" : 0,                                 # [FORZA] zone ID
@@ -105,7 +105,7 @@ zap_cpu1.addParams({
 #        "startAddr" : "[0:0x00000000]",               # Starting address for core 0
 #        "memCost" : "[0:1:10]",                       # Memory loads required 1-10 cycles
 #        "args"    : "2",
-#        "program" : os.getenv("REV_EXE", "forza_zen_flow.exe"),  # Target executable
+#        "program" : os.getenv("REV_EXE", "forza_multisend.exe"),  # Target executable
 #        "enableZoneNIC" : 1,                          # [FORZA] Enable the zone NIC
 #        "precinctId" : 0,                             # [FORZA] precinct ID
 #        "zoneId" : 0,                                 # [FORZA] zone ID
@@ -124,7 +124,7 @@ zap_cpu1.addParams({
 #        "startAddr" : "[0:0x00000000]",               # Starting address for core 0
 #        "memCost" : "[0:1:10]",                       # Memory loads required 1-10 cycles
 #        "args"    : "3",
-#        "program" : os.getenv("REV_EXE", "forza_zen_flow.exe"),  # Target executable
+#        "program" : os.getenv("REV_EXE", "forza_multisend.exe"),  # Target executable
 #        "enableZoneNIC" : 1,                          # [FORZA] Enable the zone NIC
 #        "precinctId" : 0,                             # [FORZA] precinct ID
 #        "zoneId" : 0,                                 # [FORZA] zone ID
@@ -145,7 +145,7 @@ rza.addParams({
         "machine" : "[CORES:RV64G]",                  # Core:Config; RV64I for core 0
         "startAddr" : "[CORES:0x00000000]",           # Starting address for core 0
         "args"    : "7",
-        "program" : os.getenv("REV_EXE", "forza_zen_flow.exe"),  # Target executable
+        "program" : os.getenv("REV_EXE", "forza_multisend.exe"),  # Target executable
         "enableZoneNIC" : 1,                          # [FORZA] Enable the zone NIC
         "enableRZA" : 1,                              # [FORZA] Enable RZA functionality
         "precinctId" : 0,                             # [FORZA] precinct ID

@@ -10,10 +10,11 @@ void forza_thread_init( void* FArgs_recv, sparsemat_t* mat_chunk ) {
   uint64_t**       tail_ptr;
   uint64_t*        head_ptr;
 
-  tail_ptr  = (uint64_t**) forza_scratchpad_alloc( 1 * sizeof( ForzaPkt* ) );
-  *tail_ptr = (uint64_t*) &qaddr;
-  head_ptr  = (uint64_t*) &qaddr;
-  forza_zen_setup( (uint64_t) &qaddr, qsize * sizeof( ForzaPkt ), (uint64_t) tail_ptr );
+  tail_ptr         = (uint64_t**) forza_scratchpad_alloc( 1 * sizeof( ForzaPkt* ) );
+  *tail_ptr        = (uint64_t*) &qaddr;
+  head_ptr         = (uint64_t*) &qaddr;
+  uint64_t mbox_id = 0;
+  forza_zen_setup( (uint64_t) &qaddr, qsize * sizeof( ForzaPkt ), (uint64_t) tail_ptr, mbox_id );
 
   // forza_zone_barrier(GLOBAL_ACTORS+1);
   barrier( MY_ACTOR );

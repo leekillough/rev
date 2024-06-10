@@ -1,3 +1,4 @@
+#include "RevCPU.h"
 #include "RevCommon.h"
 #include "RevCore.h"
 #include "RevMem.h"
@@ -44,8 +45,7 @@ EcallStatus RevCore::EcallLoadAndParseString( uint64_t straddr, std::function<vo
         HartToExecID,
         MemOp::MemOpREAD,
         true,
-        [=]( const MemReq& req ) { this->MarkLoadComplete( req ); }
-      };
+        [=]( const MemReq& req ) { this->MarkLoadComplete( req ); } };
       LSQueue->insert( req.LSQHashPair() );
       mem->ReadVal( HartToExecID, straddr + EcallState.string.size(), EcallState.buf.data(), req, RevFlag::F_NONE );
       EcallState.bytesRead = 1;
@@ -4031,60 +4031,78 @@ EcallStatus RevCore::ECALL_forza_zen_credit_release() {
   return EcallStatus::SUCCESS;
 }
 
-// 4005, forza_zen_setup(uint64_t addr, size_t size, uint64_t tailptr);
+// 4005, forza_zen_setup(uint64_t addr, size_t size, uint64_t tailptr, uint64_t mbox_id);
 EcallStatus RevCore::ECALL_forza_zen_setup() {
   uint64_t addr    = (uint64_t) RegFile->GetX<uint64_t>( RevReg::a0 );
   size_t   size    = (size_t) RegFile->GetX<size_t>( RevReg::a1 );
   uint64_t tailptr = (uint64_t) RegFile->GetX<uint64_t>( RevReg::a2 );
+  uint64_t mbox_id = (uint64_t) RegFile->GetX<uint64_t>( RevReg::a3 );
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: forza_zen_setup called by thread %" PRIu32 " on hart %" PRIu32 "\n", GetActiveThreadID(), HartToExecID
   );
+
+  // This value should be a construction of the following
+  //   bits[63:60] - Application ID (currently fixed to 0)
+  //   bits[59:8] - Reserved (expect to use some of these in the future for a logical/physical HART ID mapping)
+  //   bits[7:0] - Mailbox ID being setup
+  mbox_id &= 0x0FFUL;
+  uint64_t app_mbox_id      = mbox_id;
 
   // TODO: Forza library will pass the memory base address and size allocated by each actor to inform/initialize zen.
 
   SST::Forza::zopEvent* zev = new SST::Forza::zopEvent();
 
-  uint8_t msg_id            = 0;
+  if( zNicMsgIds == nullptr ) {
+    output->fatal( CALL_INFO, -2, "null msg ids\n" );
+  }
 
-  uint8_t  SrcZCID          = (uint8_t) ( zNic->getEndpointType() );
-  uint8_t  SrcPCID          = (uint8_t) ( zNic->getPCID( zNic->getZoneID() ) );
-  uint16_t SrcHart          = (uint16_t) HartToExecID;
+  if( zNic == nullptr )
+    output->fatal( CALL_INFO, -3, "null znic\n" );
+
+  uint16_t msg_id  = zNicMsgIds->getMsgId();
+
+  uint8_t  SrcZCID = (uint8_t) ( zNic->getEndpointType() );
+  uint8_t  SrcPCID = (uint8_t) ( zNic->getPCID( zNic->getZoneID() ) );
+  uint16_t SrcHart = (uint16_t) HartToExecID;
 
   output->verbose(
     CALL_INFO,
     0,
     0,
     "ECALL_forza_zen_setup: addr = 0x%" PRIx64 ", size = %" PRIu64 ", tailptr = 0x%" PRIx64 ", SrcZCID = %" PRIu8
-    ", SrcPCID = %" PRIu8 ", SrcHart = %" PRIu16 "\n",
+    ", SrcPCID = %" PRIu8 ", SrcHart = %" PRIu16 ", ID=%" PRIu16 "\n",
     addr,
     (uint64_t) size,
     tailptr,
     SrcZCID,
     SrcPCID,
-    SrcHart
+    SrcHart,
+    msg_id
   );
 
-  // set all the fields : FIXME
+  // set all the fields
   zev->setType( SST::Forza::zopMsgT::Z_MSG );
   zev->setID( msg_id );
   zev->setOpc( SST::Forza::zopOpc::Z_MSG_ZENSET );
   zev->setSrcZCID( SrcZCID );
   zev->setSrcPCID( SrcPCID );
   zev->setSrcHart( SrcHart );
+  zev->setAppID( 0 );  // FIXME: should come from somewhere else
+  zev->setPktRes( (uint8_t) mbox_id );
 
-  // set the payload, do actual send setup thing : FIXME
+  // set the payload, do actual send setup
   // read ZEN::processSetupMsgs
   std::vector<uint64_t> payload;
-  payload.push_back( 0x00ull );  // acs_pair = payload[0]
-  payload.push_back( addr );     // mem_start_addr = payload[1]
-  payload.push_back( size );     // size = payload[3]
-  payload.push_back( tailptr );  // TODO: FIXME scratch_tail = payload[4]
+  payload.push_back( 0x00ull );      // acs_pair = payload[0]
+  payload.push_back( addr );         // mem_start_addr = payload[1]
+  payload.push_back( size );         // size = payload[2]
+  payload.push_back( tailptr );      // scratch_tail = payload[3]
+  payload.push_back( app_mbox_id );  // see def above; payload[4]
   zev->setPayload( payload );
 
   if( !zNic ) {
     output->fatal( CALL_INFO, -1, "Error : zNic is nullptr\n" );
   }
-  // output->fatal(CALL_INFO, -1, "Error : send not implemented\n" );
   zNic->send( zev, SST::Forza::zopCompID::Z_ZEN );
 
   return EcallStatus::SUCCESS;
