@@ -11,4 +11,5 @@
 *.out
 build/*
 *.asm
-forza-elts/*
+forza-elts/
+
