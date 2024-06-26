@@ -719,37 +719,6 @@ void RevCPU::processZOPQ() {
   }
 }
 
-void RevCPU::sendZQMThreadComplete( uint32_t ThreadID, uint32_t HartID ) {
-  output.verbose( CALL_INFO, 9, 0, "[FORZA][ZAP] Informing ZQM of completed thread: %d\n", ThreadID );
-#if 0
-  SST::Forza::zopEvent *zev = new SST::Forza::zopEvent();
-
-  // set all the fields
-  zev->setType(SST::Forza::zopMsgT::Z_TMIG);  // what is the message type?
-  zev->setNB(0);
-  zev->setID(HartID);
-  zev->setCredit(0);
-  zev->setOpc(SST::Forza::zopOpc::Z_TMIG_SELECT); // what is the opcode?
-  zev->setAppID(0);
-  zev->setDestZCID((uint8_t)(SST::Forza::zopCompID::Z_ZQM));
-  zev->setDestPCID((uint8_t)(zNic->getPCID(Zone)));
-  zev->setDestPrec((uint8_t)(Precinct));
-  zev->setSrcHart(HartID);
-  zev->setSrcZCID((uint8_t)(zNic->getEndpointType()));
-  zev->setSrcPCID((uint8_t)(zNic->getPCID(zNic->getZoneID())));
-  zev->setSrcPrec((uint8_t)(zNic->getPrecinctID()));
-
-  // build the payload
-  std::vector<uint64_t> Payload;
-  Payload.push_back((uint64_t)(ThreadID));
-
-  zev->setPayload(Payload);
-
-  zNic->send(zev, SST::Forza::zopCompID::Z_ZQM,
-             zNic->getPCID(Zone), Precinct);
-#endif
-}
-
 void RevCPU::handleZOPMessageRZA( Forza::zopEvent* zev ) {
   output.verbose( CALL_INFO, 9, 0, "[FORZA][RZA] Injecting ZOP Message into ZIQ\n" );
   if( zev == nullptr ) {
@@ -1403,9 +1372,6 @@ void RevCPU::HandleThreadStateChangesForProc( uint32_t ProcID ) {
     case ThreadState::DONE:
       // This thread has completed execution
       output.verbose( CALL_INFO, 8, 0, "Thread %" PRIu32 " on Core %" PRIu32 " is DONE\n", ThreadID, ProcID );
-      if( zNic ) {
-        sendZQMThreadComplete( ThreadID, Procs[ProcID]->GetHartFromThreadID( ThreadID ) );
-      }
       CompletedThreads.emplace( ThreadID, std::move( Thread ) );
       break;
 

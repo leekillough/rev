@@ -290,6 +290,9 @@ public:
   ///< RevCore: Returns true if there are any IdleHarts
   bool HasIdleHart() const { return IdleHarts.any(); }
 
+  ///< RevCore: Inform the ZQM that a thread is done
+  void sendZQMThreadComplete( uint32_t ThreadID, uint32_t HartID );
+
 private:
   bool           Halted      = false;  ///< RevCore: determines if the core is halted
   bool           Stalled     = false;  ///< RevCore: determines if the core is stalled on instruction fetch
@@ -320,8 +323,8 @@ private:
   std::function<uint32_t()> GetNewThreadID;
 
   // If a given assigned thread experiences a change of state, it sets the corresponding bit
-  std::vector<std::unique_ptr<RevThread>>
-    ThreadsThatChangedState{};  ///< RevCore: used to signal to RevCPU that the thread assigned to HART has changed state
+  std::vector<std::unique_ptr<RevThread>> ThreadsThatChangedState{
+  };  ///< RevCore: used to signal to RevCPU that the thread assigned to HART has changed state
 
   SST::Output* const             output;       ///< RevCore: output handler
   std::unique_ptr<RevFeature>    featureUP{};  ///< RevCore: feature handler
@@ -330,8 +333,8 @@ private:
   RevCoreStats                   StatsTotal{};  ///< RevCore: collection of total performance stats
   std::unique_ptr<RevPrefetcher> sfetch{};      ///< RevCore: stream instruction prefetcher
 
-  std::shared_ptr<std::unordered_multimap<uint64_t, MemReq>>
-    LSQueue{};  ///< RevCore: Load / Store queue used to track memory operations. Currently only tracks outstanding loads.
+  std::shared_ptr<std::unordered_multimap<uint64_t, MemReq>> LSQueue{
+  };  ///< RevCore: Load / Store queue used to track memory operations. Currently only tracks outstanding loads.
   TimeConverter* timeConverter{};  ///< RevCore: Time converter for RTC
 
   RevRegFile* RegFile        = nullptr;        ///< RevCore: Initial pointer to HartToDecodeID RegFile
