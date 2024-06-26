@@ -1885,6 +1885,8 @@ bool RevCore::ClockTick( SST::Cycle_t currentCycle ) {
       if( zNic ) {
         sendZQMThreadComplete( Harts.at( HartToDecodeID )->GetAssignedThreadID(), HartToDecodeID );
       }
+      // TODO: Is using HartToDecodeID correct?  Everything else here is
+      // using HartToExecID
       std::unique_ptr<RevThread> ActiveThread = PopThreadFromHart( HartToDecodeID );
       ActiveThread->SetState( ThreadState::DONE );
       HartsClearToExecute[HartToExecID] = false;
@@ -2121,7 +2123,6 @@ void RevCore::UpdateStatusOfHarts() {
   return;
 }
 
-// TODO: Clean me up
 void RevCore::sendZQMThreadComplete( uint32_t ThreadID, uint32_t HartID ) {
   output->verbose( CALL_INFO, 2, 0, "[FORZA][ZAP][HART=%u] Informing ZQM of completed thread: %u\n", HartID, ThreadID );
 #if 0
