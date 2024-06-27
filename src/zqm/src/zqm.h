@@ -73,6 +73,7 @@ namespace SST::Forza{
     };
 
 
+#if 1
     class ZqmAidStateTableRow {
         // Will need functionality for updating read/write pointers
         /**
@@ -132,7 +133,7 @@ namespace SST::Forza{
 
         bool validateMemBuffSize();
     }; // end class ZqmAidStateTableRow
-
+#endif
 
     class ZQM : public SST::Component{
     public:
@@ -194,49 +195,54 @@ namespace SST::Forza{
         //bool handleNetworkEvent(int i);
 
         void processMessagingMsgs(); // invoked by clock handler
-        void processMessagingZqmSet(SST::Forza::zopEvent *event);
+        //void processMessagingZqmSet(SST::Forza::zopEvent *event);
         void processMessagingHartDone(SST::Forza::zopEvent *event);
         void processMessagingZqmMboxSet(SST::Forza::zopEvent *event);
         void sendMessagingAck(SST::Forza::zopEvent *event);
 
         void processRzaMsgs();  // invoked by clock handler
-        void processRzaThreadDataReturn(SST::Forza::zopEvent *ev);
+        //void processRzaThreadDataReturn(SST::Forza::zopEvent *ev);
+        
+        // tdysart, 27-june-2024 removing thread management for now
+#if 0
         void sendThreadToRza(SST::Forza::zopEvent *thread);
         void getThreadFromRza(uint32_t app_id);
         void sendThreadToZap(SST::Forza::zopEvent *thread);
-
+#endif
 
         /**
          * Read and process messages from the incoming_threads_vec
          *
          */
-        void processIncomingThreadsMsgs(); //invoked by clock handler
+        // tdysart, 27-june-2024 removing thread management for now
+        //void processIncomingThreadsMsgs(); //invoked by clock handler
 
         /**
          * @param thread
          * @return true if dest zap/hart filled, false otherwise
          */
-        bool selectRandomDestHart(SST::Forza::zopEvent *thread);
-        void selectSequentialDestHart(SST::Forza::zopEvent *thread, ZqmAidStateTableRow *aid_state);
+        // tdysart, 27-june-2024 removing thread management for now
+        //bool selectRandomDestHart(SST::Forza::zopEvent *thread);
+        //void selectSequentialDestHart(SST::Forza::zopEvent *thread, ZqmAidStateTableRow *aid_state);
 
         /**
          * Get the pointer to the state table for the given AID
          * @param aid - application ID
          * @return pointer to state table row; nullptr if not found (also a fatal error)
          */
-        ZqmAidStateTableRow* getAidStateTableRow(uint32_t aid);
+        // ZqmAidStateTableRow* getAidStateTableRow(uint32_t aid);
 
         /**
          * If a hart is empty, try to fill it (mostly for migrating thread applications)
          */
-        void fillEmptyHart();
+        // tdysart, 27-june-2024 removing thread management for now
+        //void fillEmptyHart();
 
         // private data members
         SST::Output output;             ///< ZQM: SST output handler
-        SST::Interfaces::SimpleNetwork*     m_linkControl;
 
         // the uint32_t is the aid for the row
-        std::map<uint32_t, ZqmAidStateTableRow*> aid_state_table;
+        //std::map<uint32_t, ZqmAidStateTableRow*> aid_state_table;
 
         // MZop ACKs and tracking table for in-flight mem ops...will
         // have to do both reads and writes to memory...
@@ -251,7 +257,6 @@ namespace SST::Forza{
 
         zopMsgID *zoneMsgID;            ///< ZQM: manually allocated message IDs
 
-        uint8_t msg_id;
         std::string my_name;
         SST::Forza::zopAPI* zone_nic;
         bool sent;
@@ -322,11 +327,9 @@ namespace SST::Forza{
         // TODO: Look at just returning the metadata lookup pair.
         }
 
-
-
-
         // Functions for simple loopback testing
         // Remove in the near future.
+#if 0
         void doSimpleMsg();
         void sendDummyThread();
         void sendHartDone();
@@ -335,6 +338,8 @@ namespace SST::Forza{
         void configMtAndRunQueue();
         void sendHartDoneForRzaTest();
         void sendLdmaPacket();
+#endif
+
     }; // class SST::ZQM
 } // namespace SST::Forza
 
