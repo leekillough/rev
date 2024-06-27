@@ -74,18 +74,18 @@ ZQM::ZQM(ComponentId_t id, Params& params)
     output.verbose(CALL_INFO, 9, 0, "ZQM[%s] Registering clock with frequency=%s\n",
                    getName().c_str(), clockFreq.c_str());
 
-    m_zop_iface = loadUserSubComponent<SST::Forza::zopAPI>( "zone_nic" );
-    m_zop_iface->setMsgHandler(new Event::Handler<ZQM>(this, &ZQM::handleIncomingZOP));
-    m_zop_iface->setEndpointType(zopCompID::Z_ZQM);
+    zone_nic = loadUserSubComponent<SST::Forza::zopAPI>( "zone_nic" );
+    zone_nic->setMsgHandler(new Event::Handler<ZQM>(this, &ZQM::handleIncomingZOP));
+    zone_nic->setEndpointType(zopCompID::Z_ZQM);
     //m_linkControl = loadUserSubComponent<SST::Interfaces::SimpleNetwork>( "rtrLink", ComponentInfo::SHARE_NONE, 1 );
     // The parameter finds below are using the same names as RevCPU.h
     num_zaps = params.find<unsigned>("numCores", 1);
     num_harts = params.find<uint16_t>("numHarts", 4);
     precinct_id = params.find<unsigned>("precinctId", 0);
     zone_id = params.find<unsigned>("zoneId", 0);
-    m_zop_iface->setNumHarts(num_harts);
-    m_zop_iface->setPrecinctID(precinct_id);
-    m_zop_iface->setZoneID(zone_id);
+    zone_nic->setNumHarts(num_harts);
+    zone_nic->setPrecinctID(precinct_id);
+    zone_nic->setZoneID(zone_id);
 
     // Create and init matrix of HART status
     zap_hart_status.resize(num_zaps);
@@ -97,6 +97,13 @@ ZQM::ZQM(ComponentId_t id, Params& params)
 
     my_name = "Precinct[" + std::to_string(precinct_id) + "].Zone[" + std::to_string(zone_id) + "].ZQM";
     output.verbose(CALL_INFO, 1, 0, "%s constructed\n", my_name.c_str());
+
+    zoneMsgID = new zopMsgID();
+    if( zoneMsgID->getNumFree() != Z_MAX_MSG_IDS ){
+        output.fatal(CALL_INFO, -1,
+                    "Insufficient message IDs allocated in constructor\n");
+    }
+
     // register with SST
     registerAsPrimaryComponent();
 }
@@ -107,12 +114,12 @@ ZQM::~ZQM()
 
 void ZQM::init(unsigned int phase) {
     output.verbose(CALL_INFO, 1, 0, "Init %s\n", my_name.c_str());
-    m_zop_iface->init(phase);
+    zone_nic->init(phase);
 }
 
 void ZQM::setup() {
     output.verbose(CALL_INFO, 1, 0, "Setup %s\n", my_name.c_str());
-	m_zop_iface->setup();
+	zone_nic->setup();
 }
 
 void ZQM::complete(unsigned int phase) {
@@ -147,7 +154,7 @@ void ZQM::handleIncomingZOP(SST::Event *event)
     if (ev->getType() == SST::Forza::zopMsgT::Z_RESP) {
         rza_responses.push_back(ev);
     } else if (ev->getType() == SST::Forza::zopMsgT::Z_MSG) {
-        setup_reqs.push_back(ev);
+        setup_reqs.push(ev);
     } else if (ev->getType() == SST::Forza::zopMsgT::Z_TMIG){
         incoming_threads_vec.push_back(ev);
     } else{
@@ -208,7 +215,7 @@ void ZQM::sendThreadToRza(SST::Forza::zopEvent *thread)
     // Send Zop
     output.verbose(CALL_INFO, 1, 0, "%s: Sending SDMA Zop to RZA; msg_id=%u\n",
                    my_name.c_str(), (uint32_t)store_thread_zop->getID());
-    m_zop_iface->send(store_thread_zop, zopCompID::Z_RZA);
+    zone_nic->send(store_thread_zop, zopCompID::Z_RZA);
     auto iter = outstanding_rza_reqs.find(store_thread_zop->getID());
     if (iter == outstanding_rza_reqs.end()) {
         outstanding_rza_reqs.insert(std::pair<uint8_t, std::pair<uint64_t,uint64_t>>(store_thread_zop->getID(),
@@ -263,7 +270,7 @@ void ZQM::getThreadFromRza(uint32_t app_id)
     // Send Zop
     output.verbose(CALL_INFO, 1, 0, "%s: Sending LDMA Zop to RZA; msg_id=%u\n",
                    my_name.c_str(), (uint32_t)load_thread_zop->getID());
-    m_zop_iface->send(load_thread_zop, zopCompID::Z_RZA);
+    zone_nic->send(load_thread_zop, zopCompID::Z_RZA);
     auto iter = outstanding_rza_reqs.find(load_thread_zop->getID());
     if (iter == outstanding_rza_reqs.end()){
         outstanding_rza_reqs.insert(std::pair<uint8_t,std::pair<uint64_t,uint64_t>>(load_thread_zop->getID(),
@@ -279,39 +286,43 @@ void ZQM::getThreadFromRza(uint32_t app_id)
 void ZQM::processRzaMsgs() {
     /* Assumes that the Zop.Type field has already been checked via handleIncomingZop */
     for (auto &resp: rza_responses) {
-    	// Let's make sure the response was expected first....
-        auto iter = outstanding_rza_reqs.find(resp->getID());
-        if (iter == outstanding_rza_reqs.end()){
-            output.fatal(CALL_INFO, 1, "%s: Received RZA load response with an invalid ID; id=%u\n",
-                        my_name.c_str(), (uint32_t) resp->getID());
-        }
+        if (resp->getSrcZCID() <= (uint8_t)SST::Forza::zopCompID::Z_ZAP7){
+            handleScratchpadAck(resp->getID());
+        } else {
+            // Let's make sure the response was expected first....
+            auto iter = outstanding_rza_reqs.find(resp->getID());
+            if (iter == outstanding_rza_reqs.end()){
+                output.fatal(CALL_INFO, 1, "%s: Received RZA load response with an invalid ID; id=%u\n",
+                            my_name.c_str(), (uint32_t) resp->getID());
+            }
 
-        // Should have 4 valid types
-        switch (resp->getOpc()) {
-            case zopOpc::Z_RESP_LR: { // valid data (should be a load dma response)
-                output.verbose(CALL_INFO, 1, 0, "%s: Found msgId=%u (load response) in outstanding_rza_reqs map\n",
-                               my_name.c_str(), (uint32_t) resp->getID());
-                processRzaThreadDataReturn(resp);
-                break;
+            // Should have 4 valid types
+            switch (resp->getOpc()) {
+                case zopOpc::Z_RESP_LR: { // valid data (should be a load dma response)
+                    output.verbose(CALL_INFO, 1, 0, "%s: Found msgId=%u (load response) in outstanding_rza_reqs map\n",
+                                my_name.c_str(), (uint32_t) resp->getID());
+                    processRzaThreadDataReturn(resp);
+                    break;
+                }
+                case zopOpc::Z_RESP_LEXCP: // load exception
+                    output.output("[ERROR] %s: Received a RZA load exception\n", my_name.c_str());
+                    // TODO: Make fatal?
+                    break;
+                case zopOpc::Z_RESP_SACK: { // store ack (should be a store dma ack)
+                    output.verbose(CALL_INFO, 1, 0, "%s: Found msgId=%u (store ack) in outstanding_rza_reqs map\n",
+                                my_name.c_str(), (uint32_t) resp->getID());
+                    break;
+                }
+                case zopOpc::Z_RESP_SEXCP: // store exception
+                    output.output("[ERROR] %s: Received a RZA store exception\n", my_name.c_str());
+                    // TODO: Make fatal?
+                    break;
+                default:
+                    output.fatal(CALL_INFO, 1, "%s: Received an invalid RZA response type; opcode=%u\n",
+                                my_name.c_str(), (uint32_t) resp->getOpc());
             }
-            case zopOpc::Z_RESP_LEXCP: // load exception
-                output.output("[ERROR] %s: Received a RZA load exception\n", my_name.c_str());
-                // TODO: Make fatal?
-                break;
-            case zopOpc::Z_RESP_SACK: { // store ack (should be a store dma ack)
-                output.verbose(CALL_INFO, 1, 0, "%s: Found msgId=%u (store ack) in outstanding_rza_reqs map\n",
-                               my_name.c_str(), (uint32_t) resp->getID());
-                break;
-            }
-            case zopOpc::Z_RESP_SEXCP: // store exception
-                output.output("[ERROR] %s: Received a RZA store exception\n", my_name.c_str());
-                // TODO: Make fatal?
-                break;
-            default:
-                output.fatal(CALL_INFO, 1, "%s: Received an invalid RZA response type; opcode=%u\n",
-                             my_name.c_str(), (uint32_t) resp->getOpc());
+            outstanding_rza_reqs.erase(iter);
         }
-        outstanding_rza_reqs.erase(iter);
         delete resp;
     }
     rza_responses.clear();
@@ -349,12 +360,16 @@ void ZQM::sendThreadToZap(SST::Forza::zopEvent *thread)
     }
     output.verbose(CALL_INFO, 1, 0, "%s: Sending thread to ZAP=%u, HART=%u\n",
                    my_name.c_str(), dest_zap, dest_hart);
-    m_zop_iface->send(thread, static_cast<SST::Forza::zopCompID>(dest_zap)); // TODO: UNCOMMENT IN FULL ZONE SIM
+    zone_nic->send(thread, static_cast<SST::Forza::zopCompID>(dest_zap)); // TODO: UNCOMMENT IN FULL ZONE SIM
 }
 
 void ZQM::processMessagingMsgs()
 {
-    for (auto &event : setup_reqs) {
+    if (setup_reqs.empty())
+        return;
+
+    for ( unsigned i = 0; i < process_per_cycle; i++ ) {
+        auto *event = setup_reqs.front();
         output.verbose(CALL_INFO, 1, 0, "%s: Processing setup packet for zqm\n", my_name.c_str());
         switch(event->getOpc()){
             case SST::Forza::zopOpc::Z_MSG_ZQMSET:
@@ -365,15 +380,21 @@ void ZQM::processMessagingMsgs()
                 processMessagingHartDone(event);
                 //sendMessagingAck(event);
                 break;
+            case SST::Forza::zopOpc::Z_MSG_ZQMMBOXSET:
+                processMessagingZqmMboxSet(event);
+                break;
+                
                 // TODO: Add ZQM Free AID (or equivalent)
                 // TODO: Add ZQM Set HART (needed for initial program thread)
             default:
                 output.fatal(CALL_INFO, 1, "%s: Received an invalid messaging packet; opcode = 0x%x, id=%u\n",
                              my_name.c_str(), (uint32_t) event->getOpc(), (uint32_t)event->getID());
         }
+        setup_reqs.pop();
         delete event;
+        if ( setup_reqs.empty() )
+            break;
     }
-    setup_reqs.clear();
 }
 
 void ZQM::processMessagingZqmSet(SST::Forza::zopEvent *event)
@@ -432,6 +453,87 @@ void ZQM::processMessagingHartDone(SST::Forza::zopEvent *event)
     }
 }
 
+void ZQM::processMessagingZqmMboxSet(SST::Forza::zopEvent *ev)
+{
+    uint64_t hart_id = ev->getSrcHart();
+    uint64_t zap_id = ev->getSrcZCID();
+    std::vector<uint64_t> payload = ev->getPayload();
+
+    // Sanity check that payload length is correct
+    if( (payload.size() < 5) )
+    output.fatal(CALL_INFO, -1, "Invalid ZQM MBOX setup packet");
+
+    // Changed the sanity checks to fatal errors, so no need for a NACK right now
+    // Keeping in case we change them from fatal errors
+    /*
+    sendNACK(ev->getSrcHart(),
+            ev->getSrcZCID(),
+            ev->getSrcPCID(),
+            ev->getSrcPrec(),
+            ev->getID(),
+            zone_nic);
+    */
+
+    // TODO: Specify payload format
+    uint64_t acs_pair = payload[0];
+    uint64_t mem_start_addr = payload[1];
+    uint64_t size = payload[2];
+    // uint64_t mem_end_addr = mem_start_addr + size - 1;
+    uint64_t mem_end_addr = mem_start_addr + size;
+    uint64_t scratch_tail = payload[3];
+    uint8_t app_id = (uint8_t)((payload[4] >> 60) & Z_MASK_APPID);
+    uint8_t mbx_id = (uint8_t)(payload[4] & Z_MASK_PKTRES);
+
+    // Need to have zap, hart, logical hart, app id, mbox id
+    // Let's make a pair that is {AppID, Zap, Hart}, MboxId
+    uint64_t pair1 = getMetadataHash(ev, false);
+    std::pair<uint64_t, uint64_t> hart_mbox_id = std::make_pair(pair1, mbx_id);
+    // Ensure we don't already have this pair
+    if (hart_metadata_table.find(hart_mbox_id) != hart_metadata_table.end())
+    output.fatal(CALL_INFO, -1, "Found a matching Hart/MBox pair");
+
+
+    hart_metadata_table[hart_mbox_id] = new ZqmMailboxMetadata(acs_pair, mem_start_addr,
+                                                    mem_end_addr, size,
+                                                    scratch_tail, app_id, mbx_id);
+
+    sendACK(ev, zone_nic);
+    
+    output.verbose(CALL_INFO, 9, 0, "ZEN Setup packet; payload size %zu for zap, hart, mbox %" PRIu64 ", %" PRIu64 ", %" PRIu8 "\n",
+                payload.size(), zap_id, hart_id, mbx_id);
+
+    // Need to set the scratch tail to the start of the memory buffer
+    // going to assume we can get a msg_id
+    uint16_t msg_id = zoneMsgID->getMsgId();
+    std::vector<uint64_t> out_payload;
+    out_payload.push_back(0);
+    out_payload.push_back(scratch_tail);
+    out_payload.push_back(mem_start_addr);
+    sendMsgToScratchpad(ev, out_payload, msg_id, true);
+
+    output.verbose(CALL_INFO, 9, 0, "Zen Setup, HartID %" PRIu64 ", start addr 0x%" PRIx64 ", end addr 0x%" PRIx64 "\n",
+                hart_id, mem_start_addr, mem_end_addr);
+    output.verbose(CALL_INFO, 9, 0, "Zen Setup-Metadata table %" PRIu64 ", start addr 0x%" PRIx64 ", end addr 0x%" PRIx64 "\n",
+                hart_id, hart_metadata_table[hart_mbox_id]->mem_head,
+                hart_metadata_table[hart_mbox_id]->mem_tail);
+}
+
+void ZQM::sendACK(SST::Forza::zopEvent *ev, bool to_zone_noc)
+{
+    SST::Forza::zopEvent *ack = new SST::Forza::zopEvent();
+    ack->setType(SST::Forza::zopMsgT::Z_MSG);
+    ack->setOpc(SST::Forza::zopOpc::Z_MSG_ACK);
+    setMeAsZopSrc(ack);
+    setDestFromSrcInfo(ack, ev);
+    ack->setID(ev->getID());
+    ack->encodeEvent();
+    //auto iface = (to_zone_noc) ? zone_nic : m_prec_iface;
+    auto iface = zone_nic;
+    iface->send(ack, (zopCompID)ack->getDestZCID(), (zopPrecID)ack->getDestPCID(), (uint16_t)ack->getDestPrec());
+    output.verbose(CALL_INFO, 9, 0, "ZQM %s sending ACK with msg_id=%" PRIu16 " to ZCID=%" PRIu8 "\n",
+                    getName().c_str(), ev->getID(), ack->getDestZCID());
+}
+
 void ZQM::sendMessagingAck(SST::Forza::zopEvent *event)
 {
     // Create Messaging ACK zop
@@ -449,9 +551,45 @@ void ZQM::sendMessagingAck(SST::Forza::zopEvent *event)
     ack_msg->setID(event->getID());
     ack_msg->setAppID(event->getAppID());
 
-    m_zop_iface->send(ack_msg, static_cast<zopCompID>(ack_msg->getDestZCID()));
+    zone_nic->send(ack_msg, static_cast<zopCompID>(ack_msg->getDestZCID()));
 
     // Caller is responsible for deleting the event
+}
+
+void ZQM::sendMsgToScratchpad(SST::Forza::zopEvent *ev, std::vector<uint64_t> payload, uint16_t msg_id, bool destsp_is_src)
+{
+  auto *spd_msg = new SST::Forza::zopEvent();
+  spd_msg->setType(SST::Forza::zopMsgT::Z_MZOP);
+  spd_msg->setOpc(SST::Forza::zopOpc::Z_MZOP_SCSD);
+  spd_msg->setID(msg_id);
+  setMeAsZopSrc(spd_msg);
+  if (destsp_is_src)
+    setDestFromSrcInfo(spd_msg, ev);
+  else
+    setDestFromDestInfo(spd_msg, ev);
+  spd_msg->setPayload(payload);
+  spd_msg->encodeEvent();
+  output.verbose(CALL_INFO, 9, 0, "ZQM Send message to scratchpad with msg_id=%" PRIu16 " and addr=0x%" PRIx64 "\n", 
+                 msg_id, payload.at(1));
+  for (auto i : payload)
+    output.verbose(CALL_INFO, 9, 0, "\t ZQM: Payload=0x%" PRIx64 "\n", i);
+  zone_nic->send(spd_msg, (zopCompID)spd_msg->getDestZCID());
+  // An ACK is expected - track it
+  outstanding_spad_reqs.push_back(msg_id);
+}
+
+void ZQM::handleScratchpadAck(uint16_t msg_id)
+{
+  output.verbose(CALL_INFO, 9, 0, "ZQM %s processing scratchpad ack with id=%" PRIu16 "\n",
+                 getName().c_str(), msg_id);
+  size_t start_sz = outstanding_spad_reqs.size();
+  outstanding_spad_reqs.erase(std::remove_if(outstanding_spad_reqs.begin(), 
+                                             outstanding_spad_reqs.end(), 
+                                             [msg_id](uint16_t x){return x == msg_id;}),
+                              outstanding_spad_reqs.end());
+  if (start_sz == outstanding_spad_reqs.size())
+    //output.fatal(CALL_INFO, -1, "Vector did not change size - no matching ack ID found\n");
+    output.verbose(CALL_INFO, 9, 0, "[ERROR] Vector did not change size - no matching ack ID found\n");
 }
 
 // Going to use early returns in this function - its ugly.
@@ -676,7 +814,7 @@ void ZQM::doSimpleMsg()
 
     // Send Zop
     output.verbose(CALL_INFO, 1, 0, "Sending dummy MSG type; msg_id=%u\n", (uint32_t)dummy_zop1->getID());
-    m_zop_iface->send(dummy_zop1, zopCompID::Z_ZQM);
+    zone_nic->send(dummy_zop1, zopCompID::Z_ZQM);
 #endif
 
 #if 1
@@ -704,7 +842,7 @@ void ZQM::doSimpleMsg()
 
     // Send Zop
     output.verbose(CALL_INFO, 1, 0, "Sending ZQM SETUP MSG; msg_id=%u\n", (uint32_t)dummy_zop2->getID());
-    m_zop_iface->send(dummy_zop2, zopCompID::Z_ZQM);
+    zone_nic->send(dummy_zop2, zopCompID::Z_ZQM);
 #endif
 }
 
@@ -729,7 +867,7 @@ void ZQM::sendDummyThread()
     payload.push_back(0x0cafe);
     thread->setPayload(payload);
     output.verbose(CALL_INFO, 1, 0, "Sending THREAD; msg_id=%u\n", (uint32_t)thread->getID());
-    m_zop_iface->send(thread, zopCompID::Z_ZQM);
+    zone_nic->send(thread, zopCompID::Z_ZQM);
 }
 
 void ZQM::sendHartDone()
@@ -755,7 +893,7 @@ void ZQM::sendHartDone()
 
     // Send Zop
     output.verbose(CALL_INFO, 1, 0, "Sending ZQM HART DONE; msg_id=%u\n", (uint32_t)dummy_zop2->getID());
-    m_zop_iface->send(dummy_zop2, zopCompID::Z_ZQM);
+    zone_nic->send(dummy_zop2, zopCompID::Z_ZQM);
 }
 
 void ZQM::configMTApp()
@@ -784,7 +922,7 @@ void ZQM::configMTApp()
 
     // Send Zop
     output.verbose(CALL_INFO, 1, 0, "Sending ZQM SETUP MSG; msg_id=%u\n", (uint32_t)mtconfig_pkt->getID());
-    m_zop_iface->send(mtconfig_pkt, zopCompID::Z_ZQM);
+    zone_nic->send(mtconfig_pkt, zopCompID::Z_ZQM);
 }
 
 void ZQM::sendMtThread()
@@ -808,7 +946,7 @@ void ZQM::sendMtThread()
     payload.push_back(0x0cafe);
     thread->setPayload(payload);
     output.verbose(CALL_INFO, 1, 0, "Sending MIGR THREAD; msg_id=%u\n", (uint32_t)thread->getID());
-    m_zop_iface->send(thread, zopCompID::Z_ZQM);
+    zone_nic->send(thread, zopCompID::Z_ZQM);
 }
 
 void ZQM::configMtAndRunQueue()
@@ -837,7 +975,7 @@ void ZQM::configMtAndRunQueue()
 
     // Send Zop
     output.verbose(CALL_INFO, 1, 0, "Sending ZQM SETUP MSG; msg_id=%u\n", (uint32_t)mtconfig_pkt->getID());
-    m_zop_iface->send(mtconfig_pkt, zopCompID::Z_ZQM);
+    zone_nic->send(mtconfig_pkt, zopCompID::Z_ZQM);
 }
 
 void ZQM::sendHartDoneForRzaTest() {
@@ -862,7 +1000,7 @@ void ZQM::sendHartDoneForRzaTest() {
 
     // Send Zop
     output.verbose(CALL_INFO, 1, 0, "Sending ZQM HART DONE; msg_id=%u\n", (uint32_t)dummy_zop2->getID());
-    m_zop_iface->send(dummy_zop2, zopCompID::Z_ZQM);
+    zone_nic->send(dummy_zop2, zopCompID::Z_ZQM);
 }
 
 void ZQM::sendLdmaPacket() {
@@ -885,7 +1023,7 @@ void ZQM::sendLdmaPacket() {
     payload.push_back(0x0cafe);
     thread->setPayload(payload);
     output.verbose(CALL_INFO, 1, 0, "Sending Load Response packet; msg_id=%u\n", (uint32_t)thread->getID());
-    m_zop_iface->send(thread, zopCompID::Z_ZQM);
+    zone_nic->send(thread, zopCompID::Z_ZQM);
 }
 
 

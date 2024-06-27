@@ -16,38 +16,7 @@
 
 namespace SST::Forza{
 
-  // --------------------------------------------
-  // ZENStatus
-  // --------------------------------------------
-  enum ZENStatus : uint8_t {
-    UNPROCESSED         = 0x00,
-    RZA_ADDR_ASSIGNED   = 0x01,
-    MZOP_SENT           = 0x02,
-    MZOP_ACK_PROCESSED  = 0x03,
-    DONE                = 0x04,
-    RZA_ADDR_ERROR      = 0x05,
-  };
-
-  // --------------------------------------------
-  // ZENEntry
-  // --------------------------------------------
-  class ZENEntry {
-  public:
-    SST::Forza::zopEvent *msg;
-    ZENStatus status;
-    uint64_t tail;
-    std::vector<uint8_t> msg_ids;
-    uint64_t rza_start_addr;
-    bool from_zip;
-    ZENEntry(SST::Forza::zopEvent *m, ZENStatus s, bool src_zip) {
-      msg = m;
-      status = s;
-      tail = 0;
-      from_zip = src_zip;
-    }
-  };
-
-  // Modified version of ZENEntry above; this probably needs to be 
+  // This probably needs to be 
   // expanded if we're not using DMA (right now, I'm forcing the use
   // of DMA).  Might need to track my_id, parent_id, sequence_counter, 
   // originating zop
@@ -81,11 +50,10 @@ namespace SST::Forza{
     uint64_t mem_wr_ptr;  //used to send SDMA packets
     bool empty;
     uint64_t scratch_tail;
-    uint64_t credits;
     uint8_t app_id;
     uint8_t mbox_id;
     ZenMailboxMetadata(uint64_t acs, uint64_t mh, uint64_t mt, uint64_t ms, 
-                       uint64_t st, uint64_t c, uint8_t app, uint8_t mbox) :
+                       uint64_t st, uint8_t app, uint8_t mbox) :
       acs_pair(acs), 
       mem_head(mh), 
       mem_tail(mt), 
@@ -95,7 +63,6 @@ namespace SST::Forza{
       mem_wr_ptr(mh),      
       empty(true), 
       scratch_tail(st), 
-      credits(c),
       app_id(app),
       mbox_id(mbox)
       { /* empty constructor */}
@@ -195,6 +162,8 @@ namespace SST::Forza{
     void sendACK(SST::Forza::zopEvent *ev, bool to_zone_noc);
 
     /// ZEN: send a DMA store to the zone's RZA
+    // tdysart, 27-june-24: currently unused - zen isn't sending anything to memory
+#if 0 
     void sendSdmaToRza(ZenMailboxMetadata *mbox_info, SST::Forza::zopEvent *ev,
                        std::vector<uint64_t> store_payload, uint16_t msg_id,
                        uint64_t wr_addr);
@@ -202,23 +171,11 @@ namespace SST::Forza{
     void sendSdmaToRzaAsSequence(ZenMailboxMetadata *mbox_info, SST::Forza::zopEvent *ev,
                                  std::vector<uint64_t> store_payload, 
                                  std::vector<uint16_t> msg_ids, uint64_t wr_addr);
-
-    /// ZEN: send a DMA store to the zone's RZA
-    /* planning on deletion of this function
-    void sendMsgToRZADMA(uint64_t acs, uint64_t addr,
-                         std::vector<uint64_t> src_payload, uint8_t cur_msg_id,
-                         uint64_t hart_id, uint64_t queue_loc);
-    */
-
-    /// ZEN: send a normal store operation to the zone's RZA
-    /* planning on deletion of this function
-    void sendMsgToRZANonDMA(uint64_t acs, uint64_t addr, uint64_t src_payload,
-                            uint8_t cur_msg_id, uint64_t hart_id,
-                            uint64_t queue_loc);
-    */
+#endif
 
     /// ZEN: send message to scratchpad
-    void sendMsgToScratchpad(SST::Forza::zopEvent *ev, std::vector<uint64_t> payload, uint16_t msg_id, bool destsp_is_src);
+    // tdysart, 27-june-24: currently unused - zen isn't sending anything to scratchpad
+    //void sendMsgToScratchpad(SST::Forza::zopEvent *ev, std::vector<uint64_t> payload, uint16_t msg_id, bool destsp_is_src);
 
     /// ZEN: sends a scratchpad WRITE to the target ZAP device
     /* planning on deletion of this version
@@ -227,24 +184,13 @@ namespace SST::Forza{
                              uint64_t addr);
     */
 
-    /// ZEN: processes the egress queue
-    // Don't need for now
-    //void processEgressQueue();
-
-    /// ZEN: process the precinct egress queue
-    // Don't need for now
-    //void processPrecinctEgressQueue();
-
-    /// ZEN: process the zone egress queue
-    // Don't need for now
-    //void processZoneEgressQueue();
-
     /// ZEN: processes messages to perform writes to a ZAP:HART Scratchpad
-    // TODO: Update this
-    void notifyHARTScratchpad();
+    // tdysart, 27-june-24: currently unused - zen isn't sending anything to scratchpad
+    //void notifyHARTScratchpad();
 
     /// ZEN: handle incoming RZA messages
-    void handleIncomingRZAMsg();
+    // tdysart, 27-june-24: currently unused - zen isn't using rza yet
+    //void handleIncomingRZAMsg();
 
     /// ZEN: handle incoming ZOP messages (from zone NoC)
     void handleIncomingZOP(SST::Event *ev);
@@ -256,14 +202,14 @@ namespace SST::Forza{
     void helper_handleFromZoneMsgZop(SST::Forza::zopEvent *ev);
 
     /// ZEN: helper functions for zop types entering from precinct noc
-    void helper_handleFromPrecMsgZop(SST::Forza::zopEvent *ev);
+    // tdysart, 27-june-24: currently unused - zen shouldn't receive 
+    // messaging packets (as of now) from precinct noc
+    //void helper_handleFromPrecMsgZop(SST::Forza::zopEvent *ev);
 
     /// ZEN: processes incoming setup messages
-    void processSetupMsgs();
-
-    /// ZEN: process the ZEN credits
-    // Dropping these packets on the floor for now
-    //void processZAPCredits();
+    // tdysart, 27-june-24: currently unused - zen shouldn't receive 
+    // setup packets right now    
+    //void processSetupMsgs();
 
     /// ZEN: retrieves an RZA tail queue address
     int getRZATailQueue(uint64_t zap_id, uint64_t harts,
@@ -275,35 +221,14 @@ namespace SST::Forza{
     /// ZEN: retrieve the write ACS
     uint64_t  getWriteACS(uint64_t);
 
-    /// ZEN: preps to send the RZA an HZOP (really, a DMA MZOP)
-    // Don't need for now
-    //void prepSendRZAHZOP();
-
     /// ZEN: preps to send the RZA a STORE
-    void prepSendRZAStore();
-
-    /// ZEN: send HZOPs to the RZA - per comments, Broken
-    /*
-    void sendHZOPToRZA(uint64_t acs, uint64_t addr, uint64_t src_addr,
-                       uint64_t size, uint8_t cur_msg_id,
-                       uint64_t hart_id, uint64_t queue_loc);
-    */
-
-    /// ZEN: forwards a packet to the precinct ZIP device
-    // Comment out for now
-    //void forwardPktToZIP(Forza::zopEvent *ev);
-
-    /// ZEN: forwards a packet to a remote ZEN device
-    // Why needed? anything going to an external ZEN should go to
-    // the precinct crossbar (may need to know how that works)
-    //void forwardPktToExtZEN(Forza::zopEvent *ev);
-
-    /// ZEN: processes the zip message queue
-    // Not using for now
-    //void processZIPQueue();
+    // tdysart, 27-june-24: currently unused - zen shouldn't receive 
+    // setup packets right now    
+    //void prepSendRZAStore();
 
     /// ZEN: deal with an ack returning from the scratchpad
-    void handleScratchpadAck(uint16_t msg_id);
+    // tdysart, 27-june-24: currently unused - zen isn't sending anything to scratchpad
+    //void handleScratchpadAck(uint16_t msg_id);
 
     void processFromZoneMsgQueue();
 
@@ -355,7 +280,7 @@ namespace SST::Forza{
 
     void setMeAsZopSrc(SST::Forza::zopEvent *ev)
     {
-      //SST::Forza::zopAPI *iface = isSrcLocal(ev) ? m_zop_iface : m_prec_iface;
+      //SST::Forza::zopAPI *iface = isSrcLocal(ev) ? zone_nic : m_prec_iface;
       ev->setSrcHart(0);
       ev->setSrcZCID(SST::Forza::zopCompID::Z_ZEN);
       ev->setSrcPCID(Zone);
@@ -388,7 +313,7 @@ namespace SST::Forza{
 
     // private data members
     SST::Output output;                   ///< ZEN: SST output handler
-    SST::Forza::zopAPI* m_zop_iface;      ///< ZEN: ZOP Network interfaces for zone network
+    SST::Forza::zopAPI* zone_nic;      ///< ZEN: ZOP Network interfaces for zone network
     SST::Forza::zopAPI* m_prec_iface;     ///< ZEN: ZOP Network interfaces for precinct network
 
     // ----- BEGIN SST PARAMETERS
