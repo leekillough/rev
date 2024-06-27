@@ -20,6 +20,7 @@ namespace SST::Forza{
   // expanded if we're not using DMA (right now, I'm forcing the use
   // of DMA).  Might need to track my_id, parent_id, sequence_counter, 
   // originating zop
+#if 0
   class MemReturnEntry {
     public:
       SST::Forza::zopEvent *msg;
@@ -29,6 +30,7 @@ namespace SST::Forza{
         msg_ids(v)
         { /* empty constructor */}
   };
+#endif
 
   // --------------------------------------------
   // ZenMailboxMetadata
@@ -39,6 +41,7 @@ namespace SST::Forza{
   // Oh, and remember that we store the full ZOP in memory so 
   // we can return a credit
   // --------------------------------------------
+#if 0
   class ZenMailboxMetadata {
   public:
     uint64_t acs_pair;
@@ -75,6 +78,8 @@ namespace SST::Forza{
       // Pretty much the same as above, but for mem_cur_tail
       uint64_t getSpTailAddr(uint8_t size);
   };
+#endif
+
 
   // --------------------------------------------
   // ZEN
@@ -211,10 +216,6 @@ namespace SST::Forza{
     // setup packets right now    
     //void processSetupMsgs();
 
-    /// ZEN: retrieves an RZA tail queue address
-    int getRZATailQueue(uint64_t zap_id, uint64_t harts,
-                        uint64_t size, uint64_t *taddr);
-
     /// ZEN: retrieve the read ACS
     uint64_t  getReadACS(uint64_t);
 
@@ -245,6 +246,7 @@ namespace SST::Forza{
       // TODO: Look at just returning the metadata lookup pair.
     }
 
+#if 0
     ZenMailboxMetadata* getMboxEntry(SST::Forza::zopEvent *ev){
       uint64_t metadata_hash = getMetadataHash(ev, false);
       auto iter = hart_metadata_table.find(std::pair<uint64_t, uint64_t>(metadata_hash, ev->getPktRes()));
@@ -260,6 +262,7 @@ namespace SST::Forza{
         output.fatal(CALL_INFO, -1, "Could not find table entry for zop.\n"); // TODO: Add add'l debug info if needed
       return iter->second;
     }
+#endif
 
     /// ZEN: determine if zop dest precinct and zone match me
     bool isDestLocal(SST::Forza::zopEvent *ev)
@@ -337,7 +340,7 @@ namespace SST::Forza{
     uint64_t zip_credits;
 
     // Pair is {AppID, Zap, Hart}, MboxId
-    std::map<std::pair<uint64_t, uint64_t>, ZenMailboxMetadata*> hart_metadata_table;
+    //std::map<std::pair<uint64_t, uint64_t>, ZenMailboxMetadata*> hart_metadata_table;
     
     // TODO: These should be nothing more than credit counters
     //std::map<uint64_t, ZenMailboxMetadata*> zone_tables;
@@ -369,7 +372,7 @@ namespace SST::Forza{
     /*
       Add to vector: handleIncomingZOP() - RZA response
     */
-    std::queue<SST::Forza::zopEvent*> mem_acks; 
+    //std::queue<SST::Forza::zopEvent*> mem_acks; 
 
     /*
       Add to queue: handleIncomingZOP() - ZEN setup message
@@ -391,28 +394,28 @@ namespace SST::Forza{
         Depending on implementation of credits, we may need to be returning some to the 
         ZIP for anything that came from outside this precinct
     */
-    std::queue<SST::Forza::zopEvent*> zipQ;
+    //std::queue<SST::Forza::zopEvent*> zipQ;
 
     // Messages placed here are heading to the precinct NoC
-    std::queue<SST::Forza::zopEvent*> to_precinct_noc_q;
+    //std::queue<SST::Forza::zopEvent*> to_precinct_noc_q;
 
     // Messages placed here are being forward onto zone NOC
-    std::queue<SST::Forza::zopEvent*> to_zone_noc_q;
+    //std::queue<SST::Forza::zopEvent*> to_zone_noc_q;
 
     // Messages placed here are for the local RZA
-    std::queue<SST::Forza::zopEvent*> to_rza_q;
+    //std::queue<SST::Forza::zopEvent*> to_rza_q;
 
     // Messages awaiting return from RZA
     // key is msg_ids[0]
-    std::map<uint16_t, MemReturnEntry*> rza_ret_wait_map;
+    //std::map<uint16_t, MemReturnEntry*> rza_ret_wait_map;
 
     // Messages for updating the scratchpad
-    std::queue<SST::Forza::zopEvent*> update_scratchpad_q;
+    //std::queue<SST::Forza::zopEvent*> update_scratchpad_q;
 
     // Vector of outstanding scratchpad transactions
     // I would expect this to generally operate in FIFO order, but
     // it's not a system requirement (Zap traffic may influence)
-    std::vector<uint16_t> outstanding_spad_reqs;
+    //std::vector<uint16_t> outstanding_spad_reqs;
 
   }; // class SST::ZEN
 } // namespace SST::Forza

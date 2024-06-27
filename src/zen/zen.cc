@@ -9,6 +9,7 @@
 
 namespace SST::Forza{
 
+#if 0
 uint64_t ZenMailboxMetadata::getRzaWriteAddr(uint8_t size)
 {
   uint64_t wr_ptr = mem_wr_ptr; // address to write
@@ -35,6 +36,7 @@ uint64_t ZenMailboxMetadata::getSpTailAddr(uint8_t size)
   mem_cur_tail = next_ptr; // update to past where we've written
   return mem_cur_tail;
 }
+#endif
 
 ZEN::ZEN(ComponentId_t id, Params& params)
   : Component(id),
@@ -264,7 +266,9 @@ void ZEN::handleIncomingZOP(SST::Event *event) {
 
     case SST::Forza::zopMsgT::Z_RESP:
       // These can from the RZA and the ZAP scratchpad
-      mem_acks.push(ev);
+      //mem_acks.push(ev);
+      output.fatal(CALL_INFO, -7, "ZEN %s: received a response packet (unhandled)\n",
+                   getName().c_str());
       break;
 
     case SST::Forza::zopMsgT::Z_MZOP: [[fallthrough]];
