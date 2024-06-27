@@ -269,6 +269,7 @@ enum class zopOpc : uint8_t {
   Z_MSG_ZENSET        = 0b11110001,  /// zopOpc: MESSAGING ZEN Setup
   Z_MSG_ZQMSET        = 0b11110100,  /// zopOpc: MESSAGING ZQM Setup
   Z_MSG_ZQMHARTDONE   = 0b11110101,  /// zopOpc: MESSAGING ZQM Notify HART completion
+  Z_MSG_ZQMMBOXSET    = 0b11110110,  /// zopOpc: MESSAGING ZQM Setup Mailbox
   Z_MSG_ACK           = 0b11110010,  /// zopOpc: MESSAGING Send Ack
   Z_MSG_EXCP          = 0b11110011,  /// zopOpc: MESSAGING Send exception
   Z_MSG_ZBAR          = 0b11111001,  /// zopOpc: MESSAGING Zone Barrier Request
@@ -470,7 +471,7 @@ public:
   void setNB( uint8_t N ) { NB = N; }
 
   /// zopEvent: set the packet ID
-  void setID( uint8_t I ) { ID = I; }
+  void setID( uint16_t I ) { ID = I; }
 
   /// zopEvent: set the credit
   void setCredit( uint8_t C ) { Credit = C; }
@@ -574,7 +575,7 @@ public:
   uint8_t getLength() { return Length; }
 
   /// zopEvent: get the packet ID
-  uint8_t getID() { return ID; }
+  uint16_t getID() { return ID; }
 
   /// zopEvent: get the credit
   uint8_t getCredit() { return Credit; }
@@ -613,7 +614,7 @@ public:
 
     Opc      = (zopOpc) ( ( Packet[Z_FLIT_OPC] >> Z_SHIFT_OPC ) & Z_MASK_OPC );
     Credit   = (uint8_t) ( ( Packet[Z_FLIT_CREDIT] >> Z_SHIFT_CREDIT ) & Z_MASK_CREDIT );
-    ID       = (uint8_t) ( ( Packet[Z_FLIT_MSGID] >> Z_SHIFT_MSGID ) & Z_MASK_MSGID );
+    ID       = (uint16_t) ( ( Packet[Z_FLIT_MSGID] >> Z_SHIFT_MSGID ) & Z_MASK_MSGID );
     Length   = (uint8_t) ( ( Packet[Z_FLIT_FLITLEN] >> Z_SHIFT_FLITLEN ) & Z_MASK_FLITLEN );
     NB       = (uint8_t) ( ( Packet[Z_FLIT_BLOCK] >> Z_SHIFT_BLOCK ) & Z_MASK_BLOCK );
     Type     = (zopMsgT) ( ( Packet[Z_FLIT_TYPE] >> Z_SHIFT_TYPE ) & Z_MASK_TYPE );
@@ -765,7 +766,7 @@ private:
   zopMsgT  Type;    ///< zopEvent: message type
   uint8_t  NB;      ///< zopEvent: blocking/non-blocking
   uint8_t  Length;  ///< zopEvent: packet length (in flits)
-  uint8_t  ID;      ///< zopEvent: message ID
+  uint16_t ID;      ///< zopEvent: message ID
   uint8_t  Credit;  ///< zopEvent: credit piggyback
   zopOpc   Opc;     ///< zopEvent: opcode
   uint8_t  AppID;   ///< zopEvent: application source
@@ -782,7 +783,7 @@ public:
   void serialize_order( SST::Core::Serialization::serializer& ser ) override {
     // we only serialize the raw packet
     Event::serialize_order( ser );
-    ser& Packet;
+    ser & Packet;
   }
 
   // zopEvent: implements the nic serialization
@@ -1135,7 +1136,7 @@ private:
     outstanding;  ///< zopNIC: tracks outstanding requests
 
   std::vector<Statistic<uint64_t>*> stats;  ///< zopNIC: statistics vector
-};                                          // zopNIC
+};  // zopNIC
 
 }  // namespace SST::Forza
 

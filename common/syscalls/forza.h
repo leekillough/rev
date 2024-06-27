@@ -43,6 +43,9 @@ FORZA_SYSCALL( 4013, int forza_get_my_precinct() );
 FORZA_SYSCALL( 4014, void forza_zone_barrier( uint32_t num_harts ) );
 FORZA_SYSCALL( 4015, int forza_debug_print(uint64_t a, uint64_t b, uint64_t c) );
 
+
+FORZA_SYSCALL( 4020, int forza_zqm_mbox_setup( uint64_t addr, size_t size, uint64_t tailptr, uint64_t mbox_id ) );
+
 // clang-format on
 
 #endif
