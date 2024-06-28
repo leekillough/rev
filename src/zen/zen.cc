@@ -346,8 +346,8 @@ void ZEN::helper_handleFromZoneMsgZop(SST::Forza::zopEvent *ev)
       break;
     
     default:
-      output.fatal(CALL_INFO, -1, "ZEN %s: received an unexpected messaging packet opcode from zone NoC\n",
-                 getName().c_str());
+      output.fatal(CALL_INFO, -1, "\nZEN %s: received an unexpected messaging packet opcode from zone NoC; Packet: %s to %s\n\n",
+                 getName().c_str(), ev->getSrcString().c_str(), ev->getDestString().c_str());
       break;
   }
 }
