@@ -653,11 +653,14 @@ public:
   }
 
   std::string getSrcString() {
-    std::string str = "Src[hart:zcid:pcid:type]=[";
+    std::stringstream opc_ss;
+    opc_ss << "0x" << std::hex << (uint16_t) Opc;
+    std::string str = "Src[hart:zcid:pcid:type:opc]=[";
     str += std::to_string( SrcHart ) + ":";
     str += ZCIDToStr( SrcZCID ) + ":";
     str += PCIDToStr( SrcPCID ) + ":";
-    str += msgTToStr( Type ) + "]";
+    str += msgTToStr( Type ) + ":";
+    str += opc_ss.str() + "]";
     return str;
   }
 

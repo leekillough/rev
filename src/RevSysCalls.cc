@@ -4035,6 +4035,10 @@ EcallStatus RevCore::ECALL_forza_zen_credit_release() {
 
 // 4005, forza_zen_setup(uint64_t addr, size_t size, uint64_t tailptr, uint64_t mbox_id);
 EcallStatus RevCore::ECALL_forza_zen_setup() {
+
+  output->fatal( CALL_INFO, -1, "ECALL: forza_zen_setup is currently deprecated\n" );
+
+#if 0
   uint64_t addr    = (uint64_t) RegFile->GetX<uint64_t>( RevReg::a0 );
   size_t   size    = (size_t) RegFile->GetX<size_t>( RevReg::a1 );
   uint64_t tailptr = (uint64_t) RegFile->GetX<uint64_t>( RevReg::a2 );
@@ -4105,6 +4109,7 @@ EcallStatus RevCore::ECALL_forza_zen_setup() {
   zNic->send( zev, SST::Forza::zopCompID::Z_ZEN );
 
   return EcallStatus::SUCCESS;
+#endif
 }
 
 // 4006, forza_zqm_setup(uint64_t addr, uint64_t size, uint64_t min_hart, uint64_t max_hart, uint64_t seq_ld_flag);
@@ -4341,6 +4346,8 @@ EcallStatus RevCore::ECALL_forza_debug_print() {
 }
 
 // 4020, forza_zqm_mbox_setup(uint64_t addr, size_t size, uint64_t tailptr, uint64_t mbox_id);
+// TODO: THIS DOESN'T SET A DESTINATION!  SERIOUSLY?!?!?!
+// TODO: CHANGE ENCODING OF ZQMMBOXSET SINCE THIS MATCHES ZEN UNSET
 EcallStatus RevCore::ECALL_forza_zqm_mbox_setup() {
   uint64_t addr    = (uint64_t) RegFile->GetX<uint64_t>( RevReg::a0 );
   size_t   size    = (size_t) RegFile->GetX<size_t>( RevReg::a1 );
