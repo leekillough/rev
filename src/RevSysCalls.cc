@@ -4308,10 +4308,11 @@ EcallStatus RevCore::ECALL_forza_zone_barrier() {
       CALL_INFO,
       2,
       0,
-      "ECALL: forza_zone_barrier called by thread %" PRIu32 " on hart %" PRIu32 ", val=%" PRIu32 "\n",
+      "ECALL: forza_zone_barrier called by thread %" PRIu32 " on hart %" PRIu32 ", Prec=%" PRIu32 ", num_harts=%" PRIu32 "\n",
       GetActiveThreadID(),
       HartToExecID,
-      zNic->getPrecinctID()
+      zNic->getPrecinctID(),
+      num_harts
     );
   }
 
@@ -4346,8 +4347,9 @@ EcallStatus RevCore::ECALL_forza_debug_print() {
 }
 
 // 4020, forza_zqm_mbox_setup(uint64_t addr, size_t size, uint64_t tailptr, uint64_t mbox_id);
-// TODO: THIS DOESN'T SET A DESTINATION!  SERIOUSLY?!?!?!
-// TODO: CHANGE ENCODING OF ZQMMBOXSET SINCE THIS MATCHES ZEN UNSET
+// TODO: Change encoding of ZQMMBOXSET since this matches ZENUNSET
+// Well, it does in the doc, but not in the simulator; since we're
+// changing all of this messaging, leaving the encoding as is for now
 EcallStatus RevCore::ECALL_forza_zqm_mbox_setup() {
   uint64_t addr    = (uint64_t) RegFile->GetX<uint64_t>( RevReg::a0 );
   size_t   size    = (size_t) RegFile->GetX<size_t>( RevReg::a1 );
@@ -4408,6 +4410,11 @@ EcallStatus RevCore::ECALL_forza_zqm_mbox_setup() {
   zev->setSrcZCID( SrcZCID );
   zev->setSrcPCID( SrcPCID );
   zev->setSrcHart( SrcHart );
+  zev->setSrcPrec( zNic->getPrecinctID() );
+  zev->setDestHart( 0 );
+  zev->setDestZCID( SST::Forza::zopCompID::Z_ZQM );
+  zev->setDestPCID( SrcPCID );
+  zev->setDestPrec( zNic->getPrecinctID() );
   zev->setAppID( 0 );  // FIXME: should come from somewhere else
   zev->setPktRes( (uint8_t) mbox_id );
 
@@ -4421,7 +4428,9 @@ EcallStatus RevCore::ECALL_forza_zqm_mbox_setup() {
   payload.push_back( app_mbox_id );  // see def above; payload[4]
   zev->setPayload( payload );
 
-  zNic->send( zev, SST::Forza::zopCompID::Z_ZEN );
+  zev->encodeEvent();
+
+  zNic->send( zev, SST::Forza::zopCompID::Z_ZQM );
   return EcallStatus::SUCCESS;
 }
 

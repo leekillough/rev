@@ -40,8 +40,10 @@ int main( int argc, char** argv ) {
   forza_zone_barrier( nzaps );
 
   // Now that we've done the zen setup, every thread should have *tail_ptr == mem_buff_start
-  if( forza_get_my_zone() == 0 )
+  if( forza_get_my_zone() == 0 ) {
+    forza_debug_print( nzaps, (uint64_t) my_buff_start, *tail_ptr );
     assert( (uint64_t) my_buff_start == *tail_ptr );
+  }
 #if 0
   register uint64_t a = 0;
   if (a == 0) {

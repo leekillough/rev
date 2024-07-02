@@ -25,7 +25,7 @@ MEM_SIZE = 1024*1024*1024-1
 # --------------------------
 zen0 = sst.Component("zen0", "forzazen.ZEN")
 zen0.addParams({
-  "verbose" : 9,              # Verbosity
+  "verbose" : 5,              # Verbosity
   "clockFreq" : "1.0GHz",     # Clock Frequency
   "precinctId" : 0,           # precinct Id
   "zoneId" : 0,               # zone Id
@@ -39,7 +39,7 @@ zen0.addParams({
 })
 zen1 = sst.Component("zen1", "forzazen.ZEN")
 zen1.addParams({
-  "verbose" : 9,              # Verbosity
+  "verbose" : 5,              # Verbosity
   "clockFreq" : "1.0GHz",     # Clock Frequency
   "precinctId" : 0,           # precinct Id
   "zoneId" : 1,               # zone Id
@@ -56,24 +56,24 @@ zen1.addParams({
 # --------------------------
 # SETUP THE ZQMS
 # --------------------------
-#zqm0 = sst.Component("zqm0", "forzazqm.ZQM")
-#zqm0.addParams({
-#  "verbose" : 1,              # Verbosity
-#  "clockFreq" : "1.0GHz",     # Clock Frequency
-#  "precinctId" : 0,           # precinct Id
-#  "zoneId" : 0,               # zone Id
-#  "numHarts" : 1,             # number of harts
-#  "numCores" : 4,             # number of cores
-#})
-#zqm1 = sst.Component("zqm1", "forzazqm.ZQM")
-#zqm1.addParams({
-#  "verbose" : 1,              # Verbosity
-#  "clockFreq" : "1.0GHz",     # Clock Frequency
-#  "precinctId" : 0,           # precinct Id
-#  "zoneId" : 1,               # zone Id
-#  "numHarts" : 1,             # number of harts
-#  "numCores" : 4,             # number of cores
-#})
+zqm0 = sst.Component("zqm0", "forzazqm.ZQM")
+zqm0.addParams({
+  "verbose" : 9,              # Verbosity
+  "clockFreq" : "1.0GHz",     # Clock Frequency
+  "precinctId" : 0,           # precinct Id
+  "zoneId" : 0,               # zone Id
+  "numHarts" : 1,             # number of harts
+  "numCores" : 4,             # number of cores
+})
+zqm1 = sst.Component("zqm1", "forzazqm.ZQM")
+zqm1.addParams({
+  "verbose" : 9,              # Verbosity
+  "clockFreq" : "1.0GHz",     # Clock Frequency
+  "precinctId" : 0,           # precinct Id
+  "zoneId" : 1,               # zone Id
+  "numHarts" : 1,             # number of harts
+  "numCores" : 4,             # number of cores
+})
 
 
 # --------------------------
@@ -218,8 +218,6 @@ zap_cpu1_3.addParams({
         "splash" : 0                                  # Display the splash message
 })
 
-
-
 # --------------------------
 # SETUP THE ZONE0 RZA
 # --------------------------
@@ -356,8 +354,6 @@ memory1.addParams({
     "mem_size" : "8GB"
 })
 
-
-
 # --------------------------
 # SETUP THE ZONE0 NOC
 # --------------------------
@@ -374,7 +370,7 @@ net_params = {
 rtr_params = {
   "xbar_bw" : "100GB/s",
   "flit_size" : "8B",
-  "num_ports" : "6",
+  "num_ports" : "7",
   "id" : 0
 }
 
@@ -396,8 +392,8 @@ rza_iface0 = rza_nic0.setSubComponent("iface", "merlin.linkcontrol")
 zen_nic0 = zen0.setSubComponent("zone_nic", "forza.zopNIC")
 zen_iface0 = zen_nic0.setSubComponent("iface", "merlin.linkcontrol")
 
-#zqm_nic0 = zqm0.setSubComponent("zone_nic", "forza.zopNIC")
-#zqm_iface0 = zqm_nic0.setSubComponent("iface", "merlin.linkcontrol")
+zqm_nic0 = zqm0.setSubComponent("zone_nic", "forza.zopNIC")
+zqm_iface0 = zqm_nic0.setSubComponent("iface", "merlin.linkcontrol")
 
 router0 = sst.Component("router0", "merlin.hr_router")
 router0.setSubComponent("topology", "merlin.singlerouter")
@@ -415,8 +411,8 @@ rza_nic0.addParams(nic_params)
 rza_iface0.addParams(net_params)
 zen_nic0.addParams(nic_params)
 zen_iface0.addParams(net_params)
-#zqm_nic0.addParams(nic_params)
-#zqm_iface0.addParams(net_params)
+zqm_nic0.addParams(nic_params)
+zqm_iface0.addParams(net_params)
 router0.addParams(net_params)
 router0.addParams(rtr_params)
 
@@ -441,8 +437,8 @@ rza_iface1 = rza_nic1.setSubComponent("iface", "merlin.linkcontrol")
 zen_nic1 = zen1.setSubComponent("zone_nic", "forza.zopNIC")
 zen_iface1 = zen_nic1.setSubComponent("iface", "merlin.linkcontrol")
 
-#zqm_nic1 = zqm1.setSubComponent("zone_nic", "forza.zopNIC")
-#zqm_iface1 = zqm_nic1.setSubComponent("iface", "merlin.linkcontrol")
+zqm_nic1 = zqm1.setSubComponent("zone_nic", "forza.zopNIC")
+zqm_iface1 = zqm_nic1.setSubComponent("iface", "merlin.linkcontrol")
 
 router1 = sst.Component("router1", "merlin.hr_router")
 router1.setSubComponent("topology", "merlin.singlerouter")
@@ -460,8 +456,8 @@ rza_nic1.addParams(nic_params)
 rza_iface1.addParams(net_params)
 zen_nic1.addParams(nic_params)
 zen_iface1.addParams(net_params)
-#zqm_nic1.addParams(nic_params)
-#zqm_iface1.addParams(net_params)
+zqm_nic1.addParams(nic_params)
+zqm_iface1.addParams(net_params)
 router1.addParams(net_params)
 router1.addParams(rtr_params)
 
@@ -520,8 +516,8 @@ rza_link0.connect( (rza_iface0, "rtr_port", "1us"), (router0, "port4", "1us") )
 zen_link0 = sst.Link("zen_link0")
 zen_link0.connect( (zen_iface0, "rtr_port", "1us"), (router0, "port5", "1us") )
 
-#zqm_link0 = sst.Link("zqm_link0")
-#zqm_link0.connect( (zqm_iface0, "rtr_port", "1us"), (router0, "port6", "1us") )
+zqm_link0 = sst.Link("zqm_link0")
+zqm_link0.connect( (zqm_iface0, "rtr_port", "1us"), (router0, "port6", "1us") )
 
 #-- ZONE1 NOC
 zap_link1_0 = sst.Link("zap_link1_0")
@@ -542,8 +538,8 @@ rza_link1.connect( (rza_iface1, "rtr_port", "1us"), (router1, "port4", "1us") )
 zen_link1 = sst.Link("zen_link1")
 zen_link1.connect( (zen_iface1, "rtr_port", "1us"), (router1, "port5", "1us") )
 
-#zqm_link1 = sst.Link("zqm_link1")
-#zqm_link1.connect( (zqm_iface1, "rtr_port", "1us"), (router1, "port6", "1us") )
+zqm_link1 = sst.Link("zqm_link1")
+zqm_link1.connect( (zqm_iface1, "rtr_port", "1us"), (router1, "port6", "1us") )
 
 #-- PRECINCT NOC
 zen_prec_link0 = sst.Link("zen_prec_link0")
