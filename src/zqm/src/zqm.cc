@@ -84,6 +84,7 @@ ZQM::ZQM(ComponentId_t id, Params& params)
     num_harts = params.find<uint16_t>("numHarts", 4);
     precinct_id = params.find<unsigned>("precinctId", 0);
     zone_id = params.find<unsigned>("zoneId", 0);
+    process_per_cycle = params.find<unsigned>("processPerCycle", 10);
     zone_nic->setNumHarts(num_harts);
     zone_nic->setPrecinctID(precinct_id);
     zone_nic->setZoneID(zone_id);
@@ -382,7 +383,7 @@ void ZQM::processMessagingMsgs()
 
     for ( unsigned i = 0; i < process_per_cycle; i++ ) {
         auto *event = setup_reqs.front();
-        output.verbose(CALL_INFO, 1, 0, "%s: Processing setup packet for zqm\n", my_name.c_str());
+        output.verbose(CALL_INFO, 1, 0, "%s: Processing messaging packet id=%u for ZQM\n", my_name.c_str(), event->getID() );
         switch(event->getOpc()){
             case SST::Forza::zopOpc::Z_MSG_ZQMSET:
                 //processMessagingZqmSet(event);
@@ -478,7 +479,7 @@ void ZQM::processMessagingZqmMboxSet(SST::Forza::zopEvent *ev)
 
     // Sanity check that payload length is correct
     if( (payload.size() < 5) )
-    output.fatal(CALL_INFO, -1, "Invalid ZQM MBOX setup packet");
+        output.fatal(CALL_INFO, -1, "Invalid ZQM Setup MBox packet");
 
     // Changed the sanity checks to fatal errors, so no need for a NACK right now
     // Keeping in case we change them from fatal errors
@@ -507,17 +508,21 @@ void ZQM::processMessagingZqmMboxSet(SST::Forza::zopEvent *ev)
     std::pair<uint64_t, uint64_t> hart_mbox_id = std::make_pair(pair1, mbx_id);
     // Ensure we don't already have this pair
     if (hart_metadata_table.find(hart_mbox_id) != hart_metadata_table.end())
-    output.fatal(CALL_INFO, -1, "Found a matching Hart/MBox pair");
+        output.fatal(CALL_INFO, -1, "Found a matching Hart/MBox pair");
 
 
     hart_metadata_table[hart_mbox_id] = new ZqmMailboxMetadata(acs_pair, mem_start_addr,
                                                     mem_end_addr, size,
                                                     scratch_tail, app_id, mbx_id);
+    
+    output.verbose(CALL_INFO, 9, 0, "ZQM Setup packet w/ID=%u; payload size %zu for zap, hart, mbox %" PRIu64 ", %" PRIu64 ", %" PRIu8 "\n",
+                    ev->getID(), payload.size(), zap_id, hart_id, mbx_id);
+    if (ev->isRead())
+        output.output(CALL_INFO, "ZQM Setup packet: isRead\n");
+    else
+        output.output(CALL_INFO, "ZQM Setup packet: NOT isRead\n");
 
     sendACK(ev, zone_nic);
-    
-    output.verbose(CALL_INFO, 9, 0, "ZEN Setup packet; payload size %zu for zap, hart, mbox %" PRIu64 ", %" PRIu64 ", %" PRIu8 "\n",
-                payload.size(), zap_id, hart_id, mbx_id);
 
     // Need to set the scratch tail to the start of the memory buffer
     // going to assume we can get a msg_id
@@ -528,9 +533,9 @@ void ZQM::processMessagingZqmMboxSet(SST::Forza::zopEvent *ev)
     out_payload.push_back(mem_start_addr);
     sendMsgToScratchpad(ev, out_payload, msg_id, true);
 
-    output.verbose(CALL_INFO, 9, 0, "Zen Setup, HartID %" PRIu64 ", start addr 0x%" PRIx64 ", end addr 0x%" PRIx64 "\n",
+    output.verbose(CALL_INFO, 9, 0, "ZQM Setup, HartID %" PRIu64 ", start addr 0x%" PRIx64 ", end addr 0x%" PRIx64 "\n",
                 hart_id, mem_start_addr, mem_end_addr);
-    output.verbose(CALL_INFO, 9, 0, "Zen Setup-Metadata table %" PRIu64 ", start addr 0x%" PRIx64 ", end addr 0x%" PRIx64 "\n",
+    output.verbose(CALL_INFO, 9, 0, "ZQM Setup-Metadata table %" PRIu64 ", start addr 0x%" PRIx64 ", end addr 0x%" PRIx64 "\n",
                 hart_id, hart_metadata_table[hart_mbox_id]->mem_head,
                 hart_metadata_table[hart_mbox_id]->mem_tail);
 }
@@ -549,6 +554,11 @@ void ZQM::sendACK(SST::Forza::zopEvent *ev, bool to_zone_noc)
     iface->send(ack, (zopCompID)ack->getDestZCID(), (zopPrecID)ack->getDestPCID(), (uint16_t)ack->getDestPrec());
     output.verbose(CALL_INFO, 9, 0, "ZQM %s sending ACK with msg_id=%" PRIu16 " to ZCID=%" PRIu8 "\n",
                     getName().c_str(), ev->getID(), ack->getDestZCID());
+    if (ack->isRead())
+        output.output(CALL_INFO, "ZQM sending ACK packet: isRead\n");
+    else
+        output.output(CALL_INFO, "ZQM sending ACK packet: NOT isRead\n");
+
 }
 
 void ZQM::sendMessagingAck(SST::Forza::zopEvent *event)
@@ -586,8 +596,8 @@ void ZQM::sendMsgToScratchpad(SST::Forza::zopEvent *ev, std::vector<uint64_t> pa
     setDestFromDestInfo(spd_msg, ev);
   spd_msg->setPayload(payload);
   spd_msg->encodeEvent();
-  output.verbose(CALL_INFO, 9, 0, "ZQM Send message to scratchpad with msg_id=%" PRIu16 " and addr=0x%" PRIx64 "\n", 
-                 msg_id, payload.at(1));
+  output.verbose(CALL_INFO, 9, 0, "ZQM Send message to dest=%u, scratchpad with msg_id=%" PRIu16 " and addr=0x%" PRIx64 "\n", 
+                 spd_msg->getDestZCID(), msg_id, payload.at(1));
   for (auto i : payload)
     output.verbose(CALL_INFO, 9, 0, "\t ZQM: Payload=0x%" PRIx64 "\n", i);
   zone_nic->send(spd_msg, (zopCompID)spd_msg->getDestZCID());
