@@ -206,7 +206,7 @@ memory.addParams({
 # SETUP THE NOC
 # --------------------------
 nic_params = {
-  "verbose" : 9,
+  "verbose" : 5,
   "clock" : "1GHz",
   "req_per_cycle" : 1
 }

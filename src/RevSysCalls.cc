@@ -3993,6 +3993,8 @@ EcallStatus RevCore::ECALL_forza_send() {
 
 // 4004, forza_zen_credit_release();
 EcallStatus RevCore::ECALL_forza_zen_credit_release() {
+  output->fatal( CALL_INFO, -1, "forza_zen_credit_release has been removed.\n" );
+#if 0
   output->verbose(
     CALL_INFO,
     2,
@@ -4031,12 +4033,13 @@ EcallStatus RevCore::ECALL_forza_zen_credit_release() {
   }
   zNic->send( zev, SST::Forza::zopCompID::Z_ZEN );
   return EcallStatus::SUCCESS;
+#endif
 }
 
 // 4005, forza_zen_setup(uint64_t addr, size_t size, uint64_t tailptr, uint64_t mbox_id);
 EcallStatus RevCore::ECALL_forza_zen_setup() {
 
-  output->fatal( CALL_INFO, -1, "ECALL: forza_zen_setup is currently deprecated\n" );
+  output->fatal( CALL_INFO, -1, "ECALL: forza_zen_setup is currently removed\n" );
 
 #if 0
   uint64_t addr    = (uint64_t) RegFile->GetX<uint64_t>( RevReg::a0 );

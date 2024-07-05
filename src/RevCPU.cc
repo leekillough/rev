@@ -827,7 +827,6 @@ void RevCPU::handleZOPMZOP( Forza::zopEvent* zev ) {
     Mem->Write( zev->getSrcHart(), addr, static_cast<uint32_t>( data ) );
     break;
   case Forza::zopOpc::Z_MZOP_SCSD:
-    output.output( CALL_INFO, "TJD: scratchpad SCSD\n" );
     if( !zev->getFLIT( Z_FLIT_DATA, &data ) ) {
       output.fatal(
         CALL_INFO,

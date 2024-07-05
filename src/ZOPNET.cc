@@ -359,7 +359,7 @@ void zopNIC::send( zopEvent* ev, zopCompID dest, zopPrecID zone, unsigned prec )
       CALL_INFO,
       9,
       0,
-      "TIMTOM Sending message from %s @ endpoint=%d with "
+      "Sending message from %s @ endpoint=%d with "
       "msg_id=%d and %s to %s\n",
       getName().c_str(),
       (uint32_t) ( getAddress() ),
@@ -369,26 +369,17 @@ void zopNIC::send( zopEvent* ev, zopCompID dest, zopPrecID zone, unsigned prec )
     );
   }
   auto realDest = 0;
-#if 1  //TODO: Figure out what the code in this block is actually trying to do
   if( ev->getDestZCID() <= (uint8_t) SST::Forza::zopCompID::Z_ZAP7 && ev->getType() == SST::Forza::zopMsgT::Z_MSG &&
       ( ev->getOpc() == SST::Forza::zopOpc::Z_MSG_SENDP || ev->getOpc() == SST::Forza::zopOpc::Z_MSG_SENDAS ) ) {
-    //TmpDest = zopCompID::Z_ZQM;
-    TmpDest = zopCompID::Z_ZEN;
+    TmpDest = zopCompID::Z_ZEN;  // redirect msg from dest hart to zen
   }
 
-  bool td_found = false;
   for( auto i : hostMap ) {
     auto t = i.second;
     if( ( std::get<_HM_ENDP_T>( t ) == TmpDest ) && ( std::get<_HM_ZID>( t ) == zone ) && ( std::get<_HM_PID>( t ) == prec ) ) {
-      td_found = true;
       realDest = i.first;
     }
   }
-
-  if( !td_found ) {
-    output.verbose( CALL_INFO, 9, 0, "ZEN-UNFOUND %s to %s\n", ev->getSrcString().c_str(), ev->getDestString().c_str() );
-  }
-#endif
 
   ev->encodeEvent();
   req->dest = realDest;  // FIXME - what needs fixed here?
@@ -807,19 +798,6 @@ bool zopNIC::clockTick( SST::Cycle_t cycle ) {
         // I am an RZA... I don't need to reserve any message IDs
         // ZEN ACKs and NACKs do not use message IDs, ZEN ZOPs to the RZA internally
         // handle message IDs.
-        if( ev->getType() == SST::Forza::zopMsgT::Z_MSG ) {
-          std::string tstr = ( ev->isRead() ) ? "true" : "false";
-          output.verbose(
-            CALL_INFO,
-            9,
-            0,
-            "TIMTOM Pushing packet %s to %s with ID=%u and isRead=%s\n",
-            ev->getSrcString().c_str(),
-            ev->getDestString().c_str(),
-            ev->getID(),
-            tstr.c_str()
-          );
-        }
         auto P = ev->getPacket();
         ev->encodeEvent();
         if( iFace->spaceToSend( 0, P.size() * 64 ) ) {
@@ -854,19 +832,6 @@ bool zopNIC::clockTick( SST::Cycle_t cycle ) {
             ev->setID( msgId[Hart].getMsgId() );
             auto V = std::make_tuple( Hart, ev->getID(), ev->isRead(), ev->getTarget(), ev->getOpc(), ev->getMemReq() );
             outstanding.push_back( V );
-            if( ev->getType() == SST::Forza::zopMsgT::Z_MSG ) {
-              std::string tstr = ( ev->isRead() ) ? "true" : "false";
-              output.verbose(
-                CALL_INFO,
-                9,
-                0,
-                "TIMTOM Pushing packet %s to %s with ID=%u and isRead=%s\n",
-                ev->getSrcString().c_str(),
-                ev->getDestString().c_str(),
-                ev->getID(),
-                tstr.c_str()
-              );
-            }
           }
           ev->encodeEvent();
           recordStat( getStatFromPacket( ev ), 1 );
