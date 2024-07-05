@@ -175,10 +175,11 @@ void ZQM::handleIncomingZOP(SST::Event *event)
 {
     SST::Forza::zopEvent* ev = dynamic_cast<SST::Forza::zopEvent*>(event);
     ev->decodeEvent();
-    output.verbose(CALL_INFO, 1, 0, "%s Received ZOP: %s to %s\n",
+    output.verbose(CALL_INFO, 1, 0, "%s Received ZOP: %s to %s with id=%u\n",
                    my_name.c_str(),
                    ev->getSrcString().c_str(), 
-                   ev->getDestString().c_str());
+                   ev->getDestString().c_str(),
+                   ev->getID());
 
     if (ev->getType() == SST::Forza::zopMsgT::Z_RESP) {
         rza_responses.push_back(ev);
@@ -188,10 +189,9 @@ void ZQM::handleIncomingZOP(SST::Event *event)
         output.fatal(CALL_INFO, -2, "%s: Received thread - not currently handling\n", my_name.c_str());
         //incoming_threads_vec.push_back(ev);
     } else{
-        output.fatal(CALL_INFO, -2, "%s: Received unexpected ZOP from %s to %s\n", 
+        output.fatal(CALL_INFO, -2, "%s: Received invalid ZOP; id=%u\n", 
                      my_name.c_str(),
-                     ev->getSrcString().c_str(),
-                     ev->getDestString().c_str());
+                     ev->getID());
         return;
     }
 }
@@ -340,8 +340,8 @@ void ZQM::prepSendRZAStore() {
     // Get destination address for memory zop(s)
     auto mbox_info = getDestMboxEntry(ev);
     uint64_t wr_addr = mbox_info->getRzaWriteAddr(ev->getLength() + Z_NUM_HEADER_FLITS);
-    output.verbose(CALL_INFO, 9, 0, "Store messaging packet to RZA; packet_size=%" PRIu8 ", wr_addr=0x%"
-                   PRIx64 "\n", ev->getLength(), wr_addr);
+    output.verbose(CALL_INFO, 9, 0, "[ZQM] Store messaging packet to RZA; wr_addr=0x%"
+                   PRIx64 "\n", wr_addr);
 
     // Send memory zops
     std::vector<uint64_t> store_payload;
@@ -426,8 +426,8 @@ void ZQM::processRzaMsgs() {
                     // TODO: Make fatal?
                     break;
                 case zopOpc::Z_RESP_SACK: { // store ack (should be a store dma ack)
-                    output.verbose(CALL_INFO, 1, 0, "%s: Found msgId=%u (store ack) in rza_ret_wait_map map\n",
-                                my_name.c_str(), inc_msg_id);
+                    output.verbose(CALL_INFO, 9, 0, "[ZQM] Found msgId=%u (store ack) in rza_ret_wait_map map\n",
+                                inc_msg_id);
                     auto *ev = iter->second->msg;
                     // Push zop so we can update the scratchpad
                     update_scratchpad_q.push(ev);
@@ -512,7 +512,7 @@ void ZQM::processMessagingMsgs()
                 processMessagingZqmMboxSet(event);
                 break;
             case SST::Forza::zopOpc::Z_MSG_SENDP:{
-                output.verbose(CALL_INFO, 9, 0, "ZQM RECV MSG_SENDP; size=%u\n", event->getLength());
+                output.verbose(CALL_INFO, 9, 0, "ZQM RECV MSG_SENDP\n");
                 to_rza_q.push(event);
                 break;}
                 // TODO: Add ZQM Free AID (or equivalent)
@@ -667,8 +667,8 @@ void ZQM::sendACK(SST::Forza::zopEvent *ev, bool to_zone_noc)
     //auto iface = (to_zone_noc) ? zone_nic : m_prec_iface;
     auto iface = zone_nic;
     iface->send(ack, (zopCompID)ack->getDestZCID(), (zopPrecID)ack->getDestPCID(), (uint16_t)ack->getDestPrec());
-    output.verbose(CALL_INFO, 9, 0, "ZQM %s sending ACK with msg_id=%" PRIu16 " to ZCID=%" PRIu8 "\n",
-                    getName().c_str(), ev->getID(), ack->getDestZCID());
+    output.verbose(CALL_INFO, 9, 0, "[ZQM] %s sending ACK with msg_id=%" PRIu16 " to %s\n",
+                    getName().c_str(), ev->getID(), ack->getDestString().c_str());
 }
 
 void ZQM::sendMessagingAck(SST::Forza::zopEvent *event)
@@ -706,10 +706,10 @@ void ZQM::sendMsgToScratchpad(SST::Forza::zopEvent *ev, std::vector<uint64_t> pa
     setDestFromDestInfo(spd_msg, ev);
   spd_msg->setPayload(payload);
   spd_msg->encodeEvent();
-  output.verbose(CALL_INFO, 9, 0, "ZQM Send message to dest=%u, scratchpad with msg_id=%" PRIu16 " and addr=0x%" PRIx64 "\n", 
-                 spd_msg->getDestZCID(), msg_id, payload.at(1));
-  for (auto i : payload)
-    output.verbose(CALL_INFO, 9, 0, "\t ZQM: Payload=0x%" PRIx64 "\n", i);
+  output.verbose(CALL_INFO, 9, 0, "ZQM Send message to %s, scratchpad with msg_id=%" PRIu16 " and addr=0x%" PRIx64 "\n", 
+                 spd_msg->getDestString().c_str(), msg_id, payload.at(1));
+  //for (auto i : payload)
+  //  output.verbose(CALL_INFO, 9, 0, "\t ZQM: Payload=0x%" PRIx64 "\n", i);
   zone_nic->send(spd_msg, (zopCompID)spd_msg->getDestZCID());
   // An ACK is expected - track it
   outstanding_spad_reqs.push_back(msg_id);
@@ -717,8 +717,8 @@ void ZQM::sendMsgToScratchpad(SST::Forza::zopEvent *ev, std::vector<uint64_t> pa
 
 void ZQM::handleScratchpadAck(uint16_t msg_id)
 {
-  output.verbose(CALL_INFO, 9, 0, "ZQM %s processing scratchpad ack with id=%" PRIu16 "\n",
-                 getName().c_str(), msg_id);
+  output.verbose(CALL_INFO, 9, 0, "ZQM processing scratchpad ack with id=%" PRIu16 "\n",
+                 msg_id);
   size_t start_sz = outstanding_spad_reqs.size();
   outstanding_spad_reqs.erase(std::remove_if(outstanding_spad_reqs.begin(), 
                                              outstanding_spad_reqs.end(), 

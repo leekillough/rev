@@ -337,7 +337,7 @@ namespace SST::Forza{
     /*
       This is incremented in handleIncomingPrecZOP()
     */
-    uint64_t zip_credits;
+    //uint64_t zip_credits;
 
     // Pair is {AppID, Zap, Hart}, MboxId
     //std::map<std::pair<uint64_t, uint64_t>, ZenMailboxMetadata*> hart_metadata_table;
@@ -377,7 +377,7 @@ namespace SST::Forza{
     /*
       Add to queue: handleIncomingZOP() - ZEN setup message
     */
-    std::queue<SST::Forza::zopEvent*> setup_reqs;
+    //std::queue<SST::Forza::zopEvent*> setup_reqs;
 
     /*
       Add to vector: handleIncomingZOP() - Credit message
