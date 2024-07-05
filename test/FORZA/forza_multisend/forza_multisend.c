@@ -23,7 +23,7 @@ int main( int argc, char** argv ) {
 
   // Buffer needs to be memory for now
   uint64_t mbox_id       = 0;
-  forza_zen_setup( (uint64_t) cur_recv_ptr, qsize * sizeof( uint64_t ), (uint64_t) my_tail_ptr, mbox_id );
+  forza_zqm_mbox_setup( (uint64_t) cur_recv_ptr, qsize * sizeof( uint64_t ), (uint64_t) my_tail_ptr, mbox_id );
 
   forza_zone_barrier( 2 );  // two executing harts
   forza_debug_print( (uint64_t) cur_recv_ptr, (uint64_t) my_tail_ptr, (uint64_t) *my_tail_ptr );
@@ -53,7 +53,7 @@ int main( int argc, char** argv ) {
     assert( recv_pkt == 690 );
     // Update my pointer for comparison (this would be needed for the next packet)
     cur_recv_ptr += 3;  // don't need to multiply by sizeof(uint64_t) since this is a uint64_t ptr
-    forza_zen_credit_release( sizeof( uint64_t ) );
+    //forza_zen_credit_release( sizeof( uint64_t ) );
   }
 
   // Send a second packet from T0->T1
@@ -75,7 +75,7 @@ int main( int argc, char** argv ) {
     assert( recv_pkt == 42 );
     // Update my pointer for comparison (this would be needed for the next packet)
     cur_recv_ptr += 3;
-    forza_zen_credit_release( sizeof( uint64_t ) );
+    //forza_zen_credit_release( sizeof( uint64_t ) );
   }
 
   // Now, let's try sending a packet from T1->T0
@@ -97,7 +97,7 @@ int main( int argc, char** argv ) {
     assert( recv_pkt == 0xbeefUL );
     // Update my pointer for comparison (this would be needed for the next packet)
     cur_recv_ptr += 3;
-    forza_zen_credit_release( sizeof( uint64_t ) );
+    //forza_zen_credit_release( sizeof( uint64_t ) );
   }
 
   forza_scratchpad_free( (uint64_t) my_tail_ptr, sizeof( uint64_t* ) );
