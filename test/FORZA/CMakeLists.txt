@@ -18,7 +18,7 @@ add_rev_test(forza_harts_per_zap forza_config_syscalls 30 "all;memh;rv64;loader;
 add_rev_test(forza_config_syscalls forza_config_syscalls 60 "all;memh;rv64;loader;forza" SCRIPT "run_test_config_syscalls.sh")
 add_rev_test(forza_argc forza_argc 30 "all;memh;rv64;loader;forza" SCRIPT "run_forza_argc.sh")
 add_rev_test(forza_barrier forza_barrier 30 "all;memh;rv64;loader;forza" SCRIPT "run_forza_barrier.sh")
-#add_rev_test(forza_zen_flow forza_zen_flow 60 "all;memh;rv64;loader;forza" SCRIPT "run_forza_zen_flow.sh")
+add_rev_test(forza_zen_flow forza_zen_flow 60 "all;memh;rv64;loader;forza" SCRIPT "run_forza_zen_flow.sh")
 #add_rev_test(forza_multisend forza_multisend 60 "all;memh;rv64;loader;forza" SCRIPT "run_forza_multisend.sh")
 
 #Security related test

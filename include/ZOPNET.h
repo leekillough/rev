@@ -748,6 +748,7 @@ public:
     case zopMsgT::Z_TMGT: return "TMGT"; break;
     case zopMsgT::Z_SYSC: return "SYSC"; break;
     case zopMsgT::Z_RESP: return "RESP"; break;
+    case zopMsgT::Z_FENCE: return "FENCE"; break;
     case zopMsgT::Z_EXCP: return "EXCP"; break;
     default: return "UNKNOWN"; break;
     }

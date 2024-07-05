@@ -3819,8 +3819,8 @@ EcallStatus RevCore::ECALL_forza_send() {
       CALL_INFO,
       2,
       0,
-      "ECALL: forza_send called by thread %" PRIu32 " on hart %" PRIu32 " dst = %" PRIx64 ", spaddr = %" PRIu64 ", size = %" PRIu64
-      "\n",
+      "ECALL: forza_send called by thread %" PRIu32 " on hart %" PRIu32 " dst = %" PRIx64 ", spaddr = 0x%" PRIx64
+      ", size = %" PRIu64 "\n",
       GetActiveThreadID(),
       HartToExecID,
       dst,
@@ -3883,9 +3883,9 @@ EcallStatus RevCore::ECALL_forza_send() {
     zev->setSrcHart( SrcHart );
 
     //TODO: Currently assuming alignment is 0, with a total of 512 threads per ZAP.
-    uint16_t DstHart = dst % opts->GetNumHarts();
+    uint16_t DstHart = dst;  // % opts->GetNumHarts();
     uint8_t  DstPCID = 0;
-    uint8_t  DstZCID = dst / opts->GetNumHarts();
+    uint8_t  DstZCID = 0;  // dst / opts->GetNumHarts();
     zev->setDestZCID( DstZCID );
     zev->setDestPCID( DstPCID );
     zev->setDestHart( DstHart );
