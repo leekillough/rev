@@ -247,7 +247,7 @@ void ZEN::helper_handleFromPrecMsgZop(SST::Forza::zopEvent *ev)
 void ZEN::handleIncomingZOP(SST::Event *event) {
   SST::Forza::zopEvent* ev = static_cast<SST::Forza::zopEvent*>(event);
 
-  output.verbose(CALL_INFO, 7, 0, "[ZEN]: %s received msg_id=%u from %s to %s\n",
+  output.verbose(CALL_INFO, 7, 0, "TJD ZEN: %s received msg_id=%u from %s to %s\n",
                  getName().c_str(),
                  ev->getID(),
                  ev->getSrcString().c_str(),
@@ -313,7 +313,7 @@ void ZEN::helper_handleFromZoneMsgZop(SST::Forza::zopEvent *ev)
   switch(ev->getOpc()){
     case SST::Forza::zopOpc::Z_MSG_SENDP:
       // handle messaging zop - data in packet
-      output.verbose(CALL_INFO, 9, 0, "ZEN Handle SENDP\n");
+      output.verbose(CALL_INFO, 9, 0, "TJD ZEN Handle SENDP\n");
       from_zone_messaging_queue.push(ev);
       break;
 
@@ -534,6 +534,9 @@ void ZEN::handleIncomingRZAMsg() {
 
 
 void ZEN::sendACK(SST::Forza::zopEvent *ev, bool to_zone_noc){
+  output.verbose(CALL_INFO, 9, 0, "ZEN %s sending ACK in response to msg_id=%" PRIu16 "; Packet %s to %s\n",
+                 getName().c_str(), ev->getID(), 
+                 ev->getSrcString().c_str(), ev->getDestString().c_str());
   SST::Forza::zopEvent *ack = new SST::Forza::zopEvent();
   ack->setType(SST::Forza::zopMsgT::Z_MSG);
   ack->setOpc(SST::Forza::zopOpc::Z_MSG_ACK);
@@ -543,8 +546,8 @@ void ZEN::sendACK(SST::Forza::zopEvent *ev, bool to_zone_noc){
   ack->encodeEvent();
   auto iface = (to_zone_noc) ? zone_nic : m_prec_iface;
   iface->send(ack, (zopCompID)ack->getDestZCID(), (zopPrecID)ack->getDestPCID(), (uint16_t)ack->getDestPrec());
-  output.verbose(CALL_INFO, 9, 0, "ZEN %s sending ACK with msg_id=%" PRIu16 " to ZCID=%" PRIu8 "\n",
-                 getName().c_str(), ev->getID(), ack->getDestZCID());
+  output.verbose(CALL_INFO, 9, 0, "ZEN %s sending ACK with msg_id=%" PRIu16 " to %s\n",
+                 getName().c_str(), ev->getID(), ack->getDestString().c_str());
 }
 
 #if 0
@@ -719,11 +722,11 @@ void ZEN::processFromZoneMsgQueue(){
     // else, continue processing
     // TODO: This may need to wait until we get an ACK from 
     //  the RZA (only if we need to return an error code)
-    output.verbose(CALL_INFO, 9, 0, "ZEN: Local messaging packet, send ACK\n");
-    sendACK(ev, true);  // this should release the sender MsgID
+    output.verbose(CALL_INFO, 9, 0, "TJD ZEN: Local messaging packet, send ACK\n");
+    //sendACK(ev, true);  // this should release the sender MsgID
 
     // This packet is going to the local ZQM, so we just need to forward it
-    output.verbose(CALL_INFO, 9, 0, "ZEN: Local messaging packet, forward packet to ZQM\n");
+    output.verbose(CALL_INFO, 9, 0, "TJD ZEN: Local messaging packet, forward packet to ZQM\n");
     //to_rza_q.push(ev); // will need this when we add in the retry buffer
 
     uint16_t new_msg_id = zoneMsgID->getMsgId();
@@ -733,8 +736,11 @@ void ZEN::processFromZoneMsgQueue(){
 
     // Update msg_id and destination
     ev->setID(new_msg_id);
+    ev->setSrcZCID(SST::Forza::zopCompID::Z_ZEN);
     ev->setDestZCID(SST::Forza::zopCompID::Z_ZQM);
     ev->encodeEvent();
+
+    std::vector<uint64_t> tdpkt = ev->getPacket();
 
     // Forward this on to the zone noc
     zone_nic->send( ev, SST::Forza::zopCompID::Z_ZQM );

@@ -48,8 +48,11 @@ namespace SST::Forza{
         uint64_t scratch_tail;
         uint8_t app_id;
         uint8_t mbox_id;
+        uint8_t zap_id;
+        uint16_t hart_id;
         ZqmMailboxMetadata(uint64_t acs, uint64_t mh, uint64_t mt, uint64_t ms, 
-                        uint64_t st, uint8_t app, uint8_t mbox) :
+                        uint64_t st, uint8_t app, uint8_t mbox, uint8_t zap,
+                        uint16_t hart) :
         acs_pair(acs), 
         mem_head(mh), 
         mem_tail(mt), 
@@ -60,7 +63,9 @@ namespace SST::Forza{
         empty(true), 
         scratch_tail(st), 
         app_id(app),
-        mbox_id(mbox)
+        mbox_id(mbox),
+        zap_id(zap),
+        hart_id(hart)
         { /* empty constructor */}
 
         /// @brief  Get current wr ptr and update it to the next addr
@@ -272,12 +277,18 @@ namespace SST::Forza{
         // Parameters for testing
         SST::Cycle_t cycleCount;
 
+        // From ZEN
+        bool dma_enabled;
+
         // Structures for holding messages
         std::queue<SST::Forza::zopEvent*> setup_reqs;
+        std::queue<SST::Forza::zopEvent*> to_rza_q;
+        std::map<uint16_t, MemReturnEntry*> rza_ret_wait_map;
+        std::queue<SST::Forza::zopEvent*> update_scratchpad_q;
 
         // Structures for holding state in the ZQM
-        // Pair is {AppID, Zap, Hart}, MboxId
-        std::map<std::pair<uint64_t, uint64_t>, ZqmMailboxMetadata*> hart_metadata_table;
+        // tuple is {AppID, Logical ThreadID, Mbox ID)
+        std::map<std::tuple<uint8_t, uint16_t, uint8_t>, ZqmMailboxMetadata*> hart_metadata_table;
 
         // Vector of outstanding scratchpad transactions
         // I would expect this to generally operate in FIFO order, but
@@ -288,7 +299,11 @@ namespace SST::Forza{
         void sendACK(SST::Forza::zopEvent *ev, bool to_zone_noc);
         void handleScratchpadAck(uint16_t msg_id);
         void sendMsgToScratchpad(SST::Forza::zopEvent *ev, std::vector<uint64_t> payload, uint16_t msg_id, bool destsp_is_src);
-
+        void prepSendRZAStore();
+        void sendSdmaToRza(ZqmMailboxMetadata *mbox_info, SST::Forza::zopEvent *ev,
+                           std::vector<uint64_t> store_payload, uint16_t msg_id,
+                           uint64_t wr_addr);
+        void notifyHARTScratchpad();
 
         void setMeAsZopSrc(SST::Forza::zopEvent *ev)
         {
@@ -314,17 +329,20 @@ namespace SST::Forza{
             dest_packet->setDestPrec(src_packet->getDestPrec());
         }
 
-        // Create a metadata hash consisting of {AppID, Zap, Hart}
-        // For now - physical HART == logical HART; long run this is probably
-        // logical thread ID instead of physical HART
-        uint64_t getMetadataHash(SST::Forza::zopEvent *ev, bool use_dest){
-        uint64_t rv = 0;
-        uint64_t hart_id = (use_dest) ? ev->getDestHart() : ev->getSrcHart();
-        uint64_t zap_id = (use_dest) ? ev->getDestZCID() : ev->getSrcZCID();
-        uint64_t hdr_app_id = ev->getAppID();
-        rv =  (hdr_app_id << (Z_SHIFT_HARTID + Z_SHIFT_ZCID)) | (zap_id << Z_SHIFT_HARTID) | (hart_id);
-        return rv; 
-        // TODO: Look at just returning the metadata lookup pair.
+        void setLocalRzaAsZopDest(SST::Forza::zopEvent *ev)
+        {
+            ev->setDestHart(Z_MZOP_PIPE_HART);
+            ev->setDestZCID(SST::Forza::zopCompID::Z_RZA);
+            ev->setDestPCID(zone_id);
+            ev->setDestPrec(precinct_id);
+        }    
+
+        ZqmMailboxMetadata* getDestMboxEntry(SST::Forza::zopEvent *ev){
+            auto evt = std::make_tuple( ev->getAppID(), ev->getDestHart(), (uint8_t)ev->getPktRes());
+            auto iter = hart_metadata_table.find(evt);
+            if (iter == hart_metadata_table.end())
+                output.fatal(CALL_INFO, -1, "Could not find table entry for zop.\n"); // TODO: Add add'l debug info if needed
+            return iter->second;
         }
 
         // Functions for simple loopback testing
