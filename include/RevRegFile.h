@@ -32,11 +32,12 @@ namespace SST::RevCPU {
 struct RevInst;
 
 /// BoxNaN: Store a boxed float inside a double
-inline void BoxNaN( double* dest, const void* value ) {
+inline void BoxNaN( double* dest, const float* value ) {
   uint32_t i32;
-  memcpy( &i32, value, sizeof( float ) );                 // The FP32 value
+  memcpy( &i32, value, sizeof( i32 ) );                   // The FP32 value
   uint64_t i64 = uint64_t{ i32 } | ~uint64_t{ 0 } << 32;  // Boxed NaN value
-  memcpy( dest, &i64, sizeof( double ) );  // Store in FP64 register
+  memcpy( dest, &i64, sizeof( i64 ) );                    // Store in FP64 register
+  static_assert( sizeof( i32 ) == sizeof( float ) && sizeof( i64 ) == sizeof( double ) );
 }
 
 /// RISC-V Register Mneumonics
@@ -120,10 +121,8 @@ private:
     uint64_t RV64_PC{};  ///< RevRegFile: RV64 PC
   };
 
-  FCSR fcsr{};  ///< RevRegFile: FCSR
-
-  std::shared_ptr< std::unordered_multimap< uint64_t, MemReq > > LSQueue{};
-  std::function< void( const MemReq& ) > MarkLoadCompleteFunc{};
+  std::shared_ptr<std::unordered_multimap<uint64_t, MemReq>> LSQueue{};
+  std::function<void( const MemReq& )>                       MarkLoadCompleteFunc{};
 
   union {                             // Anonymous union. We zero-initialize the largest member
     uint32_t RV32[_REV_NUM_REGS_];    ///< RevRegFile: RV32I register file
@@ -142,6 +141,12 @@ private:
 
   // Supervisor Mode CSRs
   uint64_t CSR[CSR_LIMIT]{};
+
+  // Floating-point CSR
+  FCSR fcsr{};
+
+  // Number of instructions retired
+  uint64_t InstRet{};
 
   union {  // Anonymous union. We zero-initialize the largest member
     uint64_t
@@ -165,10 +170,14 @@ private:
 #endif
 
 public:
-  // Constructor which takes a RevFeature
-  explicit RevRegFile( const RevFeature* feature ) :
-    IsRV32( feature->IsRV32() ), HasD( feature->HasD() ) {
-  }
+  // Constructor which takes a RevCore to indicate its hart's parent core
+  // Template is to prevent circular dependencies by not requiring RevCore to be a complete type now
+  template<typename T, typename = std::enable_if_t<std::is_same_v<T, RevCore>>>
+  explicit RevRegFile( T* core ) : Core( core ), IsRV32( core->GetRevFeature()->IsRV32() ), HasD( core->GetRevFeature()->HasD() ) {}
+
+  /// RevRegFile: disallow copying and assignment
+  RevRegFile( const RevRegFile& )            = delete;
+  RevRegFile& operator=( const RevRegFile& ) = delete;
 
   // Getters/Setters
 
@@ -235,11 +244,6 @@ public:
   /// Invoke the MarkLoadComplete function
   void MarkLoadComplete( const MemReq& req ) const {
     MarkLoadCompleteFunc( req );
-  }
-
-  /// Return the Floating-Point Rounding Mode
-  FRMode GetFPRound() const {
-    return static_cast< FRMode >( fcsr.frm );
   }
 
   /// Capture the PC of current instruction which raised exception
@@ -368,8 +372,6 @@ public:
 
   uint32_t GetThreadID() const { return ThreadID; }
 
-  void SetThreadID( uint32_t tid ) { ThreadID = tid; }
-
 private:
   // Performance counters
 
@@ -457,11 +459,10 @@ public:
   /// Get the Floating-Point Rounding Mode
   FRMode GetFRM() const { return FRMode{ ( static_cast<uint32_t>( fcsr ) >> 5 ) & 0x3u }; }
 
+  void SetThreadID( uint32_t tid ) { ThreadID = tid; }
+
   /// Return the Floating-Point Status Register
   FCSR& GetFCSR() { return fcsr; }
-
-  uint32_t GetThreadID() const { return ThreadID; }
-  void SetThreadID(uint32_t tid) { ThreadID = tid; }
 
   // Friend functions and classes to access internal register state
   template<typename FP, typename INT>

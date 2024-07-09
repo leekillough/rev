@@ -59,7 +59,7 @@ bool RevLoader::IsRVBig( const Elf64_Ehdr eh64 ) {
 
 // breaks the write into cache line chunks
 bool RevLoader::WriteCacheLine( uint64_t Addr, size_t Len, const void* Data ) {
-  if( (Len == 0) || (!isRZA) ){
+  if( Len == 0 || !isRZA ) {
     // nothing to do here, move along
     return true;
   }
@@ -448,7 +448,6 @@ bool RevLoader::LoadElf64( char* membuf, size_t sz ) {
   return true;
 }
 
-
 template<typename XLEN>
 bool RevLoader::LoadProgramArgs( const std::string& exe, const std::vector<std::string>& args ) {
   // -------------- BEGIN MEMORY LAYOUT NOTES
@@ -549,51 +548,7 @@ bool RevLoader::LoadProgramArgs( const std::string& exe, const std::vector<std::
   return true;
 }
 
-
 bool RevLoader::LoadElf( const std::string& exe, const std::vector<std::string>& args ) {
-    WriteCacheLine( OldStackTop, len, &tmpc[0] );
-  }
-
-  // now reverse engineer the address alignments
-  // -- this is the address of the argv pointers (address + 8) in the stack
-  // -- Note: this is NOT the actual addresses of the argv[n]'s
-  uint64_t ArgBase = ArgArray + 8;
-  WriteCacheLine( ArgArray, 8, &ArgBase );
-  ArgArray += 8;
-
-  // -- these are the addresses of each argv entry
-  for( size_t i = 0; i < argv.size(); i++ ) {
-    WriteCacheLine( ArgArray, 8, &OldStackTop );
-    OldStackTop += ( argv[i].size() + 1 );
-    ArgArray += 8;
-  }
-
-  mem->SetNextThreadMemAddr( OldStackTop - _STACK_SIZE_ - mem->GetTLSSize() -
-                             __PAGE_SIZE__ );
-  return true;
-}
-
-void RevLoader::splitStr( const std::string&          s,
-                          char                        c,
-                          std::vector< std::string >& v ) {
-  std::string::size_type i = 0;
-  std::string::size_type j = s.find( c );
-
-  if( ( j == std::string::npos ) && ( s.length() > 0 ) ) {
-    v.push_back( s );
-    return;
-  }
-
-  while( j != std::string::npos ) {
-    v.push_back( s.substr( i, j - i ) );
-    i = ++j;
-    j = s.find( c, j );
-    if( j == std::string::npos )
-      v.push_back( s.substr( i, s.length() ) );
-  }
-}
-
-bool RevLoader::LoadElf() {
   // open the target file
   int         fd = open( exe.c_str(), O_RDONLY );
   struct stat FileStats;

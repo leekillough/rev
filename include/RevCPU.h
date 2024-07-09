@@ -225,16 +225,14 @@ private:
   unsigned numCores{};                  ///< RevCPU: number of RISC-V cores
   unsigned numHarts{};                  ///< RevCPU: number of RISC-V cores
   unsigned msgPerCycle{};               ///< RevCPU: number of messages to send per cycle
-  unsigned RDMAPerCycle{};              ///< RevCPU: number of RDMA messages per cycle to inject into PAN network
-  unsigned testStage{};                 ///< RevCPU: controls the PAN Test harness staging
-  unsigned testIters{};                 ///< RevCPU: the number of message iters for each PAN Test
-  std::string Exe{};                    ///< RevCPU: binary executable
-  std::string Args{};                   ///< RevCPU: argument list
-  RevOpts *Opts{};                      ///< RevCPU: Simulation options object
-  RevMem *Mem{};                        ///< RevCPU: RISC-V main memory object
-  RevLoader *Loader{};                  ///< RevCPU: RISC-V loader
-  std::vector<RevCore *> Procs{};       ///< RevCPU: RISC-V processor objects
-  bool *Enabled{};                      ///< RevCPU: Completion structure
+  //  unsigned          RDMAPerCycle{};  ///< RevCPU: number of RDMA messages per cycle to inject into PAN network
+  //  unsigned          testStage{};     ///< RevCPU: controls the PAN Test harness staging
+  //  unsigned          testIters{};     ///< RevCPU: the number of message iters for each PAN Test
+  RevOpts*              Opts{};     ///< RevCPU: Simulation options object
+  RevMem*               Mem{};      ///< RevCPU: RISC-V main memory object
+  RevLoader*            Loader{};   ///< RevCPU: RISC-V loader
+  std::vector<RevCore*> Procs{};    ///< RevCPU: RISC-V processor objects
+  bool*                 Enabled{};  ///< RevCPU: Completion structure
 
   // Initializes a RevThread object.
   // - Adds it's ThreadID to the ThreadQueue to be scheduled
@@ -246,9 +244,6 @@ private:
   // Adds Thread with ThreadID to AssignedThreads vector for ProcID
   // - Handles updating LSQueue & MarkLoadComplete function pointers
   void AssignThread( std::unique_ptr<RevThread>&& ThreadToAssign, unsigned ProcID );
-
-  // Sets up arguments for a thread with a given ID and feature set.
-  void SetupArgs( const std::unique_ptr< RevRegFile >& RegFile );
 
   // Checks the status of ALL threads that are currently blocked.
   void CheckBlockedThreads();
@@ -281,7 +276,7 @@ private:
   uint8_t PrivTag{};  ///< RevCPU: private tag locator
   //  uint32_t LToken{};   ///< RevCPU: token identifier for PAN Test
 
-  int address{};  ///< RevCPU: local network address
+  int      address{ -1 };  ///< RevCPU: local network address
 
   unsigned fault_width{};  ///< RevCPU: the width (in bits) for target faults
   // int64_t  fault_range{};  ///< RevCPU: the range of cycles to inject the fault
@@ -311,8 +306,6 @@ private:
 
   unsigned Precinct{};  ///< RevCPU: FORZA precinct ID
   unsigned Zone{};      ///< RevCPU: FORZA zone ID
-
-  Forza::zopAPI* zNic{};             ///< RevCPU: FORZA ZOP NIC
 
   TimeConverter* timeConverter{};  ///< RevCPU: SST time conversion handler
   SST::Output    output{};         ///< RevCPU: SST output handler

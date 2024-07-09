@@ -253,9 +253,7 @@ public:
   }
 
   // RevMemOp: determine if the request is cache-able
-  bool isCacheable() const {
-    return ( static_cast< uint32_t >( flags ) & 0b10 ) == 0;
-  }
+  bool isCacheable() const { return ( static_cast<uint32_t>( flags ) & static_cast<uint32_t>( RevFlag::F_NONCACHEABLE ) ) == 0; }
 
 private:
   unsigned Hart;       ///< RevMemOp: RISC-V Hart
@@ -424,8 +422,9 @@ public:
   virtual void setTracer( RevTracer* tracer )                  = 0;
 
 protected:
-  SST::Output* output;            ///< RevMemCtrl: sst output object
-  RevTracer*   Tracer = nullptr;  ///< RevMemCtrl: tracer pointer
+  SST::Output* output{};  ///< RevMemCtrl: sst output object
+  RevTracer*   Tracer{};  ///< RevMemCtrl: tracer pointer
+
 };  // class RevMemCtrl
 
 // ----------------------------------------
@@ -682,7 +681,7 @@ public:
   virtual void handleInvResp( StandardMem::InvNotify* ev ) override;
 
   /// RevBasicMemCtrl: handle RevMemCtrl flags for write responses
-  virtual void handleFlagResp( RevMemOp* op ) override;
+  virtual void handleFlagResp( RevMemOp* op ) override { RevHandleFlagResp( op->getTarget(), op->getSize(), op->getFlags() ); }
 
   /// RevBasicMemCtrl: handle an AMO for the target READ+MODIFY+WRITE triplet
   virtual void handleAMO( RevMemOp* op ) override;

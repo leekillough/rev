@@ -251,20 +251,10 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params ) : SST::Compon
   Mem->SetMaxHeapSize( maxHeapSize );
 
   // Load the binary into memory
-  // TODO: Use std::nothrow to return null instead of throwing std::bad_alloc
-  if( EnableZopNIC ) {
-    Loader = new RevLoader( Exe, Args, Mem, &output, EnableRZA );
+  Loader = new( std::nothrow ) RevLoader( Exe, Opts->GetArgv(), Mem, &output, !EnableZopNIC || EnableRZA );
     if( !Loader ) {
       output.fatal( CALL_INFO, -1, "Error: failed to initialize the RISC-V loader\n" );
     }
-  } else {
-    Loader = new RevLoader( Exe, Args, Mem, &output, true );
-    if( !Loader ) {
-      output.fatal( CALL_INFO, -1, "Error: failed to initialize the RISC-V loader\n" );
-    }
-  }
-
-  Opts->SetArgs( Loader->GetArgv() );
 
   EnableCoProc = params.find< bool >( "enableCoProc", 0 );
   if( EnableCoProc ) {
@@ -1017,7 +1007,7 @@ void RevCPU::handleZOPThreadMigrate( Forza::zopEvent* zev ) {
   // pkt[65] = f[31] register contents
 
   // Create the regfile
-  std::unique_ptr<RevRegFile> MigratedRegState = std::make_unique<RevRegFile>( Procs[0]->GetRevFeature() );
+  std::unique_ptr<RevRegFile> MigratedRegState = std::make_unique<RevRegFile>( Procs[0] );
   MigratedRegState->SetPC( pkt[2] );
   for( unsigned i = 0; i < 32; i++ ) {
     MigratedRegState->SetX( i, pkt[3 + i] );
@@ -1316,11 +1306,13 @@ bool RevCPU::clockTick( SST::Cycle_t currentCycle ) {
 // - Adds it's ThreadID to the ReadyThreads to be scheduled
 void RevCPU::InitThread( std::unique_ptr< RevThread >&& ThreadToInit ) {
   // Get a pointer to the register state for this thread
-  std::unique_ptr< RevRegFile > RegState = ThreadToInit->TransferVirtRegState();
+  std::unique_ptr<RevRegFile> RegState = ThreadToInit->TransferVirtRegState();
+
   // Set the global pointer register and the frame pointer register
   auto gp = Loader->GetSymbolAddr( "__global_pointer$" );
   RegState->SetX( RevReg::gp, gp );
-  RegState->SetX( RevReg::s0, gp );  // s0 = x8 = frame pointer register
+  RegState->SetX( RevReg::fp, gp );
+
   // Set state to Ready
   ThreadToInit->SetState( ThreadState::READY );
   output.verbose( CALL_INFO,
