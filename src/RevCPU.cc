@@ -17,7 +17,7 @@
 
 namespace SST::RevCPU {
 
-using MemSegment = RevMem::MemSegment;
+using MemSegment        = RevMem::MemSegment;
 
 const char splash_msg[] = "\
 \n\
@@ -97,31 +97,29 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params ) : SST::Compon
 
   if( EnableNIC ) {
     // Look up the network component
-    Nic = loadUserSubComponent< nicAPI >( "nic" );
+    Nic = loadUserSubComponent<nicAPI>( "nic" );
 
     // check to see if the nic was loaded.  if not, DO NOT load an anonymous endpoint
     if( !Nic )
-      output.fatal(
-        CALL_INFO, -1, "Error: no NIC object loaded into RevCPU\n" );
+      output.fatal( CALL_INFO, -1, "Error: no NIC object loaded into RevCPU\n" );
 
-    Nic->setMsgHandler(
-      new Event::Handler< RevCPU >( this, &RevCPU::handleMessage ) );
+    Nic->setMsgHandler( new Event::Handler<RevCPU>( this, &RevCPU::handleMessage ) );
 
     // record the number of injected messages per cycle
-    msgPerCycle = params.find< unsigned >( "msgPerCycle", 1 );
+    msgPerCycle = params.find<unsigned>( "msgPerCycle", 1 );
   }
 
   // Look for the fault injection logic
-  EnableFaults = params.find< bool >( "enable_faults", 0 );
+  EnableFaults = params.find<bool>( "enable_faults", 0 );
   if( EnableFaults ) {
-    std::vector< std::string > faults;
-    params.find_array< std::string >( "faults", faults );
+    std::vector<std::string> faults;
+    params.find_array<std::string>( "faults", faults );
     DecodeFaultCodes( faults );
 
-    std::string width = params.find< std::string >( "fault_width", "1" );
+    std::string width = params.find<std::string>( "fault_width", "1" );
     DecodeFaultWidth( width );
 
-    fault_width = params.find< int64_t >( "fault_range", "65536" );
+    fault_width = params.find<int64_t>( "fault_range", "65536" );
     FaultCntr   = fault_width;
   }
 
@@ -141,28 +139,25 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params ) : SST::Compon
     // TODO: Use std::nothrow to return null instead of throwing std::bad_alloc
     Mem = new RevMem( memSize, Opts, &output );
     if( !Mem )
-      output.fatal(
-        CALL_INFO, -1, "Error: failed to initialize the memory object\n" );
+      output.fatal( CALL_INFO, -1, "Error: failed to initialize the memory object\n" );
   } else {
-    Ctrl = loadUserSubComponent< RevMemCtrl >( "memory" );
+    Ctrl = loadUserSubComponent<RevMemCtrl>( "memory" );
     if( !Ctrl )
-      output.fatal(
-        CALL_INFO,
-        -1,
-        "Error : failed to inintialize the memory controller subcomponent\n" );
+      output.fatal( CALL_INFO, -1, "Error : failed to inintialize the memory controller subcomponent\n" );
 
     // TODO: Use std::nothrow to return null instead of throwing std::bad_alloc
     Mem = new RevMem( memSize, Opts, Ctrl, &output );
     if( !Mem )
-      output.fatal(
-        CALL_INFO, -1, "Error : failed to initialize the memory object\n" );
+      output.fatal( CALL_INFO, -1, "Error : failed to initialize the memory object\n" );
 
     if( EnableFaults )
-      output.verbose( CALL_INFO,
-                      1,
-                      0,
-                      "Warning: memory faults cannot be enabled with "
-                      "memHierarchy support\n" );
+      output.verbose(
+        CALL_INFO,
+        1,
+        0,
+        "Warning: memory faults cannot be enabled with "
+        "memHierarchy support\n"
+      );
   }
 
   // if the forza security models are enabled, inform RevMem that logging as been enabled
@@ -170,12 +165,12 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params ) : SST::Compon
     if( memTrafficInput != "nil" ) {
       output.verbose( CALL_INFO, 1, 0, "Enabling MemTrafficInput : %s\n", memTrafficInput.c_str() );
       Mem->updatePhysHistoryfromInput( memTrafficInput );
-  }
+    }
     if( memTrafficOutput != "nil" ) {
       output.verbose( CALL_INFO, 1, 0, "Enabling MemTrafficOutput : %s\n", memTrafficOutput.c_str() );
       Mem->setOutputFile( memTrafficOutput );
       Mem->enablePhysHistoryLogging();
-  }
+    }
   }
 
   // FORZA: initialize scratchpad
@@ -211,8 +206,8 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params ) : SST::Compon
       if( !EnableMemH ) {
         output.fatal(
           CALL_INFO,
-                      -1,
-                      "Error : memHierarchy is required if the respective Rev "
+          -1,
+          "Error : memHierarchy is required if the respective Rev "
           "instance is an RZA\n"
         );
       }
@@ -242,21 +237,20 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params ) : SST::Compon
   }
 
   // Set TLB Size
-  const uint64_t tlbSize = params.find< unsigned long >( "tlbSize", 512 );
+  const uint64_t tlbSize = params.find<unsigned long>( "tlbSize", 512 );
   Mem->SetTLBSize( tlbSize );
 
   // Set max heap size
-  const uint64_t maxHeapSize =
-    params.find< unsigned long >( "maxHeapSize", memSize / 4 );
+  const uint64_t maxHeapSize = params.find<unsigned long>( "maxHeapSize", memSize / 4 );
   Mem->SetMaxHeapSize( maxHeapSize );
 
   // Load the binary into memory
   Loader = new( std::nothrow ) RevLoader( Exe, Opts->GetArgv(), Mem, &output, !EnableZopNIC || EnableRZA );
-    if( !Loader ) {
-      output.fatal( CALL_INFO, -1, "Error: failed to initialize the RISC-V loader\n" );
-    }
+  if( !Loader ) {
+    output.fatal( CALL_INFO, -1, "Error: failed to initialize the RISC-V loader\n" );
+  }
 
-  EnableCoProc = params.find< bool >( "enableCoProc", 0 );
+  EnableCoProc = params.find<bool>( "enableCoProc", 0 );
   if( EnableCoProc ) {
 
     // Create the processor objects
@@ -268,13 +262,9 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params ) : SST::Compon
     }
     // Create the co-processor objects
     for( unsigned i = 0; i < numCores; i++ ) {
-      RevCoProc* CoProc = loadUserSubComponent< RevCoProc >(
-        "co_proc", SST::ComponentInfo::SHARE_NONE, Procs[i] );
+      RevCoProc* CoProc = loadUserSubComponent<RevCoProc>( "co_proc", SST::ComponentInfo::SHARE_NONE, Procs[i] );
       if( !CoProc ) {
-        output.fatal(
-          CALL_INFO,
-          -1,
-          "Error : failed to inintialize the co-processor subcomponent\n" );
+        output.fatal( CALL_INFO, -1, "Error : failed to inintialize the co-processor subcomponent\n" );
       }
       CoProcs.push_back( CoProc );
       Procs[i]->SetCoProc( CoProc );
@@ -370,11 +360,7 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params ) : SST::Compon
       std::string diasmType;
       Opts->GetMachineModel( 0, diasmType );  // TODO first param is core
       if( trc->SetDisassembler( diasmType ) )
-        output.verbose(
-          CALL_INFO,
-          1,
-          0,
-          "Warning: tracer could not find disassembler. Using REV default\n" );
+        output.verbose( CALL_INFO, 1, 0, "Warning: tracer could not find disassembler. Using REV default\n" );
 
       trc->SetTraceSymbols( Loader->GetTraceSymbols() );
 
@@ -416,10 +402,12 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params ) : SST::Compon
       StartAddr = Loader->GetSymbolAddr( "main" );
       if( StartAddr == 0x00ull ) {
         // ... no hope left!
-        output.fatal( CALL_INFO,
-                      -1,
-                      "Error: failed to auto discover address for <main> for "
-                      "main thread\n" );
+        output.fatal(
+          CALL_INFO,
+          -1,
+          "Error: failed to auto discover address for <main> for "
+          "main thread\n"
+        );
       }
     } else {
       // ... if symbol was provided, check whether it is valid or not ...
@@ -432,22 +420,21 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params ) : SST::Compon
     }
   } else {  // A start address was provided ...
     // ... check if a symbol was provided and is compatible with the start address ...
-    if( ( IsStartSymbolProvided ) &&
-        ( ResolvedStartSymbolAddr != StartAddr ) ) {
+    if( ( IsStartSymbolProvided ) && ( ResolvedStartSymbolAddr != StartAddr ) ) {
       // ... they are different, don't know the user intent so error out now
       output.fatal(
         CALL_INFO,
         -1,
-        "Error: start address and start symbol differ startAddr=0x%" PRIx64
-        " StartSymbol=%s ResolvedStartSymbolAddr=0x%" PRIx64 "\n",
+        "Error: start address and start symbol differ startAddr=0x%" PRIx64 " StartSymbol=%s ResolvedStartSymbolAddr=0x%" PRIx64
+        "\n",
         StartAddr,
         StartSymbol.c_str(),
-        ResolvedStartSymbolAddr );
+        ResolvedStartSymbolAddr
+      );
     }  // ... else no symbol provided, continue on with StartAddr as the target
   }
 
-  output.verbose(
-    CALL_INFO, 11, 0, "Start address is 0x%" PRIx64 "\n", StartAddr );
+  output.verbose( CALL_INFO, 11, 0, "Start address is 0x%" PRIx64 "\n", StartAddr );
 
   InitMainThread( MainThreadID, StartAddr );
 
@@ -466,34 +453,26 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params ) : SST::Compon
 
   for( unsigned s = 0; s < numCores; s++ ) {
     auto core = "core_" + std::to_string( s );
-    TotalCycles.push_back(
-      registerStatistic< uint64_t >( "TotalCycles", core ) );
-    CyclesWithIssue.push_back(
-      registerStatistic< uint64_t >( "CyclesWithIssue", core ) );
-    FloatsRead.push_back( registerStatistic< uint64_t >( "FloatsRead", core ) );
-    FloatsWritten.push_back(
-      registerStatistic< uint64_t >( "FloatsWritten", core ) );
-    DoublesRead.push_back(
-      registerStatistic< uint64_t >( "DoublesRead", core ) );
-    DoublesWritten.push_back(
-      registerStatistic< uint64_t >( "DoublesWritten", core ) );
-    BytesRead.push_back( registerStatistic< uint64_t >( "BytesRead", core ) );
-    BytesWritten.push_back(
-      registerStatistic< uint64_t >( "BytesWritten", core ) );
-    FloatsExec.push_back( registerStatistic< uint64_t >( "FloatsExec", core ) );
-    TLBHitsPerCore.push_back(
-      registerStatistic< uint64_t >( "TLBHitsPerCore", core ) );
-    TLBMissesPerCore.push_back(
-      registerStatistic< uint64_t >( "TLBMissesPerCore", core ) );
+    TotalCycles.push_back( registerStatistic<uint64_t>( "TotalCycles", core ) );
+    CyclesWithIssue.push_back( registerStatistic<uint64_t>( "CyclesWithIssue", core ) );
+    FloatsRead.push_back( registerStatistic<uint64_t>( "FloatsRead", core ) );
+    FloatsWritten.push_back( registerStatistic<uint64_t>( "FloatsWritten", core ) );
+    DoublesRead.push_back( registerStatistic<uint64_t>( "DoublesRead", core ) );
+    DoublesWritten.push_back( registerStatistic<uint64_t>( "DoublesWritten", core ) );
+    BytesRead.push_back( registerStatistic<uint64_t>( "BytesRead", core ) );
+    BytesWritten.push_back( registerStatistic<uint64_t>( "BytesWritten", core ) );
+    FloatsExec.push_back( registerStatistic<uint64_t>( "FloatsExec", core ) );
+    TLBHitsPerCore.push_back( registerStatistic<uint64_t>( "TLBHitsPerCore", core ) );
+    TLBMissesPerCore.push_back( registerStatistic<uint64_t>( "TLBMissesPerCore", core ) );
   }
 
   // determine whether we need to enable/disable manual coproc clocking
-  DisableCoprocClock    = params.find< bool >( "independentCoprocClock", 0 );
+  DisableCoprocClock    = params.find<bool>( "independentCoprocClock", 0 );
 
   // Create the completion array
   Enabled               = new bool[numCores]{ false };
 
-  const unsigned Splash = params.find< bool >( "splash", 0 );
+  const unsigned Splash = params.find<bool>( "splash", 0 );
 
   if( Splash > 0 )
     output.verbose( CALL_INFO, 1, 0, splash_msg );
@@ -552,8 +531,7 @@ void RevCPU::DecodeFaultCodes( const std::vector<std::string>& faults ) {
     output.fatal( CALL_INFO, -1, "No fault codes defined" );
   }
 
-  EnableCrackFaults = EnableMemFaults = EnableRegFaults = EnableALUFaults =
-    false;
+  EnableCrackFaults = EnableMemFaults = EnableRegFaults = EnableALUFaults = false;
 
   for( auto& fault : faults ) {
     if( fault == "decode" ) {
@@ -573,54 +551,54 @@ void RevCPU::DecodeFaultCodes( const std::vector<std::string>& faults ) {
 }
 
 void RevCPU::registerStatistics() {
-  SyncGetSend        = registerStatistic< uint64_t >( "SyncGetSend" );
-  SyncPutSend        = registerStatistic< uint64_t >( "SyncPutSend" );
-  AsyncGetSend       = registerStatistic< uint64_t >( "AsyncGetSend" );
-  AsyncPutSend       = registerStatistic< uint64_t >( "AsyncPutSend" );
-  SyncStreamGetSend  = registerStatistic< uint64_t >( "SyncStreamGetSend" );
-  SyncStreamPutSend  = registerStatistic< uint64_t >( "SyncStreamPutSend" );
-  AsyncStreamGetSend = registerStatistic< uint64_t >( "AsyncStreamGetSend" );
-  AsyncStreamPutSend = registerStatistic< uint64_t >( "AsyncStreamPutSend" );
-  ExecSend           = registerStatistic< uint64_t >( "ExecSend" );
-  StatusSend         = registerStatistic< uint64_t >( "StatusSend" );
-  CancelSend         = registerStatistic< uint64_t >( "CancelSend" );
-  ReserveSend        = registerStatistic< uint64_t >( "ReserveSend" );
-  RevokeSend         = registerStatistic< uint64_t >( "RevokeSend" );
-  HaltSend           = registerStatistic< uint64_t >( "HaltSend" );
-  ResumeSend         = registerStatistic< uint64_t >( "ResumeSend" );
-  ReadRegSend        = registerStatistic< uint64_t >( "ReadRegSend" );
-  WriteRegSend       = registerStatistic< uint64_t >( "WriteRegSend" );
-  SingleStepSend     = registerStatistic< uint64_t >( "SingleStepSend" );
-  SetFutureSend      = registerStatistic< uint64_t >( "SetFutureSend" );
-  RevokeFutureSend   = registerStatistic< uint64_t >( "RevokeFutureSend" );
-  StatusFutureSend   = registerStatistic< uint64_t >( "StatusFutureSend" );
-  SuccessSend        = registerStatistic< uint64_t >( "SuccessSend" );
-  FailedSend         = registerStatistic< uint64_t >( "FailedSend" );
-  BOTWSend           = registerStatistic< uint64_t >( "BOTWSend" );
-  SyncGetRecv        = registerStatistic< uint64_t >( "SyncGetRecv" );
-  SyncPutRecv        = registerStatistic< uint64_t >( "SyncPutRecv" );
-  AsyncGetRecv       = registerStatistic< uint64_t >( "AsyncGetRecv" );
-  AsyncPutRecv       = registerStatistic< uint64_t >( "AsyncPutRecv" );
-  SyncStreamGetRecv  = registerStatistic< uint64_t >( "SyncStreamGetRecv" );
-  SyncStreamPutRecv  = registerStatistic< uint64_t >( "SyncStreamPutRecv" );
-  AsyncStreamGetRecv = registerStatistic< uint64_t >( "AsyncStreamGetRecv" );
-  AsyncStreamPutRecv = registerStatistic< uint64_t >( "AsyncStreamPutRecv" );
-  ExecRecv           = registerStatistic< uint64_t >( "ExecRecv" );
-  StatusRecv         = registerStatistic< uint64_t >( "StatusRecv" );
-  CancelRecv         = registerStatistic< uint64_t >( "CancelRecv" );
-  ReserveRecv        = registerStatistic< uint64_t >( "ReserveRecv" );
-  RevokeRecv         = registerStatistic< uint64_t >( "RevokeRecv" );
-  HaltRecv           = registerStatistic< uint64_t >( "HaltRecv" );
-  ResumeRecv         = registerStatistic< uint64_t >( "ResumeRecv" );
-  ReadRegRecv        = registerStatistic< uint64_t >( "ReadRegRecv" );
-  WriteRegRecv       = registerStatistic< uint64_t >( "WriteRegRecv" );
-  SingleStepRecv     = registerStatistic< uint64_t >( "SingleStepRecv" );
-  SetFutureRecv      = registerStatistic< uint64_t >( "SetFutureRecv" );
-  RevokeFutureRecv   = registerStatistic< uint64_t >( "RevokeFutureRecv" );
-  StatusFutureRecv   = registerStatistic< uint64_t >( "StatusFutureRecv" );
-  SuccessRecv        = registerStatistic< uint64_t >( "SuccessRecv" );
-  FailedRecv         = registerStatistic< uint64_t >( "FailedRecv" );
-  BOTWRecv           = registerStatistic< uint64_t >( "BOTWRecv" );
+  SyncGetSend        = registerStatistic<uint64_t>( "SyncGetSend" );
+  SyncPutSend        = registerStatistic<uint64_t>( "SyncPutSend" );
+  AsyncGetSend       = registerStatistic<uint64_t>( "AsyncGetSend" );
+  AsyncPutSend       = registerStatistic<uint64_t>( "AsyncPutSend" );
+  SyncStreamGetSend  = registerStatistic<uint64_t>( "SyncStreamGetSend" );
+  SyncStreamPutSend  = registerStatistic<uint64_t>( "SyncStreamPutSend" );
+  AsyncStreamGetSend = registerStatistic<uint64_t>( "AsyncStreamGetSend" );
+  AsyncStreamPutSend = registerStatistic<uint64_t>( "AsyncStreamPutSend" );
+  ExecSend           = registerStatistic<uint64_t>( "ExecSend" );
+  StatusSend         = registerStatistic<uint64_t>( "StatusSend" );
+  CancelSend         = registerStatistic<uint64_t>( "CancelSend" );
+  ReserveSend        = registerStatistic<uint64_t>( "ReserveSend" );
+  RevokeSend         = registerStatistic<uint64_t>( "RevokeSend" );
+  HaltSend           = registerStatistic<uint64_t>( "HaltSend" );
+  ResumeSend         = registerStatistic<uint64_t>( "ResumeSend" );
+  ReadRegSend        = registerStatistic<uint64_t>( "ReadRegSend" );
+  WriteRegSend       = registerStatistic<uint64_t>( "WriteRegSend" );
+  SingleStepSend     = registerStatistic<uint64_t>( "SingleStepSend" );
+  SetFutureSend      = registerStatistic<uint64_t>( "SetFutureSend" );
+  RevokeFutureSend   = registerStatistic<uint64_t>( "RevokeFutureSend" );
+  StatusFutureSend   = registerStatistic<uint64_t>( "StatusFutureSend" );
+  SuccessSend        = registerStatistic<uint64_t>( "SuccessSend" );
+  FailedSend         = registerStatistic<uint64_t>( "FailedSend" );
+  BOTWSend           = registerStatistic<uint64_t>( "BOTWSend" );
+  SyncGetRecv        = registerStatistic<uint64_t>( "SyncGetRecv" );
+  SyncPutRecv        = registerStatistic<uint64_t>( "SyncPutRecv" );
+  AsyncGetRecv       = registerStatistic<uint64_t>( "AsyncGetRecv" );
+  AsyncPutRecv       = registerStatistic<uint64_t>( "AsyncPutRecv" );
+  SyncStreamGetRecv  = registerStatistic<uint64_t>( "SyncStreamGetRecv" );
+  SyncStreamPutRecv  = registerStatistic<uint64_t>( "SyncStreamPutRecv" );
+  AsyncStreamGetRecv = registerStatistic<uint64_t>( "AsyncStreamGetRecv" );
+  AsyncStreamPutRecv = registerStatistic<uint64_t>( "AsyncStreamPutRecv" );
+  ExecRecv           = registerStatistic<uint64_t>( "ExecRecv" );
+  StatusRecv         = registerStatistic<uint64_t>( "StatusRecv" );
+  CancelRecv         = registerStatistic<uint64_t>( "CancelRecv" );
+  ReserveRecv        = registerStatistic<uint64_t>( "ReserveRecv" );
+  RevokeRecv         = registerStatistic<uint64_t>( "RevokeRecv" );
+  HaltRecv           = registerStatistic<uint64_t>( "HaltRecv" );
+  ResumeRecv         = registerStatistic<uint64_t>( "ResumeRecv" );
+  ReadRegRecv        = registerStatistic<uint64_t>( "ReadRegRecv" );
+  WriteRegRecv       = registerStatistic<uint64_t>( "WriteRegRecv" );
+  SingleStepRecv     = registerStatistic<uint64_t>( "SingleStepRecv" );
+  SetFutureRecv      = registerStatistic<uint64_t>( "SetFutureRecv" );
+  RevokeFutureRecv   = registerStatistic<uint64_t>( "RevokeFutureRecv" );
+  StatusFutureRecv   = registerStatistic<uint64_t>( "StatusFutureRecv" );
+  SuccessRecv        = registerStatistic<uint64_t>( "SuccessRecv" );
+  FailedRecv         = registerStatistic<uint64_t>( "FailedRecv" );
+  BOTWRecv           = registerStatistic<uint64_t>( "BOTWRecv" );
 }
 
 void RevCPU::setup() {
@@ -652,7 +630,7 @@ void RevCPU::processZOPQ() {
     return;
   }
 
-  bool flag = false;
+  bool     flag = false;
   uint64_t Addr = 0x00ull;
 
   /// put the ZRqst structure in RevMem
@@ -695,7 +673,7 @@ void RevCPU::processZOPQ() {
         output.fatal(
           CALL_INFO,
           -1,
-                    "[FORZA][RZA] RZA's disable handling of ZOP messages of Type=%s\n",
+          "[FORZA][RZA] RZA's disable handling of ZOP messages of Type=%s\n",
           zNic->msgTToStr( zev->getType() ).c_str()
         );
         break;
@@ -777,9 +755,9 @@ void RevCPU::handleZOPMZOP( Forza::zopEvent* zev ) {
     output.fatal( CALL_INFO, -1, "[FORZA][ZAP]: Cannot handle null MZOP\n" );
   }
 
-  uint64_t addr = 0x00ull;
-  uint64_t data = 0x00ull;
-  bool isLoad = false;
+  uint64_t addr                                                  = 0x00ull;
+  uint64_t data                                                  = 0x00ull;
+  bool     isLoad                                                = false;
 
   // used only for load operations
   std::function<void( const MemReq& )> LocalMarkLoadCompleteFunc = [=]( const MemReq& req ) { this->MarkLoadCompleteDummy( req ); };
@@ -790,7 +768,7 @@ void RevCPU::handleZOPMZOP( Forza::zopEvent* zev ) {
     output.fatal(
       CALL_INFO,
       -1,
-                 "[FORZA][ZAP]: MZOP packet has no address FLIT: Type=%s, ID=%d\n",
+      "[FORZA][ZAP]: MZOP packet has no address FLIT: Type=%s, ID=%d\n",
       zNic->msgTToStr( zev->getType() ).c_str(),
       zev->getID()
     );
@@ -830,7 +808,7 @@ void RevCPU::handleZOPMZOP( Forza::zopEvent* zev ) {
       output.fatal(
         CALL_INFO,
         -1,
-                   "[FORZA][ZAP]: MZOP packet has no data FLIT: Type=%s, ID=%d\n",
+        "[FORZA][ZAP]: MZOP packet has no data FLIT: Type=%s, ID=%d\n",
         zNic->msgTToStr( zev->getType() ).c_str(),
         zev->getID()
       );
@@ -842,7 +820,7 @@ void RevCPU::handleZOPMZOP( Forza::zopEvent* zev ) {
       output.fatal(
         CALL_INFO,
         -1,
-                   "[FORZA][ZAP]: MZOP packet has no data FLIT: Type=%s, ID=%d\n",
+        "[FORZA][ZAP]: MZOP packet has no data FLIT: Type=%s, ID=%d\n",
         zNic->msgTToStr( zev->getType() ).c_str(),
         zev->getID()
       );
@@ -854,7 +832,7 @@ void RevCPU::handleZOPMZOP( Forza::zopEvent* zev ) {
       output.fatal(
         CALL_INFO,
         -1,
-                   "[FORZA][ZAP]: MZOP packet has no data FLIT: Type=%s, ID=%d\n",
+        "[FORZA][ZAP]: MZOP packet has no data FLIT: Type=%s, ID=%d\n",
         zNic->msgTToStr( zev->getType() ).c_str(),
         zev->getID()
       );
@@ -866,7 +844,7 @@ void RevCPU::handleZOPMZOP( Forza::zopEvent* zev ) {
       output.fatal(
         CALL_INFO,
         -1,
-                   "[FORZA][ZAP]: MZOP packet has no data FLIT: Type=%s, ID=%d\n",
+        "[FORZA][ZAP]: MZOP packet has no data FLIT: Type=%s, ID=%d\n",
         zNic->msgTToStr( zev->getType() ).c_str(),
         zev->getID()
       );
@@ -878,7 +856,7 @@ void RevCPU::handleZOPMZOP( Forza::zopEvent* zev ) {
       output.fatal(
         CALL_INFO,
         -1,
-                   "[FORZA][ZAP]: MZOP packet has no data FLIT: Type=%s, ID=%d\n",
+        "[FORZA][ZAP]: MZOP packet has no data FLIT: Type=%s, ID=%d\n",
         zNic->msgTToStr( zev->getType() ).c_str(),
         zev->getID()
       );
@@ -890,7 +868,7 @@ void RevCPU::handleZOPMZOP( Forza::zopEvent* zev ) {
       output.fatal(
         CALL_INFO,
         -1,
-                   "[FORZA][ZAP]: MZOP packet has no data FLIT: Type=%s, ID=%d\n",
+        "[FORZA][ZAP]: MZOP packet has no data FLIT: Type=%s, ID=%d\n",
         zNic->msgTToStr( zev->getType() ).c_str(),
         zev->getID()
       );
@@ -902,7 +880,7 @@ void RevCPU::handleZOPMZOP( Forza::zopEvent* zev ) {
       output.fatal(
         CALL_INFO,
         -1,
-                   "[FORZA][ZAP]: MZOP packet has no data FLIT: Type=%s, ID=%d\n",
+        "[FORZA][ZAP]: MZOP packet has no data FLIT: Type=%s, ID=%d\n",
         zNic->msgTToStr( zev->getType() ).c_str(),
         zev->getID()
       );
@@ -913,7 +891,7 @@ void RevCPU::handleZOPMZOP( Forza::zopEvent* zev ) {
     output.fatal(
       CALL_INFO,
       -1,
-                 "[FORZA][ZAP]: MZOP packet with erroneous opcode: Type=%s, ID=%d\n",
+      "[FORZA][ZAP]: MZOP packet with erroneous opcode: Type=%s, ID=%d\n",
       zNic->msgTToStr( zev->getType() ).c_str(),
       zev->getID()
     );
@@ -990,7 +968,7 @@ void RevCPU::handleZOPThreadMigrate( Forza::zopEvent* zev ) {
     output.fatal( CALL_INFO, -1, "[FORZA][RZA]: Cannot handle null thread migration\n" );
   }
 
-  const auto& pkt = zev->getPacket();
+  const auto& pkt                              = zev->getPacket();
   // The thread-specific
   // data is formatted as follows:
   // pkt[0] = <header info>
@@ -1022,8 +1000,8 @@ void RevCPU::handleZOPThreadMigrate( Forza::zopEvent* zev ) {
 
   std::unique_ptr<RevThread> MigratedThread = std::make_unique<RevThread>(
     GetNewThreadID(),  // TODO: Include in Payload
-                                                                             _INVALID_TID_, // TODO: Include in payload
-                                                                             seg,
+    _INVALID_TID_,     // TODO: Include in payload
+    seg,
     std::move( MigratedRegState )
   );
 
@@ -1043,7 +1021,7 @@ void RevCPU::handleZOPMessageZAP( Forza::zopEvent* zev ) {
     output.fatal(
       CALL_INFO,
       -1,
-                 "[FORZA][ZAP] Received exception code=%s from message ID=%d\n",
+      "[FORZA][ZAP] Received exception code=%s from message ID=%d\n",
       zNic->msgTToStr( zev->getType() ).c_str(),
       (uint32_t) ( zev->getID() )
     );
@@ -1196,7 +1174,7 @@ bool RevCPU::clockTick( SST::Cycle_t currentCycle ) {
 
   // Process the ZOPQ
   if( EnableRZA ) {
-  processZOPQ();
+    processZOPQ();
     for( unsigned i = 0; i < CoProcs.size(); i++ ) {
       CoProcs[i]->ClockTick( currentCycle );
     }
@@ -1214,21 +1192,10 @@ bool RevCPU::clockTick( SST::Cycle_t currentCycle ) {
         }
         UpdateCoreStatistics( i );
         Enabled[i] = false;
-        output.verbose( CALL_INFO,
-                        5,
-                        0,
-                        "Closing Processor %zu at Cycle: %" PRIu64 "\n",
-                        i,
-                        currentCycle );
+        output.verbose( CALL_INFO, 5, 0, "Closing Processor %zu at Cycle: %" PRIu64 "\n", i, currentCycle );
       }
-      if( EnableCoProc && !CoProcs[i]->ClockTick( currentCycle ) &&
-          !DisableCoprocClock ) {
-        output.verbose( CALL_INFO,
-                        5,
-                        0,
-                        "Closing Co-Processor %zu at Cycle: %" PRIu64 "\n",
-                        i,
-                        currentCycle );
+      if( EnableCoProc && !CoProcs[i]->ClockTick( currentCycle ) && !DisableCoprocClock ) {
+        output.verbose( CALL_INFO, 5, 0, "Closing Co-Processor %zu at Cycle: %" PRIu64 "\n", i, currentCycle );
       }
     }
 
@@ -1289,11 +1256,7 @@ bool RevCPU::clockTick( SST::Cycle_t currentCycle ) {
     Mem->updatePhysHistorytoOutput();
 
     primaryComponentOKToEndSim();
-    output.verbose( CALL_INFO,
-                    5,
-                    0,
-                    "OK to end sim at cycle: %" PRIu64 "\n",
-                    static_cast< uint64_t >( currentCycle ) );
+    output.verbose( CALL_INFO, 5, 0, "OK to end sim at cycle: %" PRIu64 "\n", static_cast<uint64_t>( currentCycle ) );
   } else {
     rtn = false;
   }
@@ -1304,47 +1267,33 @@ bool RevCPU::clockTick( SST::Cycle_t currentCycle ) {
 // Initializes a RevThread object.
 // - Moves it to the 'Threads' map
 // - Adds it's ThreadID to the ReadyThreads to be scheduled
-void RevCPU::InitThread( std::unique_ptr< RevThread >&& ThreadToInit ) {
+void RevCPU::InitThread( std::unique_ptr<RevThread>&& ThreadToInit ) {
   // Get a pointer to the register state for this thread
   std::unique_ptr<RevRegFile> RegState = ThreadToInit->TransferVirtRegState();
 
   // Set the global pointer register and the frame pointer register
-  auto gp = Loader->GetSymbolAddr( "__global_pointer$" );
+  auto gp                              = Loader->GetSymbolAddr( "__global_pointer$" );
   RegState->SetX( RevReg::gp, gp );
   RegState->SetX( RevReg::fp, gp );
 
   // Set state to Ready
   ThreadToInit->SetState( ThreadState::READY );
-  output.verbose( CALL_INFO,
-                  4,
-                  0,
-                  "Initializing Thread %" PRIu32 "\n",
-                  ThreadToInit->GetID() );
-  output.verbose( CALL_INFO,
-                  11,
-                  0,
-                  "Thread Information: %s",
-                  ThreadToInit->to_string().c_str() );
+  output.verbose( CALL_INFO, 4, 0, "Initializing Thread %" PRIu32 "\n", ThreadToInit->GetID() );
+  output.verbose( CALL_INFO, 11, 0, "Thread Information: %s", ThreadToInit->to_string().c_str() );
   ReadyThreads.emplace_back( std::move( ThreadToInit ) );
 }
 
 // Assigns a RevThred to a specific Proc which then loads it into a RevHart
 // This should not be called without first checking if the Proc has an IdleHart
-void RevCPU::AssignThread( std::unique_ptr< RevThread >&& ThreadToAssign,
-                           unsigned                       ProcID ) {
-  output.verbose( CALL_INFO,
-                  4,
-                  0,
-                  "Assigning Thread %" PRIu32 " to Processor %" PRIu32 "\n",
-                  ThreadToAssign->GetID(),
-                  ProcID );
+void RevCPU::AssignThread( std::unique_ptr<RevThread>&& ThreadToAssign, unsigned ProcID ) {
+  output.verbose( CALL_INFO, 4, 0, "Assigning Thread %" PRIu32 " to Processor %" PRIu32 "\n", ThreadToAssign->GetID(), ProcID );
   Procs[ProcID]->AssignThread( std::move( ThreadToAssign ) );
   return;
 }
 
 // Checks if a thread with a given Thread ID can proceed (used for pthread_join).
 // it does this by seeing if a given thread's WaitingOnTID has completed
-bool RevCPU::ThreadCanProceed( const std::unique_ptr< RevThread >& Thread ) {
+bool RevCPU::ThreadCanProceed( const std::unique_ptr<RevThread>& Thread ) {
   bool rtn              = false;
 
   // Get the thread's waiting to join TID
@@ -1353,17 +1302,10 @@ bool RevCPU::ThreadCanProceed( const std::unique_ptr< RevThread >& Thread ) {
   // If the thread is waiting on another thread, check if that thread has completed
   if( WaitingOnTID != _INVALID_TID_ ) {
     // Check if WaitingOnTID has completed... if so, return = true, else return false
-    output.verbose( CALL_INFO,
-                    6,
-                    0,
-                    "Thread %" PRIu32 " is waiting on Thread %u\n",
-                    Thread->GetID(),
-                    WaitingOnTID );
+    output.verbose( CALL_INFO, 6, 0, "Thread %" PRIu32 " is waiting on Thread %u\n", Thread->GetID(), WaitingOnTID );
 
     // Check if the WaitingOnTID has completed, if not, thread cannot proceed
-    rtn = ( CompletedThreads.find( WaitingOnTID ) != CompletedThreads.end() ) ?
-            true :
-            false;
+    rtn = ( CompletedThreads.find( WaitingOnTID ) != CompletedThreads.end() ) ? true : false;
   }
   // If the thread is not waiting on another thread, it can proceed
   else {
@@ -1465,21 +1407,23 @@ void RevCPU::HandleThreadStateChangesForProc( uint32_t ProcID ) {
 
     case ThreadState::READY:
       // If this happens we are not setting state when assigning thread somewhere
-      output.fatal( CALL_INFO,
-                    99,
-                    "Error: Thread %" PRIu32 " on Core %" PRIu32
-                    " is assigned but is in READY state... This is a bug\n",
-                    ThreadID,
-                    ProcID );
+      output.fatal(
+        CALL_INFO,
+        99,
+        "Error: Thread %" PRIu32 " on Core %" PRIu32 " is assigned but is in READY state... This is a bug\n",
+        ThreadID,
+        ProcID
+      );
       break;
     default:  // Should DEFINITELY never happen
-      output.fatal( CALL_INFO,
-                    99,
-                    "Error: Thread %" PRIu32 " on Core %" PRIu32
-                    " is in an unknown state... This is a bug.\n%s\n",
-                    ThreadID,
-                    ProcID,
-                    Thread->to_string().c_str() );
+      output.fatal(
+        CALL_INFO,
+        99,
+        "Error: Thread %" PRIu32 " on Core %" PRIu32 " is in an unknown state... This is a bug.\n%s\n",
+        ThreadID,
+        ProcID,
+        Thread->to_string().c_str()
+      );
       break;
     }
     // If the Proc does not have any threads assigned to it, there is no work to do, it is disabled

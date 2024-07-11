@@ -312,7 +312,7 @@ private:
   uint64_t TLSBaseAddr{};
   uint64_t TLSSize{};
 
-  bool isRZA{};          ///< RevLoader: is this device an RZA?
+  bool isRZA{};  ///< RevLoader: is this device an RZA?
 
   ElfInfo                         elfinfo{};         ///< RevLoader: elf info from the loaded program
   std::map<std::string, uint64_t> symtable{};        ///< RevLoader: loaded symbol table

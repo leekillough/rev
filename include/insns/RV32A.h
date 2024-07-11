@@ -30,19 +30,27 @@ class RV32A : public RevExt {
       for( unsigned i = 1; i < 32; i++ ) {
         P.push_back( R->GetX<uint64_t>( i ) );
       }
-      for( unsigned i=0; i<32; i++ ){
+      for( unsigned i = 0; i < 32; i++ ) {
         uint64_t t = 0x00ull;
-        double s= R->DPF[i];
-        memcpy(&t, &s, sizeof(t));
-        P.push_back(t);
+        double   s = R->DPF[i];
+        memcpy( &t, &s, sizeof( t ) );
+        P.push_back( t );
       }
 
       P.push_back( static_cast<uint64_t>( R->GetThreadID() ) );
       R->SetSCAUSE( RevExceptionCause::THREAD_MIGRATED );
       return M->ZOP_ThreadMigrate( F->GetHartToExecID(), P, Zone, Precinct );
     }
-    if( R->IsRV32 ){
-      MemReq req(uint64_t(R->RV32[Inst.rs1]), Inst.rd, RevRegClass::RegGPR, F->GetHartToExecID(), MemOp::MemOpAMO, true, R->GetMarkLoadComplete());
+    if( R->IsRV32 ) {
+      MemReq req(
+        uint64_t( R->RV32[Inst.rs1] ),
+        Inst.rd,
+        RevRegClass::RegGPR,
+        F->GetHartToExecID(),
+        MemOp::MemOpAMO,
+        true,
+        R->GetMarkLoadComplete()
+      );
       R->LSQueue->insert( req.LSQHashPair() );
       M->LR( F->GetHartToExecID(), uint64_t( R->RV32[Inst.rs1] ), &R->RV32[Inst.rd], Inst.aq, Inst.rl, req, RevFlag::F_SEXT32 );
     } else {
@@ -75,28 +83,28 @@ class RV32A : public RevExt {
       for( unsigned i = 1; i < 32; i++ ) {
         P.push_back( R->GetX<uint64_t>( i ) );
       }
-      for( unsigned i=0; i<32; i++ ){
+      for( unsigned i = 0; i < 32; i++ ) {
         uint64_t t = 0x00ull;
-        double s= R->DPF[i];
-        memcpy(&t, &s, sizeof(t));
-        P.push_back(t);
+        double   s = R->DPF[i];
+        memcpy( &t, &s, sizeof( t ) );
+        P.push_back( t );
       }
       P.push_back( static_cast<uint64_t>( R->GetThreadID() ) );
       R->SetSCAUSE( RevExceptionCause::THREAD_MIGRATED );
       return M->ZOP_ThreadMigrate( F->GetHartToExecID(), P, Zone, Precinct );
     }
-    if( R->IsRV32 ){
-      M->SC(F->GetHartToExecID(), R->RV32[Inst.rs1],
-            &R->RV32[Inst.rs2],
-            &R->RV32[Inst.rd],
-            Inst.aq, Inst.rl,
-            RevFlag::F_SEXT32);
-    }else{
-      M->SC(F->GetHartToExecID(), R->RV64[Inst.rs1],
-            reinterpret_cast<uint32_t*>(&R->RV64[Inst.rs2]),
-            reinterpret_cast<uint32_t*>(&R->RV64[Inst.rd]),
-            Inst.aq, Inst.rl,
-            RevFlag::F_SEXT64);
+    if( R->IsRV32 ) {
+      M->SC( F->GetHartToExecID(), R->RV32[Inst.rs1], &R->RV32[Inst.rs2], &R->RV32[Inst.rd], Inst.aq, Inst.rl, RevFlag::F_SEXT32 );
+    } else {
+      M->SC(
+        F->GetHartToExecID(),
+        R->RV64[Inst.rs1],
+        reinterpret_cast<uint32_t*>( &R->RV64[Inst.rs2] ),
+        reinterpret_cast<uint32_t*>( &R->RV64[Inst.rd] ),
+        Inst.aq,
+        Inst.rl,
+        RevFlag::F_SEXT64
+      );
     }
     R->AdvancePC( Inst );
     return true;
@@ -113,11 +121,11 @@ class RV32A : public RevExt {
       for( unsigned i = 1; i < 32; i++ ) {
         P.push_back( R->GetX<uint64_t>( i ) );
       }
-      for( unsigned i=0; i<32; i++ ){
+      for( unsigned i = 0; i < 32; i++ ) {
         uint64_t t = 0x00ull;
-        double s= R->DPF[i];
-        memcpy(&t, &s, sizeof(t));
-        P.push_back(t);
+        double   s = R->DPF[i];
+        memcpy( &t, &s, sizeof( t ) );
+        P.push_back( t );
       }
 
       P.push_back( static_cast<uint64_t>( R->GetThreadID() ) );

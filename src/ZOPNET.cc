@@ -149,9 +149,9 @@ void zopNIC::setup() {
   if( msgHandler == nullptr ) {
     output.fatal(
       CALL_INFO,
-                  -1,
-                  "%s, Error: zopNIC implements a callback based notification "
-                  "and the parent has not registered a callback function\n",
+      -1,
+      "%s, Error: zopNIC implements a callback based notification "
+      "and the parent has not registered a callback function\n",
       getName().c_str()
     );
   }
@@ -173,8 +173,8 @@ void zopNIC::init( unsigned int phase ) {
       initBroadcastSent = true;
       zopEvent* ev = new zopEvent( iFace->getEndpointID(), getEndpointType(), unsigned( getPCID( getZoneID() ) ), getPrecinctID() );
       SST::Interfaces::SimpleNetwork::Request* req = new SST::Interfaces::SimpleNetwork::Request();
-      req->dest = SST::Interfaces::SimpleNetwork::INIT_BROADCAST_ADDR;
-      req->src  = iFace->getEndpointID();
+      req->dest                                    = SST::Interfaces::SimpleNetwork::INIT_BROADCAST_ADDR;
+      req->src                                     = iFace->getEndpointID();
       req->givePayload( ev );
       iFace->sendUntimedData( req );
 
@@ -197,12 +197,12 @@ void zopNIC::init( unsigned int phase ) {
     hostMap.emplace( srcID, t );
     output.verbose(
       CALL_INFO,
-                    7,
-                    0,
-                    "%s received init broadcast messages from %d of "
-                    "[Type][PCID][Precinct]: [%s][%d][%d]\n",
-                    getName().c_str(),
-                    (uint32_t) ( srcID ),
+      7,
+      0,
+      "%s received init broadcast messages from %d of "
+      "[Type][PCID][Precinct]: [%s][%d][%d]\n",
+      getName().c_str(),
+      (uint32_t) ( srcID ),
       endPToStr( std::get<_HM_ENDP_T>( t ) ).c_str(),
       (uint32_t) ( std::get<_HM_ZID>( t ) ),
       (uint32_t) ( std::get<_HM_PID>( t ) )
@@ -291,7 +291,7 @@ void zopNIC::send_zone_barrier( unsigned Hart, unsigned endpoints ) {
       ev->setCredit( 0 );
       ev->setOpc( SST::Forza::zopOpc::Z_MSG_ZBAR );
       ev->setAppID( 0 );
-      ev->setDestHart( 0 );  // ignored
+      ev->setDestHart( 0 );                                            // ignored
       ev->setDestZCID( (uint8_t) ( SST::Forza::zopCompID::Z_ZAP0 ) );  // ignored
       ev->setDestPCID( (uint8_t) ( getPCID( getZoneID() ) ) );
       ev->setDestPrec( (uint8_t) ( getPrecinctID() ) );
@@ -308,8 +308,8 @@ void zopNIC::send_zone_barrier( unsigned Hart, unsigned endpoints ) {
       // create the request
       // this may be broken... send individual requests to every other ZAP
       SST::Interfaces::SimpleNetwork::Request* req = new SST::Interfaces::SimpleNetwork::Request();
-      req->dest = realDest;
-      req->src  = iFace->getEndpointID();
+      req->dest                                    = realDest;
+      req->src                                     = iFace->getEndpointID();
       req->givePayload( ev );
 
       // inject the request
@@ -355,31 +355,30 @@ void zopNIC::send( zopEvent* ev, zopCompID dest, zopPrecID zone, unsigned prec )
   SST::Interfaces::SimpleNetwork::Request* req = new SST::Interfaces::SimpleNetwork::Request();
   output.verbose(
     CALL_INFO,
-                  9,
-                  0,
-                  "Sending message from %s @ endpoint=%d with "
-                  "msg_id=%d and %s to %s\n",
-                  getName().c_str(),
-                  (uint32_t) ( getAddress() ),
-    ev->getDestHart(),
-    ev->getDestZCID(),
-    ev->getDestPCID(),
-    endPToStr( TmpDest ).c_str()
+    9,
+    0,
+    "Sending message from %s @ endpoint=%d with "
+    "msg_id=%d and %s to %s\n",
+    getName().c_str(),
+    (uint32_t) ( getAddress() ),
+    ev->getID(),
+    ev->getSrcString().c_str(),
+    ev->getDestString().c_str()
   );
   auto realDest = 0;
   if( ev->getType() == SST::Forza::zopMsgT::Z_MSG && ( ev->getOpc() == SST::Forza::zopOpc::Z_MSG_SENDP || ev->getOpc() == SST::Forza::zopOpc::Z_MSG_SENDAS ) ) {
     TmpDest = zopCompID::Z_ZEN;
     output.verbose(
       CALL_INFO,
-                    9,
-                    0,
-                    "Forwarding messaging send from %s @ endpoint=%d to "
-                    "dest[hart:zone:prec:Type]=[%d:%d:%d:%s]\n",
-                    getName().c_str(),
-                    (uint32_t) ( getAddress() ),
-                    ev->getDestHart(),
-                    ev->getDestZCID(),
-                    ev->getDestPCID(),
+      9,
+      0,
+      "Forwarding messaging send from %s @ endpoint=%d to "
+      "dest[hart:zone:prec:Type]=[%d:%d:%d:%s]\n",
+      getName().c_str(),
+      (uint32_t) ( getAddress() ),
+      ev->getDestHart(),
+      ev->getDestZCID(),
+      ev->getDestPCID(),
       endPToStr( TmpDest ).c_str()
     );
   }
@@ -404,12 +403,12 @@ void zopNIC::handleLoadResponse(
   if( !ev->getFLIT( Z_FLIT_DATA_RESP, &tmp ) ) {
     output.fatal(
       CALL_INFO,
-                  -1,
-                  "%s, Error: zopEvent on zopNIC failed to read response FLIT; "
-                  "OPC=%d, LENGTH=%d, ID=%d\n",
-                  getName().c_str(),
-                  (unsigned) ( ev->getOpc() ),
-                  (unsigned) ( ev->getLength() ),
+      -1,
+      "%s, Error: zopEvent on zopNIC failed to read response FLIT; "
+      "OPC=%d, LENGTH=%d, ID=%d\n",
+      getName().c_str(),
+      (unsigned) ( ev->getOpc() ),
+      (unsigned) ( ev->getLength() ),
       ID
     );
   }
@@ -428,10 +427,10 @@ void zopNIC::handleLoadResponse(
     default:
       output.fatal(
         CALL_INFO,
-                    -1,
-                    "%s, Error: zopEvent on zopNIC MZOP load response could "
-                    "not be handled; OPC=%d\n",
-                    getName().c_str(),
+        -1,
+        "%s, Error: zopEvent on zopNIC MZOP load response could "
+        "not be handled; OPC=%d\n",
+        getName().c_str(),
         (unsigned) ( Opc )
       );
       break;
@@ -546,10 +545,10 @@ void zopNIC::handleLoadResponse(
     default:
       output.fatal(
         CALL_INFO,
-                    -1,
-                    "%s, Error: zopEvent on zopNIC HZOP AMO response could not "
-                    "be handled; OPC=%d\n",
-                    getName().c_str(),
+        -1,
+        "%s, Error: zopEvent on zopNIC HZOP AMO response could not "
+        "be handled; OPC=%d\n",
+        getName().c_str(),
         (unsigned) ( Opc )
       );
       break;
@@ -581,12 +580,13 @@ bool zopNIC::msgNotify( int vn ) {
   ev->decodeEvent();
   output.verbose(
     CALL_INFO,
-                  9,
-                  0,
-                  "%s:%s received zop message of type %s, ID=%d\n",
-                  getName().c_str(),
-                  endPToStr( getEndpointType() ).c_str(),
-    msgTToStr( ev->getType() ).c_str()
+    9,
+    0,
+    "%s:%s received zop message of type %s, ID=%d\n",
+    getName().c_str(),
+    endPToStr( getEndpointType() ).c_str(),
+    msgTToStr( ev->getType() ).c_str(),
+    ev->getID()
   );
 
   // check to see if the test harness has been enabled
@@ -675,12 +675,12 @@ bool zopNIC::handleBarrier( zopEvent* ev ) {
   if( !ev->getFLIT( Z_FLIT_SENSE, &tmp ) ) {
     output.fatal(
       CALL_INFO,
-                  -1,
-                  "%s, Error: zopEvent on zopNIC failed to read sense FLIT; "
-                  "OPC=%d, LENGTH=%d, ID=%d\n",
-                  getName().c_str(),
-                  (unsigned) ( ev->getOpc() ),
-                  (unsigned) ( ev->getLength() ),
+      -1,
+      "%s, Error: zopEvent on zopNIC failed to read sense FLIT; "
+      "OPC=%d, LENGTH=%d, ID=%d\n",
+      getName().c_str(),
+      (unsigned) ( ev->getOpc() ),
+      (unsigned) ( ev->getLength() ),
       ev->getID()
     );
   }

@@ -31,10 +31,10 @@ public:
   ///< RevThread: Constructor
   RevThread(
     uint32_t ID, uint32_t ParentID, std::shared_ptr<RevMem::MemSegment>& ThreadMem, std::unique_ptr<RevVirtRegState> VirtRegState
-    )
+  )
     : ID( ID ), ParentID( ParentID ), ThreadMem( ThreadMem ), VirtRegState( std::move( VirtRegState ) ) {
-      // Save thread's ID to regfile
-      this->VirtRegState->SetThreadID(ID);
+    // Save thread's ID to regfile
+    this->VirtRegState->SetThreadID( ID );
   }
 
   ///< RevThread: Destructor

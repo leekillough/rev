@@ -113,7 +113,7 @@ private:
   unsigned   Entry{};           ///< RevRegFile: Instruction entry
   uint32_t   cost{};            ///< RevRegFile: Cost of the instruction
   RevTracer* Tracer = nullptr;  ///< RegRegFile: Tracer object
-  uint32_t ThreadID{};          ///< RevRegFile: Thread ID
+  uint32_t   ThreadID{};        ///< RevRegFile: Thread ID
   RevTracer* Tracer = nullptr;  ///< RegRegFile: Tracer object
 
   union {                // Anonymous union. We zero-initialize the largest member
@@ -134,10 +134,8 @@ private:
     double DPF[_REV_NUM_REGS_]{};  ///< RevRegFile: RVxxD register file
   };
 
-  std::bitset< _REV_NUM_REGS_ >
-    RV_Scoreboard{};  ///< RevRegFile: Scoreboard for RV32/RV64 RF to manage pipeline hazard
-  std::bitset< _REV_NUM_REGS_ >
-    FP_Scoreboard{};  ///< RevRegFile: Scoreboard for SPF/DPF RF to manage pipeline hazard
+  std::bitset<_REV_NUM_REGS_> RV_Scoreboard{};  ///< RevRegFile: Scoreboard for RV32/RV64 RF to manage pipeline hazard
+  std::bitset<_REV_NUM_REGS_> FP_Scoreboard{};  ///< RevRegFile: Scoreboard for SPF/DPF RF to manage pipeline hazard
 
   // Supervisor Mode CSRs
   uint64_t CSR[CSR_LIMIT]{};
@@ -148,14 +146,12 @@ private:
   // Number of instructions retired
   uint64_t InstRet{};
 
-  union {  // Anonymous union. We zero-initialize the largest member
-    uint64_t
-      RV64_SEPC{};  // Holds address of instruction that caused the exception (ie. ECALL)
+  union {                  // Anonymous union. We zero-initialize the largest member
+    uint64_t RV64_SEPC{};  // Holds address of instruction that caused the exception (ie. ECALL)
     uint32_t RV32_SEPC;
   };
 
-  RevExceptionCause SCAUSE = RevExceptionCause::
-    NONE;  // Used to store cause of exception (ie. ECALL_USER_EXCEPTION)
+  RevExceptionCause SCAUSE = RevExceptionCause::NONE;  // Used to store cause of exception (ie. ECALL_USER_EXCEPTION)
 
   union {                   // Anonymous union. We zero-initialize the largest member
     uint64_t RV64_STVAL{};  // Used to store additional info about exception (ECALL does not use this and sets value to 0)
@@ -182,69 +178,42 @@ public:
   // Getters/Setters
 
   /// Get cost of the instruction
-  const uint32_t& GetCost() const {
-    return cost;
-  }
+  const uint32_t& GetCost() const { return cost; }
 
-  uint32_t& GetCost() {
-    return cost;
-  }
+  uint32_t& GetCost() { return cost; }
 
   /// Set cost of the instruction
-  void SetCost( uint32_t c ) {
-    cost = c;
-  }
+  void SetCost( uint32_t c ) { cost = c; }
 
   /// Get whether the instruction has been triggered
-  bool GetTrigger() const {
-    return trigger;
-  }
+  bool GetTrigger() const { return trigger; }
 
   /// Set whether the instruction has been triggered
-  void SetTrigger( bool t ) {
-    trigger = t;
-  }
+  void SetTrigger( bool t ) { trigger = t; }
 
   /// Get the instruction entry
-  unsigned GetEntry() const {
-    return Entry;
-  }
+  unsigned GetEntry() const { return Entry; }
 
   /// Set the instruction entry
-  void SetEntry( unsigned e ) {
-    Entry = e;
-  }
+  void SetEntry( unsigned e ) { Entry = e; }
 
   /// Get the Load/Store Queue
-  const auto& GetLSQueue() const {
-    return LSQueue;
-  }
+  const auto& GetLSQueue() const { return LSQueue; }
 
   /// Set the Load/Store Queue
-  void SetLSQueue(
-    std::shared_ptr< std::unordered_multimap< uint64_t, MemReq > > lsq ) {
-    LSQueue = std::move( lsq );
-  }
+  void SetLSQueue( std::shared_ptr<std::unordered_multimap<uint64_t, MemReq>> lsq ) { LSQueue = std::move( lsq ); }
 
   /// Set the current tracer
-  void SetTracer( RevTracer* t ) {
-    Tracer = t;
-  }
+  void SetTracer( RevTracer* t ) { Tracer = t; }
 
   /// Get the MarkLoadComplete function
-  const std::function< void( const MemReq& ) >& GetMarkLoadComplete() const {
-    return MarkLoadCompleteFunc;
-  }
+  const std::function<void( const MemReq& )>& GetMarkLoadComplete() const { return MarkLoadCompleteFunc; }
 
   /// Set the MarkLoadComplete function
-  void SetMarkLoadComplete( std::function< void( const MemReq& ) > func ) {
-    MarkLoadCompleteFunc = std::move( func );
-  }
+  void SetMarkLoadComplete( std::function<void( const MemReq& )> func ) { MarkLoadCompleteFunc = std::move( func ); }
 
   /// Invoke the MarkLoadComplete function
-  void MarkLoadComplete( const MemReq& req ) const {
-    MarkLoadCompleteFunc( req );
-  }
+  void MarkLoadComplete( const MemReq& req ) const { MarkLoadCompleteFunc( req ); }
 
   /// Capture the PC of current instruction which raised exception
   void SetSEPC() {

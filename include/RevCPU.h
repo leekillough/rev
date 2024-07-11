@@ -73,12 +73,14 @@ public:
   // RevCPU Component Registration Data
   // -------------------------------------------------------
   /// RevCPU: Register the component with the SST core
-  SST_ELI_REGISTER_COMPONENT( RevCPU,    // component class
+  SST_ELI_REGISTER_COMPONENT(
+    RevCPU,    // component class
     "revcpu",  // component library
     "RevCPU",  // component name
     SST_ELI_ELEMENT_VERSION( 1, 0, 0 ),
     "RISC-V SST CPU",
-                              COMPONENT_CATEGORY_PROCESSOR )
+    COMPONENT_CATEGORY_PROCESSOR
+  )
 
   // -------------------------------------------------------
   // RevCPU Component Parameter Data
@@ -213,6 +215,7 @@ public:
     {"TLBHits",             "TLB hits",                                             "count",  1},
     {"TLBMisses",           "TLB misses",                                           "count",  1},
     )
+
   // clang-format on
 
   // Passed as a function pointer to each RevCore for when they encounter a function that
@@ -222,9 +225,9 @@ public:
   }
 
 private:
-  unsigned numCores{};                  ///< RevCPU: number of RISC-V cores
-  unsigned numHarts{};                  ///< RevCPU: number of RISC-V cores
-  unsigned msgPerCycle{};               ///< RevCPU: number of messages to send per cycle
+  unsigned numCores{};     ///< RevCPU: number of RISC-V cores
+  unsigned numHarts{};     ///< RevCPU: number of RISC-V cores
+  unsigned msgPerCycle{};  ///< RevCPU: number of messages to send per cycle
   //  unsigned          RDMAPerCycle{};  ///< RevCPU: number of RDMA messages per cycle to inject into PAN network
   //  unsigned          testStage{};     ///< RevCPU: controls the PAN Test harness staging
   //  unsigned          testIters{};     ///< RevCPU: the number of message iters for each PAN Test
@@ -259,16 +262,16 @@ private:
 
   // Checks if a thread with a given Thread ID can proceed (used for pthread_join).
   // it does this by seeing if a given thread's WaitingOnTID has completed
-  bool ThreadCanProceed( const std::unique_ptr< RevThread >& Thread );
+  bool ThreadCanProceed( const std::unique_ptr<RevThread>& Thread );
 
   // vector of Threads which are ready to be scheduled
-  std::vector< std::unique_ptr< RevThread > > ReadyThreads{};
+  std::vector<std::unique_ptr<RevThread>> ReadyThreads{};
 
   // List of Threads that are currently blocked (waiting for their WaitingOnTID to be a key in CompletedThreads).
-  std::list< std::unique_ptr< RevThread > >   BlockedThreads{};
+  std::list<std::unique_ptr<RevThread>> BlockedThreads{};
 
   // Set of Thread IDs and their corresponding RevThread that have completed their execution on this RevCPU
-  std::unordered_map< uint32_t, std::unique_ptr< RevThread > > CompletedThreads{};
+  std::unordered_map<uint32_t, std::unique_ptr<RevThread>> CompletedThreads{};
 
   // Generates a new Thread ID using the RNG.
   uint32_t GetNewThreadID() { return RevRand( 0, UINT32_MAX ); }
@@ -276,7 +279,7 @@ private:
   uint8_t PrivTag{};  ///< RevCPU: private tag locator
   //  uint32_t LToken{};   ///< RevCPU: token identifier for PAN Test
 
-  int      address{ -1 };  ///< RevCPU: local network address
+  int address{ -1 };  ///< RevCPU: local network address
 
   unsigned fault_width{};  ///< RevCPU: the width (in bits) for target faults
   // int64_t  fault_range{};  ///< RevCPU: the range of cycles to inject the fault
@@ -294,11 +297,11 @@ private:
   bool EnableRegFaults{};    ///< RevCPU: Enable register faults
   bool EnableALUFaults{};    ///< RevCPU: Enable ALU faults
 
-  bool EnableMemH{};                    ///< RevCPU: Enable memHierarchy
-  bool EnableCoProc{};                  ///< RevCPU: Enable a co-processor attached to all cores
-  bool EnableRZA{};                     ///< RevCPU: Enables the RZA functionality
-  bool EnableZopNIC{};                  ///< RevCPU: Enables the ZONE/ZOP NIC functionality
-  bool EnableForzaSecurity{};           ///< RevCPU: Enables the FORZA memory security
+  bool        EnableMemH{};           ///< RevCPU: Enable memHierarchy
+  bool        EnableCoProc{};         ///< RevCPU: Enable a co-processor attached to all cores
+  bool        EnableRZA{};            ///< RevCPU: Enables the RZA functionality
+  bool        EnableZopNIC{};         ///< RevCPU: Enables the ZONE/ZOP NIC functionality
+  bool        EnableForzaSecurity{};  ///< RevCPU: Enables the FORZA memory security
   std::string memTrafficInput;        ///< RevCPU: Memory traffic input
   std::string memTrafficOutput;       ///< RevCPU: Memory traffic output
 
@@ -315,18 +318,18 @@ private:
 
   std::vector<RevCoProc*> CoProcs{};  ///< RevCPU: CoProcessor attached to Rev
 
-  unsigned Precinct{};                  ///< RevCPU: FORZA precinct ID
-  unsigned Zone{};                      ///< RevCPU: FORZA zone ID
+  unsigned Precinct{};  ///< RevCPU: FORZA precinct ID
+  unsigned Zone{};      ///< RevCPU: FORZA zone ID
 
-  TimeConverter* timeConverter{};       ///< RevCPU: SST time conversion handler
-  SST::Output output{};                 ///< RevCPU: SST output handler
+  TimeConverter* timeConverter{};  ///< RevCPU: SST time conversion handler
+  SST::Output    output{};         ///< RevCPU: SST output handler
 
-  nicAPI *Nic{};                        ///< RevCPU: Network interface controller
-  panNicAPI *PNic{};                    ///< RevCPU: PAN network interface controller
-  PanExec *PExec{};                     ///< RevCPU: PAN execution context
-  RevMemCtrl *Ctrl{};                   ///< RevCPU: Rev memory controller
-  Forza::zopAPI *zNic{};                ///< RevCPU: FORZA ZOP NIC
-  Forza::zopMsgID *zNicMsgIds; ///< RevCPU: FORZA ZOP NIC Message ID handler
+  nicAPI*          Nic{};       ///< RevCPU: Network interface controller
+  panNicAPI*       PNic{};      ///< RevCPU: PAN network interface controller
+  PanExec*         PExec{};     ///< RevCPU: PAN execution context
+  RevMemCtrl*      Ctrl{};      ///< RevCPU: Rev memory controller
+  Forza::zopAPI*   zNic{};      ///< RevCPU: FORZA ZOP NIC
+  Forza::zopMsgID* zNicMsgIds;  ///< RevCPU: FORZA ZOP NIC Message ID handler
 
   SST::Clock::Handler<RevCPU>* ClockHandler{};  ///< RevCPU: Clock Handler
 
@@ -336,17 +339,17 @@ private:
     TrackGets{};  ///< RevCPU: tracks the outstanding get messages; tuple<Tag, Addr, Sz>
   std::vector<std::tuple<uint8_t, uint32_t, unsigned, int, uint64_t>> ReadQueue{};  ///< RevCPU: outgoing memory read queue
 
-  std::vector< RevCoProc* > CoProcs{};  ///< RevCPU: CoProcessor attached to Rev
+  std::vector<RevCoProc*> CoProcs{};  ///< RevCPU: CoProcessor attached to Rev
 
-  SST::Clock::Handler< RevCPU >*  ClockHandler;  ///< RevCPU: Clock Handler
+  SST::Clock::Handler<RevCPU>* ClockHandler;  ///< RevCPU: Clock Handler
 
   std::vector<Forza::zopEvent*>        ZIQ;    ///< RevCPU: ZOP Issue Queue
   std::map<uint64_t, Forza::zopEvent*> ZRqst;  ///< RevCPU: outstanding ZOP requests
 
   std::queue<std::pair<uint32_t, char*>> ZeroRqst{};   ///< RevCPU: tracks incoming zero address put requests; pair<Size, Data>
   std::list<std::pair<uint8_t, int>>     TrackTags{};  ///< RevCPU: tracks the outgoing messages; pair<Tag, Dest>
-  std::vector<std::tuple<uint8_t, uint64_t, uint32_t>> TrackGets{
-  };  ///< RevCPU: tracks the outstanding get messages; tuple<Tag, Addr, Sz>
+  std::vector<std::tuple<uint8_t, uint64_t, uint32_t>>
+    TrackGets{};  ///< RevCPU: tracks the outstanding get messages; tuple<Tag, Addr, Sz>
   std::vector<std::tuple<uint8_t, uint32_t, unsigned, int, uint64_t>> ReadQueue{};  ///< RevCPU: outgoing memory read queue
   ///<         - Tag
   ///<         - Size
@@ -432,25 +435,25 @@ private:
   void handleMessage( SST::Event* ev );
 
   /// RevCPU: Handle FORZA ZOP Message
-  void    handleZOPMessage( SST::Event* ev );
+  void handleZOPMessage( SST::Event* ev );
 
   /// RevCPU: Handle FORZA ZOP Message for RZA devices
-  void    handleZOPMessageRZA( Forza::zopEvent* zev );
+  void handleZOPMessageRZA( Forza::zopEvent* zev );
 
   /// RevCPU: Handle FORZA ZOP Message for ZAP devices
-  void    handleZOPMessageZAP( Forza::zopEvent* zev );
+  void handleZOPMessageZAP( Forza::zopEvent* zev );
 
   /// RevCPU: Handle FORZA MZOP requests
-  void    handleZOPMZOP( Forza::zopEvent* zev );
+  void handleZOPMZOP( Forza::zopEvent* zev );
 
   /// RevCPU: Handle FORZA Thread Migration
-  void    handleZOPThreadMigrate( Forza::zopEvent* zev );
+  void handleZOPThreadMigrate( Forza::zopEvent* zev );
 
   /// RevCPU: Handle FORZA scratchpad request responses
-  void    MarkLoadCompleteDummy( const MemReq& req );
+  void MarkLoadCompleteDummy( const MemReq& req );
 
   /// RevCPU: Inform the ZQM that a thread is done
-  void    sendZQMThreadComplete( uint32_t ThreadID, uint32_t HartID );
+  void sendZQMThreadComplete( uint32_t ThreadID, uint32_t HartID );
 
   /// RevCPU: Creates a unique tag for this message
   uint8_t createTag();

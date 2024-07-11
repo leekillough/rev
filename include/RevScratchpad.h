@@ -11,18 +11,17 @@
 #ifndef _SST_REVCPU_REVSCRATCHPAD_H_
 #define _SST_REVCPU_REVSCRATCHPAD_H_
 
+#include "../common/include/RevCommon.h"
 #include "RevCPU.h"
 #include "SST.h"
-#include "../common/include/RevCommon.h"
 #include <bitset>
 
 // FORZA: SCRATCHPAD
-#define _CHUNK_SIZE_ 512
-#define _SCRATCHPAD_SIZE_ (_CHUNK_SIZE_*1024)
+#define _CHUNK_SIZE_      512
+#define _SCRATCHPAD_SIZE_ ( _CHUNK_SIZE_ * 1024 )
 #define _SCRATCHPAD_BASE_ 0x0300000000000000
 
-
-namespace SST::RevCPU{
+namespace SST::RevCPU {
 
 class RevScratchpad {
 public:
@@ -31,7 +30,7 @@ public:
     // Create the byte array
     // TODO: Verify this is correct
     BaseAddr += ZapNum * Size;
-    BackingMem  = new char [Size]{};
+    BackingMem = new char[Size]{};
     FreeList.set();
     TopAddr = BaseAddr + Size - 1;
   }
@@ -58,7 +57,7 @@ public:
     }
     uint64_t AllocedAt;
     // figure out how many chunks we need (round up)
-    size_t numChunks = (SizeRequested + ChunkSize - 1) / ChunkSize;
+    size_t numChunks  = ( SizeRequested + ChunkSize - 1 ) / ChunkSize;
 
     // find N contiguous chunks
     size_t FirstChunk = FindContiguousChunks( numChunks );
@@ -67,18 +66,18 @@ public:
       AllocedAt = _INVALID_ADDR_;
     } else {
       AllocedAt = BaseAddr + FirstChunk * ChunkSize;
-      for (size_t i = FirstChunk; i < FirstChunk + numChunks; ++i) {
-        FreeList.set(i, false);
+      for( size_t i = FirstChunk; i < FirstChunk + numChunks; ++i ) {
+        FreeList.set( i, false );
       }
     }
     return AllocedAt;
   }
 
-  void Free(uint64_t Addr, size_t Size){
+  void Free( uint64_t Addr, size_t Size ) {
     // Figure out what chunk we're starting at
-    size_t BaseChunkNum = (Addr - BaseAddr) / ChunkSize;
+    size_t BaseChunkNum = ( Addr - BaseAddr ) / ChunkSize;
     // Figure out how many chunks we need to free (round up)
-    size_t numChunks = (Size + ChunkSize - 1) / ChunkSize;
+    size_t numChunks    = ( Size + ChunkSize - 1 ) / ChunkSize;
     // Make sure were not trying to free beyond the end of the scratchpad
     if( BaseChunkNum + numChunks > FreeList.size() ) {
       output->fatal(
@@ -101,12 +100,12 @@ public:
   }
 
   // Used to find N contiguous chunks that are free
-  size_t FindContiguousChunks(size_t numChunks){
+  size_t FindContiguousChunks( size_t numChunks ) {
     size_t count = 0;
-    for (size_t i = 0; i < FreeList.size(); ++i) {
-        if (FreeList.test(i)) {
+    for( size_t i = 0; i < FreeList.size(); ++i ) {
+      if( FreeList.test( i ) ) {
         ++count;
-        if (count == numChunks) {
+        if( count == numChunks ) {
           // return the index of the first bit of the n contiguous bits
           return i - numChunks + 1;
         }
@@ -114,13 +113,13 @@ public:
         count = 0;
       }
     }
-  return FreeList.size(); // special value indicating "not found"
-}
+    return FreeList.size();  // special value indicating "not found"
+  }
 
   bool Contains( uint64_t Addr ) { return ( Addr >= BaseAddr && Addr < BaseAddr + Size ); }
 
-/// RevScratchpad: Attempts to allocate numBytes in the scratchpad
-uint64_t ScratchpadAlloc(size_t numBytes);
+  /// RevScratchpad: Attempts to allocate numBytes in the scratchpad
+  uint64_t ScratchpadAlloc( size_t numBytes );
 
   /// RevScratchpad: Attempts to allocate numBytes in the scratchpad
   bool ReadMem(
@@ -138,17 +137,17 @@ uint64_t ScratchpadAlloc(size_t numBytes);
   ~RevScratchpad() { delete[] BackingMem; }
 
 private:
-  unsigned ZapNum{};
-  size_t Size{};
-  size_t ChunkSize{};
+  unsigned                                      ZapNum{};
+  size_t                                        Size{};
+  size_t                                        ChunkSize{};
   std::bitset<_SCRATCHPAD_SIZE_ / _CHUNK_SIZE_> FreeList;
   char*                                         BackingMem = nullptr;            ///< RevMem: Scratchpad memory container for FORZA
-  uint64_t BaseAddr = _SCRATCHPAD_BASE_;               ///< RevMem: Base address of the scratchpad
-  uint64_t TopAddr{};               ///< RevScratchpad: Base address of the scratchpad
-  SST::Output *output{}; ///< RevScratchpad: Output stream
+  uint64_t                                      BaseAddr   = _SCRATCHPAD_BASE_;  ///< RevMem: Base address of the scratchpad
+  uint64_t                                      TopAddr{};                       ///< RevScratchpad: Base address of the scratchpad
+  SST::Output*                                  output{};                        ///< RevScratchpad: Output stream
 };
 
-}
+}  // namespace SST::RevCPU
 
 #endif
 

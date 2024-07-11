@@ -45,9 +45,9 @@ class RevCore;
 // ----------------------------------------
 // RegAlloc
 // ----------------------------------------
-#define _H_CLEAR  0
-#define _H_SET    1
-#define _H_DIRTY  2
+#define _H_CLEAR    0
+#define _H_SET      1
+#define _H_DIRTY    2
 
 class RegAlloc {
 public:
@@ -55,7 +55,7 @@ public:
   RegAlloc() {
     for( unsigned i = 0; i < _RA_NUM_REG; i++ ) {
       hazard[i] = _H_CLEAR;
-      regs[i] = 0x00ull;
+      regs[i]   = 0x00ull;
     }
   }
 
@@ -66,11 +66,11 @@ public:
   bool getRegs( unsigned& rs1 ) {
     unsigned t_rs1 = _RA_NUM_REG + 1;
 
-    unsigned cur = 0;
+    unsigned cur   = 0;
     while( cur < _RA_NUM_REG ) {
       if( hazard[cur] == _H_CLEAR ) {
         hazard[cur] = _H_SET;
-        t_rs1 = cur;
+        t_rs1       = cur;
         break;
       } else {
         cur++;
@@ -90,11 +90,11 @@ public:
     unsigned t_rs2 = _RA_NUM_REG + 1;
 
     // find two register slots
-    unsigned cur = 0;
+    unsigned cur   = 0;
     while( cur < _RA_NUM_REG ) {
       if( hazard[cur] == _H_CLEAR ) {
         hazard[cur] = _H_SET;
-        t_rs1 = cur;
+        t_rs1       = cur;
         break;
       } else {
         cur++;
@@ -108,7 +108,7 @@ public:
     while( cur < _RA_NUM_REG ) {
       if( hazard[cur] == _H_CLEAR ) {
         hazard[cur] = _H_SET;
-        t_rs2 = cur;
+        t_rs2       = cur;
         break;
       } else {
         cur++;
@@ -131,11 +131,11 @@ public:
 
     // find three register slots
     // -- Rd
-    unsigned cur = 0;
+    unsigned cur   = 0;
     while( cur < _RA_NUM_REG ) {
       if( hazard[cur] == _H_CLEAR ) {
         hazard[cur] = _H_SET;
-        t_rd = cur;
+        t_rd        = cur;
       } else {
         cur++;
         if( cur == _RA_NUM_REG ) {
@@ -149,7 +149,7 @@ public:
     while( cur < _RA_NUM_REG ) {
       if( hazard[cur] == _H_CLEAR ) {
         hazard[cur] = _H_SET;
-        t_rs1 = cur;
+        t_rs1       = cur;
       } else {
         cur++;
         if( cur == _RA_NUM_REG ) {
@@ -163,7 +163,7 @@ public:
     while( cur < _RA_NUM_REG ) {
       if( hazard[cur] == _H_CLEAR ) {
         hazard[cur] = _H_SET;
-        t_rs2 = cur;
+        t_rs2       = cur;
       } else {
         cur++;
         if( cur == _RA_NUM_REG ) {
@@ -172,7 +172,7 @@ public:
       }
     }
 
-    rd = t_rd;
+    rd  = t_rd;
     rs1 = t_rs1;
     rs2 = t_rs2;
     return true;
@@ -182,7 +182,7 @@ public:
   void clearReg( unsigned reg ) {
     if( reg < _RA_NUM_REG ) {
       hazard[reg] = _H_CLEAR;
-      regs[reg] = 0x00ull;
+      regs[reg]   = 0x00ull;
     }
   }
 
@@ -224,7 +224,7 @@ public:
     }
   }
 
-  uint64_t regs[_RA_NUM_REG]; ///< RegAlloc: register array
+  uint64_t regs[_RA_NUM_REG];  ///< RegAlloc: register array
 
 private:
   uint8_t hazard[_RA_NUM_REG];
@@ -253,17 +253,14 @@ public:
   RevCoProc& operator=( const RevCoProc& ) = delete;
 
   /// RevCoProc: send raw data to the coprocessor
-  virtual bool sendRawData( std::vector< uint8_t > Data ) {
-    return true;
-  }
+  virtual bool sendRawData( std::vector<uint8_t> Data ) { return true; }
 
   /// RevCoProc: retrieve raw data from the coprocessor
-  virtual const std::vector< uint8_t > getRawData() {
-    output->fatal(
-      CALL_INFO, -1, "Error : no override method defined for getRawData()\n" );
+  virtual const std::vector<uint8_t> getRawData() {
+    output->fatal( CALL_INFO, -1, "Error : no override method defined for getRawData()\n" );
 
     // inserting code to quiesce warnings
-    std::vector< uint8_t > D;
+    std::vector<uint8_t> D;
     return D;
   }
 
@@ -312,14 +309,11 @@ public:
   virtual void MarkLoadComplete( const MemReq& req ) {}
 
 protected:
-  SST::Output* output;  ///< RevCoProc: sst output object
-  RevCore* const
-    parent;  ///< RevCoProc: Pointer to RevCore this CoProc is attached to
+  SST::Output*   output;  ///< RevCoProc: sst output object
+  RevCore* const parent;  ///< RevCoProc: Pointer to RevCore this CoProc is attached to
 
   ///< RevCoProc: Create the passkey object - this allows access to otherwise private members within RevCore
-  RevCorePasskey< RevCoProc > CreatePasskey() {
-    return RevCorePasskey< RevCoProc >();
-  }
+  RevCorePasskey<RevCoProc> CreatePasskey() { return RevCorePasskey<RevCoProc>(); }
 };  // class RevCoProc
 
 // ----------------------------------------
@@ -327,18 +321,20 @@ protected:
 // ----------------------------------------
 class RevSimpleCoProc : public RevCoProc {
 public:
-  SST_ELI_REGISTER_SUBCOMPONENT( RevSimpleCoProc,
+  SST_ELI_REGISTER_SUBCOMPONENT(
+    RevSimpleCoProc,
     "revcpu",
     "RevSimpleCoProc",
     SST_ELI_ELEMENT_VERSION( 1, 0, 0 ),
     "RISC-V Rev Simple Co-Processor",
-                                 SST::RevCPU::RevCoProc );
+    SST::RevCPU::RevCoProc
+  );
 
   // Set up parameters accesible from the python configuration
   SST_ELI_DOCUMENT_PARAMS(
     { "verbose", "Set the verbosity of output for the co-processor", "0" },
     { "clock", "Sets the clock frequency of the co-processor", "1Ghz" },
-    );
+  );
 
   // Register any subcomponents used by this element
   SST_ELI_DOCUMENT_SUBCOMPONENT_SLOTS();
@@ -347,11 +343,8 @@ public:
   SST_ELI_DOCUMENT_PORTS();
 
   // Add statistics
-  SST_ELI_DOCUMENT_STATISTICS(
-    { "InstRetired",
-      "Counts the total number of instructions retired by this coprocessor",
-      "count",
-      1 } );
+  SST_ELI_DOCUMENT_STATISTICS( { "InstRetired", "Counts the total number of instructions retired by this coprocessor", "count", 1 }
+  );
 
   // Enum for referencing statistics
   enum CoProcStats {
@@ -374,8 +367,7 @@ public:
   void registerStats();
 
   /// RevSimpleCoProc: Enqueue Inst into the InstQ and return
-  virtual bool
-    IssueInst( RevFeature* F, RevRegFile* R, RevMem* M, uint32_t Inst );
+  virtual bool IssueInst( RevFeature* F, RevRegFile* R, RevMem* M, uint32_t Inst );
 
   /// RevSimpleCoProc: Reset the co-processor by emmptying the InstQ
   virtual bool Reset();
@@ -383,22 +375,16 @@ public:
   /// RevSimpleCoProv: Called when the attached RevCore completes simulation. Could be used to
   ///                   also signal to SST that the co-processor is done if ClockTick is registered
   ///                   to SSTCore vs. being driven by RevCPU
-  virtual bool Teardown() {
-    return Reset();
-  };
+  virtual bool Teardown() { return Reset(); };
 
   /// RevSimpleCoProc: Returns true if instruction queue is empty
-  virtual bool IsDone() {
-    return InstQ.empty();
-  }
+  virtual bool IsDone() { return InstQ.empty(); }
 
 private:
   struct RevCoProcInst {
     RevCoProcInst() = default;
 
-    RevCoProcInst( uint32_t inst, RevFeature* F, RevRegFile* R, RevMem* M ) :
-      Inst( inst ), Feature( F ), RegFile( R ), Mem( M ) {
-    }
+    RevCoProcInst( uint32_t inst, RevFeature* F, RevRegFile* R, RevMem* M ) : Inst( inst ), Feature( F ), RegFile( R ), Mem( M ) {}
 
     RevCoProcInst( const RevCoProcInst& rhs ) = default;
 
@@ -409,10 +395,10 @@ private:
   };
 
   /// RevSimpleCoProc: Total number of instructions retired
-  Statistic< uint64_t >*      num_instRetired;
+  Statistic<uint64_t>* num_instRetired;
 
   /// Queue of instructions sent from attached RevCore
-  std::queue< RevCoProcInst > InstQ;
+  std::queue<RevCoProcInst> InstQ;
 
   SST::Cycle_t cycleCount{};
 
@@ -457,23 +443,23 @@ public:
   )
 
   enum mzopStats : uint32_t {
-    MZOP_LB     = 0,
-    MZOP_LH     = 1,
-    MZOP_LW     = 2,
-    MZOP_LD     = 3,
-    MZOP_LSB    = 4,
-    MZOP_LSH    = 5,
-    MZOP_LSW    = 6,
-    MZOP_LDMA   = 7,
-    MZOP_SB     = 8,
-    MZOP_SH     = 9,
-    MZOP_SW     = 10,
-    MZOP_SD     = 11,
-    MZOP_SSB    = 12,
-    MZOP_SSH    = 13,
-    MZOP_SSW    = 14,
-    MZOP_SDMA   = 15,
-    MZOP_END    = 16,
+    MZOP_LB   = 0,
+    MZOP_LH   = 1,
+    MZOP_LW   = 2,
+    MZOP_LD   = 3,
+    MZOP_LSB  = 4,
+    MZOP_LSH  = 5,
+    MZOP_LSW  = 6,
+    MZOP_LDMA = 7,
+    MZOP_SB   = 8,
+    MZOP_SH   = 9,
+    MZOP_SW   = 10,
+    MZOP_SD   = 11,
+    MZOP_SSB  = 12,
+    MZOP_SSH  = 13,
+    MZOP_SSW  = 14,
+    MZOP_SDMA = 15,
+    MZOP_END  = 16,
   };
 
   /// RZALSCoProc: default constructor
@@ -512,19 +498,19 @@ public:
 private:
   RevMem*        Mem;    ///< RZALSCoProc: RevMem object
   Forza::zopAPI* zNic;   ///< RZALSCoProc: ZOPNic object
-  RegAlloc Alloc;       ///< RZALSCoProc: Register allocator object
+  RegAlloc       Alloc;  ///< RZALSCoProc: Register allocator object
 
   /// RZALSCoProc: Handle the incoming MZOP request
-  bool           handleMZOP( Forza::zopEvent* zev, bool& flag );
+  bool handleMZOP( Forza::zopEvent* zev, bool& flag );
 
   /// RZALSCoProc: Register all the statistics
   void registerStats();
 
   /// RZALSCoProc: record the target statistic
-  void           recordStat( mzopStats Stat, uint64_t Data );
+  void recordStat( mzopStats Stat, uint64_t Data );
 
-#define LOADQ_ZEV   0
-#define LOADQ_RS2   1
+#define LOADQ_ZEV 0
+#define LOADQ_RS2 1
   std::vector<std::pair<Forza::zopEvent*, unsigned>> LoadQ;  ///< RZALSCoProc: Outstanding load queue
 
   std::function<void( const MemReq& )> MarkLoadCompleteFunc;  ///< RZALSCoProc: Hazard function
@@ -544,10 +530,10 @@ public:
   // Subcomponent info
   SST_ELI_REGISTER_SUBCOMPONENT(
     RZAAMOCoProc,
-                                 "revcpu",
-                                "RZAAMOCoProc",
-                                 SST_ELI_ELEMENT_VERSION( 1, 0, 0 ),
-                                "FORZA RZA Load/Store CoProc",
+    "revcpu",
+    "RZAAMOCoProc",
+    SST_ELI_ELEMENT_VERSION( 1, 0, 0 ),
+    "FORZA RZA Load/Store CoProc",
     SST::RevCPU::RevCoProc
   )
   // Register the paramaters
@@ -668,111 +654,111 @@ public:
   )
 
   enum hzopStats : uint32_t {
-    HZOP_32_BASE_ADD    = 0,
-    HZOP_32_BASE_AND    = 1,
-    HZOP_32_BASE_OR     = 2,
-    HZOP_32_BASE_XOR    = 3,
-    HZOP_32_BASE_SMAX   = 4,
-    HZOP_32_BASE_MAX    = 5,
-    HZOP_32_BASE_SMIN   = 6,
-    HZOP_32_BASE_MIN    = 7,
-    HZOP_32_BASE_SWAP   = 8,
-    HZOP_32_BASE_CAS    = 9,
-    HZOP_32_BASE_FADD   = 10,
-    HZOP_32_BASE_FSUB   = 11,
-    HZOP_32_BASE_FRSUB  = 12,
-    HZOP_64_BASE_ADD    = 13,
-    HZOP_64_BASE_AND    = 14,
-    HZOP_64_BASE_OR     = 15,
-    HZOP_64_BASE_XOR    = 16,
-    HZOP_64_BASE_SMAX   = 17,
-    HZOP_64_BASE_MAX    = 18,
-    HZOP_64_BASE_SMIN   = 19,
-    HZOP_64_BASE_MIN    = 20,
-    HZOP_64_BASE_SWAP   = 21,
-    HZOP_64_BASE_CAS    = 22,
-    HZOP_64_BASE_FADD   = 23,
-    HZOP_64_BASE_FSUB   = 24,
-    HZOP_64_BASE_FRSUB  = 25,
-    HZOP_32_M_ADD       = 26,
-    HZOP_32_M_AND       = 27,
-    HZOP_32_M_OR        = 28,
-    HZOP_32_M_XOR       = 29,
-    HZOP_32_M_SMAX      = 30,
-    HZOP_32_M_MAX       = 31,
-    HZOP_32_M_SMIN      = 32,
-    HZOP_32_M_MIN       = 33,
-    HZOP_32_M_SWAP      = 34,
-    HZOP_32_M_CAS       = 35,
-    HZOP_32_M_FADD      = 36,
-    HZOP_32_M_FSUB      = 37,
-    HZOP_32_M_FRSUB     = 38,
-    HZOP_64_M_ADD       = 39,
-    HZOP_64_M_AND       = 40,
-    HZOP_64_M_OR        = 41,
-    HZOP_64_M_XOR       = 42,
-    HZOP_64_M_SMAX      = 43,
-    HZOP_64_M_MAX       = 44,
-    HZOP_64_M_SMIN      = 45,
-    HZOP_64_M_MIN       = 46,
-    HZOP_64_M_SWAP      = 47,
-    HZOP_64_M_CAS       = 48,
-    HZOP_64_M_FADD      = 49,
-    HZOP_64_M_FSUB      = 50,
-    HZOP_64_M_FRSUB     = 51,
-    HZOP_32_S_ADD       = 52,
-    HZOP_32_S_AND       = 53,
-    HZOP_32_S_OR        = 54,
-    HZOP_32_S_XOR       = 55,
-    HZOP_32_S_SMAX      = 56,
-    HZOP_32_S_MAX       = 57,
-    HZOP_32_S_SMIN      = 58,
-    HZOP_32_S_MIN       = 59,
-    HZOP_32_S_SWAP      = 60,
-    HZOP_32_S_CAS       = 61,
-    HZOP_32_S_FADD      = 62,
-    HZOP_32_S_FSUB      = 63,
-    HZOP_32_S_FRSUB     = 64,
-    HZOP_64_S_ADD       = 65,
-    HZOP_64_S_AND       = 66,
-    HZOP_64_S_OR        = 67,
-    HZOP_64_S_XOR       = 68,
-    HZOP_64_S_SMAX      = 69,
-    HZOP_64_S_MAX       = 70,
-    HZOP_64_S_SMIN      = 71,
-    HZOP_64_S_MIN       = 72,
-    HZOP_64_S_SWAP      = 73,
-    HZOP_64_S_CAS       = 74,
-    HZOP_64_S_FADD      = 75,
-    HZOP_64_S_FSUB      = 76,
-    HZOP_64_S_FRSUB     = 77,
-    HZOP_32_MS_ADD      = 78,
-    HZOP_32_MS_AND      = 79,
-    HZOP_32_MS_OR       = 80,
-    HZOP_32_MS_XOR      = 81,
-    HZOP_32_MS_SMAX     = 82,
-    HZOP_32_MS_MAX      = 83,
-    HZOP_32_MS_SMIN     = 84,
-    HZOP_32_MS_MIN      = 85,
-    HZOP_32_MS_SWAP     = 86,
-    HZOP_32_MS_CAS      = 87,
-    HZOP_32_MS_FADD     = 88,
-    HZOP_32_MS_FSUB     = 89,
-    HZOP_32_MS_FRSUB    = 90,
-    HZOP_64_MS_ADD      = 91,
-    HZOP_64_MS_AND      = 92,
-    HZOP_64_MS_OR       = 93,
-    HZOP_64_MS_XOR      = 94,
-    HZOP_64_MS_SMAX     = 95,
-    HZOP_64_MS_MAX      = 96,
-    HZOP_64_MS_SMIN     = 97,
-    HZOP_64_MS_MIN      = 98,
-    HZOP_64_MS_SWAP     = 99,
-    HZOP_64_MS_CAS      = 100,
-    HZOP_64_MS_FADD     = 101,
-    HZOP_64_MS_FSUB     = 102,
-    HZOP_64_MS_FRSUB    = 103,
-    HZOP_END            = 104,
+    HZOP_32_BASE_ADD   = 0,
+    HZOP_32_BASE_AND   = 1,
+    HZOP_32_BASE_OR    = 2,
+    HZOP_32_BASE_XOR   = 3,
+    HZOP_32_BASE_SMAX  = 4,
+    HZOP_32_BASE_MAX   = 5,
+    HZOP_32_BASE_SMIN  = 6,
+    HZOP_32_BASE_MIN   = 7,
+    HZOP_32_BASE_SWAP  = 8,
+    HZOP_32_BASE_CAS   = 9,
+    HZOP_32_BASE_FADD  = 10,
+    HZOP_32_BASE_FSUB  = 11,
+    HZOP_32_BASE_FRSUB = 12,
+    HZOP_64_BASE_ADD   = 13,
+    HZOP_64_BASE_AND   = 14,
+    HZOP_64_BASE_OR    = 15,
+    HZOP_64_BASE_XOR   = 16,
+    HZOP_64_BASE_SMAX  = 17,
+    HZOP_64_BASE_MAX   = 18,
+    HZOP_64_BASE_SMIN  = 19,
+    HZOP_64_BASE_MIN   = 20,
+    HZOP_64_BASE_SWAP  = 21,
+    HZOP_64_BASE_CAS   = 22,
+    HZOP_64_BASE_FADD  = 23,
+    HZOP_64_BASE_FSUB  = 24,
+    HZOP_64_BASE_FRSUB = 25,
+    HZOP_32_M_ADD      = 26,
+    HZOP_32_M_AND      = 27,
+    HZOP_32_M_OR       = 28,
+    HZOP_32_M_XOR      = 29,
+    HZOP_32_M_SMAX     = 30,
+    HZOP_32_M_MAX      = 31,
+    HZOP_32_M_SMIN     = 32,
+    HZOP_32_M_MIN      = 33,
+    HZOP_32_M_SWAP     = 34,
+    HZOP_32_M_CAS      = 35,
+    HZOP_32_M_FADD     = 36,
+    HZOP_32_M_FSUB     = 37,
+    HZOP_32_M_FRSUB    = 38,
+    HZOP_64_M_ADD      = 39,
+    HZOP_64_M_AND      = 40,
+    HZOP_64_M_OR       = 41,
+    HZOP_64_M_XOR      = 42,
+    HZOP_64_M_SMAX     = 43,
+    HZOP_64_M_MAX      = 44,
+    HZOP_64_M_SMIN     = 45,
+    HZOP_64_M_MIN      = 46,
+    HZOP_64_M_SWAP     = 47,
+    HZOP_64_M_CAS      = 48,
+    HZOP_64_M_FADD     = 49,
+    HZOP_64_M_FSUB     = 50,
+    HZOP_64_M_FRSUB    = 51,
+    HZOP_32_S_ADD      = 52,
+    HZOP_32_S_AND      = 53,
+    HZOP_32_S_OR       = 54,
+    HZOP_32_S_XOR      = 55,
+    HZOP_32_S_SMAX     = 56,
+    HZOP_32_S_MAX      = 57,
+    HZOP_32_S_SMIN     = 58,
+    HZOP_32_S_MIN      = 59,
+    HZOP_32_S_SWAP     = 60,
+    HZOP_32_S_CAS      = 61,
+    HZOP_32_S_FADD     = 62,
+    HZOP_32_S_FSUB     = 63,
+    HZOP_32_S_FRSUB    = 64,
+    HZOP_64_S_ADD      = 65,
+    HZOP_64_S_AND      = 66,
+    HZOP_64_S_OR       = 67,
+    HZOP_64_S_XOR      = 68,
+    HZOP_64_S_SMAX     = 69,
+    HZOP_64_S_MAX      = 70,
+    HZOP_64_S_SMIN     = 71,
+    HZOP_64_S_MIN      = 72,
+    HZOP_64_S_SWAP     = 73,
+    HZOP_64_S_CAS      = 74,
+    HZOP_64_S_FADD     = 75,
+    HZOP_64_S_FSUB     = 76,
+    HZOP_64_S_FRSUB    = 77,
+    HZOP_32_MS_ADD     = 78,
+    HZOP_32_MS_AND     = 79,
+    HZOP_32_MS_OR      = 80,
+    HZOP_32_MS_XOR     = 81,
+    HZOP_32_MS_SMAX    = 82,
+    HZOP_32_MS_MAX     = 83,
+    HZOP_32_MS_SMIN    = 84,
+    HZOP_32_MS_MIN     = 85,
+    HZOP_32_MS_SWAP    = 86,
+    HZOP_32_MS_CAS     = 87,
+    HZOP_32_MS_FADD    = 88,
+    HZOP_32_MS_FSUB    = 89,
+    HZOP_32_MS_FRSUB   = 90,
+    HZOP_64_MS_ADD     = 91,
+    HZOP_64_MS_AND     = 92,
+    HZOP_64_MS_OR      = 93,
+    HZOP_64_MS_XOR     = 94,
+    HZOP_64_MS_SMAX    = 95,
+    HZOP_64_MS_MAX     = 96,
+    HZOP_64_MS_SMIN    = 97,
+    HZOP_64_MS_MIN     = 98,
+    HZOP_64_MS_SWAP    = 99,
+    HZOP_64_MS_CAS     = 100,
+    HZOP_64_MS_FADD    = 101,
+    HZOP_64_MS_FSUB    = 102,
+    HZOP_64_MS_FRSUB   = 103,
+    HZOP_END           = 104,
   };
 
   /// RZAAMOCoProc: default constructor
@@ -811,20 +797,20 @@ public:
 private:
   RevMem*        Mem;    ///< RZAAMOCoProc: RevMem object
   Forza::zopAPI* zNic;   ///< RZAAMOCoProc: ZOPNic object
-  RegAlloc Alloc;       ///< RZAAMOCoProc: Register allocator object
+  RegAlloc       Alloc;  ///< RZAAMOCoProc: Register allocator object
 
   /// RZAAMOCoProc: Handle the incoming HZOP request
-  bool           handleHZOP( Forza::zopEvent* zev, bool& flag );
+  bool handleHZOP( Forza::zopEvent* zev, bool& flag );
 
   /// RZAAMOCoProc: Register all the statistics
   void registerStats();
 
   /// RZAAMOCoProc: record the target statistic
-  void           recordStat( hzopStats Stat, uint64_t Data );
+  void recordStat( hzopStats Stat, uint64_t Data );
 
-#define AMOQ_ZEV   0
-#define AMOQ_RS1   1
-#define AMOQ_RS2   2
+#define AMOQ_ZEV 0
+#define AMOQ_RS1 1
+#define AMOQ_RS2 2
   std::vector<std::tuple<Forza::zopEvent*, unsigned, unsigned>> AMOQ;  ///< RZAAMOCoProc: Outstanding load queue
 
   std::function<void( const MemReq& )> MarkLoadCompleteFunc;  ///< RZAAMOCoProc: Hazard function

@@ -51,18 +51,18 @@
 
 #define _STACK_SIZE_ ( size_t{ 1024 * 1024 } )
 
-#define Z_ADDR_MASK   0xFFFFFFFFFF
-#define Z_ZONE_MASK   0b111
-#define Z_PREC_MASK   0x1FFF
-#define Z_SP_MASK     0b01
-#define Z_VIEW_MASK   0b01
-#define Z_SEG_MASK    0x3F
-#define Z_ADDR_SHIFT  0x00
-#define Z_ZONE_SHIFT  40
-#define Z_PREC_SHIFT  43
-#define Z_SP_SHIFT    56
-#define Z_VIEW_SHIFT  57
-#define Z_SEG_SHIFT   58
+#define Z_ADDR_MASK  0xFFFFFFFFFF
+#define Z_ZONE_MASK  0b111
+#define Z_PREC_MASK  0x1FFF
+#define Z_SP_MASK    0b01
+#define Z_VIEW_MASK  0b01
+#define Z_SEG_MASK   0x3F
+#define Z_ADDR_SHIFT 0x00
+#define Z_ZONE_SHIFT 40
+#define Z_PREC_SHIFT 43
+#define Z_SP_SHIFT   56
+#define Z_VIEW_SHIFT 57
+#define Z_SEG_SHIFT  58
 
 namespace SST::RevCPU {
 
@@ -150,40 +150,40 @@ public:
   /* Virtual Memory Blocks  */
   class MemSegment {
   public:
-    MemSegment(uint64_t baseAddr, uint64_t size)
-      : BaseAddr(baseAddr), Size(size) {
-      TopAddr = baseAddr + size;
-    }
+    MemSegment( uint64_t baseAddr, uint64_t size ) : BaseAddr( baseAddr ), Size( size ) { TopAddr = baseAddr + size; }
 
     uint64_t getTopAddr() const { return BaseAddr + Size; }
+
     uint64_t getBaseAddr() const { return BaseAddr; }
+
     uint64_t getSize() const { return Size; }
 
-    void setBaseAddr(uint64_t baseAddr) {
+    void setBaseAddr( uint64_t baseAddr ) {
       BaseAddr = baseAddr;
-      if( Size ){
+      if( Size ) {
         TopAddr = Size + BaseAddr;
       }
     }
 
-    void setSize(uint64_t size) { Size = size; TopAddr = BaseAddr + size; }
+    void setSize( uint64_t size ) {
+      Size    = size;
+      TopAddr = BaseAddr + size;
+    }
 
     /// MemSegment: Check if vAddr is included in this segment
-    bool contains(const uint64_t& vAddr){
-      return (vAddr >= BaseAddr && vAddr < TopAddr);
-    };
+    bool contains( const uint64_t& vAddr ) { return ( vAddr >= BaseAddr && vAddr < TopAddr ); };
 
     // Check if a given range is inside a segment
-    bool contains(const uint64_t& vBaseAddr, const uint64_t& Size){
+    bool contains( const uint64_t& vBaseAddr, const uint64_t& Size ) {
       // exclusive top address
       uint64_t vTopAddr = vBaseAddr + Size - 1;
-      return (this->contains(vBaseAddr) && this->contains(vTopAddr));
+      return ( this->contains( vBaseAddr ) && this->contains( vTopAddr ) );
     };
 
-
     // Override for easy std::cout << *Seg << std::endl;
-    friend std::ostream& operator<<(std::ostream& os, const MemSegment& Seg) {
-      return os << " | BaseAddr:  0x" << std::hex << Seg.getBaseAddr() << " | TopAddr: 0x" << std::hex << Seg.getTopAddr() << " | Size: " << std::dec << Seg.getSize() << " Bytes";
+    friend std::ostream& operator<<( std::ostream& os, const MemSegment& Seg ) {
+      return os << " | BaseAddr:  0x" << std::hex << Seg.getBaseAddr() << " | TopAddr: 0x" << std::hex << Seg.getTopAddr()
+                << " | Size: " << std::dec << Seg.getSize() << " Bytes";
     }
 
   private:
@@ -450,16 +450,16 @@ public:
   // ---- FORZA Interfaces
   // ----------------------------------------------------
   /// FORZA: Checks if address is in scratchpad (ie. bits 56 & 57 are set)
-  inline bool IsAddrInScratchpad(const uint64_t& Addr);
+  inline bool IsAddrInScratchpad( const uint64_t& Addr );
 
   /// FORZA: Init Scratchpad
   void InitScratchpad( const unsigned ZapNum, const size_t Size, const size_t ChunkSize );
 
   /// FORZA: Interface for allocating in the Scratchpad
-  uint64_t ScratchpadAlloc(size_t numBytes);
+  uint64_t ScratchpadAlloc( size_t numBytes );
 
   /// FORZA: Interface for freeing from Scratchpad
-  void ScratchpadFree(uint64_t Addr, size_t size);
+  void ScratchpadFree( uint64_t Addr, size_t size );
 
   /// FORZA: set the ZOP NIC object
   void setZNic( Forza::zopAPI* Z ) { zNic = Z; }
@@ -471,30 +471,29 @@ public:
   void unsetRZA() { isRZA = false; }
 
   /// FORZA: handle message response
-  bool handleRZAResponse(Forza::zopEvent *zev);
+  bool handleRZAResponse( Forza::zopEvent* zev );
 
   /// FORZA: insert a new ZOP address request
-  void insertZRqst(uint64_t Addr, Forza::zopEvent* zev);
+  void insertZRqst( uint64_t Addr, Forza::zopEvent* zev );
 
   /// FORZA: check to see if the target address is in the zop request hazard map
-  bool isZRqst(uint64_t Addr);
+  bool isZRqst( uint64_t Addr );
 
   /// FORZA: clear the taret address from the zop request hazard map
-  void clearZRqst(uint64_t Addr);
+  void clearZRqst( uint64_t Addr );
 
   /// FORZA: Determine if the target address resides on the same zone
   ///        Returns false if the address is not local and places the
   ///        target Zone and Precinct IDs in `Zone` and `Precinct`, respectively.
   ///        Returns true if the address is local
-  bool isLocalAddr(uint64_t vAddr,
-                   unsigned &Zone, unsigned &Precinct);
+  bool isLocalAddr( uint64_t vAddr, unsigned& Zone, unsigned& Precinct );
 
   /// FORZA: send a thread migration request
   bool ZOP_ThreadMigrate( unsigned Hart, std::vector<uint64_t> Payload, unsigned Zone, unsigned Precinct );
 
   // Add Physical Addresss Information
   /// FORZA: update the physical history from the input file
-  void updatePhysHistoryfromInput(const std::string &InputFile);
+  void updatePhysHistoryfromInput( const std::string& InputFile );
 
   /// FORZA: update history to the output file
   void updatePhysHistorytoOutput();
@@ -506,10 +505,10 @@ public:
   std::pair<bool, std::string> validatePhysAddr( uint64_t pAddr, int appID );
 
   /// FORZA: update physical history
-  void updatePhysHistory(uint64_t pAddr,int appID);
+  void updatePhysHistory( uint64_t pAddr, int appID );
 
   /// FORZA: set the output file name
-  void setOutputFile(std::string name);
+  void setOutputFile( std::string name );
 
   /// RevMem: Dump the memory contents
   void DumpMem(
@@ -526,10 +525,10 @@ public:
 
 private:
   /// FORZA: convert a standard RISC-V AMO opcode to a ZOP opcode
-  Forza::zopOpc flagToZOP(uint32_t flags, size_t Len);
+  Forza::zopOpc flagToZOP( uint32_t flags, size_t Len );
 
   /// FORZA: convert a standard RISC-V memory request to a ZOP opcode
-  Forza::zopOpc memToZOP(uint32_t flags, size_t Len, bool Write);
+  Forza::zopOpc memToZOP( uint32_t flags, size_t Len, bool Write );
 
   /// FORZA: send an AMO request
   bool ZOP_AMOMem( unsigned Hart, uint64_t Addr, size_t Len, void* Data, void* Target, const MemReq& req, RevFlag flags );
@@ -565,7 +564,7 @@ private:
   RevMemCtrl*         ctrl{};      ///< RevMem: memory controller object
   SST::Output*        output{};    ///< RevMem: output handler
 
-  std::shared_ptr<RevScratchpad> scratchpad; ///< FORZA: Scratchpad
+  std::shared_ptr<RevScratchpad> scratchpad;  ///< FORZA: Scratchpad
   Forza::zopAPI*                 zNic;        ///< RevMem: FORZA ZOP NIC
   bool                           isRZA;       ///< RevMem: FORZA RZA flag; true if this device is an RZA
 
@@ -592,11 +591,11 @@ private:
   uint32_t                                      nextPage{};   ///< RevMem: next physical page to be allocated. Will result in index
   /// nextPage * pageSize into physMem
 
-  uint64_t brk{};        ///< RevMem: Program BRK FIXME: HACK
-  uint64_t mmapRegion{};     ///< RevMem: FIXME: HACK
-  uint64_t heapend{};        ///< RevMem: End of the heap
-  uint64_t heapstart{};      ///< RevMem: Start of the heap space
-  uint64_t stacktop = 0;   ///< RevMem: top of the stack
+  uint64_t brk{};         ///< RevMem: Program BRK FIXME: HACK
+  uint64_t mmapRegion{};  ///< RevMem: FIXME: HACK
+  uint64_t heapend{};     ///< RevMem: End of the heap
+  uint64_t heapstart{};   ///< RevMem: Start of the heap space
+  uint64_t stacktop = 0;  ///< RevMem: top of the stack
 
   std::vector<uint64_t> FutureRes{};  ///< RevMem: future operation reservations
 
@@ -613,9 +612,9 @@ private:
   // FORZA Security Test
   std::map<uint64_t, std::tuple<std::string, bool, int>>              OutputPhysAddrHist;  //History to Output file
   std::map<uint64_t, std::tuple<std::string, bool, std::vector<int>>> InputPhysAddrHist;   //Read from Input file
-  bool PhysAddrCheck;
-  bool PhysAddrLogging;
-  std::string outputFile;
+  bool                                                                PhysAddrCheck;
+  bool                                                                PhysAddrLogging;
+  std::string                                                         outputFile;
   // std::ofstream output_file;
   // std::ofstream input_file;
 

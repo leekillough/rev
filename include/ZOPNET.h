@@ -107,38 +107,38 @@ enum class zopMsgT : uint8_t {
 // --------------------------------------------
 enum class zopOpc : uint8_t {
   // -- MZOPs --
-  Z_MZOP_LB         = 0b00000000,  /// zopOpc: MZOP Load unsigned byte
-  Z_MZOP_LH         = 0b00000001,  /// zopOpc: MZOP Load unsigned half
-  Z_MZOP_LW         = 0b00000010,  /// zopOpc: MZOP Load unsigned word
-  Z_MZOP_LD         = 0b00000011,  /// zopOpc: MZOP Load doubleword
-  Z_MZOP_LSB        = 0b00000100,  /// zopOpc: MZOP Load signed byte
-  Z_MZOP_LSH        = 0b00000101,  /// zopOpc: MZOP Load signed half
-  Z_MZOP_LSW        = 0b00000110,  /// zopOpc: MZOP Load signed word
-  Z_MZOP_LDMA       = 0b00000111,  /// zopOpc: MZOP Load DMA
-  Z_MZOP_SB         = 0b00001000,  /// zopOpc: MZOP Store unsigned byte
-  Z_MZOP_SH         = 0b00001001,  /// zopOpc: MZOP Store unsigned half
-  Z_MZOP_SW         = 0b00001010,  /// zopOpc: MZOP Store unsigned word
-  Z_MZOP_SD         = 0b00001011,  /// zopOpc: MZOP Store doubleword
-  Z_MZOP_SSB        = 0b00001100,  /// zopOpc: MZOP Store signed byte
-  Z_MZOP_SSH        = 0b00001101,  /// zopOpc: MZOP Store signed half
-  Z_MZOP_SSW        = 0b00001110,  /// zopOpc: MZOP Store signed word
-  Z_MZOP_SDMA       = 0b00001111,  /// zopOpc: MSOP Store DMA
+  Z_MZOP_LB           = 0b00000000,  /// zopOpc: MZOP Load unsigned byte
+  Z_MZOP_LH           = 0b00000001,  /// zopOpc: MZOP Load unsigned half
+  Z_MZOP_LW           = 0b00000010,  /// zopOpc: MZOP Load unsigned word
+  Z_MZOP_LD           = 0b00000011,  /// zopOpc: MZOP Load doubleword
+  Z_MZOP_LSB          = 0b00000100,  /// zopOpc: MZOP Load signed byte
+  Z_MZOP_LSH          = 0b00000101,  /// zopOpc: MZOP Load signed half
+  Z_MZOP_LSW          = 0b00000110,  /// zopOpc: MZOP Load signed word
+  Z_MZOP_LDMA         = 0b00000111,  /// zopOpc: MZOP Load DMA
+  Z_MZOP_SB           = 0b00001000,  /// zopOpc: MZOP Store unsigned byte
+  Z_MZOP_SH           = 0b00001001,  /// zopOpc: MZOP Store unsigned half
+  Z_MZOP_SW           = 0b00001010,  /// zopOpc: MZOP Store unsigned word
+  Z_MZOP_SD           = 0b00001011,  /// zopOpc: MZOP Store doubleword
+  Z_MZOP_SSB          = 0b00001100,  /// zopOpc: MZOP Store signed byte
+  Z_MZOP_SSH          = 0b00001101,  /// zopOpc: MZOP Store signed half
+  Z_MZOP_SSW          = 0b00001110,  /// zopOpc: MZOP Store signed word
+  Z_MZOP_SDMA         = 0b00001111,  /// zopOpc: MSOP Store DMA
 
-  Z_MZOP_SCLB       = 0b11100000,  /// zopOpc: MZOP Load scratch unsigned byte
-  Z_MZOP_SCLH       = 0b11100001,  /// zopOpc: MZOP Load scratch unsigned half
-  Z_MZOP_SCLW       = 0b11100010,  /// zopOpc: MZOP Load scratch unsigned word
-  Z_MZOP_SCLD       = 0b11100011,  /// zopOpc: MZOP Load scratch doubleword
-  Z_MZOP_SCLSB      = 0b11100100,  /// zopOpc: MZOP Load scratch signed byte
-  Z_MZOP_SCLSH      = 0b11100101,  /// zopOpc: MZOP Load scratch signed half
-  Z_MZOP_SCLSW      = 0b11100110,  /// zopOpc: MZOP Load scratch signed word
+  Z_MZOP_SCLB         = 0b11100000,  /// zopOpc: MZOP Load scratch unsigned byte
+  Z_MZOP_SCLH         = 0b11100001,  /// zopOpc: MZOP Load scratch unsigned half
+  Z_MZOP_SCLW         = 0b11100010,  /// zopOpc: MZOP Load scratch unsigned word
+  Z_MZOP_SCLD         = 0b11100011,  /// zopOpc: MZOP Load scratch doubleword
+  Z_MZOP_SCLSB        = 0b11100100,  /// zopOpc: MZOP Load scratch signed byte
+  Z_MZOP_SCLSH        = 0b11100101,  /// zopOpc: MZOP Load scratch signed half
+  Z_MZOP_SCLSW        = 0b11100110,  /// zopOpc: MZOP Load scratch signed word
   //Z_MZOP_SCLSD  = 0b11100111,   /// zopOpc: MZOP Load scratch double (dupe)
-  Z_MZOP_SCSB       = 0b11101000,  /// zopOpc: MZOP Store scratch unsigned byte
-  Z_MZOP_SCSH       = 0b11101001,  /// zopOpc: MZOP Store scratch unsigned half
-  Z_MZOP_SCSW       = 0b11101010,  /// zopOpc: MZOP Store scratch unsigned word
-  Z_MZOP_SCSD       = 0b11101011,  /// zopOpc: MZOP Store scratch doubleword
-  Z_MZOP_SCSSB      = 0b11101100,  /// zopOpc: MZOP Store scratch signed byte
-  Z_MZOP_SCSSH      = 0b11101101,  /// zopOpc: MZOP Store scratch signed half
-  Z_MZOP_SCSSW      = 0b11101110,  /// zopOpc: MZOP Store scratch signed word
+  Z_MZOP_SCSB         = 0b11101000,  /// zopOpc: MZOP Store scratch unsigned byte
+  Z_MZOP_SCSH         = 0b11101001,  /// zopOpc: MZOP Store scratch unsigned half
+  Z_MZOP_SCSW         = 0b11101010,  /// zopOpc: MZOP Store scratch unsigned word
+  Z_MZOP_SCSD         = 0b11101011,  /// zopOpc: MZOP Store scratch doubleword
+  Z_MZOP_SCSSB        = 0b11101100,  /// zopOpc: MZOP Store scratch signed byte
+  Z_MZOP_SCSSH        = 0b11101101,  /// zopOpc: MZOP Store scratch signed half
+  Z_MZOP_SCSSW        = 0b11101110,  /// zopOpc: MZOP Store scratch signed word
   //Z_MZOP_SCSSD  = 0b11101111,   /// zopOpc: MZOP Store scratch doubleword (dupe)
 
   // -- HZOP ATOMIC/CUSTOM --
@@ -149,12 +149,12 @@ enum class zopOpc : uint8_t {
   // -- 'M' = M-Type
   // -- 'S' = S-Type
   // -- 'MS' = MS-Type
-  Z_HAC_32_BASE_ADD = 0b00000000,  /// zopOpc: HZOP-AC 32bit BASE AMO ADD
-  Z_HAC_32_BASE_AND = 0b00001000,  /// zopOpc: HZOP-AC 32bit BASE AMO AND
-  Z_HAC_32_BASE_OR  = 0b00010000,  /// zopOpc: HZOP-AC 32bit BASE AMO OR
-  Z_HAC_32_BASE_XOR = 0b00011000,  /// zopOpc: HZOP-AC 32bit BASE AMO XOR
+  Z_HAC_32_BASE_ADD   = 0b00000000,  /// zopOpc: HZOP-AC 32bit BASE AMO ADD
+  Z_HAC_32_BASE_AND   = 0b00001000,  /// zopOpc: HZOP-AC 32bit BASE AMO AND
+  Z_HAC_32_BASE_OR    = 0b00010000,  /// zopOpc: HZOP-AC 32bit BASE AMO OR
+  Z_HAC_32_BASE_XOR   = 0b00011000,  /// zopOpc: HZOP-AC 32bit BASE AMO XOR
   Z_HAC_32_BASE_SMAX  = 0b00100000,  /// zopOpc: HZOP-AC 32bit BASE AMO Signed Max
-  Z_HAC_32_BASE_MAX = 0b00101000,  /// zopOpc: HZOP-AC 32bit BASE AMO Max
+  Z_HAC_32_BASE_MAX   = 0b00101000,  /// zopOpc: HZOP-AC 32bit BASE AMO Max
   Z_HAC_32_BASE_SMIN  = 0b00110000,  /// zopOpc: HZOP-AC 32bit BASE AMO Signed Min
   Z_HAC_32_BASE_MIN   = 0b00111000,  /// zopOpc: HZOP-AC 32bit BASE AMO Min
   Z_HAC_32_BASE_SWAP  = 0b01000000,  /// zopOpc: HZOP-AC 32bit BASE AMO SWAP
@@ -168,7 +168,7 @@ enum class zopOpc : uint8_t {
   Z_HAC_64_BASE_OR    = 0b00010001,  /// zopOpc: HZOP-AC 64bit BASE AMO OR
   Z_HAC_64_BASE_XOR   = 0b00011001,  /// zopOpc: HZOP-AC 64bit BASE AMO XOR
   Z_HAC_64_BASE_SMAX  = 0b00100001,  /// zopOpc: HZOP-AC 64bit BASE AMO Signed Max
-  Z_HAC_64_BASE_MAX = 0b00101001,  /// zopOpc: HZOP-AC 64bit BASE AMO Max
+  Z_HAC_64_BASE_MAX   = 0b00101001,  /// zopOpc: HZOP-AC 64bit BASE AMO Max
   Z_HAC_64_BASE_SMIN  = 0b00110001,  /// zopOpc: HZOP-AC 64bit BASE AMO Signed Min
   Z_HAC_64_BASE_MIN   = 0b00111001,  /// zopOpc: HZOP-AC 64bit BASE AMO Min
   Z_HAC_64_BASE_SWAP  = 0b01000001,  /// zopOpc: HZOP-AC 64bit BASE AMO SWAP
@@ -263,46 +263,46 @@ enum class zopOpc : uint8_t {
 
   // -- MESSAGING --
   Z_MSG_SENDP         = 0b00000000,  /// zopOpc: MESSAGING Send with payload
-  Z_MSG_SENDAS  = 0b00000001,  /// zopOpc: MESSAGING Send with address and size
-  Z_MSG_MBXDONE = 0b00000010,  /// zopOpc: MESSAGING Send mailbox done
-  Z_MSG_CREDIT  = 0b11110000,  /// zopOpc: MESSAGING Credit replenishment
-  Z_MSG_ZENSET  = 0b11110001,  /// zopOpc: MESSAGING ZEN Setup
-  Z_MSG_ZQMSET  = 0b11110100,  /// zopOpc: MESSAGING ZQM Setup
+  Z_MSG_SENDAS        = 0b00000001,  /// zopOpc: MESSAGING Send with address and size
+  Z_MSG_MBXDONE       = 0b00000010,  /// zopOpc: MESSAGING Send mailbox done
+  Z_MSG_CREDIT        = 0b11110000,  /// zopOpc: MESSAGING Credit replenishment
+  Z_MSG_ZENSET        = 0b11110001,  /// zopOpc: MESSAGING ZEN Setup
+  Z_MSG_ZQMSET        = 0b11110100,  /// zopOpc: MESSAGING ZQM Setup
   Z_MSG_ZQMHARTDONE   = 0b11110101,  /// zopOpc: MESSAGING ZQM Notify HART completion
-  Z_MSG_ACK     = 0b11110010,  /// zopOpc: MESSAGING Send Ack
-  Z_MSG_EXCP    = 0b11110011,  /// zopOpc: MESSAGING Send exception
-  Z_MSG_ZBAR    = 0b11111001,  /// zopOpc: MESSAGING Zone Barrier Request
+  Z_MSG_ACK           = 0b11110010,  /// zopOpc: MESSAGING Send Ack
+  Z_MSG_EXCP          = 0b11110011,  /// zopOpc: MESSAGING Send exception
+  Z_MSG_ZBAR          = 0b11111001,  /// zopOpc: MESSAGING Zone Barrier Request
 
   // -- THREAD MIGRATION --
-  Z_TMIG_SELECT = 0b00000000,  /// zopOpc: THREAD MIGRATION ZQM choose HART
-  Z_TMIG_FIXED  = 0b00000001,  /// zopOpc: THREAD MIGRATION Fixed HART choice
+  Z_TMIG_SELECT       = 0b00000000,  /// zopOpc: THREAD MIGRATION ZQM choose HART
+  Z_TMIG_FIXED        = 0b00000001,  /// zopOpc: THREAD MIGRATION Fixed HART choice
 
   // -- RZA RESPONSE --
-  Z_RESP_LR     = 0b00000000,  /// zopOpc: RZA RESPONSE Load response
-  Z_RESP_LEXCP  = 0b00000001,  /// zopOpc: RZA RESPONSE Load exception
-  Z_RESP_SACK   = 0b00000010,  /// zopOpc: RZA RESPONSE Store ack
-  Z_RESP_SEXCP  = 0b00000011,  /// zopOpc: RZA RESPONSE Store exception
-  Z_RESP_HRESP  = 0b00000100,  /// zopOpc: RZA RESPONSE HZOP response
-  Z_RESP_HEXCP  = 0b00000101,  /// zopOpc: RZA RESPONSE HZOP exception
-  Z_RESP_RRESP  = 0b00000110,  /// zopOpc: RZA RESPONSE RZOP response
-  Z_RESP_REXCP  = 0b00000111,  /// zopOpc: RZA RESPONSE RZOP exception
+  Z_RESP_LR           = 0b00000000,  /// zopOpc: RZA RESPONSE Load response
+  Z_RESP_LEXCP        = 0b00000001,  /// zopOpc: RZA RESPONSE Load exception
+  Z_RESP_SACK         = 0b00000010,  /// zopOpc: RZA RESPONSE Store ack
+  Z_RESP_SEXCP        = 0b00000011,  /// zopOpc: RZA RESPONSE Store exception
+  Z_RESP_HRESP        = 0b00000100,  /// zopOpc: RZA RESPONSE HZOP response
+  Z_RESP_HEXCP        = 0b00000101,  /// zopOpc: RZA RESPONSE HZOP exception
+  Z_RESP_RRESP        = 0b00000110,  /// zopOpc: RZA RESPONSE RZOP response
+  Z_RESP_REXCP        = 0b00000111,  /// zopOpc: RZA RESPONSE RZOP exception
 
   // -- FENCE --
   Z_FENCE_HART        = 0b00000000,  /// zopOpc: HART Fence (only fences the calling HART)
-  Z_FENCE_ZAP = 0b00000001,  /// zopOpc: ZAP Fence (fences all HARTs on a ZAP)
+  Z_FENCE_ZAP         = 0b00000001,  /// zopOpc: ZAP Fence (fences all HARTs on a ZAP)
   Z_FENCE_RZA         = 0b00000010,  /// zopOpc: RZA Fence (fences all requests on an RZA)
 
   // -- EXCEPTION --
-  Z_EXCP_NONE    = 0b00000000,  /// zopOpc: Exception; no exception
-  Z_EXCP_INVENDP = 0b00000001,  /// zopOpc: Exception; Invalid endpoint
-  Z_EXCP_INVO    = 0b00000010,  /// zopOpc: Exception; Invalid operation
+  Z_EXCP_NONE         = 0b00000000,  /// zopOpc: Exception; no exception
+  Z_EXCP_INVENDP      = 0b00000001,  /// zopOpc: Exception; Invalid endpoint
+  Z_EXCP_INVO         = 0b00000010,  /// zopOpc: Exception; Invalid operation
   Z_EXCP_FINVO        = 0b10000000,  /// zopOpc: Exception; Invalid floating point operation
   Z_EXCP_FDIVZ        = 0b10000001,  /// zopOpc: Exception; Floating point division by zero
-  Z_EXCP_FOVR  = 0b10000010,  /// zopOpc: Exception; Floating point overlow
-  Z_EXCP_FUND  = 0b10000011,  /// zopOpc: Exception; Floating point underflow
-  Z_EXCP_FINXT = 0b10000100,  /// zopOpc: Exception; Floating point inexact
+  Z_EXCP_FOVR         = 0b10000010,  /// zopOpc: Exception; Floating point overlow
+  Z_EXCP_FUND         = 0b10000011,  /// zopOpc: Exception; Floating point underflow
+  Z_EXCP_FINXT        = 0b10000100,  /// zopOpc: Exception; Floating point inexact
 
-  Z_NULL_OPC   = 0b11111111,  /// zopOpc: null opcode
+  Z_NULL_OPC          = 0b11111111,  /// zopOpc: null opcode
 
 };
 
@@ -380,8 +380,8 @@ public:
   }
 
   // Return an empty vector if not enough IDs available
-  std::vector< uint16_t > getSetOfMsgIds( uint16_t num_to_get ) {
-    std::vector< uint16_t > v;
+  std::vector<uint16_t> getSetOfMsgIds( uint16_t num_to_get ) {
+    std::vector<uint16_t> v;
     if( num_to_get <= NumFree ) {
       for( uint16_t i = 0; i < num_to_get; i++ )
         v.push_back( this->getMsgId() );
@@ -513,9 +513,7 @@ public:
 
   /// zopEvent: sets the ClearMsgID flag: default=false;
   ///           true=manually triggers msgID clearing back to the caller
-  void setClearMsgID( bool r ) {
-    ClearMsgID = r;
-  }
+  void setClearMsgID( bool r ) { ClearMsgID = r; }
 
   /// zopEvent: retrieve the data payload from the packet
   std::vector<uint64_t> getPayload() {
@@ -527,9 +525,7 @@ public:
   }
 
   /// zopEvent: get the length of the full packet (header + payload)
-  uint8_t getPacketLength() {
-    return ( Length + Z_NUM_HEADER_FLITS );
-  }
+  uint8_t getPacketLength() { return ( Length + Z_NUM_HEADER_FLITS ); }
 
   /// zopEvent: get the memory request handler
   const SST::RevCPU::MemReq& getMemReq() { return req; }
@@ -586,9 +582,7 @@ public:
   uint32_t getAppID() { return AppID; }
 
   /// zopEvent: get the packet reserved field
-  uint32_t getPktRes() {
-    return PktRes;
-  }
+  uint32_t getPktRes() { return PktRes; }
 
   /// zopEvent: determine whether the fence has been encountered
   bool getFence() { return FenceEncountered; }
@@ -615,10 +609,10 @@ public:
 
     Opc      = (zopOpc) ( ( Packet[Z_FLIT_OPC] >> Z_SHIFT_OPC ) & Z_MASK_OPC );
     Credit   = (uint8_t) ( ( Packet[Z_FLIT_CREDIT] >> Z_SHIFT_CREDIT ) & Z_MASK_CREDIT );
-    ID = (uint8_t) ( ( Packet[Z_FLIT_MSGID] >> Z_SHIFT_MSGID ) & Z_MASK_MSGID );
+    ID       = (uint8_t) ( ( Packet[Z_FLIT_MSGID] >> Z_SHIFT_MSGID ) & Z_MASK_MSGID );
     Length   = (uint8_t) ( ( Packet[Z_FLIT_FLITLEN] >> Z_SHIFT_FLITLEN ) & Z_MASK_FLITLEN );
-    NB = (uint8_t) ( ( Packet[Z_FLIT_BLOCK] >> Z_SHIFT_BLOCK ) & Z_MASK_BLOCK );
-    Type = (zopMsgT) ( ( Packet[Z_FLIT_TYPE] >> Z_SHIFT_TYPE ) & Z_MASK_TYPE );
+    NB       = (uint8_t) ( ( Packet[Z_FLIT_BLOCK] >> Z_SHIFT_BLOCK ) & Z_MASK_BLOCK );
+    Type     = (zopMsgT) ( ( Packet[Z_FLIT_TYPE] >> Z_SHIFT_TYPE ) & Z_MASK_TYPE );
 
     SrcHart  = (uint16_t) ( ( Packet[Z_FLIT_SRC] >> Z_SHIFT_HARTID ) & Z_MASK_HARTID );
     SrcZCID  = (uint8_t) ( ( Packet[Z_FLIT_SRC] >> Z_SHIFT_ZCID ) & Z_MASK_ZCID );
@@ -673,19 +667,18 @@ private:
   uint8_t  AppID;   ///< zopEvent: application source
   uint32_t PktRes;  ///< zopEvent: packet reserved space (28 bits)
 
-  bool Read;              ///< zopEvent: sets this request as a read request
-  bool FenceEncountered;  ///< zopEvent: whether this ZOP's fence has been seen
-  bool
-    ClearMsgID;  ///< zopEvent: determines whether to manually trigger msgID clears
-  uint64_t*           Target;  ///< zopEvent: target for the read request
-  SST::RevCPU::MemReq req;     ///< zopEvent: read response handler
+  bool                Read;              ///< zopEvent: sets this request as a read request
+  bool                FenceEncountered;  ///< zopEvent: whether this ZOP's fence has been seen
+  bool                ClearMsgID;        ///< zopEvent: determines whether to manually trigger msgID clears
+  uint64_t*           Target;            ///< zopEvent: target for the read request
+  SST::RevCPU::MemReq req;               ///< zopEvent: read response handler
 
 public:
   // zopEvent: event serializer
   void serialize_order( SST::Core::Serialization::serializer& ser ) override {
     // we only serialize the raw packet
     Event::serialize_order( ser );
-    ser & Packet;
+    ser& Packet;
   }
 
   // zopEvent: implements the nic serialization
@@ -716,58 +709,58 @@ public:
   virtual void setup() {}
 
   /// zopAPI : send a message on the network
-  virtual void send( zopEvent* ev, zopCompID dest ) = 0;
+  virtual void send( zopEvent* ev, zopCompID dest )                                    = 0;
 
   /// zopAPI : send a message on the network to a specific zone+precinct
   virtual void send( zopEvent* ev, zopCompID dest, zopPrecID zone, unsigned precinct ) = 0;
 
   /// zopAPI : send a zone barrier request
-  virtual void send_zone_barrier( unsigned hart, unsigned endpoints )       = 0;
+  virtual void send_zone_barrier( unsigned hart, unsigned endpoints )                  = 0;
 
   /// zopAPI: query the nic to see if the barrier is complete
-  virtual bool isBarrierComplete( unsigned Hart )                           = 0;
+  virtual bool isBarrierComplete( unsigned Hart )                                      = 0;
 
   /// zopAPI: query the NIC to see if it already exists in a barrier state
-  virtual bool hasBarrier( unsigned Hart )                                  = 0;
+  virtual bool hasBarrier( unsigned Hart )                                             = 0;
 
   /// zopAPI : retrieve the number of potential endpoints
-  virtual unsigned getNumDestinations()                                     = 0;
+  virtual unsigned getNumDestinations()                                                = 0;
 
   /// zopAPI: return the NIC's network address
-  virtual SST::Interfaces::SimpleNetwork::nid_t getAddress()                = 0;
+  virtual SST::Interfaces::SimpleNetwork::nid_t getAddress()                           = 0;
 
   /// zopAPI: set the type of the endpoint
-  virtual void setEndpointType( zopCompID type )                            = 0;
+  virtual void setEndpointType( zopCompID type )                                       = 0;
 
   /// zopAPI: get the type of the endpoint
-  virtual zopCompID getEndpointType()                                       = 0;
+  virtual zopCompID getEndpointType()                                                  = 0;
 
   /// zopAPI: set the number of harts
-  virtual void setNumHarts( unsigned Hart )                                 = 0;
+  virtual void setNumHarts( unsigned Hart )                                            = 0;
 
   /// zopAPI: set the precinct ID
-  virtual void setPrecinctID( unsigned Precinct )                           = 0;
+  virtual void setPrecinctID( unsigned Precinct )                                      = 0;
 
   /// zopAPI: set the zone ID
-  virtual void setZoneID( unsigned Zone )                                   = 0;
+  virtual void setZoneID( unsigned Zone )                                              = 0;
 
   /// zopAPI: get the precinct ID
-  virtual unsigned getPrecinctID()                                          = 0;
+  virtual unsigned getPrecinctID()                                                     = 0;
 
   /// zopAPI: get the zone ID
-  virtual unsigned getZoneID()                                              = 0;
+  virtual unsigned getZoneID()                                                         = 0;
 
   /// zopAPI: get the number of ZAPs
-  virtual unsigned getNumZaps()                                             = 0;
+  virtual unsigned getNumZaps()                                                        = 0;
 
   /// zopAPI: get the number of zones in this precinct
-  virtual unsigned getNumZones()                                            = 0;
+  virtual unsigned getNumZones()                                                       = 0;
 
   /// zopAPI: get the number of precincts
-  virtual unsigned getNumPrecincts()                                        = 0;
+  virtual unsigned getNumPrecincts()                                                   = 0;
 
   /// zopAPI: clear the message Id hazard
-  virtual void clearMsgID( unsigned Hart, uint8_t Id )                      = 0;
+  virtual void clearMsgID( unsigned Hart, uint8_t Id )                                 = 0;
 
   /// zopAPI: convert the precinct ID to zopPrecID
   SST::Forza::zopPrecID getPCID( unsigned Z ) {
@@ -992,24 +985,24 @@ private:
   /// zopNIC: handle the barrier packet
   bool handleBarrier( zopEvent* ev );
 
-  SST::Output                     output;  ///< zopNIC: SST output object
-  SST::Interfaces::SimpleNetwork* iFace;   ///< zopNIC: SST network interface
-  SST::Event::HandlerBase*        msgHandler;  ///< zopNIC: SST message handler
-  bool      initBroadcastSent;  ///< zopNIC: has the broadcast msg been sent
-  unsigned  numDest;            ///< zopNIC: number of destination endpoints
-  unsigned  ReqPerCycle;        ///< zopNIC: max requests to send per cycle
-  unsigned  numHarts;           ///< zopNIC: number of attached Harts
-  unsigned  Precinct;           ///< zopNIC: precinct ID
-  unsigned  Zone;               ///< zopNIC: zone ID
-  zopCompID Type;               ///< zopNIC: endpoint type
-  unsigned  numZones;           ///< zopNIC: number of zones per precinct
-  unsigned  numPrecincts;       ///< zopNIC: number of precincts
-  bool      enableTestHarness;  ///< zopNIC: enable the test harness
+  SST::Output                     output;             ///< zopNIC: SST output object
+  SST::Interfaces::SimpleNetwork* iFace;              ///< zopNIC: SST network interface
+  SST::Event::HandlerBase*        msgHandler;         ///< zopNIC: SST message handler
+  bool                            initBroadcastSent;  ///< zopNIC: has the broadcast msg been sent
+  unsigned                        numDest;            ///< zopNIC: number of destination endpoints
+  unsigned                        ReqPerCycle;        ///< zopNIC: max requests to send per cycle
+  unsigned                        numHarts;           ///< zopNIC: number of attached Harts
+  unsigned                        Precinct;           ///< zopNIC: precinct ID
+  unsigned                        Zone;               ///< zopNIC: zone ID
+  zopCompID                       Type;               ///< zopNIC: endpoint type
+  unsigned                        numZones;           ///< zopNIC: number of zones per precinct
+  unsigned                        numPrecincts;       ///< zopNIC: number of precincts
+  bool                            enableTestHarness;  ///< zopNIC: enable the test harness
 
   SST::Forza::zopMsgID* msgId;      ///< zopNIC: per hart message ID objects
   unsigned*             HARTFence;  ///< zopNIC: per hart fence counters
 
-  unsigned* barrierSense;  ///< zopNIC: barrier sense flags for A & B
+  unsigned*              barrierSense;      ///< zopNIC: barrier sense flags for A & B
   std::vector<unsigned*> zoneBarrier;       ///< zopNIC: Zone Barrier counters for A & B
   std::vector<unsigned*> barrierEndpoints;  ///< zopNIC: Number of endpoints to wait for A & B barriers
 
@@ -1030,15 +1023,15 @@ private:
 #define _ZNIC_OUT_REQ    5
   std::vector<std::tuple<
     uint16_t,
-                           uint8_t,
-                           bool,
-                           uint64_t*,
-                           SST::Forza::zopOpc,
+    uint8_t,
+    bool,
+    uint64_t*,
+    SST::Forza::zopOpc,
     SST::RevCPU::MemReq>>
     outstanding;  ///< zopNIC: tracks outstanding requests
 
   std::vector<Statistic<uint64_t>*> stats;  ///< zopNIC: statistics vector
-};                                              // zopNIC
+};                                          // zopNIC
 
 }  // namespace SST::Forza
 

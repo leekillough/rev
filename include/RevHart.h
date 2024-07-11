@@ -26,14 +26,14 @@ class RevHart {
   EcallState Ecall{};
 
   ///< RevHart: Pointer to the Proc's LSQueue
-  const std::shared_ptr< std::unordered_multimap< uint64_t, MemReq > >& LSQueue;
+  const std::shared_ptr<std::unordered_multimap<uint64_t, MemReq>>& LSQueue;
 
   ///< RevHart: Pointer to the Proc's MarkLoadCompleteFunc
   std::function<void( const MemReq& )> MarkLoadCompleteFunc{};
 
   ///< RevHart: Thread currently executing on this Hart
-  std::unique_ptr< RevThread >           Thread  = nullptr;
-  std::unique_ptr< RevRegFile >          RegFile = nullptr;
+  std::unique_ptr<RevThread>  Thread  = nullptr;
+  std::unique_ptr<RevRegFile> RegFile = nullptr;
 
   ///< RevHart: Make RevCore a friend of this
   friend class RevCore;
@@ -51,18 +51,12 @@ public:
   ~RevHart() = default;
 
   ///< RevHart: Get the EcallState
-  EcallState& GetEcallState() {
-    return Ecall;
-  }
+  EcallState& GetEcallState() { return Ecall; }
 
-  const EcallState& GetEcallState() const {
-    return Ecall;
-  }
+  const EcallState& GetEcallState() const { return Ecall; }
 
   ///< RevHart: Get Hart's ID
-  uint16_t GetID() const {
-    return ID;
-  }
+  uint16_t GetID() const { return ID; }
 
   ///< RevHart: Returns the ID of the assigned thread
   uint32_t GetAssignedThreadID() const { return Thread ? Thread->GetID() : _INVALID_TID_; }

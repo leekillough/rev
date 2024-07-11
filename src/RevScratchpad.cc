@@ -27,12 +27,12 @@ bool RevScratchpad::ReadMem(
 
   output->verbose(
     CALL_INFO,
-                   8,
-                   0,
+    8,
+    0,
     "Scratchpad Read: Addr = 0x%" PRIx64 ", Len = %zu, BaseChunkNum = %zu, TopChunkNum = %zu\n",
-                   Addr,
-                   Len,
-                   BaseChunkNum,
+    Addr,
+    Len,
+    BaseChunkNum,
     TopChunkNum
   );
 
@@ -41,11 +41,11 @@ bool RevScratchpad::ReadMem(
   if( FreeList.test( BaseChunkNum ) || FreeList.test( TopChunkNum ) ) {
     output->fatal(
       CALL_INFO,
-                   11,
+      11,
       "Error: Hart %" PRIu32 " is attempting to read from unallocated memory"
-                   " in the scratchpad (Addr = 0x %" PRIx64 ", Len = %zu)\n",
-                   Hart,
-                   Addr,
+      " in the scratchpad (Addr = 0x %" PRIx64 ", Len = %zu)\n",
+      Hart,
+      Addr,
       Len
     );
   }
@@ -54,14 +54,14 @@ bool RevScratchpad::ReadMem(
   if( Addr + Len > TopAddr ) {
     output->fatal(
       CALL_INFO,
-                   11,
+      11,
       "Error: Hart %" PRIu32 " is attempting to read beyond the highest address "
-                   "in the scratchpad (Addr = 0x %" PRIx64 ", Size = %zu)\n"
+      "in the scratchpad (Addr = 0x %" PRIx64 ", Size = %zu)\n"
       "While this scratchpad starts at 0x%" PRIx64 " and ends at 0x%" PRIx64 "\n",
-                   Hart,
-                   Addr,
-                   Len,
-                   BaseAddr,
+      Hart,
+      Addr,
+      Len,
+      BaseAddr,
       TopAddr
     );
   }
@@ -90,12 +90,12 @@ bool RevScratchpad::WriteMem(
 
   output->verbose(
     CALL_INFO,
-                   8,
-                   0,
+    8,
+    0,
     "Scratchpad Write: Addr = 0x%" PRIx64 ", Len = %zu, BaseChunkNum = %zu, TopChunkNum = %zu\n",
-                   Addr,
-                   Len,
-                   BaseChunkNum,
+    Addr,
+    Len,
+    BaseChunkNum,
     TopChunkNum
   );
 
@@ -104,11 +104,11 @@ bool RevScratchpad::WriteMem(
     if( FreeList.test( i ) ) {
       output->fatal(
         CALL_INFO,
-                     11,
+        11,
         "Error: Hart %" PRIu32 " is attempting to write to unallocated memory"
-                     " in the scratchpad (Addr = 0x %" PRIx64 ", Len = %zu)\n",
-                     Hart,
-                     Addr,
+        " in the scratchpad (Addr = 0x %" PRIx64 ", Len = %zu)\n",
+        Hart,
+        Addr,
         Len
       );
     }

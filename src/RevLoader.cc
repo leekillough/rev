@@ -26,8 +26,7 @@ RevLoader::RevLoader( const std::string& exe, const std::vector<std::string>& ar
 }
 
 bool RevLoader::IsElf( const Elf64_Ehdr eh64 ) {
-  if( ( eh64 ).e_ident[0] == 0x7f && ( eh64 ).e_ident[1] == 'E' &&
-      ( eh64 ).e_ident[2] == 'L' && ( eh64 ).e_ident[3] == 'F' )
+  if( ( eh64 ).e_ident[0] == 0x7f && ( eh64 ).e_ident[1] == 'E' && ( eh64 ).e_ident[2] == 'L' && ( eh64 ).e_ident[3] == 'F' )
     return true;
 
   return false;
