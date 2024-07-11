@@ -19,18 +19,16 @@ namespace SST::RevCPU {
 
 using MemSegment        = RevMem::MemSegment;
 
-const char splash_msg[] = "\
-\n\
-*******                   \n\
-/**////**                  \n\
-/**   /**   *****  **    **\n\
-/*******   **///**/**   /**\n\
-/**///**  /*******//** /** \n\
-/**  //** /**////  //****  \n\
-/**   //**//******  //**   \n\
-//     //  //////    //    \n\
-\n\
-";
+const char splash_msg[] = R"(
+*******
+/**////**
+/**   /**   *****  **    **
+/*******   **///**/**   /**
+/**///**  /*******//** /**
+/**  //** /**////  //****
+/**   //**//******  //**
+//     //  //////    //
+)";
 
 RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params ) : SST::Component( id ) {
 
@@ -56,12 +54,12 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params ) : SST::Compon
   // printf("given Txt files : %s\n",txtFile.c_str());
   // Derive the simulation parameters
   // We must always derive the number of cores before initializing the options
-  numCores = params.find<unsigned>( "numCores", "1" );
-  numHarts = params.find<uint16_t>( "numHarts", "1" );
+  numCores = params.find<uint32_t>( "numCores", "1" );
+  numHarts = params.find<uint32_t>( "numHarts", "1" );
 
-  // Make sure someone isn't trying to have more than 65536 harts per core
+  // Make sure someone isn't trying to have more than _MAX_HARTS_ harts per core
   if( numHarts > _MAX_HARTS_ ) {
-    output.fatal( CALL_INFO, -1, "Error: number of harts must be <= %" PRIu32 "\n", _MAX_HARTS_ );
+    output.fatal( CALL_INFO, -1, "Error: number of harts must be <= %" PRIu32 "\n", uint32_t{ _MAX_HARTS_ } );
   }
   output.verbose(
     CALL_INFO, 1, 0, "Building Rev with %" PRIu32 " cores and %" PRIu32 " hart(s) on each core \n", numCores, numHarts
@@ -71,9 +69,7 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params ) : SST::Compon
   auto Exe = params.find<std::string>( "program", "a.out" );
 
   // Create the options object
-  Opts     = new( std::nothrow ) RevOpts( numCores, numHarts, Verbosity );
-  if( !Opts )
-    output.fatal( CALL_INFO, -1, "Error: failed to initialize the RevOpts object\n" );
+  Opts     = std::make_unique<RevOpts>( numCores, numHarts, Verbosity );
 
   // Program arguments
   Opts->SetArgs( params );
@@ -89,7 +85,7 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params ) : SST::Compon
        } ) {
     std::vector<std::string> optList;
     params.find_array( ParamName, optList );
-    if( !( Opts->*InitFunc )( optList ) )
+    if( !( Opts.get()->*InitFunc )( optList ) )
       output.fatal( CALL_INFO, -1, "Error: failed to initialize %s\n", ParamName );
   }
 
@@ -138,28 +134,15 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params ) : SST::Compon
   }
 
   if( !EnableMemH ) {
-    // TODO: Use std::nothrow to return null instead of throwing std::bad_alloc
-    Mem = new RevMem( memSize, Opts, &output );
-    if( !Mem )
-      output.fatal( CALL_INFO, -1, "Error: failed to initialize the memory object\n" );
+    Mem = std::make_unique<RevMem>( memSize, Opts.get(), &output );
   } else {
-    Ctrl = loadUserSubComponent<RevMemCtrl>( "memory" );
+    Ctrl = std::unique_ptr<RevMemCtrl>( loadUserSubComponent<RevMemCtrl>( "memory" ) );
     if( !Ctrl )
       output.fatal( CALL_INFO, -1, "Error : failed to inintialize the memory controller subcomponent\n" );
-
-    // TODO: Use std::nothrow to return null instead of throwing std::bad_alloc
-    Mem = new RevMem( memSize, Opts, Ctrl, &output );
-    if( !Mem )
-      output.fatal( CALL_INFO, -1, "Error : failed to initialize the memory object\n" );
+    Mem = std::make_unique<RevMem>( memSize, Opts.get(), Ctrl.get(), &output );
 
     if( EnableFaults )
-      output.verbose(
-        CALL_INFO,
-        1,
-        0,
-        "Warning: memory faults cannot be enabled with "
-        "memHierarchy support\n"
-      );
+      output.verbose( CALL_INFO, 1, 0, "Warning: memory faults cannot be enabled with memHierarchy support\n" );
   }
 
   // if the forza security models are enabled, inform RevMem that logging as been enabled
@@ -247,10 +230,7 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params ) : SST::Compon
   Mem->SetMaxHeapSize( maxHeapSize );
 
   // Load the binary into memory
-  Loader = new( std::nothrow ) RevLoader( Exe, Opts->GetArgv(), Mem, &output, !EnableZopNIC || EnableRZA );
-  if( !Loader ) {
-    output.fatal( CALL_INFO, -1, "Error: failed to initialize the RISC-V loader\n" );
-  }
+  Loader       = std::make_unique<RevLoader>( Exe, Opts->GetArgv(), Mem.get(), &output, !EnableZopNIC || EnableRZA );
 
   EnableCoProc = params.find<bool>( "enableCoProc", 0 );
   if( EnableCoProc ) {
@@ -258,18 +238,18 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params ) : SST::Compon
     // Create the processor objects
     Procs.reserve( Procs.size() + numCores );
     for( unsigned i = 0; i < numCores; i++ ) {
-      RevCore* tmpNewRevCore = new RevCore( i, Opts, numHarts, Mem, Loader, this->GetNewTID(), &output );
+      RevCore* tmpNewRevCore = new RevCore( i, Opts.get(), numHarts, Mem.get(), Loader.get(), this->GetNewTID(), &output );
       tmpNewRevCore->setZNic( zNic );
-      Procs.push_back( tmpNewRevCore );
+      Procs.push_back( std::unique_ptr<RevCore>( tmpNewRevCore ) );
     }
     // Create the co-processor objects
     for( unsigned i = 0; i < numCores; i++ ) {
-      RevCoProc* CoProc = loadUserSubComponent<RevCoProc>( "co_proc", SST::ComponentInfo::SHARE_NONE, Procs[i] );
+      RevCoProc* CoProc = loadUserSubComponent<RevCoProc>( "co_proc", SST::ComponentInfo::SHARE_NONE, Procs[i].get() );
       if( !CoProc ) {
         output.fatal( CALL_INFO, -1, "Error : failed to inintialize the co-processor subcomponent\n" );
       }
-      CoProcs.push_back( CoProc );
       Procs[i]->SetCoProc( CoProc );
+      CoProcs.push_back( std::unique_ptr<RevCoProc>( CoProc ) );
     }
   } else if( EnableRZA ) {
     // retrieve each of the RZA pipeline models
@@ -285,37 +265,40 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params ) : SST::Compon
 
     Procs.reserve( Procs.size() + numCores );
     for( unsigned i = 0; i < numCores; i++ ) {
-      RevCore* tmpNewRevCore = new RevCore( i, Opts, numHarts, Mem, Loader, this->GetNewTID(), &output );
+      auto tmpNewRevCore =
+        std::make_unique<RevCore>( i, Opts.get(), numHarts, Mem.get(), Loader.get(), this->GetNewTID(), &output );
       tmpNewRevCore->setZNic( zNic );
-      Procs.push_back( tmpNewRevCore );
+      Procs.push_back( std::move( tmpNewRevCore ) );
     }
 
-    RevCoProc* LSProc = loadUserSubComponent<RevCoProc>( "rza_ls", SST::ComponentInfo::SHARE_NONE, Procs[Z_MZOP_PIPE_HART] );
+    RevCoProc* LSProc = loadUserSubComponent<RevCoProc>( "rza_ls", SST::ComponentInfo::SHARE_NONE, Procs[Z_MZOP_PIPE_HART].get() );
     if( !LSProc ) {
       output.fatal( CALL_INFO, -1, "Error : failed to initialize the RZA LS pipeline\n" );
     }
-    LSProc->setMem( Mem );
+    LSProc->setMem( Mem.get() );
     LSProc->setZNic( zNic );
 
-    RevCoProc* AMOProc = loadUserSubComponent<RevCoProc>( "rza_amo", SST::ComponentInfo::SHARE_NONE, Procs[Z_HZOP_PIPE_HART] );
+    RevCoProc* AMOProc =
+      loadUserSubComponent<RevCoProc>( "rza_amo", SST::ComponentInfo::SHARE_NONE, Procs[Z_HZOP_PIPE_HART].get() );
     if( !AMOProc ) {
       output.fatal( CALL_INFO, -1, "Error : failed to initialize the RZA AMO pipeline\n" );
     }
-    AMOProc->setMem( Mem );
+    AMOProc->setMem( Mem.get() );
     AMOProc->setZNic( zNic );
 
-    CoProcs.push_back( LSProc );
-    CoProcs.push_back( AMOProc );
+    CoProcs.push_back( std::unique_ptr<RevCoProc>( LSProc ) );
+    CoProcs.push_back( std::unique_ptr<RevCoProc>( AMOProc ) );
     Procs[Z_MZOP_PIPE_HART]->SetCoProc( LSProc );
     Procs[Z_HZOP_PIPE_HART]->SetCoProc( AMOProc );
   } else {
     // Create the processor objects
     Procs.reserve( Procs.size() + numCores );
     for( unsigned i = 0; i < numCores; i++ ) {
-      RevCore* tmpNewRevCore = new RevCore( i, Opts, numHarts, Mem, Loader, this->GetNewTID(), &output );
+      auto tmpNewRevCore =
+        std::make_unique<RevCore>( i, Opts.get(), numHarts, Mem.get(), Loader.get(), this->GetNewTID(), &output );
       tmpNewRevCore->setZNic( zNic );
       tmpNewRevCore->setZNicMsgIds( zNicMsgIds );
-      Procs.push_back( tmpNewRevCore );
+      Procs.push_back( std::move( tmpNewRevCore ) );
     }
   }
 
@@ -472,7 +455,7 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params ) : SST::Compon
   DisableCoprocClock    = params.find<bool>( "independentCoprocClock", 0 );
 
   // Create the completion array
-  Enabled               = new bool[numCores]{ false };
+  Enabled               = std::vector<bool>( numCores );
 
   const unsigned Splash = params.find<bool>( "splash", 0 );
 
@@ -487,32 +470,6 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params ) : SST::Compon
     std::ofstream dumpFile( Name + ".dump.init", std::ios::binary );
     Mem->DumpMemSeg( Seg, 16, dumpFile );
   }
-}
-
-RevCPU::~RevCPU() {
-  // delete the competion array
-  delete[] Enabled;
-
-  // delete the processors objects
-  for( size_t i = 0; i < Procs.size(); i++ ) {
-    delete Procs[i];
-  }
-
-  for( size_t i = 0; i < CoProcs.size(); i++ ) {
-    delete CoProcs[i];
-  }
-
-  // delete the memory controller if present
-  delete Ctrl;
-
-  // delete the memory object
-  delete Mem;
-
-  // delete the loader object
-  delete Loader;
-
-  // delete the options object
-  delete Opts;
 }
 
 void RevCPU::DecodeFaultWidth( const std::string& width ) {
@@ -990,7 +947,7 @@ void RevCPU::handleZOPThreadMigrate( Forza::zopEvent* zev ) {
   // pkt[65] = f[31] register contents
 
   // Create the regfile
-  std::unique_ptr<RevRegFile> MigratedRegState = std::make_unique<RevRegFile>( Procs[0] );
+  std::unique_ptr<RevRegFile> MigratedRegState = std::make_unique<RevRegFile>( Procs[0].get() );
   MigratedRegState->SetPC( pkt[2] );
   for( unsigned i = 0; i < 32; i++ ) {
     MigratedRegState->SetX( i, pkt[3 + i] );
@@ -1438,7 +1395,7 @@ void RevCPU::HandleThreadStateChangesForProc( uint32_t ProcID ) {
 }
 
 void RevCPU::InitMainThread( uint32_t MainThreadID, const uint64_t StartAddr ) {
-  auto MainThreadRegState = std::make_unique<RevRegFile>( Procs[0] );
+  auto MainThreadRegState = std::make_unique<RevRegFile>( Procs[0].get() );
 
   // The Program Counter gets set to the start address
   MainThreadRegState->SetPC( StartAddr );
