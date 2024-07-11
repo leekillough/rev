@@ -33,6 +33,7 @@ const char splash_msg[] = "\
 ";
 
 RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params ) : SST::Component( id ) {
+
   const int Verbosity = params.find<int>( "verbose", 0 );
 
   // Initialize the output handler
@@ -97,6 +98,7 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params ) : SST::Compon
 
   if( EnableNIC ) {
     // Look up the network component
+
     Nic = loadUserSubComponent<nicAPI>( "nic" );
 
     // check to see if the nic was loaded.  if not, DO NOT load an anonymous endpoint
@@ -479,6 +481,12 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params ) : SST::Compon
 
   // Done with initialization
   output.verbose( CALL_INFO, 1, 0, "Initialization of RevCPUs complete.\n" );
+
+  for( const auto& [Name, Seg] : Mem->GetDumpRanges() ) {
+    // Open a file called '{Name}.init.dump'
+    std::ofstream dumpFile( Name + ".dump.init", std::ios::binary );
+    Mem->DumpMemSeg( Seg, 16, dumpFile );
+  }
 }
 
 RevCPU::~RevCPU() {
@@ -505,9 +513,6 @@ RevCPU::~RevCPU() {
 
   // delete the options object
   delete Opts;
-
-  // delete the clock handler object
-  //delete ClockHandler;
 }
 
 void RevCPU::DecodeFaultWidth( const std::string& width ) {
@@ -1246,15 +1251,13 @@ bool RevCPU::clockTick( SST::Cycle_t currentCycle ) {
       UpdateCoreStatistics( i );
       Procs[i]->PrintStatSummary();
     }
+    Mem->updatePhysHistorytoOutput();
 
     for( const auto& [Name, Seg] : Mem->GetDumpRanges() ) {
       // Open a file called '{Name}.init.dump'
       std::ofstream dumpFile( Name + ".dump.final", std::ios::binary );
       Mem->DumpMemSeg( Seg, 16, dumpFile );
     }
-
-    Mem->updatePhysHistorytoOutput();
-
     primaryComponentOKToEndSim();
     output.verbose( CALL_INFO, 5, 0, "OK to end sim at cycle: %" PRIu64 "\n", static_cast<uint64_t>( currentCycle ) );
   } else {
@@ -1370,6 +1373,7 @@ void RevCPU::HandleThreadStateChangesForProc( uint32_t ProcID ) {
       output.verbose( CALL_INFO, 8, 0, "Thread %" PRIu32 " on Core %" PRIu32 " is MIGRATED\n", ThreadID, ProcID );
       CompletedThreads.emplace( ThreadID, std::move( Thread ) );
       break;
+
     case ThreadState::DONE:
       // This thread has completed execution
       output.verbose( CALL_INFO, 8, 0, "Thread %" PRIu32 " on Core %" PRIu32 " is DONE\n", ThreadID, ProcID );

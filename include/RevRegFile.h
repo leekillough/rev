@@ -112,7 +112,6 @@ private:
   bool       trigger{};         ///< RevRegFile: Has the instruction been triggered?
   unsigned   Entry{};           ///< RevRegFile: Instruction entry
   uint32_t   cost{};            ///< RevRegFile: Cost of the instruction
-  RevTracer* Tracer = nullptr;  ///< RegRegFile: Tracer object
   uint32_t   ThreadID{};        ///< RevRegFile: Thread ID
   RevTracer* Tracer = nullptr;  ///< RegRegFile: Tracer object
 

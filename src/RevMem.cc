@@ -15,7 +15,6 @@
 #include <functional>
 #include <iomanip>
 #include <memory>
-#include <mutex>
 #include <utility>
 
 namespace SST::RevCPU {
@@ -320,11 +319,9 @@ uint64_t RevMem::CalcPhysAddr( uint64_t pageNum, uint64_t vAddr ) {
         );
       }
     }
+    AddToTLB( vAddr, physAddr );
   }
-  AddToTLB( vAddr, physAddr );
-}
-
-return physAddr;
+  return physAddr;
 }
 
 // This function will change a decent amount in an upcoming PR
@@ -672,14 +669,6 @@ bool RevMem::WriteMem( unsigned Hart, uint64_t Addr, size_t Len, const void* Dat
         unsigned Cur = ( Len - span );
         ZOP_WRITEMem( Hart, Addr, Len, &( DataMem[Cur] ), flags );
       } else {
-        unsigned Cur = ( Len - span );
-        ctrl->sendWRITERequest( Hart, Addr, (uint64_t) ( BaseMem ), Len, &( DataMem[Cur] ), flags );
-      }
-      else if( zNic && !isRZA ) {
-        unsigned Cur = ( Len - span );
-        ZOP_WRITEMem( Hart, Addr, Len, &( DataMem[Cur] ), flags );
-      }
-      else {
         // write the memory using the internal RevMem model
         unsigned Cur = ( Len - span );
         for( unsigned i = 0; i < span; i++ ) {
@@ -1074,6 +1063,7 @@ void RevMem::InitHeap( const uint64_t& EndOfStaticData ) {
   } else {
     // Mark heap as free
     FreeMemSegs.emplace_back( std::make_shared<MemSegment>( EndOfStaticData + 1, maxHeapSize ) );
+
     heapend    = EndOfStaticData + 1;
     heapstart  = EndOfStaticData + 1;
 
@@ -1106,75 +1096,6 @@ uint64_t RevMem::ExpandHeap( uint64_t Size ) {
   heapend = NewHeapEnd;
 
   return heapend;
-}
-
-void RevMem::DumpMem( const uint64_t startAddr, const uint64_t numBytes, const uint64_t bytesPerRow, std::ostream& outputStream ) {
-  uint64_t       translatedStartAddr = startAddr;             //CalcPhysAddr( 0, startAddr );
-  const uint64_t endAddr             = startAddr + numBytes;  //translatedStartAddr + numBytes;
-
-  for( uint64_t addr = translatedStartAddr; addr < endAddr; addr += bytesPerRow ) {
-    outputStream << "0x" << std::setw( 16 ) << std::setfill( '0' ) << std::hex << addr << ": ";
-
-    for( uint64_t i = 0; i < bytesPerRow; ++i ) {
-      if( addr + i < endAddr ) {
-        uint8_t byte = physMem[addr + i];
-        outputStream << std::setw( 2 ) << std::setfill( '0' ) << std::hex << static_cast<uint32_t>( byte ) << " ";
-      } else {
-        outputStream << "   ";
-      }
-    }
-
-    outputStream << " ";
-
-    for( uint64_t i = 0; i < bytesPerRow; ++i ) {
-      if( addr + i < endAddr ) {
-        uint8_t byte = physMem[addr + i];
-        if( std::isprint( byte ) ) {
-          outputStream << static_cast<char>( byte );
-        } else {
-          outputStream << ".";
-        }
-      }
-    }
-    outputStream << std::endl;
-  }
-}
-
-void RevMem::DumpMemSeg( const std::shared_ptr<MemSegment>& MemSeg, const uint64_t bytesPerRow, std::ostream& outputStream ) {
-  outputStream << "// " << *MemSeg << std::endl;
-  DumpMem( MemSeg->getBaseAddr(), MemSeg->getSize(), bytesPerRow, outputStream );
-}
-
-void RevMem::DumpValidMem( const uint64_t bytesPerRow, std::ostream& outputStream ) {
-
-  std::sort( MemSegs.begin(), MemSegs.end() );
-  outputStream << "Memory Segments:" << std::endl;
-  for( unsigned i = 0; i < MemSegs.size(); i++ ) {
-    outputStream << "// SEGMENT #" << i << *MemSegs[i] << std::endl;
-    DumpMemSeg( MemSegs[i], bytesPerRow, outputStream );
-  }
-  for( const auto& MemSeg : MemSegs ) {
-    DumpMem( MemSeg->getBaseAddr(), MemSeg->getSize(), bytesPerRow, outputStream );
-  }
-
-  std::sort( ThreadMemSegs.begin(), ThreadMemSegs.end() );
-  for( const auto& MemSeg : ThreadMemSegs ) {
-    outputStream << "// " << *MemSeg << std::endl;
-    DumpMem( MemSeg->getBaseAddr(), MemSeg->getSize(), bytesPerRow, outputStream );
-  }
-}
-
-void RevMem::DumpThreadMem( const uint64_t bytesPerRow, std::ostream& outputStream ) {
-  outputStream << "Thread Memory Segments:" << std::endl;
-  std::sort( ThreadMemSegs.begin(), ThreadMemSegs.end() );
-  for( const auto& MemSeg : ThreadMemSegs ) {
-    outputStream << "// " << *MemSeg << std::endl;
-    DumpMem( MemSeg->getBaseAddr(), MemSeg->getSize(), bytesPerRow, outputStream );
-  }
-}
-
-void RevMem::AddDumpRange( const std::string& Name, const uint64_t BaseAddr, const uint64_t Size ) {
-  DumpRanges[Name] = std::make_shared<MemSegment>( BaseAddr, Size );
 }
 
 // ----------------------------------------------------
@@ -1340,85 +1261,6 @@ bool RevMem::ZOP_AMOMem( unsigned Hart, uint64_t Addr, size_t Len, void* Data, v
 
 #ifdef _REV_DEBUG_
   std::cout << "ZOP_AMO of " << Len << " Bytes Starting at 0x" << std::hex << Addr << std::dec << std::endl;
-#endif
-
-  // create a new event
-  SST::Forza::zopEvent* zev = new SST::Forza::zopEvent();
-
-  // set all the fields
-  zev->setType( SST::Forza::zopMsgT::Z_HZOPAC );
-  zev->setNB( 0 );
-  zev->setID( Hart );  // -- we set this to the Hart temporarily.  The zNic will set the actual message ID
-  zev->setCredit( 0 );
-  zev->setOpc( flagToZOP( (uint32_t) ( flags ), Len ) );
-  zev->setAppID( 0 );
-  zev->setDestHart( Z_HZOP_PIPE_HART );
-  zev->setDestZCID( (uint8_t) ( SST::Forza::zopCompID::Z_RZA ) );
-  zev->setDestPCID( (uint8_t) ( zNic->getPCID( zNic->getZoneID() ) ) );
-  zev->setDestPrec( (uint8_t) ( zNic->getPrecinctID() ) );
-  zev->setSrcHart( Hart );
-  zev->setSrcZCID( (uint8_t) ( zNic->getEndpointType() ) );
-  zev->setSrcPCID( (uint8_t) ( zNic->getPCID( zNic->getZoneID() ) ) );
-  zev->setSrcPrec( (uint8_t) ( zNic->getPrecinctID() ) );
-
-  zev->setMemReq( req );
-  zev->setTarget( static_cast<uint64_t*>( Target ) );
-
-  // set the payload
-  std::vector<uint64_t> payload;
-  payload.push_back( 0x00ull );  //  ACS: FIXME
-  payload.push_back( Addr );     //  address
-  payload.push_back( *( static_cast<uint64_t*>( Data ) ) );
-  zev->setPayload( payload );
-
-  // inject the new packet
-  zNic->send( zev, SST::Forza::zopCompID::Z_RZA );
-
-  return true;
-}
-
-bool RevMem::ZOP_READMem( unsigned Hart, uint64_t Addr, size_t Len, void* Target, const MemReq& req, RevFlag flags ) {
-#ifdef _REV_DEBUG_
-  std::cout << "ZOP_READ of " << Len << " Bytes Starting at 0x" << std::hex << Addr << std::dec << std::endl;
-#endif
-
-  // create a new event
-  SST::Forza::zopEvent* zev = new SST::Forza::zopEvent();
-
-  // set all the fields : FIXME
-  zev->setType( SST::Forza::zopMsgT::Z_MZOP );
-  zev->setNB( 0 );
-  zev->setID( Hart );  // -- we set this to the Hart temporarily.  The zNic will set the actual message ID
-  zev->setCredit( 0 );
-  zev->setOpc( memToZOP( (uint32_t) ( flags ), Len, false ) );
-  zev->setAppID( 0 );
-  zev->setDestHart( Z_MZOP_PIPE_HART );
-  zev->setDestZCID( (uint8_t) ( SST::Forza::zopCompID::Z_RZA ) );
-  zev->setDestPCID( (uint8_t) ( zNic->getPCID( zNic->getZoneID() ) ) );
-  zev->setDestPrec( (uint8_t) ( zNic->getPrecinctID() ) );
-  zev->setSrcHart( Hart );
-  zev->setSrcZCID( (uint8_t) ( zNic->getEndpointType() ) );
-  zev->setSrcPCID( (uint8_t) ( zNic->getPCID( zNic->getZoneID() ) ) );
-  zev->setSrcPrec( (uint8_t) ( zNic->getPrecinctID() ) );
-
-  zev->setMemReq( req );
-  zev->setTarget( static_cast<uint64_t*>( Target ) );
-
-  // set the payload
-  std::vector<uint64_t> payload;
-  payload.push_back( 0x00ull );  //  ACS: FIXME
-  payload.push_back( Addr );     //  address
-  zev->setPayload( payload );
-
-  // inject the new packet
-  zNic->send( zev, SST::Forza::zopCompID::Z_RZA );
-
-  return true;
-}
-
-bool RevMem::ZOP_WRITEMem( unsigned Hart, uint64_t Addr, size_t Len, void* Data, RevFlag flags ) {
-#ifdef _REV_DEBUG_
-  std::cout << "ZOP_WRITEMem request of " << Len << " Bytes Starting at 0x" << std::hex << Addr << std::dec << std::endl;
 #endif
 
   // create a new event
@@ -1791,9 +1633,9 @@ bool RevMem::isLocalAddr( uint64_t vAddr, unsigned& Zone, unsigned& Precinct ) {
   TmpPrecinct          = (unsigned) ( ( vAddr >> Z_PREC_SHIFT ) & Z_PREC_MASK );
   TmpLocalBit          = (unsigned) ( ( vAddr >> Z_VIEW_SHIFT ) & Z_VIEW_MASK );
 
-  if( ((TmpZone != zNic->getZoneID()) ||          // non local zone
-      (TmpPrecinct != zNic->getPrecinctID())) &&  // non local precinct
-      (TmpLocalBit != 0) ){                       // view bit set to 1
+  if( ( ( TmpZone != zNic->getZoneID() ) ||            // non local zone
+        ( TmpPrecinct != zNic->getPrecinctID() ) ) &&  // non local precinct
+      ( TmpLocalBit != 0 ) ) {                         // view bit set to 1
     Zone     = TmpZone;
     Precinct = TmpPrecinct;
     output->verbose(
@@ -1949,6 +1791,76 @@ std::pair<bool, std::string> RevMem::validatePhysAddr( uint64_t pAddr, int appID
   return { ret, reason };
 }
 
+void RevMem::DumpMem( const uint64_t startAddr, const uint64_t numBytes, const uint64_t bytesPerRow, std::ostream& outputStream ) {
+  uint64_t       translatedStartAddr = startAddr;             //CalcPhysAddr( 0, startAddr );
+  const uint64_t endAddr             = startAddr + numBytes;  //translatedStartAddr + numBytes;
+
+  for( uint64_t addr = translatedStartAddr; addr < endAddr; addr += bytesPerRow ) {
+    outputStream << "0x" << std::setw( 16 ) << std::setfill( '0' ) << std::hex << addr << ": ";
+
+    for( uint64_t i = 0; i < bytesPerRow; ++i ) {
+      if( addr + i < endAddr ) {
+        uint8_t byte = physMem[addr + i];
+        outputStream << std::setw( 2 ) << std::setfill( '0' ) << std::hex << static_cast<uint32_t>( byte ) << " ";
+      } else {
+        outputStream << "   ";
+      }
+    }
+
+    outputStream << " ";
+
+    for( uint64_t i = 0; i < bytesPerRow; ++i ) {
+      if( addr + i < endAddr ) {
+        uint8_t byte = physMem[addr + i];
+        if( std::isprint( byte ) ) {
+          outputStream << static_cast<char>( byte );
+        } else {
+          outputStream << ".";
+        }
+      }
+    }
+    outputStream << std::endl;
+  }
+}
+
+void RevMem::DumpMemSeg( const std::shared_ptr<MemSegment>& MemSeg, const uint64_t bytesPerRow, std::ostream& outputStream ) {
+
+  outputStream << "// " << *MemSeg << std::endl;
+  DumpMem( MemSeg->getBaseAddr(), MemSeg->getSize(), bytesPerRow, outputStream );
+}
+
+void RevMem::DumpValidMem( const uint64_t bytesPerRow, std::ostream& outputStream ) {
+
+  std::sort( MemSegs.begin(), MemSegs.end() );
+  outputStream << "Memory Segments:" << std::endl;
+  for( unsigned i = 0; i < MemSegs.size(); i++ ) {
+    outputStream << "// SEGMENT #" << i << *MemSegs[i] << std::endl;
+    DumpMemSeg( MemSegs[i], bytesPerRow, outputStream );
+  }
+  for( const auto& MemSeg : MemSegs ) {
+    DumpMem( MemSeg->getBaseAddr(), MemSeg->getSize(), bytesPerRow, outputStream );
+  }
+
+  std::sort( ThreadMemSegs.begin(), ThreadMemSegs.end() );
+  for( const auto& MemSeg : ThreadMemSegs ) {
+    outputStream << "// " << *MemSeg << std::endl;
+    DumpMem( MemSeg->getBaseAddr(), MemSeg->getSize(), bytesPerRow, outputStream );
+  }
+}
+
+void RevMem::DumpThreadMem( const uint64_t bytesPerRow, std::ostream& outputStream ) {
+
+  outputStream << "Thread Memory Segments:" << std::endl;
+  std::sort( ThreadMemSegs.begin(), ThreadMemSegs.end() );
+  for( const auto& MemSeg : ThreadMemSegs ) {
+    outputStream << "// " << *MemSeg << std::endl;
+    DumpMem( MemSeg->getBaseAddr(), MemSeg->getSize(), bytesPerRow, outputStream );
+  }
+}
+
+void RevMem::AddDumpRange( const std::string& Name, const uint64_t BaseAddr, const uint64_t Size ) {
+  DumpRanges[Name] = std::make_shared<MemSegment>( BaseAddr, Size );
+}
 }  // namespace SST::RevCPU
 
 // EOF

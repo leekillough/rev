@@ -68,7 +68,6 @@ static_assert( std::is_same_v<StandardMem::Request::flags_t, std::underlying_typ
 /// RevFlag: determine if the request is an AMO
 constexpr bool RevFlagHas( RevFlag flag, RevFlag has ) {
   return ( static_cast<uint32_t>( flag ) & static_cast<uint32_t>( has ) ) != 0;
->>>>>>> 7ab48ee6 (Rename RevProc to RevCore)
 }
 
 /// RevFlag: Handle flag response
@@ -175,19 +174,19 @@ public:
   bool isCacheable() const { return ( static_cast<uint32_t>( flags ) & static_cast<uint32_t>( RevFlag::F_NONCACHEABLE ) ) == 0; }
 
 private:
-  unsigned             Hart;       ///< RevMemOp: RISC-V Hart
-  uint64_t             Addr;       ///< RevMemOp: address
-  uint64_t             PAddr;      ///< RevMemOp: physical address (for RevMem I/O)
-  uint32_t             Size;       ///< RevMemOp: size of the memory operation in bytes
-  bool                 Inv;        ///< RevMemOp: flush operation invalidate flag
-  MemOp                Op;         ///< RevMemOp: target memory operation
-  unsigned             CustomOpc;  ///< RevMemOp: custom memory opcode
-  unsigned             SplitRqst;  ///< RevMemOp: number of split cache line requests
-  std::vector<uint8_t> membuf;     ///< RevMemOp: buffer
-  std::vector<uint8_t> tempT;      ///< RevMemOp: temporary target buffer for R-M-W ops
-  RevFlag              flags;      ///< RevMemOp: request flags
-  void*                target;     ///< RevMemOp: target register pointer
-  MemReq               procReq;    ///< RevMemOp: original request from RevCore
+  unsigned             Hart{};       ///< RevMemOp: RISC-V Hart
+  uint64_t             Addr{};       ///< RevMemOp: address
+  uint64_t             PAddr{};      ///< RevMemOp: physical address (for RevMem I/O)
+  uint32_t             Size{};       ///< RevMemOp: size of the memory operation in bytes
+  bool                 Inv{};        ///< RevMemOp: flush operation invalidate flag
+  MemOp                Op{};         ///< RevMemOp: target memory operation
+  unsigned             CustomOpc{};  ///< RevMemOp: custom memory opcode
+  unsigned             SplitRqst{};  ///< RevMemOp: number of split cache line requests
+  std::vector<uint8_t> membuf{};     ///< RevMemOp: buffer
+  std::vector<uint8_t> tempT{};      ///< RevMemOp: temporary target buffer for R-M-W ops
+  RevFlag              flags{};      ///< RevMemOp: request flags
+  void*                target{};     ///< RevMemOp: target register pointer
+  MemReq               procReq{};    ///< RevMemOp: original request from RevCore
 };
 
 // ----------------------------------------
@@ -552,8 +551,9 @@ protected:
     virtual void handle( StandardMem::InvNotify* ev );
 
   private:
-    RevBasicMemCtrl* Ctrl;  ///< RevStdMemHandlers: memory controller object
-  };                        // class RevStdMemHandlers
+    RevBasicMemCtrl* Ctrl{};  ///< RevStdMemHandlers: memory controller object
+
+  };  // class RevStdMemHandlers
 
 private:
   /// RevBasicMemCtrl: process the next memory request
@@ -620,18 +620,18 @@ private:
   void performAMO( std::tuple<unsigned, char*, void*, RevFlag, RevMemOp*, bool> Entry );
 
   // -- private data members
-  StandardMem*       memIface;         ///< StandardMem memory interface
-  RevStdMemHandlers* stdMemHandlers;   ///< StandardMem interface response handlers
-  bool               hasCache;         ///< detects whether cache layers are present
-  unsigned           lineSize;         ///< cache line size
-  unsigned           max_loads;        ///< maximum number of outstanding loads
-  unsigned           max_stores;       ///< maximum number of outstanding stores
-  unsigned           max_flush;        ///< maximum number of oustanding flush events
-  unsigned           max_llsc;         ///< maximum number of outstanding llsc events
-  unsigned           max_readlock;     ///< maximum number of oustanding readlock events
-  unsigned           max_writeunlock;  ///< maximum number of oustanding writelock events
-  unsigned           max_custom;       ///< maximum number of oustanding custom events
-  unsigned           max_ops;          ///< maximum number of ops to issue per cycle
+  StandardMem*       memIface{};         ///< StandardMem memory interface
+  RevStdMemHandlers* stdMemHandlers{};   ///< StandardMem interface response handlers
+  bool               hasCache{};         ///< detects whether cache layers are present
+  unsigned           lineSize{};         ///< cache line size
+  unsigned           max_loads{};        ///< maximum number of outstanding loads
+  unsigned           max_stores{};       ///< maximum number of outstanding stores
+  unsigned           max_flush{};        ///< maximum number of oustanding flush events
+  unsigned           max_llsc{};         ///< maximum number of outstanding llsc events
+  unsigned           max_readlock{};     ///< maximum number of oustanding readlock events
+  unsigned           max_writeunlock{};  ///< maximum number of oustanding writelock events
+  unsigned           max_custom{};       ///< maximum number of oustanding custom events
+  unsigned           max_ops{};          ///< maximum number of ops to issue per cycle
 
   uint64_t num_read{};         ///< number of outstanding read requests
   uint64_t num_write{};        ///< number of outstanding write requests
@@ -642,9 +642,9 @@ private:
   uint64_t num_custom{};       ///< number of outstanding custom requests
   uint64_t num_fence{};        ///< number of oustanding fence requests
 
-  std::vector<StandardMem::Request::id_t>         requests;     ///< outstanding StandardMem requests
-  std::vector<RevMemOp*>                          rqstQ;        ///< queued memory requests
-  std::map<StandardMem::Request::id_t, RevMemOp*> outstanding;  ///< map of outstanding requests
+  std::vector<StandardMem::Request::id_t>         requests{};     ///< outstanding StandardMem requests
+  std::vector<RevMemOp*>                          rqstQ{};        ///< queued memory requests
+  std::map<StandardMem::Request::id_t, RevMemOp*> outstanding{};  ///< map of outstanding requests
 
 #define AMOTABLE_HART   0
 #define AMOTABLE_BUFFER 1
@@ -653,18 +653,10 @@ private:
 #define AMOTABLE_MEMOP  4
 #define AMOTABLE_IN     5
 
-  std::multimap<
-    uint64_t,
-    std::tuple<
-      unsigned,
-      char*,
-      void*,
-      RevFlag,
-      RevMemOp*,
-      bool>>
-    AMOTable;  ///< map of amo operations to memory addresses
+  /// RevBasicMemCtrl: map of amo operations to memory addresses
+  std::multimap<uint64_t, std::tuple<unsigned, char*, void*, RevFlag, RevMemOp*, bool>> AMOTable{};
 
-  std::vector<Statistic<uint64_t>*> stats;  ///< statistics vector
+  std::vector<Statistic<uint64_t>*> stats{};  ///< statistics vector
 
 };  // RevBasicMemCtrl
 

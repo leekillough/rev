@@ -303,12 +303,11 @@ bool RevCore::ReadOverrideTables() {
     output->fatal( CALL_INFO, -1, "Error: failed to read instruction table for core=%" PRIu32 "\n", id );
 
   // read all the values
-  std::string                               Inst;
-  std::string                               Cost;
-  unsigned                                  Entry;
-  std::map<std::string, unsigned>::iterator it;
+  std::string Inst;
+  std::string Cost;
+  unsigned    Entry;
   while( infile >> Inst >> Cost ) {
-    it = NameToEntry.find( Inst );
+    auto it = NameToEntry.find( Inst );
     if( it == NameToEntry.end() )
       output->fatal( CALL_INFO, -1, "Error: could not find instruction in table for map value=%s\n", Inst.data() );
 
@@ -833,14 +832,13 @@ auto RevCore::matchInst(
 }
 
 RevInst RevCore::DecodeCompressed( uint32_t Inst ) const {
-  uint16_t TmpInst = (uint16_t) ( Inst & 0b1111111111111111 );
-  uint8_t  opc     = 0;
-  uint8_t  funct2  = 0;
-  uint8_t  funct3  = 0;
-  uint8_t  funct4  = 0;
-  uint8_t  funct6  = 0;
-  uint8_t  l3      = 0;
-  uint32_t Enc     = 0x00ul;
+  uint8_t  opc    = 0;
+  uint8_t  funct2 = 0;
+  uint8_t  funct3 = 0;
+  uint8_t  funct4 = 0;
+  uint8_t  funct6 = 0;
+  uint8_t  l3     = 0;
+  uint32_t Enc    = 0x00ul;
 
   if( !feature->HasCompressed() ) {
     output->fatal(
@@ -852,8 +850,8 @@ RevInst RevCore::DecodeCompressed( uint32_t Inst ) const {
   Inst = static_cast<uint16_t>( Inst );
 
   // decode the opcode
-  opc  = ( TmpInst & 0b11 );
-  l3   = ( ( TmpInst & 0b1110000000000000 ) >> 13 );
+  opc  = ( Inst & 0b11 );
+  l3   = ( ( Inst & 0b1110000000000000 ) >> 13 );
   if( opc == 0b00 ) {
     // quadrant 0
     funct3 = l3;
@@ -864,10 +862,10 @@ RevInst RevCore::DecodeCompressed( uint32_t Inst ) const {
       funct3 = l3;
     } else if( ( l3 > 0b011 ) && ( l3 < 0b101 ) ) {
       // middle portion: arithmetics
-      uint8_t opSelect = ( ( TmpInst & 0b110000000000 ) >> 10 );
+      uint8_t opSelect = ( ( Inst & 0b110000000000 ) >> 10 );
       if( opSelect == 0b11 ) {
-        funct6 = ( ( TmpInst & 0b1111110000000000 ) >> 10 );
-        funct2 = ( ( TmpInst & 0b01100000 ) >> 5 );
+        funct6 = ( ( Inst & 0b1111110000000000 ) >> 10 );
+        funct2 = ( ( Inst & 0b01100000 ) >> 5 );
       } else {
         funct3 = l3;
         funct2 = opSelect;
@@ -886,7 +884,7 @@ RevInst RevCore::DecodeCompressed( uint32_t Inst ) const {
       funct3 = l3;
     } else if( l3 == 0b100 ) {
       // jump, mv, break, add
-      funct4 = ( ( TmpInst & 0b1111000000000000 ) >> 12 );
+      funct4 = ( ( Inst & 0b1111000000000000 ) >> 12 );
     } else {
       // float/double/quad store
       funct3 = l3;
@@ -900,8 +898,7 @@ RevInst RevCore::DecodeCompressed( uint32_t Inst ) const {
   Enc |= (uint32_t) ( funct6 << 12 );
 
   bool isCoProcInst = false;
-
-  auto it           = CEncToEntry.find( Enc );
+  auto it           = matchInst( CEncToEntry, Enc, InstTable, Inst );
   if( it == CEncToEntry.end() ) {
     if( coProc && coProc->IssueInst( feature, RegFile, mem, Inst ) ) {
       isCoProcInst     = true;
@@ -910,7 +907,7 @@ RevInst RevCore::DecodeCompressed( uint32_t Inst ) const {
       Inst             = 0;
       Enc              = 0;
       Enc |= caddi_op;
-      it = CEncToEntry.find( Enc );
+      it = matchInst( CEncToEntry, Enc, InstTable, Inst );
     }
   }
 
@@ -950,15 +947,15 @@ RevInst RevCore::DecodeCompressed( uint32_t Inst ) const {
   RevInst ret{};
 
   switch( InstTable[Entry].format ) {
-  case RVCTypeCR: ret = DecodeCRInst( TmpInst, Entry ); break;
-  case RVCTypeCI: ret = DecodeCIInst( TmpInst, Entry ); break;
-  case RVCTypeCSS: ret = DecodeCSSInst( TmpInst, Entry ); break;
-  case RVCTypeCIW: ret = DecodeCIWInst( TmpInst, Entry ); break;
-  case RVCTypeCL: ret = DecodeCLInst( TmpInst, Entry ); break;
-  case RVCTypeCS: ret = DecodeCSInst( TmpInst, Entry ); break;
-  case RVCTypeCA: ret = DecodeCAInst( TmpInst, Entry ); break;
-  case RVCTypeCB: ret = DecodeCBInst( TmpInst, Entry ); break;
-  case RVCTypeCJ: ret = DecodeCJInst( TmpInst, Entry ); break;
+  case RVCTypeCR: ret = DecodeCRInst( Inst, Entry ); break;
+  case RVCTypeCI: ret = DecodeCIInst( Inst, Entry ); break;
+  case RVCTypeCSS: ret = DecodeCSSInst( Inst, Entry ); break;
+  case RVCTypeCIW: ret = DecodeCIWInst( Inst, Entry ); break;
+  case RVCTypeCL: ret = DecodeCLInst( Inst, Entry ); break;
+  case RVCTypeCS: ret = DecodeCSInst( Inst, Entry ); break;
+  case RVCTypeCA: ret = DecodeCAInst( Inst, Entry ); break;
+  case RVCTypeCB: ret = DecodeCBInst( Inst, Entry ); break;
+  case RVCTypeCJ: ret = DecodeCJInst( Inst, Entry ); break;
   default: output->fatal( CALL_INFO, -1, "Error: failed to decode instruction format at PC=%" PRIx64 ".", GetPC() );
   }
 
@@ -1273,26 +1270,15 @@ RevInst RevCore::FetchAndDecodeInst() {
       CALL_INFO,
       6,
       0,
-      "Core %" PRIu32 "; Hart %" PRIu32 "; Thread %" PRIu32 "; PC:InstPayload = 0x%" PRIx64 ":0x%" PRIx32 "\n",
-      id,
-      HartToDecodeID,
-      ActiveThreadID,
-      PC,
-      Inst
-    );
-  } else {
-    output->fatal(
-      CALL_INFO,
-      -1,
-      "Error: Core %" PRIu32 " failed to decode instruction at PC=0x%" PRIx64 "; Inst=%" PRIu32 "\n",
+      ~Inst & 3 ? "Core %" PRIu32 "; Hart %" PRIu32 "; Thread %" PRIu32 "; PC:InstPayload = 0x%" PRIx64 ":0x%04" PRIx32 "\n" :
+                  "Core %" PRIu32 "; Hart %" PRIu32 "; Thread %" PRIu32 "; PC:InstPayload = 0x%" PRIx64 ":0x%08" PRIx32 "\n",
       id,
       HartToDecodeID,
       ActiveThreadID,
       PC,
       ~Inst & 3 ? Inst & 0xffff : Inst
     );
-  }
-  else {
+  } else {
     output->fatal(
       CALL_INFO, -1, "Error: Core %" PRIu32 " failed to decode instruction at PC=0x%" PRIx64 "; Inst=%" PRIu32 "\n", id, PC, Inst
     );
@@ -1420,7 +1406,7 @@ RevInst RevCore::DecodeInst( uint32_t Inst ) const {
   Enc |= rs2fcvtOp << 30;
 
   // Stage 7: Look up the value in the table
-  auto it = EncToEntry.find( Enc );
+  auto it = matchInst( EncToEntry, Enc, InstTable, Inst );
 
   // This is kind of a hack, but we may not have found the instruction because
   // Funct3 is overloaded with rounding mode, so if this is a RV32F or RV64F
@@ -1605,7 +1591,7 @@ unsigned RevCore::GetNextHartToDecodeID() const {
   if( HartsClearToDecode.none() ) {
     return HartToDecodeID;
   }  // This should never happen
-     // start with HartToDecodeID + 1
+  // start with HartToDecodeID + 1
   unsigned nextID         = ( HartToDecodeID + 1 ) % Harts.size();
   // store the original ID to return if no other ID is clear
   unsigned originalHartID = HartToDecodeID;
@@ -2104,7 +2090,6 @@ void RevCore::UpdateStatusOfHarts() {
   }
   return;
 }
-}  // namespace SST::RevCPU
 
 }  // namespace SST::RevCPU
 

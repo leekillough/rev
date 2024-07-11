@@ -147,51 +147,6 @@ public:
     uint64_t TopAddr{};   ///< MemSegment: Top address of the memory segment
   };
 
-  /* Virtual Memory Blocks  */
-  class MemSegment {
-  public:
-    MemSegment( uint64_t baseAddr, uint64_t size ) : BaseAddr( baseAddr ), Size( size ) { TopAddr = baseAddr + size; }
-
-    uint64_t getTopAddr() const { return BaseAddr + Size; }
-
-    uint64_t getBaseAddr() const { return BaseAddr; }
-
-    uint64_t getSize() const { return Size; }
-
-    void setBaseAddr( uint64_t baseAddr ) {
-      BaseAddr = baseAddr;
-      if( Size ) {
-        TopAddr = Size + BaseAddr;
-      }
-    }
-
-    void setSize( uint64_t size ) {
-      Size    = size;
-      TopAddr = BaseAddr + size;
-    }
-
-    /// MemSegment: Check if vAddr is included in this segment
-    bool contains( const uint64_t& vAddr ) { return ( vAddr >= BaseAddr && vAddr < TopAddr ); };
-
-    // Check if a given range is inside a segment
-    bool contains( const uint64_t& vBaseAddr, const uint64_t& Size ) {
-      // exclusive top address
-      uint64_t vTopAddr = vBaseAddr + Size - 1;
-      return ( this->contains( vBaseAddr ) && this->contains( vTopAddr ) );
-    };
-
-    // Override for easy std::cout << *Seg << std::endl;
-    friend std::ostream& operator<<( std::ostream& os, const MemSegment& Seg ) {
-      return os << " | BaseAddr:  0x" << std::hex << Seg.getBaseAddr() << " | TopAddr: 0x" << std::hex << Seg.getTopAddr()
-                << " | Size: " << std::dec << Seg.getSize() << " Bytes";
-    }
-
-  private:
-    uint64_t BaseAddr;
-    uint64_t Size;
-    uint64_t TopAddr;
-  };
-
   /// RevMem: determine if there are any outstanding requests
   bool outstandingRqsts();
 
@@ -387,6 +342,8 @@ public:
 
   void SetHeapEnd( const uint64_t& HeapEnd ) { heapend = HeapEnd; }
 
+  const uint64_t& GetHeapEnd() { return heapend; }
+
   // FIXME:
   uint64_t GetBrk() { return brk; }
 
@@ -432,19 +389,6 @@ public:
   }
 
   RevMemStats GetMemStatsTotal() const { return memStatsTotal; }
-
-  /// RevMem: Dump the memory contents
-  void DumpMem(
-    const uint64_t startAddr, const uint64_t numBytes, const uint64_t bytesPerRow = 16, std::ostream& outputStream = std::cout
-  );
-
-  void DumpValidMem( const uint64_t bytesPerRow = 16, std::ostream& outputStream = std::cout );
-
-  void DumpMemSeg(
-    const std::shared_ptr<MemSegment>& MemSeg, const uint64_t bytesPerRow = 16, std::ostream& outputStream = std::cout
-  );
-
-  void DumpThreadMem( const uint64_t bytesPerRow = 16, std::ostream& outputStream = std::cout );
 
   // ----------------------------------------------------
   // ---- FORZA Interfaces
@@ -591,11 +535,11 @@ private:
   uint32_t                                      nextPage{};   ///< RevMem: next physical page to be allocated. Will result in index
   /// nextPage * pageSize into physMem
 
-  uint64_t brk{};         ///< RevMem: Program BRK FIXME: HACK
-  uint64_t mmapRegion{};  ///< RevMem: FIXME: HACK
-  uint64_t heapend{};     ///< RevMem: End of the heap
-  uint64_t heapstart{};   ///< RevMem: Start of the heap space
-  uint64_t stacktop = 0;  ///< RevMem: top of the stack
+  uint64_t brk;          ///< RevMem: Program BRK FIXME: HACK
+  uint64_t mmapRegion;   ///< RevMem: FIXME: HACK
+  uint64_t heapend{};    ///< RevMem: top of the stack
+  uint64_t heapstart{};  ///< RevMem: top of the stack
+  uint64_t stacktop{};   ///< RevMem: top of the stack
 
   std::vector<uint64_t> FutureRes{};  ///< RevMem: future operation reservations
 

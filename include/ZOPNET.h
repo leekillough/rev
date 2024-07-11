@@ -406,7 +406,7 @@ public:
   //  This constructor is ONLY utilized for initialization
   //  DO NOT use this constructor for normal packet construction
   explicit zopEvent( unsigned srcId, zopCompID Type, unsigned ZoneID, unsigned PrecinctID )
-    : Event(), Read( false ), FenceEncountered( false ), Target( nullptr ) {
+    : Event(), Read( false ), FenceEncountered( false ), ClearMsgID( false ), Target( nullptr ) {
     Packet.push_back( (uint64_t) ( Type ) );
     Packet.push_back( (uint64_t) ( srcId ) );
     Packet.push_back( (uint64_t) ( ZoneID ) );
@@ -414,12 +414,13 @@ public:
   }
 
   /// zopEvent: raw event constructor
-  explicit zopEvent() : Event(), Read( false ), FenceEncountered( false ), Target( nullptr ) {
+  explicit zopEvent() : Event(), Read( false ), FenceEncountered( false ), ClearMsgID( false ), Target( nullptr ) {
     Packet.push_back( 0x00ull );
     Packet.push_back( 0x00ull );
   }
 
-  explicit zopEvent( zopMsgT T, zopOpc O ) : Event(), Read( false ), FenceEncountered( false ), Target( nullptr ) {
+  explicit zopEvent( zopMsgT T, zopOpc O )
+    : Event(), Read( false ), FenceEncountered( false ), ClearMsgID( false ), Target( nullptr ) {
     Packet.push_back( 0x00ul );
     Packet.push_back( 0x00ul );
     Type = T;
@@ -478,7 +479,10 @@ public:
   void setOpc( zopOpc O ) { Opc = O; }
 
   /// zopEvent: set the application id
-  void setAppID( uint32_t A ) { AppID = A; }
+  void setAppID( uint8_t A ) { AppID = A & Z_MASK_APPID; }
+
+  /// zopEvent: set the packet reserved
+  void setPktRes( uint32_t X ) { PktRes = X; }
 
   /// zopEvent: set the destination hart
   void setDestHart( uint16_t H ) { DestHart = H; }
@@ -566,7 +570,7 @@ public:
   /// zopEvent: get the NB flag
   uint8_t getNB() { return NB; }
 
-  /// zopEvent: get the packet length
+  /// zopEvent: get the payload length - does NOT include the two header words
   uint8_t getLength() { return Length; }
 
   /// zopEvent: get the packet ID
@@ -579,7 +583,7 @@ public:
   zopOpc getOpc() { return Opc; }
 
   /// zopEvent: get the application id
-  uint32_t getAppID() { return AppID; }
+  uint8_t getAppID() { return AppID; }
 
   /// zopEvent: get the packet reserved field
   uint32_t getPktRes() { return PktRes; }
@@ -619,7 +623,8 @@ public:
     SrcPCID  = (uint8_t) ( ( Packet[Z_FLIT_SRC] >> Z_SHIFT_PCID ) & Z_MASK_PCID );
     SrcPrec  = (uint16_t) ( ( Packet[Z_FLIT_SRC] >> Z_SHIFT_PRECINCT ) & Z_MASK_PRECINCT );
 
-    AppID    = (uint32_t) ( ( Packet[Z_FLIT_APPID] >> Z_SHIFT_APPID ) & Z_MASK_APPID );
+    AppID    = (uint8_t) ( ( Packet[Z_FLIT_APPID] >> Z_SHIFT_APPID ) & Z_MASK_APPID );
+    PktRes   = (uint32_t) ( ( Packet[Z_FLIT_PKTRES] >> Z_SHIFT_PKTRES ) & Z_MASK_PKTRES );
   }
 
   /// zopEvent: encode this event and set the appropriate internal packet structures
@@ -643,6 +648,105 @@ public:
     Packet[Z_FLIT_SRC] |= ( (uint64_t) ( SrcPrec & Z_MASK_PRECINCT ) << Z_SHIFT_PRECINCT );
 
     Packet[Z_FLIT_APPID] |= ( (uint64_t) ( AppID & Z_MASK_APPID ) << Z_SHIFT_APPID );
+    Packet[Z_FLIT_PKTRES] |= ( (uint64_t) ( PktRes & Z_MASK_PKTRES ) << Z_SHIFT_PKTRES );
+  }
+
+  std::string getSrcString() {
+    std::string str = "Src[hart:zcid:pcid:type]=[";
+    str += std::to_string( SrcHart ) + ":";
+    str += ZCIDToStr( SrcZCID ) + ":";
+    str += PCIDToStr( SrcPCID ) + ":";
+    str += msgTToStr( Type ) + "]";
+    return str;
+  }
+
+  std::string getDestString() {
+    std::string str = "Dest[hart:zcid:pcid:type]=[";
+    str += std::to_string( DestHart ) + ":";
+    str += ZCIDToStr( DestZCID ) + ":";
+    str += PCIDToStr( DestPCID ) + ":";
+    str += msgTToStr( Type ) + "]";
+    return str;
+  }
+
+  /// zopEvent: convert endpoint to string name
+  std::string const ZCIDToStr( zopCompID T ) {
+    switch( T ) {
+    case zopCompID::Z_ZAP0: return "ZAP0"; break;
+    case zopCompID::Z_ZAP1: return "ZAP1"; break;
+    case zopCompID::Z_ZAP2: return "ZAP2"; break;
+    case zopCompID::Z_ZAP3: return "ZAP3"; break;
+    case zopCompID::Z_ZAP4: return "ZAP4"; break;
+    case zopCompID::Z_ZAP5: return "ZAP5"; break;
+    case zopCompID::Z_ZAP6: return "ZAP6"; break;
+    case zopCompID::Z_ZAP7: return "ZAP7"; break;
+    case zopCompID::Z_RZA: return "RZA"; break;
+    case zopCompID::Z_ZEN: return "ZEN"; break;
+    case zopCompID::Z_ZQM: return "ZQM"; break;
+    case zopCompID::Z_PREC_ZIP: return "PREC_ZIP"; break;
+    default: return "UNKNOWN"; break;
+    }
+  }
+
+  std::string const ZCIDToStr( uint8_t T ) {
+    zopCompID zcid = static_cast<zopCompID>( T );
+    return ZCIDToStr( zcid );
+  }
+
+  /// zopAPI: convert the precinct ID to zopPrecID
+  SST::Forza::zopPrecID getPCID( unsigned Z ) {
+    switch( Z ) {
+    case 0: return SST::Forza::zopPrecID::Z_ZONE0; break;
+    case 1: return SST::Forza::zopPrecID::Z_ZONE1; break;
+    case 2: return SST::Forza::zopPrecID::Z_ZONE2; break;
+    case 3: return SST::Forza::zopPrecID::Z_ZONE3; break;
+    case 4: return SST::Forza::zopPrecID::Z_ZONE4; break;
+    case 5: return SST::Forza::zopPrecID::Z_ZONE5; break;
+    case 6: return SST::Forza::zopPrecID::Z_ZONE6; break;
+    case 7: return SST::Forza::zopPrecID::Z_ZONE7; break;
+    case 8: return SST::Forza::zopPrecID::Z_PMP; break;
+    case 9: return SST::Forza::zopPrecID::Z_ZIP; break;
+    default: return SST::Forza::zopPrecID::Z_UNK; break;
+    }
+    return SST::Forza::zopPrecID::Z_UNK;
+  }
+
+  std::string const PCIDToStr( zopPrecID P ) {
+    switch( P ) {
+    case SST::Forza::zopPrecID::Z_ZONE0: return "Zone0"; break;
+    case SST::Forza::zopPrecID::Z_ZONE1: return "Zone1"; break;
+    case SST::Forza::zopPrecID::Z_ZONE2: return "Zone2"; break;
+    case SST::Forza::zopPrecID::Z_ZONE3: return "Zone3"; break;
+    case SST::Forza::zopPrecID::Z_ZONE4: return "Zone4"; break;
+    case SST::Forza::zopPrecID::Z_ZONE5: return "Zone5"; break;
+    case SST::Forza::zopPrecID::Z_ZONE6: return "Zone6"; break;
+    case SST::Forza::zopPrecID::Z_ZONE7: return "Zone7"; break;
+    case SST::Forza::zopPrecID::Z_PMP: return "PMP"; break;
+    case SST::Forza::zopPrecID::Z_ZIP: return "ZIP"; break;
+    default: return "UNKNOWN"; break;
+    }
+  }
+
+  std::string PCIDToStr( unsigned P ) {
+    zopPrecID pcid = static_cast<zopPrecID>( P );
+    return PCIDToStr( pcid );
+  }
+
+  /// zopEvent : convert message type to string name
+  std::string const msgTToStr( zopMsgT T ) {
+    switch( T ) {
+    case zopMsgT::Z_MZOP: return "MZOP"; break;
+    case zopMsgT::Z_HZOPAC: return "HZOPAC"; break;
+    case zopMsgT::Z_HZOPV: return "HZOPV"; break;
+    case zopMsgT::Z_RZOP: return "RZOP"; break;
+    case zopMsgT::Z_MSG: return "MSG"; break;
+    case zopMsgT::Z_TMIG: return "TMIG"; break;
+    case zopMsgT::Z_TMGT: return "TMGT"; break;
+    case zopMsgT::Z_SYSC: return "SYSC"; break;
+    case zopMsgT::Z_RESP: return "RESP"; break;
+    case zopMsgT::Z_EXCP: return "EXCP"; break;
+    default: return "UNKNOWN"; break;
+    }
   }
 
 private:

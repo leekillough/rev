@@ -16,6 +16,7 @@
 #include <ctime>
 #include <list>
 #include <mutex>
+
 #include <queue>
 #include <random>
 #include <stdio.h>
@@ -34,6 +35,7 @@
 #include "RevInstTable.h"
 #include "RevMem.h"
 #include "RevOpts.h"
+
 #include "ZOPNET.h"
 
 namespace SST::RevCPU {
@@ -309,8 +311,8 @@ public:
   virtual void MarkLoadComplete( const MemReq& req ) {}
 
 protected:
-  SST::Output*   output;  ///< RevCoProc: sst output object
-  RevCore* const parent;  ///< RevCoProc: Pointer to RevCore this CoProc is attached to
+  SST::Output*   output{};  ///< RevCoProc: sst output object
+  RevCore* const parent;    ///< RevCoProc: Pointer to RevCore this CoProc is attached to
 
   ///< RevCoProc: Create the passkey object - this allows access to otherwise private members within RevCore
   RevCorePasskey<RevCoProc> CreatePasskey() { return RevCorePasskey<RevCoProc>(); }
@@ -382,11 +384,7 @@ public:
 
 private:
   struct RevCoProcInst {
-    RevCoProcInst() = default;
-
     RevCoProcInst( uint32_t inst, RevFeature* F, RevRegFile* R, RevMem* M ) : Inst( inst ), Feature( F ), RegFile( R ), Mem( M ) {}
-
-    RevCoProcInst( const RevCoProcInst& rhs ) = default;
 
     uint32_t const    Inst;
     RevFeature* const Feature;
@@ -395,10 +393,10 @@ private:
   };
 
   /// RevSimpleCoProc: Total number of instructions retired
-  Statistic<uint64_t>* num_instRetired;
+  Statistic<uint64_t>* num_instRetired{};
 
   /// Queue of instructions sent from attached RevCore
-  std::queue<RevCoProcInst> InstQ;
+  std::queue<RevCoProcInst> InstQ{};
 
   SST::Cycle_t cycleCount{};
 

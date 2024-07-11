@@ -12,7 +12,6 @@
 #define _SST_REVCPU_REVSCRATCHPAD_H_
 
 #include "../common/include/RevCommon.h"
-#include "RevCPU.h"
 #include "SST.h"
 #include <bitset>
 
@@ -137,16 +136,15 @@ public:
   ~RevScratchpad() { delete[] BackingMem; }
 
 private:
-  unsigned                                      ZapNum{};
-  size_t                                        Size{};
-  size_t                                        ChunkSize{};
+  unsigned                                      ZapNum;
+  size_t                                        Size;
+  size_t                                        ChunkSize;
   std::bitset<_SCRATCHPAD_SIZE_ / _CHUNK_SIZE_> FreeList;
   char*                                         BackingMem = nullptr;            ///< RevMem: Scratchpad memory container for FORZA
   uint64_t                                      BaseAddr   = _SCRATCHPAD_BASE_;  ///< RevMem: Base address of the scratchpad
-  uint64_t                                      TopAddr{};                       ///< RevScratchpad: Base address of the scratchpad
-  SST::Output*                                  output{};                        ///< RevScratchpad: Output stream
+  uint64_t                                      TopAddr;                         ///< RevScratchpad: Base address of the scratchpad
+  SST::Output*                                  output;                          ///< RevScratchpad: Output stream
 };
-
 }  // namespace SST::RevCPU
 
 #endif

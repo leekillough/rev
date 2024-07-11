@@ -278,9 +278,7 @@ private:
 
   uint8_t PrivTag{};  ///< RevCPU: private tag locator
   //  uint32_t LToken{};   ///< RevCPU: token identifier for PAN Test
-
-  int address{ -1 };  ///< RevCPU: local network address
-
+  int      address{ -1 };  ///< RevCPU: local network address
   unsigned fault_width{};  ///< RevCPU: the width (in bits) for target faults
   // int64_t  fault_range{};  ///< RevCPU: the range of cycles to inject the fault
   int64_t FaultCntr{};  ///< RevCPU: the fault counter
@@ -291,57 +289,34 @@ private:
   bool EnableMemH{};    ///< RevCPU: Enable memHierarchy
   bool EnableCoProc{};  ///< RevCPU: Enable a co-processor attached to all cores
 
+  bool        EnableRZA{};            ///< RevCPU: Enables the RZA functionality
+  bool        EnableZopNIC{};         ///< RevCPU: Enables the ZONE/ZOP NIC functionality
+  bool        EnableForzaSecurity{};  ///< RevCPU: Enables the FORZA memory security
+  std::string memTrafficInput{};      ///< RevCPU: Memory traffic input
+  std::string memTrafficOutput{};     ///< RevCPU: Memory traffic output
+
   bool EnableFaults{};       ///< RevCPU: Enable fault injection logic
   bool EnableCrackFaults{};  ///< RevCPU: Enable Crack+Decode Faults
   bool EnableMemFaults{};    ///< RevCPU: Enable memory faults (bit flips)
   bool EnableRegFaults{};    ///< RevCPU: Enable register faults
   bool EnableALUFaults{};    ///< RevCPU: Enable ALU faults
 
-  bool        EnableMemH{};           ///< RevCPU: Enable memHierarchy
-  bool        EnableCoProc{};         ///< RevCPU: Enable a co-processor attached to all cores
-  bool        EnableRZA{};            ///< RevCPU: Enables the RZA functionality
-  bool        EnableZopNIC{};         ///< RevCPU: Enables the ZONE/ZOP NIC functionality
-  bool        EnableForzaSecurity{};  ///< RevCPU: Enables the FORZA memory security
-  std::string memTrafficInput;        ///< RevCPU: Memory traffic input
-  std::string memTrafficOutput;       ///< RevCPU: Memory traffic output
-
   bool DisableCoprocClock{};  ///< RevCPU: Disables manual coproc clocking
 
   unsigned Precinct{};  ///< RevCPU: FORZA precinct ID
   unsigned Zone{};      ///< RevCPU: FORZA zone ID
 
-  TimeConverter* timeConverter{};  ///< RevCPU: SST time conversion handler
-  SST::Output    output{};         ///< RevCPU: SST output handler
+  Forza::zopAPI*   zNic{};           ///< RevCPU: FORZA ZOP NIC
+  Forza::zopMsgID* zNicMsgIds{};     ///< RevCPU: FORZA ZOP NIC Message ID handler
+  TimeConverter*   timeConverter{};  ///< RevCPU: SST time conversion handler
+  SST::Output      output{};         ///< RevCPU: SST output handler
 
   nicAPI*     Nic{};   ///< RevCPU: Network interface controller
   RevMemCtrl* Ctrl{};  ///< RevCPU: Rev memory controller
 
   std::vector<RevCoProc*> CoProcs{};  ///< RevCPU: CoProcessor attached to Rev
 
-  unsigned Precinct{};  ///< RevCPU: FORZA precinct ID
-  unsigned Zone{};      ///< RevCPU: FORZA zone ID
-
-  TimeConverter* timeConverter{};  ///< RevCPU: SST time conversion handler
-  SST::Output    output{};         ///< RevCPU: SST output handler
-
-  nicAPI*          Nic{};       ///< RevCPU: Network interface controller
-  panNicAPI*       PNic{};      ///< RevCPU: PAN network interface controller
-  PanExec*         PExec{};     ///< RevCPU: PAN execution context
-  RevMemCtrl*      Ctrl{};      ///< RevCPU: Rev memory controller
-  Forza::zopAPI*   zNic{};      ///< RevCPU: FORZA ZOP NIC
-  Forza::zopMsgID* zNicMsgIds;  ///< RevCPU: FORZA ZOP NIC Message ID handler
-
   SST::Clock::Handler<RevCPU>* ClockHandler{};  ///< RevCPU: Clock Handler
-
-  std::queue<std::pair<uint32_t, char*>> ZeroRqst{};   ///< RevCPU: tracks incoming zero address put requests; pair<Size, Data>
-  std::list<std::pair<uint8_t, int>>     TrackTags{};  ///< RevCPU: tracks the outgoing messages; pair<Tag, Dest>
-  std::vector<std::tuple<uint8_t, uint64_t, uint32_t>>
-    TrackGets{};  ///< RevCPU: tracks the outstanding get messages; tuple<Tag, Addr, Sz>
-  std::vector<std::tuple<uint8_t, uint32_t, unsigned, int, uint64_t>> ReadQueue{};  ///< RevCPU: outgoing memory read queue
-
-  std::vector<RevCoProc*> CoProcs{};  ///< RevCPU: CoProcessor attached to Rev
-
-  SST::Clock::Handler<RevCPU>* ClockHandler;  ///< RevCPU: Clock Handler
 
   std::vector<Forza::zopEvent*>        ZIQ;    ///< RevCPU: ZOP Issue Queue
   std::map<uint64_t, Forza::zopEvent*> ZRqst;  ///< RevCPU: outstanding ZOP requests
