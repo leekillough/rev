@@ -22,7 +22,7 @@ namespace SST::RevCPU {
 using MemSegment = RevMem::MemSegment;
 
 RevMem::RevMem( uint64_t memSize, RevOpts* opts, RevMemCtrl* ctrl, SST::Output* output )
-  : memSize( memSize ), opts( opts ), ctrl( ctrl ), output( output ) {
+  : memSize( memSize ), opts( opts ), ctrl( ctrl ), output( output ), zNic( nullptr ), isRZA( false ) {
   // Note: this constructor assumes the use of the memHierarchy backend
   pageSize        = 262144;  //Page Size (in Bytes)
   addrShift       = lg( pageSize );
