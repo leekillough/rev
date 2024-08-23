@@ -173,8 +173,8 @@ class Zbb : public RevExt {
     template<typename T, typename U>
     auto operator()( T x, U y ) {
       x          = ZeroExt( x, 32 );
-      auto shamt = y & 0x1f;
-      return SignExt( x >> shamt | x << ( 32 - shamt ), 32 );
+      auto shamt = sizeof( T ) == sizeof( int32_t ) ? y & 0x1f : y & 3f;
+      return SignExt( x >> shamt | x << ( 8 * sizeof( T ) - shamt ), 8 * sizeof( T ) );
     }
   };
 
