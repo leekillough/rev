@@ -2,6 +2,14 @@
 // _zqm_h_
 //
 
+/** STATUS **/
+/**
+ * 28-aug-2024: Much like the ZEN at this time, this needs the actual ring interface to finish
+ * up (and add the ring response code); currently this will only handle receiving messages and send
+ * acks.  We don't actually send any memory zops for handling messages - everything is handled by 
+ * structures here in the ZQM.  No support for migrations or spawns as of yet.  Will need to update
+ * the test programs.
+ */
 
 #ifndef _ZQM_H_
 #define _ZQM_H_
@@ -11,6 +19,39 @@
 #include <string>
 
 namespace SST::Forza{
+
+#define NUM_RECV_BUFFERS 2
+#define MSG_DEPTH 8
+
+// CSR registers used by the ZQM
+#define R_ZQMSTAT    0x803
+#define R_ZQMMBOXREG 0x804
+#define R_ZQMDQ_0    0x808
+#define R_ZQMDQ_7    0x80F
+
+/**
+ * Assumed format when updating the ZQM MBOXREG CSR:
+ * [7:0] - mboxes used (bit mask) - 8b
+ * [18:8] - logical PE - 11b
+ * [27:19] - physical hart - 9b
+ * [31:28] - physical zap - 4b
+ * [63:60] - aid
+ * Don't need anything for zone id (since the zqm here will have that info)
+ */
+
+#define R_SHIFT_MBXSUSED   0 // do this now in case it changes later
+#define R_SHIFT_LOGICALPE  8
+#define R_SHIFT_PHYSHART   19
+#define R_SHIFT_PHYSZAP    28
+#define R_SHIFT_AID        60
+
+#define R_MASK_MBXSUSED   0x0FF
+#define R_MASK_LOGICALPE  0x7FF
+#define R_MASK_PHYSHART   0x1FF
+#define R_MASK_PHYSZAP    0x0F
+#define R_MASK_AID        0x0F
+
+#define R_MASK_ZQMDQMBOX  0x07
 
     // This probably needs to be 
     // expanded if we're not using DMA (right now, I'm forcing the use
@@ -26,6 +67,7 @@ namespace SST::Forza{
             { /* empty constructor */}
     };
 
+#if 0
     // --------------------------------------------
     // ZqmMailboxMetadata
     // TODO: For sanity checking, we need the packet
@@ -76,9 +118,10 @@ namespace SST::Forza{
         // Pretty much the same as above, but for mem_cur_tail
         uint64_t getSpTailAddr(uint8_t size);
     };
+#endif
 
 
-#if 1
+#if 0
     class ZqmAidStateTableRow {
         // Will need functionality for updating read/write pointers
         /**
@@ -111,7 +154,7 @@ namespace SST::Forza{
         // Note: No valid data element - assuming that if the row exists, it's valid
         ZqmAidStateTableRow(uint32_t min_zap_hart_, uint32_t max_zap_hart_,
                             uint64_t mem_buffer_low_addr_, uint64_t mem_buffer_high_addr_,
-                            bool sequential_hart_assignment_, uint16_t num_zaps_) :
+                            bool sequential_hart_assignment_, uint16_t numCores_) :
                 min_zap_hart(min_zap_hart_),
                 max_zap_hart(max_zap_hart_),
                 mem_read_ptr(mem_buffer_low_addr_),
@@ -124,7 +167,7 @@ namespace SST::Forza{
         {
             // Note: Validation of buffer size is a separate function (hacky, but can use
             // regular SST output then)
-            harts_available = (max_zap_hart - min_zap_hart + 1) * num_zaps_;
+            harts_available = (max_zap_hart - min_zap_hart + 1) * numCores_;
         }
 
         /**
@@ -140,225 +183,258 @@ namespace SST::Forza{
     }; // end class ZqmAidStateTableRow
 #endif
 
-    class ZQM : public SST::Component{
-    public:
-        // register the component
-        SST_ELI_REGISTER_COMPONENT(
-        ZQM,                                    // component class
-        "forzazqm",                             // component libary
-        "ZQM",                                  // component name
-        SST_ELI_ELEMENT_VERSION(0,0,1),         // Version of the component
-        "ZQM: Forza ZQM component",             // description
-        COMPONENT_CATEGORY_PROCESSOR            // category
-        )
 
-        // describe the parameters
-        SST_ELI_DOCUMENT_PARAMS(
-        { "verbose",    "Sets the output verbsoity", 0 },
-        { "clockFreq",  "ZQM core clock frequency", "1GHz" },
-        { "clockTicks", "Ticks to exec (TESTING)", "100" },
-        { "numCores",        "Number of RISC-V cores (ZAPs)",        "1" },
-        { "numHarts",        "Number of harts (per core/ZAP) to instantiate",    "1" },
-        { "precinctId",      "[FORZA] The precinct ID of the local device",  "0" },
-        { "zoneId",          "[FORZA] The zone ID of the local device",      "0" },
-        { "processPerCycle", "[FORZA] Messages to process per cycle", "10" }
-        )
+/**
+ * So here's what I'm going to do for now - incoming messaging zop comes in
+ * and we'll just dump into a queue.  Each cycle, we'll pull the head of the
+ * queue and see if it's hart has an open message buffer - if so, we'll put it
+ * in there; if not, we'll just recycle it.
 
-        // describe the ports
-        SST_ELI_DOCUMENT_PORTS()
+ * Now, on the zap side, we'll start by doing something similar to what the
+ * zen does; basically it just does a sequence of CSR reads and gets one word back
+ * at a time. Easy enough to update the hclib code to do something else down the 
+ * road 
+ * 
+ * Overall, this approach should let me stand this unit up pretty quickly and then
+ * we can continue to add additional details as available 
+ */
 
-        // describe the statistics
-        // TODO: Add stats
-        SST_ELI_DOCUMENT_STATISTICS()
+enum class msgBuffState : uint8_t {
+    IDLE,
+    FILLING, // unused for now
+    READY
+} 
 
-        // describe the subcomponent slots
-        SST_ELI_DOCUMENT_SUBCOMPONENT_SLOTS(
-        {"zone_nic","[FORZA] Zone NIC", "SST::Forza::zopNIC"},
-        )
+class ZqmMsgBuffer {
 
-        // public class members
-        /// ZQM: constructor
-        ZQM(SST::ComponentId_t id, SST::Params& params);
+    void setMsg(std::vector<uint64_t P){
+        msg.clear();
+        for (auto i : P)
+            msg.push_back(i);
+    }
 
-        /// ZQM: destructor
-        ~ZQM();
-        void init(unsigned int phase) override;
-        void setup() override;
-        void complete(unsigned int phase) override;
-        void finish() override;
+    std::vector<uint64_t> msg;
+    uint8_t msg_cur_word{1};
+    msgBuffState buff_state{IDLE};
+};
 
-        /**
-         * Ok, this is the top level zop handler, there are separate functions
-         * for handling each subtype (they are named as "process...)"
-         */
-        void handleIncomingZOP(SST::Event *ev);
+class ZqmPerHartRegs {
+  // Note: may need to add some other status variables, etc in here
+  // May want to put this into the zqm class
 
-    private:
-        /// ZQM: clock handler
-        bool clock(SST::Cycle_t cycle);
+private:
+  uint64_t status{0};
+  uint16_t logical_pe{UINT16_MAX};
+  uint8_t aid{UINT8_MAX};
+  std::bitset<NUM_MBOXES> active_mboxes;
+  std::array<ZqmMsgBuffer, NUM_MBOXES> mbox_buffs;
+  //std::queue<SST::Forza::zopEvent*> incoming_zop_q;
+};
 
-        //bool handleNetworkEvent(int i);
+class ZQM : public SST::Component{
+public:
+    // register the component
+    SST_ELI_REGISTER_COMPONENT(
+    ZQM,                                    // component class
+    "forzazqm",                             // component libary
+    "ZQM",                                  // component name
+    SST_ELI_ELEMENT_VERSION(0,0,1),         // Version of the component
+    "ZQM: Forza ZQM component",             // description
+    COMPONENT_CATEGORY_PROCESSOR            // category
+    )
 
-        void processMessagingMsgs(); // invoked by clock handler
-        //void processMessagingZqmSet(SST::Forza::zopEvent *event);
-        void processMessagingHartDone(SST::Forza::zopEvent *event);
-        void processMessagingZqmMboxSet(SST::Forza::zopEvent *event);
-        void sendMessagingAck(SST::Forza::zopEvent *event);
+    // describe the parameters
+    SST_ELI_DOCUMENT_PARAMS(
+    { "verbose",    "Sets the output verbsoity", 0 },
+    { "clockFreq",  "ZQM core clock frequency", "1GHz" },
+    { "clockTicks", "Ticks to exec (TESTING)", "100" },
+    { "numCores",        "Number of RISC-V cores (ZAPs)",                 "1" },
+    { "numHarts",        "Number of harts (per core/ZAP) to instantiate", "1" },
+    { "precinctId",      "[FORZA] The precinct ID of the local device",   "0" },
+    { "zoneId",          "[FORZA] The zone ID of the local device",       "0" },
+    { "processPerCycle", "[FORZA] Messages to process per cycle",         "10" },
+    { "msgQueueDepth",   "[FORZA] Depth of the incoming message queue",   "8192"},
+    )
 
-        void processRzaMsgs();  // invoked by clock handler
-        //void processRzaThreadDataReturn(SST::Forza::zopEvent *ev);
-        
-        // tdysart, 27-june-2024 removing thread management for now
+    // describe the ports
+    SST_ELI_DOCUMENT_PORTS()
+
+    // describe the statistics
+    // TODO: Add stats
+    SST_ELI_DOCUMENT_STATISTICS()
+
+    // describe the subcomponent slots
+    SST_ELI_DOCUMENT_SUBCOMPONENT_SLOTS(
+    {"zone_nic","[FORZA] Zone NIC", "SST::Forza::zopNIC"},
+    )
+
+    // public class members
+    /// ZQM: constructor
+    ZQM(SST::ComponentId_t id, SST::Params& params);
+
+    /// ZQM: destructor
+    ~ZQM();
+    void init(unsigned int phase) override;
+    void setup() override;
+    void complete(unsigned int phase) override;
+    void finish() override;
+
+
+    // Ring message handling functions
+    void handleRingMsg( SST::Event *event );
+    void handleRingStatus( SST::Forza::ringEvent *ev );
+    void handleRingMboxReg( SST::Forza::ringEvent *ev );
+    void handleRingDq( SST::Forza::ringEvent *ev );
+
+    void sendRingResponse( SST::Forza::ringEvent *ev, uint64_t data );
+
+    void updateMailboxes();
+
+
+    /**
+     * Ok, this is the top level zop handler, there are separate functions
+     * for handling each subtype (they are named as "process...)"
+     */
+    void handleIncomingZOP(SST::Event *ev);
+
+private:
+
+    // private data members
+    SST::Output output;             ///< ZQM: SST output handler
+
+    // Parameters to maintain
+    std::string clockFreq;
+    unsigned numCores;
+    uint16_t numHarts;
+    unsigned PrecinctId;
+    unsigned ZoneId;
+    unsigned process_per_cycle;
+
+    std::string my_name;
+    SST::Forza::zopAPI* zone_nic{};
+    zopMsgID *zoneMsgID{};            ///< ZQM: manually allocated message IDs
+
+    // From ZEN
+    bool dma_enabled;
+
+    // the uint32_t is the aid for the row
+    //std::map<uint32_t, ZqmAidStateTableRow*> aid_state_table;
+
+    // MZop ACKs and tracking table for in-flight mem ops...will
+    // have to do both reads and writes to memory...
+    // std::vector<SST::Forza::zopEvent*> rza_responses;
+    // std::map<uint8_t, std::pair<uint64_t, uint64_t> > outstanding_rza_reqs; // TODO: WTH is the pair?
+
+    // Incoming threads
+    // std::vector<SST::Forza::zopEvent*> incoming_threads_vec;
+
+    // [numCores][numHarts]
+    std::vector<std::vector<bool>> zap_hart_status; //TODO: Put this into the PerHartCSRs
+
+    // Internal structures - ring architecture
+    // key pair<aid, logical PE>, value pair<zap, phys_hart>
+    std::map<std::pair<uint8_t, uint16_t>, std::pair<uint8_t, uint16_t>> LogicalToPhysicalMap;
+    std::vector<std::vector<ZqmPerHartRegs>> PerHartCSRs;
+    std::queue<SST::Forza::zopEvent*> IncomingZopQueue;
+    //std::vector<std::queue<SST::Forza::zopEvent*> > MailboxQueues; // TODO: Add an AID dimension - can hold all of our messages here to start with
+
+    // Structures for holding messages
+    std::queue<SST::Forza::zopEvent*> msg_zop_q;
+    //std::queue<SST::Forza::zopEvent*> to_rza_q;
+    //std::map<uint16_t, MemReturnEntry*> rza_ret_wait_map;
+
+    /// ZQM: clock handler
+    bool clock(SST::Cycle_t cycle);
+
+    void processMessagingMsgs(); // invoked by clock handler
+    //void processMessagingHartDone(SST::Forza::zopEvent *event);
+    void sendMessagingAck(SST::Forza::zopEvent *event);
+
+    void processRzaMsgs();  // invoked by clock handler
+    //void processRzaThreadDataReturn(SST::Forza::zopEvent *ev);
+    
+    // tdysart, 27-june-2024 removing thread management for now
 #if 0
-        void sendThreadToRza(SST::Forza::zopEvent *thread);
-        void getThreadFromRza(uint32_t app_id);
-        void sendThreadToZap(SST::Forza::zopEvent *thread);
+    void sendThreadToRza(SST::Forza::zopEvent *thread);
+    void getThreadFromRza(uint32_t app_id);
+    void sendThreadToZap(SST::Forza::zopEvent *thread);
 #endif
 
-        /**
-         * Read and process messages from the incoming_threads_vec
-         *
-         */
-        // tdysart, 27-june-2024 removing thread management for now
-        //void processIncomingThreadsMsgs(); //invoked by clock handler
+    /**
+     * Read and process messages from the incoming_threads_vec
+     *
+     */
+    // tdysart, 27-june-2024 removing thread management for now
+    //void processIncomingThreadsMsgs(); //invoked by clock handler
 
-        /**
-         * @param thread
-         * @return true if dest zap/hart filled, false otherwise
-         */
-        // tdysart, 27-june-2024 removing thread management for now
-        //bool selectRandomDestHart(SST::Forza::zopEvent *thread);
-        //void selectSequentialDestHart(SST::Forza::zopEvent *thread, ZqmAidStateTableRow *aid_state);
+    /**
+     * @param thread
+     * @return true if dest zap/hart filled, false otherwise
+     */
+    // tdysart, 27-june-2024 removing thread management for now
+    //bool selectRandomDestHart(SST::Forza::zopEvent *thread);
+    //void selectSequentialDestHart(SST::Forza::zopEvent *thread, ZqmAidStateTableRow *aid_state);
 
-        /**
-         * Get the pointer to the state table for the given AID
-         * @param aid - application ID
-         * @return pointer to state table row; nullptr if not found (also a fatal error)
-         */
-        // ZqmAidStateTableRow* getAidStateTableRow(uint32_t aid);
+    /**
+     * If a hart is empty, try to fill it (mostly for migrating thread applications)
+     */
+    // tdysart, 27-june-2024 removing thread management for now
+    //void fillEmptyHart();
 
-        /**
-         * If a hart is empty, try to fill it (mostly for migrating thread applications)
-         */
-        // tdysart, 27-june-2024 removing thread management for now
-        //void fillEmptyHart();
 
-        // private data members
-        SST::Output output;             ///< ZQM: SST output handler
 
-        // the uint32_t is the aid for the row
-        //std::map<uint32_t, ZqmAidStateTableRow*> aid_state_table;
-
-        // MZop ACKs and tracking table for in-flight mem ops...will
-        // have to do both reads and writes to memory...
-        std::vector<SST::Forza::zopEvent*> rza_responses;
-        std::map<uint8_t, std::pair<uint64_t, uint64_t> > outstanding_rza_reqs; // TODO: WTH is the pair?
-
-        // Incoming threads
-        std::vector<SST::Forza::zopEvent*> incoming_threads_vec;
-
-        // [num_zaps][num_harts]
-        std::vector<std::vector<bool>> zap_hart_status;
-
-        zopMsgID *zoneMsgID;            ///< ZQM: manually allocated message IDs
-
-        std::string my_name;
-        SST::Forza::zopAPI* zone_nic;
-        bool sent;
-
-        // Parameters to maintain
-        std::string clockFreq;
-        unsigned num_zaps;
-        uint16_t num_harts;
-        unsigned precinct_id;
-        unsigned zone_id;
-        unsigned process_per_cycle;
-
-        // Parameters for testing
-        SST::Cycle_t cycleCount;
-
-        // From ZEN
-        bool dma_enabled;
-
-        // Structures for holding messages
-        std::queue<SST::Forza::zopEvent*> setup_reqs;
-        std::queue<SST::Forza::zopEvent*> to_rza_q;
-        std::map<uint16_t, MemReturnEntry*> rza_ret_wait_map;
-        std::queue<SST::Forza::zopEvent*> update_scratchpad_q;
-
-        // Structures for holding state in the ZQM
-        // tuple is {AppID, Logical ThreadID, Mbox ID)
-        std::map<std::tuple<uint8_t, uint16_t, uint8_t>, ZqmMailboxMetadata*> hart_metadata_table;
-
-        // Vector of outstanding scratchpad transactions
-        // I would expect this to generally operate in FIFO order, but
-        // it's not a system requirement (Zap traffic may influence)
-        std::vector<uint16_t> outstanding_spad_reqs;
-
-        // Functions copied over from the ZEN
-        void sendACK(SST::Forza::zopEvent *ev, bool to_zone_noc);
-        void handleScratchpadAck(uint16_t msg_id);
-        void sendMsgToScratchpad(SST::Forza::zopEvent *ev, std::vector<uint64_t> payload, uint16_t msg_id, bool destsp_is_src);
-        void prepSendRZAStore();
-        void sendSdmaToRza(ZqmMailboxMetadata *mbox_info, SST::Forza::zopEvent *ev,
-                           std::vector<uint64_t> store_payload, uint16_t msg_id,
-                           uint64_t wr_addr);
-        void notifyHARTScratchpad();
-
-        void setMeAsZopSrc(SST::Forza::zopEvent *ev)
-        {
-            ev->setSrcHart(0);
-            ev->setSrcZCID(SST::Forza::zopCompID::Z_ZQM);
-            ev->setSrcPCID(zone_id);
-            ev->setSrcPrec(precinct_id);
-        }
-
-        void setDestFromSrcInfo(SST::Forza::zopEvent *dest_packet, SST::Forza::zopEvent *src_packet)
-        {
-            dest_packet->setDestHart(src_packet->getSrcHart());
-            dest_packet->setDestZCID(src_packet->getSrcZCID());
-            dest_packet->setDestPCID(src_packet->getSrcPCID());
-            dest_packet->setDestPrec(src_packet->getSrcPrec());
-        }
-
-        void setDestFromDestInfo(SST::Forza::zopEvent *dest_packet, SST::Forza::zopEvent *src_packet)
-        {
-            dest_packet->setDestHart(src_packet->getDestHart());
-            dest_packet->setDestZCID(src_packet->getDestZCID());
-            dest_packet->setDestPCID(src_packet->getDestPCID());
-            dest_packet->setDestPrec(src_packet->getDestPrec());
-        }
-
-        void setLocalRzaAsZopDest(SST::Forza::zopEvent *ev)
-        {
-            ev->setDestHart(Z_MZOP_PIPE_HART);
-            ev->setDestZCID(SST::Forza::zopCompID::Z_RZA);
-            ev->setDestPCID(zone_id);
-            ev->setDestPrec(precinct_id);
-        }    
-
-        ZqmMailboxMetadata* getDestMboxEntry(SST::Forza::zopEvent *ev){
-            auto evt = std::make_tuple( ev->getAppID(), ev->getDestHart(), (uint8_t)ev->getPktRes());
-            auto iter = hart_metadata_table.find(evt);
-            if (iter == hart_metadata_table.end())
-                output.fatal(CALL_INFO, -1, "Could not find table entry for zop.\n"); // TODO: Add add'l debug info if needed
-            return iter->second;
-        }
-
-        // Functions for simple loopback testing
-        // Remove in the near future.
-#if 0
-        void doSimpleMsg();
-        void sendDummyThread();
-        void sendHartDone();
-        void configMTApp(); // mostly equiv to doSimpleMsg()
-        void sendMtThread(); // mostly equiv to sendDummyThread()
-        void configMtAndRunQueue();
-        void sendHartDoneForRzaTest();
-        void sendLdmaPacket();
+    // Functions copied over from the ZEN
+#if 0    
+    void sendACK(SST::Forza::zopEvent *ev, bool to_zone_noc);
+    void prepSendRZAStore();
+    void sendSdmaToRza(ZqmMailboxMetadata *mbox_info, SST::Forza::zopEvent *ev,
+                        std::vector<uint64_t> store_payload, uint16_t msg_id,
+                        uint64_t wr_addr);
 #endif
 
-    }; // class SST::ZQM
+    void setMeAsZopSrc(SST::Forza::zopEvent *ev)
+    {
+        ev->setSrcHart(0);
+        ev->setSrcZCID(SST::Forza::zopCompID::Z_ZQM);
+        ev->setSrcPCID(ZoneId);
+        ev->setSrcPrec(PrecinctId);
+    }
+
+    void setDestFromSrcInfo(SST::Forza::zopEvent *dest_packet, SST::Forza::zopEvent *src_packet)
+    {
+        dest_packet->setDestHart(src_packet->getSrcHart());
+        dest_packet->setDestZCID(src_packet->getSrcZCID());
+        dest_packet->setDestPCID(src_packet->getSrcPCID());
+        dest_packet->setDestPrec(src_packet->getSrcPrec());
+    }
+
+    void setDestFromDestInfo(SST::Forza::zopEvent *dest_packet, SST::Forza::zopEvent *src_packet)
+    {
+        dest_packet->setDestHart(src_packet->getDestHart());
+        dest_packet->setDestZCID(src_packet->getDestZCID());
+        dest_packet->setDestPCID(src_packet->getDestPCID());
+        dest_packet->setDestPrec(src_packet->getDestPrec());
+    }
+
+    void setLocalRzaAsZopDest(SST::Forza::zopEvent *ev)
+    {
+        ev->setDestHart(Z_MZOP_PIPE_HART);
+        ev->setDestZCID(SST::Forza::zopCompID::Z_RZA);
+        ev->setDestPCID(ZoneId);
+        ev->setDestPrec(PrecinctId);
+    }
+
+#if 0
+    ZqmMailboxMetadata* getDestMboxEntry(SST::Forza::zopEvent *ev){
+        auto evt = std::make_tuple( ev->getAppID(), ev->getDestHart(), (uint8_t)ev->getPktRes());
+        auto iter = hart_metadata_table.find(evt);
+        if (iter == hart_metadata_table.end())
+            output.fatal(CALL_INFO, -1, "Could not find table entry for zop.\n"); // TODO: Add add'l debug info if needed
+        return iter->second;
+    }
+#endif
+
+}; // class SST::ZQM
 } // namespace SST::Forza
 
 #endif // _ZQM_H_
