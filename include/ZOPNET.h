@@ -8,6 +8,13 @@
 // See LICENSE in the top level directory for licensing details
 //
 
+/**
+ * TOOD: Look at changing up the zop event to handle msg sends a little differently since
+ * those are sent to an 11b logical PE; in the zen, we're breaking that up to a 9b hart id
+ * and 2b ZCID; zopnet::send() handles steering those to the zqm (zqm holds mapping of
+ * logical_pe to phys zap/hart)
+ */
+
 #ifndef _SST_ZOPNET_H_
 #define _SST_ZOPNET_H_
 
@@ -265,12 +272,13 @@ enum class zopOpc : uint8_t {
   Z_MSG_SENDP         = 0b00000000,  /// zopOpc: MESSAGING Send with payload
   Z_MSG_SENDAS        = 0b00000001,  /// zopOpc: MESSAGING Send with address and size
   Z_MSG_MBXDONE       = 0b00000010,  /// zopOpc: MESSAGING Send mailbox done
-  Z_MSG_CREDIT        = 0b11110000,  /// zopOpc: MESSAGING Credit replenishment
-  Z_MSG_ZENSET        = 0b11110001,  /// zopOpc: MESSAGING ZEN Setup
-  Z_MSG_ZQMSET        = 0b11110100,  /// zopOpc: MESSAGING ZQM Setup
+  Z_MSG_CREDIT        = 0b11110000,  /// zopOpc: MESSAGING Credit replenishment -- DELETE
+  Z_MSG_ZENSET        = 0b11110001,  /// zopOpc: MESSAGING ZEN Setup -- DELETE
+  Z_MSG_ZQMSET        = 0b11110100,  /// zopOpc: MESSAGING ZQM Setup -- DELETE
   Z_MSG_ZQMHARTDONE   = 0b11110101,  /// zopOpc: MESSAGING ZQM Notify HART completion
-  Z_MSG_ZQMMBOXSET    = 0b11110110,  /// zopOpc: MESSAGING ZQM Setup Mailbox
-  Z_MSG_ACK           = 0b11110010,  /// zopOpc: MESSAGING Send Ack
+  Z_MSG_ZQMMBOXSET    = 0b11110110,  /// zopOpc: MESSAGING ZQM Setup Mailbox -- DELETE
+  Z_MSG_ACK           = 0b11110000,  /// zopOpc: MESSAGING Send Ack
+  Z_MSG_NACK          = 0b11110001,  /// zopOpc: MESSAGING Send Nack
   Z_MSG_EXCP          = 0b11110011,  /// zopOpc: MESSAGING Send exception
   Z_MSG_ZBAR          = 0b11111001,  /// zopOpc: MESSAGING Zone Barrier Request
 
@@ -474,7 +482,7 @@ public:
   void setID( uint16_t I ) { ID = I; }
 
   /// zopEvent: set the credit
-  void setCredit( uint8_t C ) { Credit = C; }
+  void setCredit( uint8_t C ) { Credit = C; }  // CURRENTLY USED AS MBOX_ID for messages/(n)acks
 
   /// zopEvent: set the opcode
   void setOpc( zopOpc O ) { Opc = O; }
@@ -483,7 +491,7 @@ public:
   void setAppID( uint8_t A ) { AppID = A & Z_MASK_APPID; }
 
   /// zopEvent: set the packet reserved
-  void setPktRes( uint32_t X ) { PktRes = X; }
+  void setPktRes( uint32_t X ) { PktRes = X; }  // CURRENTLY USED AS RETRY NUMBER for messages/(n)acks
 
   /// zopEvent: set the destination hart
   void setDestHart( uint16_t H ) { DestHart = H; }
@@ -578,7 +586,7 @@ public:
   uint16_t getID() { return ID; }
 
   /// zopEvent: get the credit
-  uint8_t getCredit() { return Credit; }
+  uint8_t getCredit() { return Credit; }  // CURRENTLY USED AS MBOX_ID for messages/(n)acks
 
   /// zopEvent: get the opcode
   zopOpc getOpc() { return Opc; }
@@ -587,7 +595,7 @@ public:
   uint8_t getAppID() { return AppID; }
 
   /// zopEvent: get the packet reserved field
-  uint32_t getPktRes() { return PktRes; }
+  uint32_t getPktRes() { return PktRes; }  // CURRENTLY USED AS RETRY NUMBER for messages/(n)acks
 
   /// zopEvent: determine whether the fence has been encountered
   bool getFence() { return FenceEncountered; }

@@ -369,9 +369,11 @@ void zopNIC::send( zopEvent* ev, zopCompID dest, zopPrecID zone, unsigned prec )
     );
   }
   auto realDest = 0;
-  if( ev->getDestZCID() <= (uint8_t) SST::Forza::zopCompID::Z_ZAP7 && ev->getType() == SST::Forza::zopMsgT::Z_MSG &&
-      ( ev->getOpc() == SST::Forza::zopOpc::Z_MSG_SENDP || ev->getOpc() == SST::Forza::zopOpc::Z_MSG_SENDAS ) ) {
-    TmpDest = zopCompID::Z_ZEN;  // redirect msg from dest hart to zen
+  if( ev->getDestZCID() <= (uint8_t) SST::Forza::zopCompID::Z_ZAP7 && ev->getType() == SST::Forza::zopMsgT::Z_MSG ) {
+    if( ev->getOpc() == SST::Forza::zopOpc::Z_MSG_SENDP || ev->getOpc() == SST::Forza::zopOpc::Z_MSG_SENDAS )
+      TmpDest = zopCompID::Z_ZQM;  // any send message so go to a zqm
+    else if( ev->getOpc() == SST::Forza::zopOpc::Z_MSG_ACK || ev->getOpc() == SST::Forza::zopOpc::Z_MSG_NACK )
+      TmpDest = zopCompID::Z_ZEN;  // any msg ack/nack goes to a zen
   }
 
   for( auto i : hostMap ) {
