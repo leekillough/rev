@@ -95,14 +95,15 @@ namespace SST::Forza {
 // zopMsgT : ZOP Type
 // --------------------------------------------
 enum class zopMsgT : uint8_t {
+  // Commented items are currently unused/unsupported
   Z_MZOP   = 0b0000,  /// FORZA MZOP
   Z_HZOPAC = 0b0001,  /// FORZA HZOP ATOMICS/CUSTOM
-  Z_HZOPV  = 0b0010,  /// FORZA HZOP VECTOR
-  Z_RZOP   = 0b0011,  /// FORZA RZOP
+  //Z_HZOPV  = 0b0010,  /// FORZA HZOP VECTOR
+  //Z_RZOP   = 0b0011,  /// FORZA RZOP
   Z_MSG    = 0b0100,  /// FORZA MESSAGING
   Z_TMIG   = 0b0101,  /// FORZA THREAD MIGRATION
-  Z_TMGT   = 0b0110,  /// FORZA THREAD MANAGEMENT
-  Z_SYSC   = 0b0111,  /// FORZA SYSCALL
+  //Z_TMGT   = 0b0110,  /// FORZA THREAD MANAGEMENT
+  //Z_SYSC   = 0b0111,  /// FORZA SYSCALL
   Z_RESP   = 0b1000,  /// FORZA RESPONSE
   // -- 0b1001 - 0b1101 UNASSIGNED
   Z_FENCE  = 0b1110,  /// FORZE FENCE
@@ -283,8 +284,8 @@ enum class zopOpc : uint8_t {
   Z_MSG_ZBAR          = 0b11111001,  /// zopOpc: MESSAGING Zone Barrier Request
 
   // -- THREAD MIGRATION --
-  Z_TMIG_SELECT       = 0b00000000,  /// zopOpc: THREAD MIGRATION ZQM choose HART
-  Z_TMIG_FIXED        = 0b00000001,  /// zopOpc: THREAD MIGRATION Fixed HART choice
+  Z_TMIG_SELECT       = 0b00000000,  /// zopOpc: THREAD MIGRATION ZQM choose HART -- RENAME
+  Z_TMIG_FIXED        = 0b00000001,  /// zopOpc: THREAD MIGRATION Fixed HART choice -- DELETE
 
   // -- RZA RESPONSE --
   Z_RESP_LR           = 0b00000000,  /// zopOpc: RZA RESPONSE Load response
