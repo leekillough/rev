@@ -132,6 +132,9 @@ void ZEN::handleRingMsg( SST::Event *event )
     case R_ZENOMC:
       handleRingOmc(ev);
       break;
+    case R_ZENEQS:
+      handleRingSpawn(ev);
+      break;
     default:
       output.fatal(CALL_INFO, -1, "[ZEN] %s unexpected ring message; CSR=0x%" PRIx16 "\n", getName().c_str(), ev->getCSR());
       break;
@@ -168,7 +171,7 @@ void ZEN::handleRingStatus( SST::Forza::ringEvent *ev )
 
 void ZEN::handleRingEqData( SST::Forza::ringEvent *ev )
 {
-  output.verbose(CALL_INFO, 7, 0, "[ZEN] %s handle ZENEQD message\n", getName().c_str());
+  output.verbose(CALL_INFO, 7, 0, "[ZEN] %s handle ZENEQData message\n", getName().c_str());
   if ( ev->getOp() != SST::Forza::ringMsgT::R_UPDATE )
     output.fatal(CALL_INFO, -1, "[ZEN] %s unexpected optype message; OpType=%u\n", getName().c_str(), ev->getOp());
 
@@ -189,10 +192,11 @@ void ZEN::handleRingEqData( SST::Forza::ringEvent *ev )
 
 void ZEN::handleRingEqCtrl( SST::Forza::ringEvent *ev )
 {
-  output.verbose(CALL_INFO, 7, 0, "[ZEN] %s handle ZENEQC message\n", getName().c_str());
+  output.verbose(CALL_INFO, 7, 0, "[ZEN] %s handle ZENEQCtrl message\n", getName().c_str());
   if ( ev->getOp() != SST::Forza::ringMsgT::R_UPDATE )
     output.fatal(CALL_INFO, -1, "[ZEN] %s unexpected optype message; OpType=%u\n", getName().c_str(), ev->getOp());
 
+  auto regs = PerHartCSRs[ev->getZapId()][ev->getHartId()];
   regs.msg[0] = ev->getData();
   uint64_t dest_mbox = ( ev->getData() >> ZENEQC_SHIFT_DESTMBOX ) & ZENEQC_MASK_DESTMBOX;
   if ( regs.mbox_cntrs[dest_mbox] == UINT8_MAX )
@@ -204,6 +208,30 @@ void ZEN::handleRingEqCtrl( SST::Forza::ringEvent *ev )
 
   auto out_msg = new OutgoingMessage( regs.msg, ev->getZapId(), ev->getHartId() );
   OutMsgQueue.push(out_msg);
+  delete ev;
+}
+
+void ZEN::handleRingSpawn( SST::Forza::ringEvent *ev )
+{
+  // TODO: Verify the behavior of this function with Tina
+  output.fatal(CALL_INFO, -1, "[ZEN] %s function not fully implemented yet\n", getName().c_str());
+
+  output.verbose(CALL_INFO, 7, 0, "[ZEN] %s handle ZENEQSpawn message\n", getName().c_str());
+  if ( ev->getOp() != SST::Forza::ringMsgT::R_UPDATE )
+    output.fatal(CALL_INFO, -1, "[ZEN] %s unexpected optype message; OpType=%u\n", getName().c_str(), ev->getOp());
+
+  auto regs = PerHartCSRs[ev->getZapId()][ev->getHartId()];
+  // TODO: Check on status before setting it?
+  // TODO: Check on value of spawn_cur_word?
+  regs.status |= (1UL << ZENSTAT_SHIFT_SPNBUSY);
+
+  regs.spawn_thread[regs.spawn_cur_word] = ev->getData();
+  regs.spawn_cur_word++;
+  if (regs.spawn_cur_word == 2){
+    auto out_spawn = new OutgoingSpawn( regs.spawn_thread, ev->getZapId(), ev->getHartId() );
+    OutSpawnQueue.push(out_spawn);
+  }
+  // TODO: DOES THIS NEED A RING RESPONSE?
   delete ev;
 }
 
@@ -422,6 +450,41 @@ void ZEN::ExecMsgPipeline()
   execMsgPipe0();
   // update pipe[0]
   updateMsgPipe0();
+}
+
+void ZEN::ExecSpawns()
+{
+  if ( OutSpawnQueue.empty() )
+    return;
+
+  auto spawn = OutSpawnQueue.front();
+  OutSpawnQueue.pop();
+
+  auto zop = new SST::Forza::zopEvent();
+  // Set packet header info
+  zop->setType(SST::Forza::zopMsgT::Z_TMIG);
+  zop->setOpc(SST::Forza::zopOpc::Z_TMIG_SELECT);
+  zop->setID(zop_msg_id);
+
+  // Set source to be the sending hart
+  zop->setSrcHart(spawn->src_hart);
+  zop->setSrcZCID(spawn->src_zap);
+  zop->setSrcPCID(Zone);
+  zop->setSrcPrec(Precinct);
+
+  zop->setAppID(spawn->aid); 
+
+  // Is dest always the local ZQM? Seems that way
+  setLocalZqmAsZopDest(zop);
+
+  std::vector<uint64_t> payload;
+  for (uint16_t i = 0; i < spawn->thread.size(); i++)
+    payload[i] = spawn->thread[i];
+  zop->setPayload(payload);
+  zop->encodeEvent();
+  output.verbose(CALL_INFO, 9, 0, "ZEN[%s]: Send spawned thread from %s to %s\n", getName().c_str(),
+                 zop->getSrcString().c_str(), zop->getDestString().c_str());
+  zone_nic->send(zop, zopCompID::Z_ZQM);
 }
 
 void ZEN::handleIncomingPrecZOP(SST::Event *event) {
@@ -773,6 +836,8 @@ void ZEN::prepSendRZAStore() {
 bool ZEN::clock(Cycle_t cycle){
   // new arch related
   ExecMsgPipeline();
+  ExecSpawns();
+
 
   //handleIncomingRZAMsg();
   //prepSendRZAStore();

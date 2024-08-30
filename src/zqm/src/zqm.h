@@ -4,6 +4,11 @@
 
 /** STATUS **/
 /**
+ * 
+ * 30-aug-2024: need to add support for incoming spawned threads (well, migrating too); however,
+ * this is going to require a mechanism for the Rev cores to track the number of harts available and
+ * inform the zen/zqm about it..or some other hackery to allow it....
+ * 
  * 28-aug-2024: Much like the ZEN at this time, this needs the actual ring interface to finish
  * up (and add the ring response code); currently this will only handle receiving messages and send
  * acks.  We don't actually send any memory zops for handling messages - everything is handled by 

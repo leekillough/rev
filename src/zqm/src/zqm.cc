@@ -339,16 +339,16 @@ void ZQM::handleIncomingZOP(SST::Event *event)
                    ev->getID());
 
     if (ev->getType() == SST::Forza::zopMsgT::Z_RESP) {
-        output.fatal(CALL_INFO, -2, "%s: Received rza response - not currently handling\n", my_name.c_str());
+        output.fatal(CALL_INFO, -2, "ZQM [%s]: Received rza response - not currently handling\n", getName.c_str());
         //rza_responses.push_back(ev);
     } else if (ev->getType() == SST::Forza::zopMsgT::Z_MSG) {
         msg_zop_q.push(ev);
     } else if (ev->getType() == SST::Forza::zopMsgT::Z_TMIG){
-        output.fatal(CALL_INFO, -2, "%s: Received thread - not currently handling\n", my_name.c_str());
+        output.fatal(CALL_INFO, -2, "ZQM [%s]: Received thread - not currently handling\n", getName.c_str());
         //incoming_threads_vec.push_back(ev);
     } else{
-        output.fatal(CALL_INFO, -2, "%s: Received invalid ZOP; id=%u\n", 
-                     my_name.c_str(),
+        output.fatal(CALL_INFO, -2, "ZQM [%s]: Received invalid ZOP; id=%u\n", 
+                     getName.c_str(),
                      ev->getID());
         return;
     }

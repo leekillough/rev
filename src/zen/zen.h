@@ -4,6 +4,14 @@
 
 /* STATUS */
 /**
+ * 
+ * 30-aug-2024: added very preliminary support for spawning threads via csrs; the specs are missing a lot of
+ * detail on the mechanics of this process (thread id, aid, total transmitted size, location, etc) that need
+ * to be clarified.  Additionally, I just have spawned threads heading straight out to the zone crossbar (the
+ * same way messages do) rather than share the access to the zone crossbar.  Probably not a huge deal for now,
+ * but something we should be aware of.  Of course, there is no support on the zqm side (yet) for receiving 
+ * said spawned threads.
+ * 
  * 22-aug-2024: made steering changes to zopnet; need to revamp zopEvent structure to allow wider hart IDs (or 
  * revamp into logical/physical id)
  * 
@@ -34,6 +42,8 @@ namespace SST::Forza{
 // --------------------------------------------
 
 #define NUM_MBOXES 8
+#define ACTOR_MSG_LENGTH 8
+
 // My version of data word for the ZENENQ_CTRL
 // { Fill[35:0], Precinct[10:0], Zone[2:0], Mbox[2:0], logicalPE[10:0]}
 // {36, 11, 3, 3, 11}
@@ -47,10 +57,13 @@ namespace SST::Forza{
 #define R_MASK_PREC  0x7FF
 
 // CSR registers used by the ZEN
-#define R_ZENSTAT 0x802 
-#define R_ZENEQD 0x841   
+#define R_ZENSTAT 0x802
+// messaging 
 #define R_ZENEQC 0x840
+#define R_ZENEQD 0x841
+#define R_ZENEQS 0x842 // for spawn
 #define R_ZENOMC 0xcc3
+// spawning
 
 /*
  The bit assignments of the Control Word fields provided by the ZAP are shown below:
@@ -84,6 +97,8 @@ namespace SST::Forza{
 #define ZENEQC_MASK_MSGOPC   0x0ff
 #define ZENEQC_MASK_RETRYNUM 0x01fff
 #define ZENEQC_MASK_MSGCLR   0x1
+
+#define ZENSTAT_SHIFT_SPNBUSY 32
 
 // --------------------------------------------
 // ringMsgT : Ring Msg Type
@@ -181,20 +196,42 @@ class ZenPerHartRegs {
   // May want to put this into the zen class
 private:
   uint64_t status{ (1UL << 63;) }; //default to turning on the enabled bit
-  std::array<uint64_t, 8> msg{}; // word 0 is control, 1-7 are data
+  std::array<uint64_t, ACTOR_MSG_LENGTH> msg{}; // word 0 is control, 1-7 are data
   std::array<uint8_t, NUM_MBOXES> mbox_cntrs{};
   uint8_t msg_cur_word{1};
   bool is_sending{}; //signifies that the hart is in the process of sending a message; OR'd with mbox_busy portion of status register when status is read 
+  std::array<uint64_t, 2> spawn_thread{};
+  uint8_t spawn_cur_word{0};
 };
 
+// Configure these as a base + inhereted classes?
 class OutgoingMessage {
+
+  OutgoingMessage( std::array<uint64_t, ACTOR_MSG_LENGTH> data, uint8_t zap, uint16_t hart ) :
+    msg(data), src_zap(zap), src_hart(hart)
+    { /* empty */}
+
   private:
     // More info needed?
-    std::array<uint64_t, 8> msg{};
+    std::array<uint64_t, ACTOR_MSG_LENGTH> msg{};
     uint8_t src_zap;
     uint16_t src_hart;
     uint32_t msg_id{UINT32_MAX}; // retry number/id
     uint64_t mem_addr; // currently unused
+};
+
+class OutgoingSpawn {
+
+  OutgoingSpawn(std::array<uint64_t, 2> data, uint8_t zap, uint16_t hart ) :
+    thread(data), src_zap(zap), src_hart(hart)
+    { /* empty */ }
+
+  private:
+    // More info needed?
+    std::array<uint64_t, 2> thread{};
+    uint8_t src_zap;
+    uint16_t src_hart;
+    uint8_t aid{UINT8_MAX}; // WHERE FROM?
 };
 
   // This probably needs to be 
@@ -288,6 +325,7 @@ class ZEN : public SST::Component{
     void handleRingStatus( SST::Forza::ringEvent *ev );
     void handleRingEqData( SST::Forza::ringEvent *ev );
     void handleRingEqCtrl( SST::Forza::ringEvent *ev );
+    void handleRingSpawn( SST::Forza::ringEvent *ev );
     
 
     void sendRingResponse( SST::Forza::ringEvent *ev, uint64_t data );
@@ -394,7 +432,15 @@ class ZEN : public SST::Component{
       ev->setDestZCID(SST::Forza::zopCompID::Z_RZA);
       ev->setDestPCID(Zone);
       ev->setDestPrec(Precinct);
-    }    
+    }
+
+    void setLocalZqmAsZopDest(SST::Forza::zopEvent *ev)
+    {
+      ev->setDestHart(0);
+      ev->setDestZCID(SST::Forza::zopCompID::Z_ZQM);
+      ev->setDestPCID(Zone);
+      ev->setDestPrec(Precinct);
+    }
 
     void setDestFromSrcInfo(SST::Forza::zopEvent *dest_packet, SST::Forza::zopEvent *src_packet)
     {
@@ -438,6 +484,7 @@ class ZEN : public SST::Component{
     std::queue<OutgoingMessage*> OutMsgQueue;
     std::array<OutgoingMessage*, 3> MsgPipeline;
     std::queue<zopEvent*> MsgAckQueue;
+    std::queue<OutgoingSpawn*> OutSpawnQueue;
 
     /*
       This is incremented in handleIncomingPrecZOP()
