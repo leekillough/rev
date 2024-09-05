@@ -284,8 +284,10 @@ enum class zopOpc : uint8_t {
   Z_MSG_ZBAR          = 0b11111001,  /// zopOpc: MESSAGING Zone Barrier Request
 
   // -- THREAD MIGRATION --
-  Z_TMIG_SELECT       = 0b00000000,  /// zopOpc: THREAD MIGRATION ZQM choose HART -- RENAME
-  Z_TMIG_FIXED        = 0b00000001,  /// zopOpc: THREAD MIGRATION Fixed HART choice -- DELETE
+  Z_TMIG_INTREGS      = 0b00000000,  /// zopOpc: THREAD MIGRATION migrate state + int regs
+  Z_TMIG_FPREGS       = 0b00000001,  /// zopOpc: THREAD MIGRATION migrate state + int regs + fp regs
+  Z_TMIG_SPAWN        = 0b00000010,  /// zopOpc: THREAD MIGRATION Spawned thread
+  Z_TMIG_REQUEST      = 0b00000100,  /// zopOpc: THREAD MIGRATION ZAP requesting a thread
 
   // -- RZA RESPONSE --
   Z_RESP_LR           = 0b00000000,  /// zopOpc: RZA RESPONSE Load response
@@ -750,12 +752,12 @@ public:
     switch( T ) {
     case zopMsgT::Z_MZOP: return "MZOP"; break;
     case zopMsgT::Z_HZOPAC: return "HZOPAC"; break;
-    case zopMsgT::Z_HZOPV: return "HZOPV"; break;
-    case zopMsgT::Z_RZOP: return "RZOP"; break;
+    //case zopMsgT::Z_HZOPV: return "HZOPV"; break;
+    //case zopMsgT::Z_RZOP: return "RZOP"; break;
     case zopMsgT::Z_MSG: return "MSG"; break;
     case zopMsgT::Z_TMIG: return "TMIG"; break;
-    case zopMsgT::Z_TMGT: return "TMGT"; break;
-    case zopMsgT::Z_SYSC: return "SYSC"; break;
+    //case zopMsgT::Z_TMGT: return "TMGT"; break;
+    //case zopMsgT::Z_SYSC: return "SYSC"; break;
     case zopMsgT::Z_RESP: return "RESP"; break;
     case zopMsgT::Z_FENCE: return "FENCE"; break;
     case zopMsgT::Z_EXCP: return "EXCP"; break;
@@ -940,12 +942,12 @@ public:
     switch( T ) {
     case zopMsgT::Z_MZOP: return "MZOP"; break;
     case zopMsgT::Z_HZOPAC: return "HZOPAC"; break;
-    case zopMsgT::Z_HZOPV: return "HZOPV"; break;
-    case zopMsgT::Z_RZOP: return "RZOP"; break;
+    //case zopMsgT::Z_HZOPV: return "HZOPV"; break;
+    //case zopMsgT::Z_RZOP: return "RZOP"; break;
     case zopMsgT::Z_MSG: return "MSG"; break;
     case zopMsgT::Z_TMIG: return "TMIG"; break;
-    case zopMsgT::Z_TMGT: return "TMGT"; break;
-    case zopMsgT::Z_SYSC: return "SYSC"; break;
+    //case zopMsgT::Z_TMGT: return "TMGT"; break;
+    //case zopMsgT::Z_SYSC: return "SYSC"; break;
     case zopMsgT::Z_RESP: return "RESP"; break;
     case zopMsgT::Z_EXCP: return "EXCP"; break;
     default: return "UNK"; break;

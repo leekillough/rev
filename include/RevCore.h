@@ -290,7 +290,10 @@ public:
   ///< RevCore: Returns true if there are any IdleHarts
   bool HasIdleHart() const { return IdleHarts.any(); }
 
-  ///< RevCore: Inform the ZQM that a thread is done
+  ///< RevCore: FORZA - Request a thread from the ZQM if HART available
+  void ReqThreadFromZqm();
+
+  ///< RevCore: FORZA - Inform the ZQM that a thread is done
   void sendZQMThreadComplete( uint32_t ThreadID, uint32_t HartID );
 
 private:
@@ -311,13 +314,14 @@ private:
   std::bitset<_MAX_HARTS_>              HartsClearToDecode{};   ///< RevCore: Thread is clear to start (proceed with decode)
   std::bitset<_MAX_HARTS_>              HartsClearToExecute{};  ///< RevCore: Thread is clear to execute (no register dependencides)
 
-  Forza::zopAPI*   zNic;        ///< RevCore: ZOPNic object
-  Forza::zopMsgID* zNicMsgIds;  ///< RevCore: FORZA ZOP NIC Message ID handler
-  unsigned         numHarts{};  ///< RevCore: Number of Harts for this core
-  RevOpts*         opts{};      ///< RevCore: options object
-  RevMem*          mem{};       ///< RevCore: memory object
-  RevCoProc*       coProc{};    ///< RevCore: attached co-processor
-  RevLoader*       loader{};    ///< RevCore: loader object
+  Forza::zopAPI*   zNic;          ///< RevCore: ZOPNic object
+  Forza::zopMsgID* zNicMsgIds;    ///< RevCore: FORZA ZOP NIC Message ID handler
+  bool             ThreadReqd{};  ///< RevCore: FORZA Thread has been requested from ZQM
+  unsigned         numHarts{};    ///< RevCore: Number of Harts for this core
+  RevOpts*         opts{};        ///< RevCore: options object
+  RevMem*          mem{};         ///< RevCore: memory object
+  RevCoProc*       coProc{};      ///< RevCore: attached co-processor
+  RevLoader*       loader{};      ///< RevCore: loader object
 
   // Function pointer to the GetNewThreadID function in RevCPU (monotonically increasing thread ID counter)
   std::function<uint32_t()> GetNewThreadID;

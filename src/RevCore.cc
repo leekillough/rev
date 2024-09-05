@@ -1676,10 +1676,51 @@ void RevCore::MarkLoadComplete( const MemReq& req ) {
   );
 }
 
+void RevCore::ReqThreadFromZqm() {
+  output.verbose( CALL_INFO, 11, 0, "NOTE Core %" PRIu32 " needs to request a thread\n", id );
+  if( !HasIdleHart() )
+    return;
+
+#if 0
+  // TODO: Send thread request to zqm...try getting a msg id first
+  uint16_t msg_id = zNicMsgIds->getMsgId();
+  if ( msg_id >= Z_MAX_MSG_IDS )
+    return;
+
+  SST::Forza::zopEvent *zev = new SST::Forza::zopEvent();
+
+  // set all the fields
+  zev->setType(SST::Forza::zopMsgT::Z_TMIG);
+  zev->setNB(0);
+  zev->setID(msg_id);
+  zev->setCredit(0);
+  zev->setOpc(SST::Forza::zopOpc::Z_TMIG_REQUEST);
+  zev->setAppID(0);
+  zev->setDestZCID((uint8_t)(SST::Forza::zopCompID::Z_ZQM));
+  zev->setDestPCID((uint8_t)(zNic->getPCID(Zone)));
+  zev->setDestPrec((uint8_t)(Precinct));
+  zev->setSrcHart(0);
+  zev->setSrcZCID((uint8_t)(zNic->getEndpointType()));
+  zev->setSrcPCID((uint8_t)(zNic->getPCID(zNic->getZoneID())));
+  zev->setSrcPrec((uint8_t)(zNic->getPrecinctID()));
+
+  // no payload
+  //std::vector<uint64_t> Payload;
+  //Payload.push_back((uint64_t)(ThreadID));
+  //zev->setPayload(Payload);
+
+  zNic->send(zev, SST::Forza::zopCompID::Z_ZQM,
+             zNic->getPCID(Zone), Precinct);
+}
+
 bool RevCore::ClockTick( SST::Cycle_t currentCycle ) {
   RevInst Inst;
   bool    rtn = false;
   Stats.totalCycles++;
+
+  // FORZA specific
+  if ( !ThreadReqd )
+    ReqThreadFromZqm();
 
   // -- MAIN PROGRAM LOOP --
   //

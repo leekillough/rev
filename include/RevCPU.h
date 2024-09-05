@@ -428,7 +428,13 @@ private:
   /// RevCPU: Handle FORZA MZOP requests
   void handleZOPMZOP( Forza::zopEvent* zev );
 
-  /// RevCPU: Handle FORZA Thread Migration
+  /// RevCPU: Handle FORZA Thread Migration with FP regs
+  void handleZOPThreadMigrateIntRegs( Forza::zopEvent* zev );
+
+  /// RevCPU: Handle FORZA Thread Migration with a spawned thread
+  void handleZOPThreadMigrateSpawn( Forza::zopEvent* zev );
+
+  /// RevCPU: Handle FORZA Thread Migration (Top level)
   void handleZOPThreadMigrate( Forza::zopEvent* zev );
 
   /// RevCPU: Handle FORZA scratchpad request responses
