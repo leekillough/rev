@@ -248,7 +248,7 @@ void ZQM::handleRingDq( SST::Forza::ringEvent *ev )
 
     // Use data field to do the proper read/write/update
     if ( ev->getData() == 0 ){
-        if (msg_cur_word == 7) //sent last word; get next msg
+        if (mbox.msg_cur_word == 7) //sent last word; get next msg
             mbox.buff_state = msgBuffState::IDLE;
         else
             mbox.msg_cur_word++;
@@ -282,10 +282,10 @@ void ZQM::updateMailboxes()
     // Note (tdysart, 27-aug-24) - I expect a part of this code will disappear once we are putting the 
     // zops into memory rather than just as objects here in the zqm
 
-    if ( IncomingZopQueue.empty() )
+    if ( IncomingMsgQueue.empty() )
         return;
 
-    auto msg = IncomingZopQueue.front();
+    auto msg = IncomingMsgQueue.front();
     auto dest_aid = msg->getAppId();
     auto dest_mbox = msg->getCredit();
 
@@ -304,7 +304,7 @@ void ZQM::updateMailboxes()
                    getName().c_str(), dest_aid, dest_pe, iter->second.first, iter->second.second );
 
     auto mbox = PerHartCSRs[iter->second.first][iter->second.second].mbox_buffs[dest_mbox];
-    IncomingZopQueue.pop();
+    IncomingMsgQueue.pop();
     if ( mbox.buff_state == msgBuffState::IDLE ){
         // fill the msg buffer, set to ready
         mbox.setMsg(msg->getPayload());
@@ -315,7 +315,9 @@ void ZQM::updateMailboxes()
         // delete the zop
         delete msg;
     } else {
-        IncomingZopQueue.push(msg);
+        // rather than leave the msg at the front of the queue (where it's blocking), we recycle
+        // it to the end of the queue
+        IncomingMsgQueue.push(msg);
     }
 }
 
@@ -344,8 +346,8 @@ void ZQM::handleIncomingZOP(SST::Event *event)
     } else if (ev->getType() == SST::Forza::zopMsgT::Z_MSG) {
         msg_zop_q.push(ev);
     } else if (ev->getType() == SST::Forza::zopMsgT::Z_TMIG){
-        output.fatal(CALL_INFO, -2, "ZQM [%s]: Received thread - not currently handling\n", getName.c_str());
-        //incoming_threads_vec.push_back(ev);
+        output.fatal(CALL_INFO, -2, "ZQM [%s]: Received Z_TMIG - not currently handling\n", getName.c_str());
+        tmig_zop_q.push(ev);
     } else{
         output.fatal(CALL_INFO, -2, "ZQM [%s]: Received invalid ZOP; id=%u\n", 
                      getName.c_str(),
@@ -622,25 +624,6 @@ void ZQM::processRzaThreadDataReturn(SST::Forza::zopEvent *ev)
 }
 #endif
 
-#if 0
-void ZQM::sendThreadToZap(SST::Forza::zopEvent *thread)
-{
-    uint8_t dest_zap = thread->getDestZCID();
-    uint16_t dest_hart = thread->getDestHart();
-    if (zap_hart_status.at(dest_zap).at(dest_hart)){
-        output.fatal(CALL_INFO, 1, "%s: TMIG Dest already occupied; ZAP=%u, HART=%u\n",
-                     my_name.c_str(), (uint32_t) dest_zap, (uint32_t) dest_hart);
-    } else {
-        zap_hart_status.at(dest_zap).at(dest_hart) = true;
-        ZqmAidStateTableRow *aid_state = getAidStateTableRow(thread->getAppID());
-        aid_state->harts_available--;
-    }
-    output.verbose(CALL_INFO, 1, 0, "%s: Sending thread to ZAP=%u, HART=%u\n",
-                   my_name.c_str(), dest_zap, dest_hart);
-    zone_nic->send(thread, static_cast<SST::Forza::zopCompID>(dest_zap)); // TODO: UNCOMMENT IN FULL ZONE SIM
-}
-#endif
-
 void ZQM::processMessagingMsgs()
 {
     if (msg_zop_q.empty())
@@ -648,7 +631,7 @@ void ZQM::processMessagingMsgs()
 
     for ( unsigned i = 0; i < process_per_cycle; i++ ) {
         auto *event = msg_zop_q.front();
-        output.verbose(CALL_INFO, 1, 0, "%s: Processing messaging packet id=%u for ZQM\n", my_name.c_str(), event->getID() );
+        output.verbose(CALL_INFO, 7, 0, "%s: Processing messaging packet id=%u for ZQM\n", my_name.c_str(), event->getID() );
         switch(event->getOpc()){
             case SST::Forza::zopOpc::Z_MSG_ZQMSET:
                 //processMessagingZqmSet(event);
@@ -665,8 +648,7 @@ void ZQM::processMessagingMsgs()
                 break;
             case SST::Forza::zopOpc::Z_MSG_SENDP:{
                 output.verbose(CALL_INFO, 9, 0, "ZQM RECV MSG_SENDP\n");
-                //to_rza_q.push(event);
-                IncomingZopQueue.push(event);
+                IncomingMsgQueue.push(event);
                 break;}
                 // TODO: Add ZQM Free AID (or equivalent)
                 // TODO: Add ZQM Set HART (needed for initial program thread)
@@ -736,150 +718,61 @@ void ZQM::sendMessagingAck(SST::Forza::zopEvent *event)
     // Caller is responsible for deleting the event
 }
 
-// Going to use early returns in this function - its ugly.
-#if 0
-void ZQM::processIncomingThreadsMsgs()
+void ZQM::processTMigMsgs()
 {
-    // Sanity check
-    if (outstanding_rza_reqs.size() == UINT8_MAX) {
-        output.verbose(CALL_INFO, 1, 0, "%s: Too many outstanding RZA requests\n", my_name.c_str());
-        return;
-    }
-    for (auto &thread : incoming_threads_vec){
-        if (thread->getOpc() == zopOpc::Z_TMIG_FIXED){
-            output.verbose(CALL_INFO, 1, 0, "%s: Handling TMIG_FIXED ZOP\n", my_name.c_str());
-            // Always assumed to have the hart available, but the sendThreadToZap checks
-            sendThreadToZap(thread);
-        } else if (thread->getOpc() == zopOpc::Z_TMIG_SELECT){
-            output.verbose(CALL_INFO, 1, 0, "%s: Handling TMIG_SELECT ZOP\n", my_name.c_str());
-            ZqmAidStateTableRow *aid_state = getAidStateTableRow(thread->getAppID());
-            if (aid_state->sequential_hart_assignment){
-                selectSequentialDestHart(thread, aid_state);
-                sendThreadToZap(thread);
-            } else {
-                // If we're pulling something from the RunQueue, this thread has to go there
-                // to stay FIFO ordered
-                if ( (aid_state->run_queue_depth > 0) || (aid_state->outstanding_fills > 0) ){
-                    sendThreadToRza(thread);
-                    return;
-                }
-
-                if (selectRandomDestHart(thread)) {
-                    sendThreadToZap(thread);
-                } else {
-                    output.verbose(CALL_INFO, 1, 0, "%s: Failed to select a HART (all in use)\n", my_name.c_str());
-                    sendThreadToRza(thread);
-                }
-            }
-        } else {
-            output.fatal(CALL_INFO, 1, "%s: Invalid TMIG Opcode=%u\n", my_name.c_str(), (uint32_t)thread->getOpc());
-        }
-    }
-    incoming_threads_vec.clear();
-}
-#endif
-
-
-#if 0
-bool ZQM::selectRandomDestHart(SST::Forza::zopEvent *thread)
-{
-    // These should generally be migrating thread code...try to balance use of ZAPs...
-    // Want to keep the logic sane so we can actually do it in verilog...however, we'll do the
-    // optimal choice for now (for a given AID)
-    ZqmAidStateTableRow *aid_state = getAidStateTableRow(thread->getAppID());
-    std::vector<uint32_t> num_free_harts(zap_hart_status.size(), 0);
-
-    // Number of free harts per zap for this AID
-    for (size_t i = 0; i < zap_hart_status.size(); i++){
-        for (auto j = aid_state->min_zap_hart; j <= aid_state->max_zap_hart; j++)
-            num_free_harts[i] += (zap_hart_status[i][j]) ? 0 : 1;
-    }
-
-    // Check if all zaps are fully occupied/find lowest occupancy
-    // There's probably a more c++-ish way of doing this
-    uint16_t max_free_harts = 0;
-    int max_zap = -1;
-    for (size_t i = 0; i < num_free_harts.size(); i++){
-        if (max_free_harts < num_free_harts[i]){
-            max_free_harts = num_free_harts[i];
-            max_zap = i;
-        }
-    }
-
-    // If nothing free, return false
-    if (max_zap == -1)
-        return false;
-
-    // Set destination HART to first available hart in zap we just found
-    for (uint32_t i = aid_state->min_zap_hart; i <= aid_state->max_zap_hart; i++){
-        if (!zap_hart_status[max_zap][i]){
-            thread->setDestZCID(max_zap);
-            thread->setDestHart(i);
-            thread->setOpc(zopOpc::Z_TMIG_FIXED);
-            break;
-        }
-    }
-    return true;
-}
-#endif
-
-
-/**
- * @param thread : zop being sent out to ZAP
- * @param aid_state : pointer to state info for this AppID
- *
- * I'm sure there are more efficient ways of doing this (and probably more that allow for better
- * error checking), however, this is operating on the following assumptions:
- * - actor based program
- * - threads arrive to ZQM in expected order
- * - threads are all created "at once" and then will all die "at once"
- */
-#if 0
-void ZQM::selectSequentialDestHart(SST::Forza::zopEvent *thread, ZqmAidStateTableRow *aid_state)
-{
-    for (unsigned i = 0; i < numCores; i++){
-        for (uint32_t j = aid_state->min_zap_hart; j <= aid_state->max_zap_hart; j++){
-            if (!zap_hart_status.at(i).at(j)){
-                thread->setDestZCID(i);
-                thread->setDestHart(j);
-                thread->setOpc(zopOpc::Z_TMIG_FIXED);
-                return;
-            }
-        }
-    }
-    // If I reach this, something bad has happened
-    output.fatal(CALL_INFO, 1, "%s: Couldn't find an empty HART for AID=%u\n",
-                 my_name.c_str(), thread->getAppID());
-}
-#endif
-
-#if 0
-void ZQM::fillEmptyHart()
-{
-    // Sanity check
-    if (outstanding_rza_reqs.size() == UINT8_MAX)
+    if ( tmig_zop_q.empty() )
         return;
 
-    // TODO: Should this run less frequently? What are my rate limiters (probably the zopNIC)?
-    // For all AIDs (or maybe just a simple round-robin?) see if there are any empty harts that can be filled
-    for (auto &i : aid_state_table){
-        ZqmAidStateTableRow *row = i.second;
-        if ( (row->harts_available != 0) && (row->run_queue_depth != 0) )
-            getThreadFromRza(i.first);
+    for ( unsigned i = 0; i < process_per_cycle; i++ ) {
+        auto *event = tmig_zop_q.front();
+        tmig_zop_q.pop();
+        output.verbose(CALL_INFO, 7, 0, "ZQM [%s]: Processing tmig packet id=%u for ZQM\n", getName.c_str(), event->getID() );
+        if ( event->getOpc() == SST::Forza::zopOpc::Z_TMIG_REQUEST ){
+            AwaitingThreadsQueue.push( event->getSrcZCID() );
+        } else { 
+            RunQueue.push( event );
+        }
+
+        if ( tmig_zop_q.empty() )
+            return;
     }
 }
-#endif
+
+void ZQM::sendThreadToZap()
+{
+    // Need both an empty zap and a thread
+    if ( ( AwaitingThreadsQueue.empty() ) || ( RunQueue.empty() ) )
+        return;
+
+    uint8_t dest_zap = AwaitingThreadsQueue.front();
+    zopEvent *thread = RunQueue.front();
+    AwaitingThreadsQueue.pop();
+    RunQueue.pop();
+
+    setMeAsZopSrc(thread);
+    thread->setDestHart(0);
+    thread->setDestZCID(dest_zap);
+    thread->setDestPCID(ZoneId);
+    thread->setDestPrec(PrecinctId);
+
+    //TODO: Get zone message id - probably need it to make zopnet work
+    // but then we have to handle acks (or figure out how else to clear)
+    thread->encodeEvent();
+    zone_nic->send(thread, zone_nic->getZCID(dest_zap, false) );
+}
 
 bool ZQM::clock(Cycle_t cycle)
 {
     // Ring related
     updateMailboxes();
 
-    //fillEmptyHart();
+    sendThreadToZap();
     //processIncomingThreadsMsgs();
     //notifyHARTScratchpad();
     //processRzaMsgs();
     processMessagingMsgs();
+    processTMigMsgs();
+
     //prepSendRZAStore();
 
 

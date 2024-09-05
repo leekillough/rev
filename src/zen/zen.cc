@@ -202,7 +202,10 @@ void ZEN::handleRingEqCtrl( SST::Forza::ringEvent *ev )
   if ( regs.mbox_cntrs[dest_mbox] == UINT8_MAX )
     output.fatal(CALL_INFO, -2, "[ZEN] %s no support for saturated mbox counter yet; zap=%u, hart=%u, mbox=%u\n",
                  getName().c_str(), ev->getZapId(), ev->getHartId(), dest_mbox);
+  else if ( regs.mbox_cntrs[dest_mbox] == (UINT8_MAX-1) )
+    regs.status |= ( 1UL << dest_mbox ); //if we're about to saturate the mbox counter, we have to set the status bit
   regs.mbox_cntrs[dest_mbox]++;
+
 
   // TODO: DOES THIS NEED A RING RESPONSE?
 
@@ -349,6 +352,9 @@ void ZEN::handleMsgAck(zopEvent *ack)
                  ack->getSrcString().c_str(), ev->getDestString().c_str());
   }
   cntr--;
+  // we've reduced the counter, so the busy bit for this mbox should be cleared (active sending is handled with the is_sending flag)
+  uint64_t mask = ~( 1UL << ack->getCredit() );
+  regs.status &= mask;
 
   auto retry_num = ack->getPktRes();
   // Return the retry number to the list
@@ -463,7 +469,7 @@ void ZEN::ExecSpawns()
   auto zop = new SST::Forza::zopEvent();
   // Set packet header info
   zop->setType(SST::Forza::zopMsgT::Z_TMIG);
-  zop->setOpc(SST::Forza::zopOpc::Z_TMIG_SELECT);
+  zop->setOpc(SST::Forza::zopOpc::Z_TMIG_SPAWN);
   zop->setID(zop_msg_id);
 
   // Set source to be the sending hart

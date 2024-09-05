@@ -5,6 +5,12 @@
 /** STATUS **/
 /**
  * 
+ * 5-sept-2024: updated rev - definitely need more info on the spawn process and how everything fits together
+ * as I'm sure there are bugs.  Next up - handling msg_ids across zopnet both send and ack'ing
+ * 
+ * 3-sept-2024: Most of the basic thread spawn/mig support is in here, haven't touched rev yet (that's tomorrow);
+ * will need to get rid of the fatal error that exists in the top level zop handler
+ * 
  * 30-aug-2024: need to add support for incoming spawned threads (well, migrating too); however,
  * this is going to require a mechanism for the Rev cores to track the number of harts available and
  * inform the zen/zqm about it..or some other hackery to allow it....
@@ -330,9 +336,6 @@ private:
     // std::vector<SST::Forza::zopEvent*> rza_responses;
     // std::map<uint8_t, std::pair<uint64_t, uint64_t> > outstanding_rza_reqs; // TODO: WTH is the pair?
 
-    // Incoming threads
-    // std::vector<SST::Forza::zopEvent*> incoming_threads_vec;
-
     // [numCores][numHarts]
     std::vector<std::vector<bool>> zap_hart_status; //TODO: Put this into the PerHartCSRs
 
@@ -340,11 +343,15 @@ private:
     // key pair<aid, logical PE>, value pair<zap, phys_hart>
     std::map<std::pair<uint8_t, uint16_t>, std::pair<uint8_t, uint16_t>> LogicalToPhysicalMap;
     std::vector<std::vector<ZqmPerHartRegs>> PerHartCSRs;
-    std::queue<SST::Forza::zopEvent*> IncomingZopQueue;
+    std::queue<SST::Forza::zopEvent*> IncomingMsgQueue;
     //std::vector<std::queue<SST::Forza::zopEvent*> > MailboxQueues; // TODO: Add an AID dimension - can hold all of our messages here to start with
 
-    // Structures for holding messages
+    std::queue<uint8_t> AwaitingThreadsQueue; // ZAPs waiting for threads
+    std::queue<SST::Forza::zopEvent*> RunQueue; // threads waiting for an available HART
+
+    // Structures for holding messages - really ought to rename these and make them camelcase
     std::queue<SST::Forza::zopEvent*> msg_zop_q;
+    std::queue<SST::Forza::zopEvent*> tmig_zop_q;
     //std::queue<SST::Forza::zopEvent*> to_rza_q;
     //std::map<uint16_t, MemReturnEntry*> rza_ret_wait_map;
 
@@ -362,29 +369,18 @@ private:
 #if 0
     void sendThreadToRza(SST::Forza::zopEvent *thread);
     void getThreadFromRza(uint32_t app_id);
-    void sendThreadToZap(SST::Forza::zopEvent *thread);
 #endif
 
     /**
-     * Read and process messages from the incoming_threads_vec
+     * Read and process incoming TMIG messages
      *
      */
-    // tdysart, 27-june-2024 removing thread management for now
-    //void processIncomingThreadsMsgs(); //invoked by clock handler
+    void processTMigMsgs(); //invoked by clock handler
 
     /**
-     * @param thread
-     * @return true if dest zap/hart filled, false otherwise
+     * If a ZAP has a hart, try to fill it
      */
-    // tdysart, 27-june-2024 removing thread management for now
-    //bool selectRandomDestHart(SST::Forza::zopEvent *thread);
-    //void selectSequentialDestHart(SST::Forza::zopEvent *thread, ZqmAidStateTableRow *aid_state);
-
-    /**
-     * If a hart is empty, try to fill it (mostly for migrating thread applications)
-     */
-    // tdysart, 27-june-2024 removing thread management for now
-    //void fillEmptyHart();
+    void sendThreadToZap();
 
 
 
