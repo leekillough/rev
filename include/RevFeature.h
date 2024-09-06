@@ -38,14 +38,16 @@ enum RevFeatureType : uint32_t {
   RV_ZICSR    = 1 << 12,  ///< RevFEatureType: Zicsr-extension
   RV_ZIFENCEI = 1 << 13,  ///< RevFeatureType: Zifencei-extension
   RV_ZMMUL    = 1 << 14,  ///< RevFeatureType: Zmmul-extension
-  RV_ZFA      = 1 << 15,  ///< RevFeatureType: Zfa-extension
-  RV_ZFH      = 1 << 16,  ///< RevFeatureType: H-extension
-  RV_ZFHMIN   = 1 << 17,  ///< RevFeatureType: Zfhmin-extension
-  RV_ZBA      = 1 << 18,  ///< RevFeatureType: Zba-extension
-  RV_ZBB      = 1 << 19,  ///< RevFeatureType: Zbb-extension
-  RV_ZBC      = 1 << 20,  ///< RevFeatureType: Zbc-extension
-  RV_ZBS      = 1 << 21,  ///< RevFeatureType: Zbs-extension
-  RV_ZTSO     = 1 << 22,  ///< RevFeatureType: Ztso-extension
+  RV_ZAAMO    = 1 << 15,  ///< RevFeatureType: Zaamo-extension
+  RV_ZALRSC   = 1 << 16,  ///< RevFeatureType: Zalrsc-extension
+  RV_ZFA      = 1 << 17,  ///< RevFeatureType: Zfa-extension
+  RV_ZFH      = 1 << 18,  ///< RevFeatureType: H-extension
+  RV_ZFHMIN   = 1 << 19,  ///< RevFeatureRtpe: Zfhmin extension
+  RV_ZBA      = 1 << 20,  ///< RevFeatureType: Zba-extension
+  RV_ZBB      = 1 << 21,  ///< RevFeatureType: Zbb-extension
+  RV_ZBC      = 1 << 22,  ///< RevFeatureType: Zbc-extension
+  RV_ZBS      = 1 << 23,  ///< RevFeatureType: Zbs-extension
+  RV_ZTSO     = 1 << 24,  ///< RevFeatureType: Ztso-extension
 };
 
 class RevFeature {
@@ -80,11 +82,8 @@ public:
   /// GetMaxCost: get the maximum cost
   auto GetMaxCost() const { return MaxCost; }
 
-  /// IsRV32: Is the device an RV32
-  bool IsRV32() const { return xlen == 32; }
-
   /// IsRV64: Is the device an RV64
-  bool IsRV64() const { return xlen == 64; }
+  bool IsRV64() const { return xlen >= 64; }
 
   /// HasF: Does the device support F?
   bool HasF() const { return IsModeEnabled( RV_F ); }
