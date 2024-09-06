@@ -3724,7 +3724,6 @@ const std::unordered_map<uint32_t, EcallStatus(RevCore::*)()> RevCore::Ecalls = 
     { 4013, &RevCore::ECALL_forza_get_my_precinct }, // , forza_get_my_precinct();
     { 4014, &RevCore::ECALL_forza_zone_barrier }, // , forza_zone_barrier();
     { 4015, &RevCore::ECALL_forza_debug_print }, //, forza_debug_print();
-    { 4020, &RevCore::ECALL_forza_zqm_mbox_setup },  // , forza_zqm_mbox_setup();
     { 9000, &RevCore::ECALL_dump_mem_range },           // rev_dump_mem_range(uint64_t addr, uint64_t size)
     { 9001, &RevCore::ECALL_dump_mem_range_to_file },   // rev_dump_mem_range_to_file(const char* outputFile, uint64_t addr, uint64_t size)
     { 9002, &RevCore::ECALL_dump_stack },               // rev_dump_stack()
@@ -3739,6 +3738,14 @@ const std::unordered_map<uint32_t, EcallStatus(RevCore::*)()> RevCore::Ecalls = 
 
 // 4000, forza_scratchpad_alloc(size_t size);
 EcallStatus RevCore::ECALL_forza_scratchpad_alloc() {
+  output->fatal(
+    CALL_INFO,
+    -1,
+    "ECALL: removed forza_scratchpad_alloc called by thread %" PRIu32 " on hart %" PRIu32 "\n",
+    GetActiveThreadID(),
+    HartToExecID
+  );
+#if 0
   output->verbose(
     CALL_INFO,
     2,
@@ -3761,12 +3768,20 @@ EcallStatus RevCore::ECALL_forza_scratchpad_alloc() {
     );
     RegFile->SetX( RevReg::a0, Addr );
   }
-
   return EcallStatus::SUCCESS;
+#endif
 }
 
 // 4001, forza_scratchpad_dealloc(size_t size);
 EcallStatus RevCore::ECALL_forza_scratchpad_free() {
+  output->fatal(
+    CALL_INFO,
+    -1,
+    "ECALL: removed forza_scratchpad_free called by thread %" PRIu32 " on hart %" PRIu32 "\n",
+    GetActiveThreadID(),
+    HartToExecID
+  );
+#if 0
   output->verbose(
     CALL_INFO,
     2,
@@ -3781,6 +3796,7 @@ EcallStatus RevCore::ECALL_forza_scratchpad_free() {
   mem->ScratchpadFree( addr, size );
 
   return EcallStatus::SUCCESS;
+#endif
 }
 
 // 4002, forza_get_hart_id();
@@ -3806,6 +3822,14 @@ union ECALL_forza_send_union {
 
 // 4003 forza_send( uint64_t dst, uint64_t spaddr, size_t size  )
 EcallStatus RevCore::ECALL_forza_send() {
+  output->fatal(
+    CALL_INFO,
+    -1,
+    " ECALL: forza_send called by thread %" PRIu32 " on hart %" PRIu32 " needs updating; no more scratchpad\n",
+    GetActiveThreadID(),
+    HartToExecID
+  );
+#if 0
   uint64_t dst               = (uint64_t) RegFile->GetX<uint64_t>( RevReg::a0 );
   uint64_t spaddr            = (uint64_t) RegFile->GetX<uint64_t>( RevReg::a1 );
   size_t   size              = (size_t) RegFile->GetX<size_t>( RevReg::a2 );
@@ -3989,6 +4013,7 @@ EcallStatus RevCore::ECALL_forza_send() {
   }
 
   return EcallStatus::CONTINUE;
+#endif
 }
 
 // 4004, forza_zen_credit_release();
@@ -4039,7 +4064,7 @@ EcallStatus RevCore::ECALL_forza_zen_credit_release() {
 // 4005, forza_zen_setup(uint64_t addr, size_t size, uint64_t tailptr, uint64_t mbox_id);
 EcallStatus RevCore::ECALL_forza_zen_setup() {
 
-  output->fatal( CALL_INFO, -1, "ECALL: forza_zen_setup is currently removed\n" );
+  output->fatal( CALL_INFO, -1, "ECALL: forza_zen_setup has been removed\n" );
 
 #if 0
   uint64_t addr    = (uint64_t) RegFile->GetX<uint64_t>( RevReg::a0 );
@@ -4117,37 +4142,38 @@ EcallStatus RevCore::ECALL_forza_zen_setup() {
 
 // 4006, forza_zqm_setup(uint64_t addr, uint64_t size, uint64_t min_hart, uint64_t max_hart, uint64_t seq_ld_flag);
 EcallStatus RevCore::ECALL_forza_zqm_setup() {
-  uint64_t low_addr    = (uint64_t) RegFile->GetX<uint64_t>( RevReg::a0 );
-  uint64_t size        = (uint64_t) RegFile->GetX<uint64_t>( RevReg::a1 );
-  uint64_t high_addr   = low_addr + size - 1;
-  uint64_t min_hart    = (uint64_t) RegFile->GetX<uint64_t>( RevReg::a2 );
-  uint64_t max_hart    = (uint64_t) RegFile->GetX<uint64_t>( RevReg::a3 );
-  uint64_t seq_ld_flag = (uint64_t) RegFile->GetX<uint64_t>( RevReg::a4 );
-
   output->verbose(
-    CALL_INFO, 2, 0, "ECALL: forza_zqm_init called by thread %" PRIu32 " on hart %" PRIu32 "\n", GetActiveThreadID(), HartToExecID
+    CALL_INFO, 2, 0, "ECALL: forza_zqm_setup called by thread %" PRIu32 " on hart %" PRIu32 "\n", GetActiveThreadID(), HartToExecID
   );
+
+  uint64_t mboxs_used = (uint64_t) RegFile->GetX<uint64_t>( RevReg::a0 );
+  uint64_t logical_pe = (uint64_t) RegFile->GetX<uint64_t>( RevReg::a1 );
+
+  uint8_t  zap        = (uint8_t) zNic->getEndpointType();
+  uint64_t aid        = 0;  // FIXME
+
   output->verbose(
     CALL_INFO,
     5,
     0,
-    "Arguments: low_addr=0x%lx, size=0x%lx, high_addr=0x%lx,"
-    " min_hart=0x%lx, max_hart=0x%lx, seq_ld_flag=0x%lx\n",
-    low_addr,
-    size,
-    high_addr,
-    min_hart,
-    max_hart,
-    seq_ld_flag
+    "Arguments: mboxes_used=0x%lx, logcial_pe=%lu, hart=%lu,"
+    " zap=%lu, aid=%lu\n",
+    mboxs_used,
+    logical_pe,
+    HartToExecID,
+    zap,
+    aid
   );
 
-  // TODO: If this initialization is being executed by a single thread, then one of two things has to happen:
-  // A. This function sends a zop to all ZQMs in the system (so a double for-loop should be written)
-  // or
-  // B. The application itself has to send this to all ZQMs in the system (and the function itself may
-  //    need to have more arguments to support this.
-  // As currently written, this will send the ZQM setup packet to Precinct 0, Zone 0, ZQM.
+  // Using values in zqm.h
+  uint64_t outreg = mboxs_used & 0x0FF;
+  outreg |= ( ( logical_pe & 0x7FF ) << 8 );
+  outreg |= ( ( HartToExecID & 0x1FF ) << 19 );
+  outreg |= ( ( zap & 0x0F ) << 28 );
+  outreg |= ( ( aid & 0x0F ) << 60 );
 
+  // NOTE: THIS WILL BE THROUGH THE RING RATHER THAN A ZOP
+#if 0
   SST::Forza::zopEvent* zev = new SST::Forza::zopEvent();
 
   uint8_t msg_id            = 0;
@@ -4193,6 +4219,7 @@ EcallStatus RevCore::ECALL_forza_zqm_setup() {
 
   // Let's send the message
   zNic->send( zev, SST::Forza::zopCompID::Z_ZQM, zNic->getPCID( zev->getDestPCID() ), zev->getDestPrec() );
+#endif
 
   return EcallStatus::SUCCESS;
 }
@@ -4346,94 +4373,6 @@ EcallStatus RevCore::ECALL_forza_debug_print() {
   );
 
   RegFile->SetX( RevReg::a0, 0 );
-  return EcallStatus::SUCCESS;
-}
-
-// 4020, forza_zqm_mbox_setup(uint64_t addr, size_t size, uint64_t tailptr, uint64_t mbox_id);
-// TODO: Change encoding of ZQMMBOXSET since this matches ZENUNSET
-// Well, it does in the doc, but not in the simulator; since we're
-// changing all of this messaging, leaving the encoding as is for now
-EcallStatus RevCore::ECALL_forza_zqm_mbox_setup() {
-  uint64_t addr    = (uint64_t) RegFile->GetX<uint64_t>( RevReg::a0 );
-  size_t   size    = (size_t) RegFile->GetX<size_t>( RevReg::a1 );
-  uint64_t tailptr = (uint64_t) RegFile->GetX<uint64_t>( RevReg::a2 );
-  uint64_t mbox_id = (uint64_t) RegFile->GetX<uint64_t>( RevReg::a3 );
-  output->verbose(
-    CALL_INFO,
-    2,
-    0,
-    "ECALL: forza_zqm_mbox_setup called by thread %" PRIu32 " on hart %" PRIu32 "\n",
-    GetActiveThreadID(),
-    HartToExecID
-  );
-
-  // This value should be a construction of the following
-  //   bits[63:60] - Application ID (currently fixed to 0)
-  //   bits[59:8] - Reserved (expect to use some of these in the future for a logical/physical HART ID mapping)
-  //   bits[7:0] - Mailbox ID being setup
-  mbox_id &= 0x0FFUL;
-  uint64_t app_mbox_id      = mbox_id;
-
-  // TODO: Forza library will pass the memory base address and size allocated by each actor to inform/initialize zen.
-
-  SST::Forza::zopEvent* zev = new SST::Forza::zopEvent();
-
-  if( zNicMsgIds == nullptr ) {
-    output->fatal( CALL_INFO, -2, "null msg ids\n" );
-  }
-
-  if( zNic == nullptr )
-    output->fatal( CALL_INFO, -3, "null znic\n" );
-
-  uint16_t msg_id  = zNicMsgIds->getMsgId();
-
-  uint8_t  SrcZCID = (uint8_t) ( zNic->getEndpointType() );
-  uint8_t  SrcPCID = (uint8_t) ( zNic->getPCID( zNic->getZoneID() ) );
-  uint16_t SrcHart = (uint16_t) HartToExecID;
-
-  output->verbose(
-    CALL_INFO,
-    0,
-    0,
-    "ECALL_forza_zqm_mbox_setup: addr = 0x%" PRIx64 ", size = %" PRIu64 ", tailptr = 0x%" PRIx64 ", SrcZCID = %" PRIu8
-    ", SrcPCID = %" PRIu8 ", SrcHart = %" PRIu16 ", ID=%" PRIu16 "\n",
-    addr,
-    (uint64_t) size,
-    tailptr,
-    SrcZCID,
-    SrcPCID,
-    SrcHart,
-    msg_id
-  );
-
-  // set all the fields
-  zev->setType( SST::Forza::zopMsgT::Z_MSG );
-  zev->setID( msg_id );
-  zev->setOpc( SST::Forza::zopOpc::Z_MSG_ZQMMBOXSET );
-  zev->setSrcZCID( SrcZCID );
-  zev->setSrcPCID( SrcPCID );
-  zev->setSrcHart( SrcHart );
-  zev->setSrcPrec( zNic->getPrecinctID() );
-  zev->setDestHart( 0 );
-  zev->setDestZCID( SST::Forza::zopCompID::Z_ZQM );
-  zev->setDestPCID( SrcPCID );
-  zev->setDestPrec( zNic->getPrecinctID() );
-  zev->setAppID( 0 );  // FIXME: should come from somewhere else
-  zev->setPktRes( (uint8_t) mbox_id );
-
-  // set the payload, do actual send setup
-  // read ZEN::processSetupMsgs
-  std::vector<uint64_t> payload;
-  payload.push_back( 0x00ull );      // acs_pair = payload[0]
-  payload.push_back( addr );         // mem_start_addr = payload[1]
-  payload.push_back( size );         // size = payload[2]
-  payload.push_back( tailptr );      // scratch_tail = payload[3]
-  payload.push_back( app_mbox_id );  // see def above; payload[4]
-  zev->setPayload( payload );
-
-  zev->encodeEvent();
-
-  zNic->send( zev, SST::Forza::zopCompID::Z_ZQM );
   return EcallStatus::SUCCESS;
 }
 
