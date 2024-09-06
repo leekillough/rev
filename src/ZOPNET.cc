@@ -393,6 +393,10 @@ void zopNIC::send( zopEvent* ev, zopCompID dest, zopPrecID zone, unsigned prec )
 void zopNIC::handleLoadResponse(
   zopEvent* ev, uint64_t* Target, SST::Forza::zopOpc Opc, SST::RevCPU::MemReq Req, uint8_t ID, uint16_t SrcHart
 ) {
+  /**
+   * Notes
+   * - Target argument is a host system pointer for a location in the requesting thread's reg file
+   */
   // retrieve the data from the response payload
   uint64_t tmp = 0x00ull;
   if( !ev->getFLIT( Z_FLIT_DATA_RESP, &tmp ) ) {
@@ -610,16 +614,16 @@ bool zopNIC::msgNotify( int vn ) {
   }
 
   // if this is an RZA device, marshall it through to the ZIQ
-  // if this is a ZEN, forward it in the incoming queue
+  // if this is a ZEN/ZQM/ZIP, forward it in the incoming queue
   if( Type == Forza::zopCompID::Z_RZA || Type == Forza::zopCompID::Z_ZEN || Type == Forza::zopCompID::Z_ZQM ||
       Type == Forza::zopCompID::Z_PREC_ZIP ) {
     ( *msgHandler )( ev );
     return true;
   }
 
-  // if this is a ZIP device
+  // if this is a ZIP device (see above)
 
-  // if this is a ZAP device and a thread migration,
+  // if this is a ZAP device and a thread migration or mzop (scratchpad req, methinks - tjd, 6-sept-24),
   // send it to the RevCPU handler
   if( ( Type == Forza::zopCompID::Z_ZAP0 || Type == Forza::zopCompID::Z_ZAP1 || Type == Forza::zopCompID::Z_ZAP2 ||
         Type == Forza::zopCompID::Z_ZAP3 || Type == Forza::zopCompID::Z_ZAP4 || Type == Forza::zopCompID::Z_ZAP5 ||
@@ -819,6 +823,12 @@ bool zopNIC::clockTick( SST::Cycle_t cycle ) {
           erase = true;
         }
       } else if( ( msgId[Hart].getNumFree() > 0 ) && ( HARTFence[Hart] == 0 ) ) {
+        /**
+         * Underlying issue here is do we allow rev to managae the msgIds or do we let zopnet handle it
+         * if we let zopnet handle it, we can probably free an ID for a hart somewhere along the way without
+         * needing an ack (probably better for migrations and thread requests)
+         */
+
         // we have a free message Id for this hart
         auto P = ev->getPacket();
         if( iFace->spaceToSend( 0, P.size() * 64 ) ) {
@@ -830,6 +840,7 @@ bool zopNIC::clockTick( SST::Cycle_t cycle ) {
           bool skip =
             ( ev->getType() == SST::Forza::zopMsgT::Z_RESP ) && ( ( ev->getDestZCID() == (uint8_t) SST::Forza::zopCompID::Z_ZEN ) ||
                                                                   ( ev->getDestZCID() == (uint8_t) SST::Forza::zopCompID::Z_ZQM ) );
+          skip = ( skip && ( ev->getType() == SST::Forza::zopMsgT::Z_TMIG ) );  //also skip anything migrate related
           if( ( ev->getOpc() != SST::Forza::zopOpc::Z_MSG_ZBAR ) && ( !skip ) ) {
             ev->setID( msgId[Hart].getMsgId() );
             auto V = std::make_tuple( Hart, ev->getID(), ev->isRead(), ev->getTarget(), ev->getOpc(), ev->getMemReq() );

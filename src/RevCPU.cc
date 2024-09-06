@@ -193,7 +193,6 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params )
     if( !zNic ) {
       output.fatal( CALL_INFO, -1, "Error: no ZONE NIC object loaded into RevCPU\n" );
     }
-    Mem->setZNic( zNic );
     zNic->setNumHarts( numHarts );
     zNic->setPrecinctID( Precinct );
     zNic->setZoneID( Zone );
@@ -203,6 +202,7 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params )
 
     // set the message id generator
     zNicMsgIds = new Forza::zopMsgID();
+    Mem->setZNic( zNic );
 
     // now that the NIC has been loaded, we need to ensure that the NIC knows
     // what type of endpoint it is

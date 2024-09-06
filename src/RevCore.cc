@@ -1682,24 +1682,19 @@ void RevCore::ReqThreadFromZqm() {
     return;
 
 #if 0
-  // TODO: Send thread request to zqm...try getting a msg id first
-  uint16_t msg_id = zNicMsgIds->getMsgId();
-  if ( msg_id >= Z_MAX_MSG_IDS )
-    return;
-
   SST::Forza::zopEvent *zev = new SST::Forza::zopEvent();
 
   // set all the fields
   zev->setType(SST::Forza::zopMsgT::Z_TMIG);
   zev->setNB(0);
-  zev->setID(msg_id);
+  zev->setID(UINT16_MAX);
   zev->setCredit(0);
   zev->setOpc(SST::Forza::zopOpc::Z_TMIG_REQUEST);
   zev->setAppID(0);
   zev->setDestZCID((uint8_t)(SST::Forza::zopCompID::Z_ZQM));
   zev->setDestPCID((uint8_t)(zNic->getPCID(Zone)));
   zev->setDestPrec((uint8_t)(Precinct));
-  zev->setSrcHart(0);
+  zev->setSrcHart(UINT16_MAX);
   zev->setSrcZCID((uint8_t)(zNic->getEndpointType()));
   zev->setSrcPCID((uint8_t)(zNic->getPCID(zNic->getZoneID())));
   zev->setSrcPrec((uint8_t)(zNic->getPrecinctID()));
@@ -1719,7 +1714,7 @@ bool RevCore::ClockTick( SST::Cycle_t currentCycle ) {
   Stats.totalCycles++;
 
   // FORZA specific
-  if ( !ThreadReqd )
+  if ( zNic && !ThreadReqd )
     ReqThreadFromZqm();
 
   // -- MAIN PROGRAM LOOP --
@@ -1911,9 +1906,6 @@ bool RevCore::ClockTick( SST::Cycle_t currentCycle ) {
     // if no work is found, don't update the PC
     // just wait and spin
     if( HartHasNoDependencies( HartToDecodeID ) ) {
-      if( zNic ) {
-        sendZQMThreadComplete( Harts.at( HartToDecodeID )->GetAssignedThreadID(), HartToDecodeID );
-      }
       std::unique_ptr<RevThread> ActiveThread = PopThreadFromHart( HartToDecodeID );
       ActiveThread->SetState( ThreadState::DONE );
       HartsClearToExecute[HartToDecodeID] = false;
@@ -1923,9 +1915,6 @@ bool RevCore::ClockTick( SST::Cycle_t currentCycle ) {
     }
 
     if( HartToExecID != _REV_INVALID_HART_ID_ && !IdleHarts[HartToExecID] && HartHasNoDependencies( HartToExecID ) ) {
-      if( zNic ) {
-        sendZQMThreadComplete( Harts.at( HartToDecodeID )->GetAssignedThreadID(), HartToDecodeID );
-      }
       // TODO: Is using HartToDecodeID correct?  Everything else here is
       // using HartToExecID
       std::unique_ptr<RevThread> ActiveThread = PopThreadFromHart( HartToDecodeID );
@@ -2162,37 +2151,6 @@ void RevCore::UpdateStatusOfHarts() {
     HartsClearToDecode[i] = !IdleHarts[i] && Harts[i]->RegFile->cost == 0;
   }
   return;
-}
-
-void RevCore::sendZQMThreadComplete( uint32_t ThreadID, uint32_t HartID ) {
-  output->verbose( CALL_INFO, 2, 0, "[FORZA][ZAP][HART=%u] Informing ZQM of completed thread: %u\n", HartID, ThreadID );
-#if 0
-  SST::Forza::zopEvent *zev = new SST::Forza::zopEvent();
-
-  // set all the fields
-  zev->setType(SST::Forza::zopMsgT::Z_TMIG);  // what is the message type?
-  zev->setNB(0);
-  zev->setID(HartID);
-  zev->setCredit(0);
-  zev->setOpc(SST::Forza::zopOpc::Z_TMIG_SELECT); // what is the opcode?
-  zev->setAppID(0);
-  zev->setDestZCID((uint8_t)(SST::Forza::zopCompID::Z_ZQM));
-  zev->setDestPCID((uint8_t)(zNic->getPCID(Zone)));
-  zev->setDestPrec((uint8_t)(Precinct));
-  zev->setSrcHart(HartID);
-  zev->setSrcZCID((uint8_t)(zNic->getEndpointType()));
-  zev->setSrcPCID((uint8_t)(zNic->getPCID(zNic->getZoneID())));
-  zev->setSrcPrec((uint8_t)(zNic->getPrecinctID()));
-
-  // build the payload
-  std::vector<uint64_t> Payload;
-  Payload.push_back((uint64_t)(ThreadID));
-
-  zev->setPayload(Payload);
-
-  zNic->send(zev, SST::Forza::zopCompID::Z_ZQM,
-             zNic->getPCID(Zone), Precinct);
-#endif
 }
 
 }  // namespace SST::RevCPU

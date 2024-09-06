@@ -408,7 +408,7 @@ public:
   /// FORZA: Interface for freeing from Scratchpad
   void ScratchpadFree( uint64_t Addr, size_t size );
 
-  /// FORZA: set the ZOP NIC object
+  /// FORZA: set the ZOP NIC and MsgIDs objects
   void setZNic( Forza::zopAPI* Z ) { zNic = Z; }
 
   /// FORZA: set the RZA flag for this instance of RevMem
@@ -512,7 +512,7 @@ private:
   SST::Output*        output{};    ///< RevMem: output handler
 
   std::shared_ptr<RevScratchpad> scratchpad;  ///< FORZA: Scratchpad
-  Forza::zopAPI*                 zNic;        ///< RevMem: FORZA ZOP NIC
+  Forza::zopAPI*                 zNic{};      ///< RevMem: FORZA ZOP NIC
   bool                           isRZA;       ///< RevMem: FORZA RZA flag; true if this device is an RZA
 
   std::vector<std::shared_ptr<MemSegment>> MemSegs{};        // Currently Allocated MemSegs

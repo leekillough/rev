@@ -1557,6 +1557,7 @@ bool RevMem::__ZOP_FENCEHart( unsigned Hart ) {
 }
 
 bool RevMem::ZOP_ThreadMigrate( unsigned Hart, std::vector<uint64_t> Payload, unsigned Zone, unsigned Precinct ) {
+  // TODO: Investigate if migration is/can be stalled if outstanding zops for the thread
 #ifdef _REV_DEBUG_
   std::cout << "ZOP_THREADMIGRATE" << std::endl;
 #endif

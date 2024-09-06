@@ -293,9 +293,6 @@ public:
   ///< RevCore: FORZA - Request a thread from the ZQM if HART available
   void ReqThreadFromZqm();
 
-  ///< RevCore: FORZA - Inform the ZQM that a thread is done
-  void sendZQMThreadComplete( uint32_t ThreadID, uint32_t HartID );
-
 private:
   bool           Halted      = false;  ///< RevCore: determines if the core is halted
   bool           Stalled     = false;  ///< RevCore: determines if the core is stalled on instruction fetch
