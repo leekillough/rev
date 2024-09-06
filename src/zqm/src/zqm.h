@@ -359,8 +359,8 @@ private:
     bool clock(SST::Cycle_t cycle);
 
     void processMessagingMsgs(); // invoked by clock handler
-    //void processMessagingHartDone(SST::Forza::zopEvent *event);
-    void sendMessagingAck(SST::Forza::zopEvent *event);
+
+    void sendZopAck(SST::Forza::zopEvent *event, zopMsgT *msg_type, zopOpc *msg_opc);
 
     void processRzaMsgs();  // invoked by clock handler
     //void processRzaThreadDataReturn(SST::Forza::zopEvent *ev);

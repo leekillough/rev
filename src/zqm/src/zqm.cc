@@ -311,7 +311,7 @@ void ZQM::updateMailboxes()
         mbox.msg_cur_word = 1;
         mbox.buff_state = msgBuffState::READY;
         // send the ack zop
-        sendMessagingAck(msg);
+        sendZopAck(msg, zopMsgT::Z_MSG, zopOpc::Z_MSG_ACK);
         // delete the zop
         delete msg;
     } else {
@@ -634,13 +634,10 @@ void ZQM::processMessagingMsgs()
         output.verbose(CALL_INFO, 7, 0, "%s: Processing messaging packet id=%u for ZQM\n", my_name.c_str(), event->getID() );
         switch(event->getOpc()){
             case SST::Forza::zopOpc::Z_MSG_ZQMSET:
-                //processMessagingZqmSet(event);
                 output.fatal(CALL_INFO, -2, "%s: Received an old ZQM setup message\n", my_name.c_str());
-                // sendMessagingAck(event);
                 break;
             case SST::Forza::zopOpc::Z_MSG_ZQMHARTDONE:
-                processMessagingHartDone(event);
-                //sendMessagingAck(event);
+                output.fatal(CALL_INFO, -2, "%s: Received an old ZQM HART Done message\n", my_name.c_str());
                 break;
             case SST::Forza::zopOpc::Z_MSG_ZQMMBOXSET:
                 output.fatal(CALL_INFO, -2, "%s: Received an old ZQM mailbox setup message\n", my_name.c_str());
@@ -662,27 +659,6 @@ void ZQM::processMessagingMsgs()
     }
 }
 
-void ZQM::processMessagingHartDone(SST::Forza::zopEvent *event)
-{
-    // No payload required; source information is sufficient
-    uint8_t src_zap = event->getSrcZCID(); // this will be the zap
-    uint16_t src_hart = event->getSrcHart();
-
-    output.verbose(CALL_INFO, 1, 0, "[ERROR] ZQM [%s]: MsgHartDone does nothing, appID=%u, zap=%u, hart=%u\n",
-                   my_name.c_str(), event->getAppID(), src_zap, src_hart);
-#if 0
-    if (zap_hart_status.at(src_zap).at(src_hart)) {
-        zap_hart_status.at(src_zap).at(src_hart) = false;
-        ZqmAidStateTableRow *aid_state = getAidStateTableRow(event->getAppID());
-        aid_state->harts_available++;
-    } else {
-        output.fatal(CALL_INFO, 1, "%s: Received a HART done notification for an unused HART; ZAP=%u, HART=%u\n",
-                     my_name.c_str(), (uint32_t) src_zap, (uint32_t) src_hart);
-    }
-#endif
-    delete event;
-}
-
 #if 0
 void ZQM::sendACK(SST::Forza::zopEvent *ev, bool to_zone_noc)
 {
@@ -701,10 +677,11 @@ void ZQM::sendACK(SST::Forza::zopEvent *ev, bool to_zone_noc)
 }
 #endif
 
-void ZQM::sendMessagingAck(SST::Forza::zopEvent *event)
+void ZQM::sendZopAck(SST::Forza::zopEvent *event, zopMsgT *msg_type, zopOpc *msg_opc)
 {
-    // Create Messaging ACK zop
-    SST::Forza::zopEvent *ack_msg = new SST::Forza::zopEvent(zopMsgT::Z_MSG, zopOpc::Z_MSG_ACK);
+    // Note: Caller handles what happens to event
+    // Create zop
+    SST::Forza::zopEvent *ack_msg = new SST::Forza::zopEvent(msg_type, msg_opc);
 
     // Set src/dest info
     setMeAsZopSrc(ack_msg);
@@ -713,9 +690,10 @@ void ZQM::sendMessagingAck(SST::Forza::zopEvent *event)
     ack_msg->setAppID(event->getAppID());
 
     zone_nic->send(ack_msg, static_cast<zopCompID>(ack_msg->getDestZCID()));
-    output.verbose(CALL_INFO, 9, 0, "[ZQM] %s sending ACK with msg_id=%" PRIu16 " to %s\n",
-                    getName().c_str(), ev->getID(), ack->getDestString().c_str());
-    // Caller is responsible for deleting the event
+    std::string str = ack->msgTToStr(msg_type);
+    output.verbose(CALL_INFO, 9, 0, "ZQM [%s] sending %s:%u with msg_id=%" PRIu16 " from in zop %s to %s\n",
+                    getName().c_str(), str.c_str(), (uint8_t)msg_opc, ev->getID(), event->getSrcString().c_str(), 
+                    ack->getDestString().c_str());
 }
 
 void ZQM::processTMigMsgs()
@@ -732,7 +710,6 @@ void ZQM::processTMigMsgs()
         } else { 
             RunQueue.push( event );
         }
-
         if ( tmig_zop_q.empty() )
             return;
     }
