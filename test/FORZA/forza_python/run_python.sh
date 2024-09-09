@@ -15,7 +15,7 @@ if [ -f ex2.exe ]; then
       sst --add-lib-path=../../build/src/ --run-mode=init --model-options="--hartsperzap 512 --zaps 1 --zones 1 --precincts 8 --shape 2,2:4 --program ex2.exe" ../../../python/forza.py
       sst --add-lib-path=../../build/src/ --run-mode=init --model-options="--hartsperzap 512 --zaps 2 --zones 1 --precincts 8 --shape 2,2:4 --program ex2.exe" ../../../python/forza.py
       sst --add-lib-path=../../build/src/ --run-mode=init --model-options="--hartsperzap 512 --zaps 2 --zones 2 --precincts 8 --shape 2,2:4 --program ex2.exe" ../../../python/forza.py
-      sst --add-lib-path=../../build/src/ --run-mode=init --model-options="--hartsperzap 512 --zaps 4 --zones 4 --precincts 8--shape 2,2:4 --program ex2.exe" ../../../python/forza.py
+      sst --add-lib-path=../../build/src/ --run-mode=init --model-options="--hartsperzap 512 --zaps 4 --zones 4 --precincts 8 --shape 2,2:4 --program ex2.exe" ../../../python/forza.py
     fi
   fi
 
