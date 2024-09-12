@@ -138,6 +138,7 @@ class ZEN : public SST::Component{
     SST_ELI_DOCUMENT_SUBCOMPONENT_SLOTS(
       {"zone_nic", "[FORZA] Zone NIC", "SST::Forza::zopNIC"},
       {"precinct_nic", "[FORZA] Precinct NIC", "SST::Forza::zopNIC"},
+      {"ring_nic", "[FORZA] Zone Ring Network", "SST::Forza::RingNIC"}
     )
 
     // public class members
@@ -305,10 +306,12 @@ class ZEN : public SST::Component{
     }
 
     // private data members
-    SST::Output output;                   ///< ZEN: SST output handler
-    SST::Forza::zopAPI* zone_nic{};      ///< ZEN: ZOP Network interfaces for zone network
-    SST::Forza::zopMsgID *zoneMsgID{};            ///< ZEN: manually allocated message IDs
-    SST::Forza::zopAPI* m_prec_iface{};     ///< ZEN: ZOP Network interfaces for precinct network
+    SST::Output output;                    ///< ZEN: SST output handler
+    SST::Forza::zopAPI* zone_nic{};        ///< ZEN: ZOP Network interfaces for zone network
+    SST::Forza::zopMsgID *zoneMsgID{};     ///< ZEN: manually allocated message IDs
+    SST::Forza::zopAPI* m_prec_iface{};    ///< ZEN: ZOP Network interfaces for precinct network
+    SST::Forza::RingNetAPI* zone_ring{};   ///< ZEN: zone CSR network
+
 
     // ----- BEGIN SST PARAMETERS - some of these should be camel case to match other code
     unsigned Precinct;              ///< ZEN: Precinct ID

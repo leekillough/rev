@@ -65,6 +65,12 @@ ZEN::ZEN(ComponentId_t id, Params& params)
                  "Insufficient message IDs allocated in constructor\n");
   }
 
+  zone_ring = loadUserSubComponent<SST::Forza::RingNetAPI>( "ring_nic" );
+  if (zone_ring){
+    zone_ring->setMsgHandler( new Event::Handler<ZEN>(this, &ZEN::handleRingMsg) );
+    zone_ring->setEndpointType(zopCompID::Z_ZEN);
+  }
+
   // Size internal data structures
   PerHartCSRs.resize( m_num_zaps );
   for ( auto &i : PerHartCSRs ){

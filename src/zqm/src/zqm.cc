@@ -120,6 +120,12 @@ ZQM::ZQM(ComponentId_t id, Params& params)
         zone_nic->setZoneID(ZoneId);
     }
 
+    zone_ring = loadUserSubComponent<SST::Forza::RingNetAPI>( "ring_nic" );
+    if (zone_ring) {
+        zone_ring->setMsgHandler( new Event::Handler<ZQM>(this, &ZQM::handleRingMsg) );
+        zone_ring->setEndpointType(zopCompID::Z_ZQM);
+    }
+
     // Create and init matrix of HART status
     // zap_hart_status.resize(numCores);
     // for (auto &hart_vec: zap_hart_status)

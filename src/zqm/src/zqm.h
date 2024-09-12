@@ -35,12 +35,6 @@ namespace SST::Forza{
 #define NUM_RECV_BUFFERS 2
 #define MSG_DEPTH 8
 
-// CSR registers used by the ZQM
-#define R_ZQMSTAT    0x803
-#define R_ZQMMBOXREG 0x804
-#define R_ZQMDQ_0    0x808
-#define R_ZQMDQ_7    0x80F
-
 /**
  * Assumed format when updating the ZQM MBOXREG CSR:
  * [7:0] - mboxes used (bit mask) - 8b
@@ -276,7 +270,8 @@ public:
 
     // describe the subcomponent slots
     SST_ELI_DOCUMENT_SUBCOMPONENT_SLOTS(
-    {"zone_nic","[FORZA] Zone NIC", "SST::Forza::zopNIC"},
+    {"zone_nic", "[FORZA] Zone NIC", "SST::Forza::zopNIC"},
+    {"ring_nic", "[FORZA] Zone Ring Network", "SST::Forza::RingNetNIC"}
     )
 
     // public class members
@@ -322,8 +317,9 @@ private:
     unsigned process_per_cycle;
 
     std::string my_name;
-    SST::Forza::zopAPI* zone_nic{};
-    zopMsgID *zoneMsgID{};            ///< ZQM: manually allocated message IDs
+    SST::Forza::zopAPI* zone_nic{};      ///< ZQM: zone zop NoC
+    zopMsgID *zoneMsgID{};               ///< ZQM: manually allocated message IDs
+    SST::Forza::RingNetAPI* zone_ring{}; ///< ZQM: zone csr ring network
 
     // From ZEN
     bool dma_enabled;
