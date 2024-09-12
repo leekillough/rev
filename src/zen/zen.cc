@@ -119,9 +119,9 @@ void ZEN::handleRingMsg( SST::Event *event )
 {
   SST::Forza::ringEvent *ev = static_cast<SST::Forza::ringEvent*>(event);
 
-  swtich( ev->getCSR() ){
+  switch( ev->getCSR() ){
     case R_ZENSTAT:
-      hanldeRingStatus(ev);
+      handleRingStatus(ev);
       break;
     case R_ZENEQD:
       handleRingEqData(ev);
@@ -146,9 +146,9 @@ void ZEN::handleRingOmc( SST::Forza::ringEvent *ev )
 {
   output.verbose(CALL_INFO, 7, 0, "[ZEN] %s handle ZENOMC message\n", getName().c_str());
   if ( ev->getOp() != SST::Forza::ringMsgT::R_READ )
-    output.fatal(CALL_INFO, -1, "[ZEN] %s unexpected optype message; OpType=%u\n", getName().c_str(), ev->getOp());
+    output.fatal(CALL_INFO, -1, "[ZEN] %s unexpected optype message; OpType=%" PRIu8 "\n", getName().c_str(), ev->getOp());
 
-  auto cnts = PerHartCSRs[ev->getZapId()][ev->getHartId()].mbox_cntrs;
+  auto cnts = PerHartCSRs[ev->getSrcZap()][ev->getHart()].mbox_cntrs;
   uint64_t full_cnt = 0;
   for (unsigned i = 0; i < NUM_MBOXES; i++)
     full_cnt |= ( cnts[i] << i*8 );
@@ -161,10 +161,10 @@ void ZEN::handleRingStatus( SST::Forza::ringEvent *ev )
 {
   output.verbose(CALL_INFO, 7, 0, "[ZEN] %s handle ZENSTAT message\n", getName().c_str());
   if ( ev->getOp() != SST::Forza::ringMsgT::R_READ )
-    output.fatal(CALL_INFO, -1, "[ZEN] %s unexpected optype message; OpType=%u\n", getName().c_str(), ev->getOp());
+    output.fatal(CALL_INFO, -1, "[ZEN] %s unexpected optype message; OpType=%" PRIu8 "\n", getName().c_str(), ev->getOp());
 
-  auto status = PerHartCSRs[ev->getZapId()][ev->getHartId()].status;
-  status |= ( PerHartCSRs[ev->getZapId()][ev->getHartId()].is_sending ) ? 0x0ffUL : 0;
+  auto status = PerHartCSRs[ev->getSrcZap()][ev->getHart()].status;
+  status |= ( PerHartCSRs[ev->getSrcZap()][ev->getHart()].is_sending ) ? 0x0ffUL : 0;
   sendRingResponse(ev, status);
   delete ev;
 }
@@ -173,14 +173,14 @@ void ZEN::handleRingEqData( SST::Forza::ringEvent *ev )
 {
   output.verbose(CALL_INFO, 7, 0, "[ZEN] %s handle ZENEQData message\n", getName().c_str());
   if ( ev->getOp() != SST::Forza::ringMsgT::R_UPDATE )
-    output.fatal(CALL_INFO, -1, "[ZEN] %s unexpected optype message; OpType=%u\n", getName().c_str(), ev->getOp());
+    output.fatal(CALL_INFO, -1, "[ZEN] %s unexpected optype message; OpType=%" PRIu8 "\n", getName().c_str(), ev->getOp());
 
-  auto regs = PerHartCSRs[ev->getZapId()][ev->getHartId()];
+  auto regs = PerHartCSRs[ev->getSrcZap()][ev->getHart()];
   // sanity check
   if (regs.msg_cur_word >= 8)
     output.fatal(CALL_INFO, -2, "[ZEN] %s msg_cur_word exceeded max; [zap%u][hart%u].msg_cur_word=%u\n", 
-                 getName().c_str(), ev->getZapId(), ev->getHartId(), msg_cur_word );
-  regs.msg[regs.msg_cur_word] = ev->getData();
+                 getName().c_str(), ev->getSrcZap(), ev->getHart(), regs.msg_cur_word );
+  regs.msg[regs.msg_cur_word] = ev->getDatum();
   regs.msg_cur_word++;
 
   // Update status
@@ -194,14 +194,14 @@ void ZEN::handleRingEqCtrl( SST::Forza::ringEvent *ev )
 {
   output.verbose(CALL_INFO, 7, 0, "[ZEN] %s handle ZENEQCtrl message\n", getName().c_str());
   if ( ev->getOp() != SST::Forza::ringMsgT::R_UPDATE )
-    output.fatal(CALL_INFO, -1, "[ZEN] %s unexpected optype message; OpType=%u\n", getName().c_str(), ev->getOp());
+    output.fatal(CALL_INFO, -1, "[ZEN] %s unexpected optype message; OpType=%" PRIu8 "\n", getName().c_str(), ev->getOp());
 
-  auto regs = PerHartCSRs[ev->getZapId()][ev->getHartId()];
-  regs.msg[0] = ev->getData();
-  uint64_t dest_mbox = ( ev->getData() >> ZENEQC_SHIFT_DESTMBOX ) & ZENEQC_MASK_DESTMBOX;
+  auto regs = PerHartCSRs[ev->getSrcZap()][ev->getHart()];
+  regs.msg[0] = ev->getDatum();
+  uint64_t dest_mbox = ( ev->getDatum() >> ZENEQC_SHIFT_DESTMBOX ) & ZENEQC_MASK_DESTMBOX;
   if ( regs.mbox_cntrs[dest_mbox] == UINT8_MAX )
     output.fatal(CALL_INFO, -2, "[ZEN] %s no support for saturated mbox counter yet; zap=%u, hart=%u, mbox=%u\n",
-                 getName().c_str(), ev->getZapId(), ev->getHartId(), dest_mbox);
+                 getName().c_str(), ev->getSrcZap(), ev->getHart(), dest_mbox);
   else if ( regs.mbox_cntrs[dest_mbox] == (UINT8_MAX-1) )
     regs.status |= ( 1UL << dest_mbox ); //if we're about to saturate the mbox counter, we have to set the status bit
   regs.mbox_cntrs[dest_mbox]++;
@@ -209,7 +209,7 @@ void ZEN::handleRingEqCtrl( SST::Forza::ringEvent *ev )
 
   // TODO: DOES THIS NEED A RING RESPONSE?
 
-  auto out_msg = new OutgoingMessage( regs.msg, ev->getZapId(), ev->getHartId() );
+  auto out_msg = new OutgoingMessage( regs.msg, ev->getSrcZap(), ev->getHart() );
   OutMsgQueue.push(out_msg);
   delete ev;
 }
@@ -221,17 +221,17 @@ void ZEN::handleRingSpawn( SST::Forza::ringEvent *ev )
 
   output.verbose(CALL_INFO, 7, 0, "[ZEN] %s handle ZENEQSpawn message\n", getName().c_str());
   if ( ev->getOp() != SST::Forza::ringMsgT::R_UPDATE )
-    output.fatal(CALL_INFO, -1, "[ZEN] %s unexpected optype message; OpType=%u\n", getName().c_str(), ev->getOp());
+    output.fatal(CALL_INFO, -1, "[ZEN] %s unexpected optype message; OpType=%" PRIu8 "\n", getName().c_str(), ev->getOp());
 
-  auto regs = PerHartCSRs[ev->getZapId()][ev->getHartId()];
+  auto regs = PerHartCSRs[ev->getSrcZap()][ev->getHart()];
   // TODO: Check on status before setting it?
   // TODO: Check on value of spawn_cur_word?
   regs.status |= (1UL << ZENSTAT_SHIFT_SPNBUSY);
 
-  regs.spawn_thread[regs.spawn_cur_word] = ev->getData();
+  regs.spawn_thread[regs.spawn_cur_word] = ev->getDatum();
   regs.spawn_cur_word++;
   if (regs.spawn_cur_word == 2){
-    auto out_spawn = new OutgoingSpawn( regs.spawn_thread, ev->getZapId(), ev->getHartId() );
+    auto out_spawn = new OutgoingSpawn( regs.spawn_thread, ev->getSrcZap(), ev->getHart() );
     OutSpawnQueue.push(out_spawn);
   }
   // TODO: DOES THIS NEED A RING RESPONSE?
@@ -299,7 +299,8 @@ void ZEN::sendMsgZop(OutgoingMessage* msg, bool is_msg, uint16_t zop_msg_id)
     zop->setDestPCID(dest_zone);
     zop->setDestPrec(dest_prec);
   } else {
-    setLocalRzaAsZopDest(rzaMsg);
+    output.fatal( CALL_INFO, -1, "ZEN [%s] Not yet supported\n", getName().c_str() );
+    //setLocalRzaAsZopDest(zop);
   }
   
   std::vector<uint64_t> payload;
@@ -345,11 +346,11 @@ void ZEN::handleMsgAck(zopEvent *ack)
   ack->decodeEvent();
   // Reduce the mailbox counter
   auto regs = PerHartCSRs[ack->getDestZCID()][ack->getDestHart()];
-  auto cntr = regs.mbox_cntr[ack->getCredit()];
+  auto cntr = regs.mbox_cntrs[ack->getCredit()];
   // Sanity check
   if (cntr == 0){
     output.fatal(CALL_INFO, -1, "ZEN[%s]; Counter was zero; packet %s to %s \n", getName().c_str(), 
-                 ack->getSrcString().c_str(), ev->getDestString().c_str());
+                 ack->getSrcString().c_str(), ack->getDestString().c_str());
   }
   cntr--;
   // we've reduced the counter, so the busy bit for this mbox should be cleared (active sending is handled with the is_sending flag)
@@ -362,14 +363,14 @@ void ZEN::handleMsgAck(zopEvent *ack)
     SeqNumMgrList[retry_num] = false;
   } else {
     output.fatal(CALL_INFO, -3, "ZEN[%s]; SeqNumMgrList[%u] was false; Packet %s to %s \n", getName().c_str(), 
-                 retry_num, ack->getSrcString().c_str(), ev->getDestString().c_str());
+                 retry_num, ack->getSrcString().c_str(), ack->getDestString().c_str());
   }
   
   // Remove the entry from the RetryMgrMap
   auto num_deletes = RetryMgrMap.erase(retry_num);
   if (num_deletes != 1) {
     output.fatal(CALL_INFO, -2, "ZEN[%s]; Deleted %u entries in the RetryMgrMap[%u]; Packet %s to %s \n", getName().c_str(), 
-                 num_deletes, retry_num, ack->getSrcString().c_str(), ev->getDestString().c_str());
+                 num_deletes, retry_num, ack->getSrcString().c_str(), ack->getDestString().c_str());
   }
 }
 
@@ -470,7 +471,7 @@ void ZEN::ExecSpawns()
   // Set packet header info
   zop->setType(SST::Forza::zopMsgT::Z_TMIG);
   zop->setOpc(SST::Forza::zopOpc::Z_TMIG_SPAWN);
-  zop->setID(zop_msg_id);
+  zop->setID(0);
 
   // Set source to be the sending hart
   zop->setSrcHart(spawn->src_hart);
@@ -518,10 +519,10 @@ void ZEN::handleIncomingPrecZOP(SST::Event *event) {
       //to_zone_noc_q.push_back(ev);
       break;
 
+    //case SST::Forza::zopMsgT::Z_HZOPV: [[fallthrough]];
+    //case SST::Forza::zopMsgT::Z_RZOP: [[fallthrough]];
     case SST::Forza::zopMsgT::Z_MZOP: [[fallthrough]];
-    case SST::Forza::zopMsgT::Z_HZOPAC: [[fallthrough]];
-    case SST::Forza::zopMsgT::Z_HZOPV: [[fallthrough]];
-    case SST::Forza::zopMsgT::Z_RZOP:
+    case SST::Forza::zopMsgT::Z_HZOPAC:
       // Memory zop type - forward on to zone NoC
       //to_zone_noc_q.push_back(ev);
       output.fatal(CALL_INFO, -1, "ZEN %s: received an incoming memory zop packet (unhandled)\n",
@@ -581,10 +582,10 @@ void ZEN::handleIncomingZOP(SST::Event *event) {
                    getName().c_str());
       break;
 
+    //case SST::Forza::zopMsgT::Z_HZOPV: [[fallthrough]];
+    //case SST::Forza::zopMsgT::Z_RZOP: [[fallthrough]];
     case SST::Forza::zopMsgT::Z_MZOP: [[fallthrough]];
-    case SST::Forza::zopMsgT::Z_HZOPAC: [[fallthrough]];
-    case SST::Forza::zopMsgT::Z_HZOPV: [[fallthrough]];
-    case SST::Forza::zopMsgT::Z_RZOP:
+    case SST::Forza::zopMsgT::Z_HZOPAC:
       // Memory zop type - should be strictly outgoing to precinct NoC
       if (isDestLocal(ev))
         output.fatal(CALL_INFO, -2, "ZEN %s: received a memory zop with local dest\n",

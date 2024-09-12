@@ -29,6 +29,7 @@
 
 #include "zen_sst.h"
 #include "ZOPNET.h"
+#include "RingNet.h"
 #include <string>
 #include <bitset>
 #include <queue>
@@ -37,181 +38,27 @@
 
 namespace SST::Forza{
 
-// --------------------------------------------
-// Preprocessor defs
-// --------------------------------------------
+  class ZenPerHartRegs {
+    public:
+      // Note: may need to add some other status variables, etc in here
+      // May want to put this into the zen class
+      uint64_t status{ 1UL << 63 }; //default to turning on the enabled bit
+      std::array<uint64_t, ACTOR_MSG_LENGTH> msg{}; // word 0 is control, 1-7 are data
+      std::array<uint8_t, NUM_MBOXES> mbox_cntrs{};
+      uint8_t msg_cur_word{1};
+      bool is_sending{}; //signifies that the hart is in the process of sending a message; OR'd with mbox_busy portion of status register when status is read 
+      std::array<uint64_t, 2> spawn_thread{};
+      uint8_t spawn_cur_word{0};
+  };
 
-#define NUM_MBOXES 8
-#define ACTOR_MSG_LENGTH 8
-
-// My version of data word for the ZENENQ_CTRL
-// { Fill[35:0], Precinct[10:0], Zone[2:0], Mbox[2:0], logicalPE[10:0]}
-// {36, 11, 3, 3, 11}
-#define R_SHIFT_MBOX 11
-#define R_SHIFT_ZONE 14
-#define R_SHIFT_PREC 17
-
-#define R_MASK_LOGPE 0x7FF
-#define R_MASK_MBOX  0b111
-#define R_MASK_ZONE  0b111
-#define R_MASK_PREC  0x7FF
-
-// CSR registers used by the ZEN
-#define R_ZENSTAT 0x802
-// messaging 
-#define R_ZENEQC 0x840
-#define R_ZENEQD 0x841
-#define R_ZENEQS 0x842 // for spawn
-#define R_ZENOMC 0xcc3
-// spawning
-
-/*
- The bit assignments of the Control Word fields provided by the ZAP are shown below:
-  [63]           Message Clear
-  [47:40]     Message Opcode: 8b
-  [39:36]     Message AID; 4b
-  [35:33]     Destination Mailbox;    3b
-  [32:20]     Destination Precinct; 13b
-  [19:16]     Destination Zone; 4b
-  [15:12]     Destination Zone Component; 4b
-  [11:0]       Destination PE; 12b
-
-  [60:48] retry seq number; 13b
-  // From the Zone & Zap doc - 15-aug-2024
-*/
-#define ZENEQC_SHIFT_DESTCOMP 12
-#define ZENEQC_SHIFT_DESTZONE 16
-#define ZENEQC_SHIFT_DESTPREC 20
-#define ZENEQC_SHIFT_DESTMBOX 33
-#define ZENEQC_SHIFT_MSGAID   36
-#define ZENEQC_SHIFT_MSGOPC   40
-#define ZENEQC_SHIFT_RETRYNUM 48
-#define ZENEQC_SHIFT_MSGCLR 63
-
-#define ZENEQC_MASK_DESTPE   0x0fff
-#define ZENEQC_MASK_DESTCOMP 0x0f
-#define ZENEQC_MASK_DESTZONE 0x0f
-#define ZENEQC_MASK_DESTPREC 0x01fff
-#define ZENEQC_MASK_DESTMBOX 0x07
-#define ZENEQC_MASK_MSGAID   0x0f
-#define ZENEQC_MASK_MSGOPC   0x0ff
-#define ZENEQC_MASK_RETRYNUM 0x01fff
-#define ZENEQC_MASK_MSGCLR   0x1
-
-#define ZENSTAT_SHIFT_SPNBUSY 32
-
-// --------------------------------------------
-// ringMsgT : Ring Msg Type
-// --------------------------------------------
-enum class ringMsgT : uint8_t {
-  R_RETDATA = 0b00,  /// Forza RETURN DATA
-  R_READ    = 0b01,  /// Forza READ
-  R_RMW     = 0b10,  /// Forza RMW
-  R_UPDATE  = 0b11,  /// Forza UPDATE
-};
-
-// --------------------------------------------
-// ringEvent
-// --------------------------------------------
-class ringEvent : public SST::Event {
-  /**
-   * TODO: NEEDED FUNCTIONS
-   * getCSR() // return a uint16_t with the CSR reg value
-   * getZapId() // return a uint8_t with the zap number
-   * getHartId() // return a uint16_t with the hart number 
-   * getOp() // retun operation
-   * getData() // return data word
-   */
-
-public:
-  // Use this constructor only for the initial broadcast
-  explicit ringEvent( unsigned srcID, ringCompID srcComp )
-    : Event(), SrcComp( srcComp ), Hart( 0 ), DestComp( ringCompID::R_UNKNOWN ), Type( ringMsgT::R_RETDATA ),
-      CSR( ringRegT::R_ZENSTAT ), Datum( srcID ) { /* Empty constructor */ }
-
-  // raw event constructor
-  explicit ringEvent()
-    : Event(), SrcComp( ringCompID::R_UNKNOWN ), Hart( 0 ), DestComp( ringCompID::R_UNKNOWN ), Type( ringMsgT::R_RETDATA ),
-      CSR( ringRegT::R_ZENSTAT ), Datum( 0 ) { /* Empty constructor */ }
-
-  explicit ringEvent( ringCompID srcComp, uint16_t hart, ringCompID destComp, ringMsgT type, ringRegT csr, uint64_t datum )
-    : Event(), SrcComp( srcComp ), Hart( hart ), DestComp( destComp ), Type( type ), CSR( csr ),
-      Datum( datum ) { /* Empty constructor */ }
-
-  virtual Event* clone( void ) override {
-    ringEvent* ev = new ringEvent( *this );
-    return ev;
-  }
-
-  /** TODO: ADD SERIALIZERS? **/
-
-  /* Set functions */
-
-  /* Get functions */
-  ringCompID getSrcComp() { return SrcComp; }
-
-  ringCompID getDestComp() { return DestComp; }
-
-  std::string getDestCompStr() { return getCompStr( false ); }
-
-  std::string getSrcCompStr() { return getCompStr( true ); }
-
-  std::string getCompStr( bool isSrc ) {
-    ringCompID C = ( isSrc ) ? SrcComp : DestComp;
-    switch( C ) {
-    case ringCompID::R_ZAP0: return "ZAP0"; break;
-    case ringCompID::R_ZAP1: return "ZAP1"; break;
-    case ringCompID::R_ZAP2: return "ZAP2"; break;
-    case ringCompID::R_ZAP3: return "ZAP3"; break;
-    case ringCompID::R_ZEN: return "ZEN"; break;
-    case ringCompID::R_ZQM: return "ZQM"; break;
-    default: return "UNKNOWN"; break;
-    }
-  }
-
-private:
-  ringCompID SrcComp;   /// ringEvent: Dest component
-  uint16_t   Hart;      /// ringEvent: HART involved in transaction
-  ringCompID DestComp;  /// ringEvent: Dest component
-  ringMsgT   Type;      /// ringEvent: Command type
-  ringRegT   CSR;       /// ringEvent: Register accessed
-  uint64_t   Datum;     /// ringEvent: data payload // TODO: Vector?
-
-public:
-  // ringEvent: event serializer
-  //void serialize_order( SST::Core::Serialization::serializer& ser ) override {
-  // we only serialize the raw packet
-  //  Event::serialize_order( ser );
-  //ser & Packet;
-  //}
-
-  // ringEvent: implements the nic serialization
-  ImplementSerializable( SST::Forza::ringEvent );
-};  //class ringEvent
-
-
-
-class ZenPerHartRegs {
-  // Note: may need to add some other status variables, etc in here
-  // May want to put this into the zen class
-private:
-  uint64_t status{ (1UL << 63;) }; //default to turning on the enabled bit
-  std::array<uint64_t, ACTOR_MSG_LENGTH> msg{}; // word 0 is control, 1-7 are data
-  std::array<uint8_t, NUM_MBOXES> mbox_cntrs{};
-  uint8_t msg_cur_word{1};
-  bool is_sending{}; //signifies that the hart is in the process of sending a message; OR'd with mbox_busy portion of status register when status is read 
-  std::array<uint64_t, 2> spawn_thread{};
-  uint8_t spawn_cur_word{0};
-};
 
 // Configure these as a base + inhereted classes?
 class OutgoingMessage {
+  public:
+    OutgoingMessage( std::array<uint64_t, ACTOR_MSG_LENGTH> data, uint8_t zap, uint16_t hart ) :
+      msg(data), src_zap(zap), src_hart(hart)
+      { /* empty */}
 
-  OutgoingMessage( std::array<uint64_t, ACTOR_MSG_LENGTH> data, uint8_t zap, uint16_t hart ) :
-    msg(data), src_zap(zap), src_hart(hart)
-    { /* empty */}
-
-  private:
     // More info needed?
     std::array<uint64_t, ACTOR_MSG_LENGTH> msg{};
     uint8_t src_zap;
@@ -221,12 +68,11 @@ class OutgoingMessage {
 };
 
 class OutgoingSpawn {
+  public:
+    OutgoingSpawn( std::array<uint64_t, 2> data, uint8_t zap, uint16_t hart ) :
+      thread(data), src_zap(zap), src_hart(hart)
+      { /* empty */ }
 
-  OutgoingSpawn(std::array<uint64_t, 2> data, uint8_t zap, uint16_t hart ) :
-    thread(data), src_zap(zap), src_hart(hart)
-    { /* empty */ }
-
-  private:
     // More info needed?
     std::array<uint64_t, 2> thread{};
     uint8_t src_zap;
@@ -317,8 +163,6 @@ class ZEN : public SST::Component{
     bool clock(SST::Cycle_t cycle);
 
   private:
-    // private class members
-
     // Ring based functions
     void handleRingMsg( SST::Event *event );
     void handleRingOmc( SST::Forza::ringEvent *ev );
@@ -338,6 +182,8 @@ class ZEN : public SST::Component{
     void updateMsgPipe0();
 
     void handleMsgAck(zopEvent *ack);
+
+    void ExecSpawns();
 
     /**
      * msg: zen msg to be sent
@@ -389,10 +235,10 @@ class ZEN : public SST::Component{
     void helper_handleMsgZop(SST::Forza::zopEvent *ev);
 
     /// ZEN: retrieve the read ACS
-    uint64_t  getReadACS(uint64_t) { return (acs_pair & Z_ACS_READ) >> 32; }
+    //uint64_t  getReadACS(uint64_t acs_pair) { return (acs_pair & Z_ACS_READ) >> 32; }
 
     /// ZEN: retrieve the write ACS
-    uint64_t  getWriteACS(uint64_t) { return acs_pair & Z_ACS_WRITE; }
+    //uint64_t  getWriteACS(uint64_t acs_pair) { return acs_pair & Z_ACS_WRITE; }
 
 
     /// ZEN: preps to send the RZA a STORE

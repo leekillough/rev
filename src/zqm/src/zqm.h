@@ -27,6 +27,7 @@
 
 #include "zqm_sst.h"
 #include "ZOPNET.h"
+#include "RingNet.h"
 #include <string>
 
 namespace SST::Forza{
@@ -214,11 +215,11 @@ enum class msgBuffState : uint8_t {
     IDLE,
     FILLING, // unused for now
     READY
-} 
+};
 
 class ZqmMsgBuffer {
-
-    void setMsg(std::vector<uint64_t P){
+public:
+    void setMsg( std::vector<uint64_t> P ){
         msg.clear();
         for (auto i : P)
             msg.push_back(i);
@@ -226,14 +227,13 @@ class ZqmMsgBuffer {
 
     std::vector<uint64_t> msg;
     uint8_t msg_cur_word{1};
-    msgBuffState buff_state{IDLE};
+    msgBuffState buff_state{msgBuffState::IDLE};
 };
 
 class ZqmPerHartRegs {
+public:
   // Note: may need to add some other status variables, etc in here
   // May want to put this into the zqm class
-
-private:
   uint64_t status{0};
   uint16_t logical_pe{UINT16_MAX};
   uint8_t aid{UINT8_MAX};
@@ -360,7 +360,7 @@ private:
 
     void processMessagingMsgs(); // invoked by clock handler
 
-    void sendZopAck(SST::Forza::zopEvent *event, zopMsgT *msg_type, zopOpc *msg_opc);
+    void sendZopAck(SST::Forza::zopEvent *event, zopMsgT msg_type, zopOpc msg_opc);
 
     void processRzaMsgs();  // invoked by clock handler
     //void processRzaThreadDataReturn(SST::Forza::zopEvent *ev);

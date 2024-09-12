@@ -113,7 +113,7 @@ ZQM::ZQM(ComponentId_t id, Params& params)
     bool zone_nic_enabled = true; // temporary use while developing ring code
     if (zone_nic_enabled){
         zone_nic = loadUserSubComponent<SST::Forza::zopAPI>( "zone_nic" );
-        zone_nic->setMsgHandler(new Event::Handler<ZEN>(this, &ZQM::handleIncomingZOP));
+        zone_nic->setMsgHandler(new Event::Handler<ZQM>(this, &ZQM::handleIncomingZOP));
         zone_nic->setEndpointType(zopCompID::Z_ZQM);
         zone_nic->setNumHarts(numHarts);
         zone_nic->setPrecinctID(PrecinctId);
@@ -190,9 +190,9 @@ void ZQM::handleRingStatus( SST::Forza::ringEvent *ev )
 {
   output.verbose(CALL_INFO, 7, 0, "[ZQM] %s handle ZENSTAT message\n", getName().c_str());
   if ( ev->getOp() != SST::Forza::ringMsgT::R_READ )
-    output.fatal(CALL_INFO, -1, "[ZQM] %s unexpected optype message; OpType=%u\n", getName().c_str(), ev->getOp());
+    output.fatal(CALL_INFO, -1, "[ZQM] %s unexpected optype message; OpType=%" PRIu8 "\n", getName().c_str(), ev->getOp());
 
-  auto status = PerHartCSRs[ev->getZapId()][ev->getHartId()].status;
+  auto status = PerHartCSRs[ev->getSrcZap()][ev->getHart()].status;
   sendRingResponse(ev, status);
   delete ev;
 }
@@ -202,9 +202,9 @@ void ZQM::handleRingMboxReg( SST::Forza::ringEvent *ev )
     output.verbose(CALL_INFO, 7, 0, "[ZQM] %s; handling a mailbox registration message\n", getName().c_str() );
     // Writing non-zero configures a mapping
     // Writing 0 clears a mapping - ignore for now
-    auto x = ev->getData();
+    auto x = ev->getDatum();
     if ( x == 0 ){
-        output.verbose(CALL_INFO, 5, 0, "[ERROR] [ZQM] %s; mailbox unregister not handled\n", getName().c_str() )
+        output.verbose(CALL_INFO, 5, 0, "[ERROR] [ZQM] %s; mailbox unregister not handled\n", getName().c_str() );
         delete ev;
         return;
     }
@@ -227,8 +227,8 @@ void ZQM::handleRingMboxReg( SST::Forza::ringEvent *ev )
     auto regs = PerHartCSRs[phys_zap][phys_hart];
     regs.logical_pe = logic_pe;
     regs.aid = aid;
-    for ( uint8_t i = 0; i < NUM_MBOXES, i++ ){
-        regs.active_mboxes[i] = ( ( ( mbox_bitmap >> i ) & 1 ) == 1);
+    for ( uint8_t i = 0; i < NUM_MBOXES; i++ ){
+        regs.active_mboxes[i] = ( ( ( mbx_bitmap >> i ) & 1 ) == 1);
     }
 }
 
@@ -237,8 +237,8 @@ void ZQM::handleRingDq( SST::Forza::ringEvent *ev )
     output.verbose(CALL_INFO, 7, 0, "[ZQM] %s; handling a dequeue message\n", getName().c_str() );
     // Maybe use a ZEN like reading scheme for now to get something implemented
     // That would at least let us work on developing s/w
-    auto regs = PerHartCSRs[ev->getZapId()][ev->getHartId()];
-    auto mbox = regs.mbox_buffs[( ev->getCSR & R_MASK_ZQMDQMBOX )];
+    auto regs = PerHartCSRs[ev->getSrcZap()][ev->getHart()];
+    auto mbox = regs.mbox_buffs[( ev->getCSR() & R_MASK_ZQMDQMBOX )];
 
     if ( mbox.buff_state != msgBuffState::READY )
         output.fatal(CALL_INFO, -1, "[ZQM] %s; messager buffer not ready \n", getName().c_str() );
@@ -247,15 +247,15 @@ void ZQM::handleRingDq( SST::Forza::ringEvent *ev )
     auto ret_data = mbox.msg[mbox.msg_cur_word];
 
     // Use data field to do the proper read/write/update
-    if ( ev->getData() == 0 ){
+    if ( ev->getDatum() == 0 ){
         if (mbox.msg_cur_word == 7) //sent last word; get next msg
             mbox.buff_state = msgBuffState::IDLE;
         else
             mbox.msg_cur_word++;
-    } else if ( ev->getData() == 1 ) {
+    } else if ( ev->getDatum() == 1 ) {
         mbox.buff_state = msgBuffState::IDLE;
     } else {
-        output.fatal(CALL_INFO, -2, "[ZQM] %s; deque msg with unexpected data = %" PRIu64 "\n", getName().c_str(), ev->getData() );
+        output.fatal(CALL_INFO, -2, "[ZQM] %s; deque msg with unexpected data = %" PRIu64 "\n", getName().c_str(), ev->getDatum() );
     }
 
     sendRingResponse( ev, ret_data );
@@ -286,13 +286,13 @@ void ZQM::updateMailboxes()
         return;
 
     auto msg = IncomingMsgQueue.front();
-    auto dest_aid = msg->getAppId();
+    auto dest_aid = msg->getAppID();
     auto dest_mbox = msg->getCredit();
 
     // To match the zen encoding, the dest_logical_pe is an 11b field; bottom 9b are dest_hart in msg
     // upper 2b are lower 2b of dest_zcid in msg
     auto dest_pe = msg->getDestHart();
-    uint8_t pe_top = ( (uint8_t)msg->getZCID() & 0x3 ) << 9;
+    uint8_t pe_top = ( (uint8_t)msg->getDestZCID() & 0x3 ) << 9;
     dest_pe |= pe_top;
 
     std::pair<uint8_t, uint16_t> logic_dest(dest_aid, dest_pe);
@@ -341,16 +341,16 @@ void ZQM::handleIncomingZOP(SST::Event *event)
                    ev->getID());
 
     if (ev->getType() == SST::Forza::zopMsgT::Z_RESP) {
-        output.fatal(CALL_INFO, -2, "ZQM [%s]: Received rza response - not currently handling\n", getName.c_str());
+        output.fatal(CALL_INFO, -2, "ZQM [%s]: Received rza response - not currently handling\n", getName().c_str());
         //rza_responses.push_back(ev);
     } else if (ev->getType() == SST::Forza::zopMsgT::Z_MSG) {
         msg_zop_q.push(ev);
     } else if (ev->getType() == SST::Forza::zopMsgT::Z_TMIG){
-        output.fatal(CALL_INFO, -2, "ZQM [%s]: Received Z_TMIG - not currently handling\n", getName.c_str());
+        output.fatal(CALL_INFO, -2, "ZQM [%s]: Received Z_TMIG - not currently handling\n", getName().c_str());
         tmig_zop_q.push(ev);
     } else{
         output.fatal(CALL_INFO, -2, "ZQM [%s]: Received invalid ZOP; id=%u\n", 
-                     getName.c_str(),
+                     getName().c_str(),
                      ev->getID());
         return;
     }
@@ -677,7 +677,7 @@ void ZQM::sendACK(SST::Forza::zopEvent *ev, bool to_zone_noc)
 }
 #endif
 
-void ZQM::sendZopAck(SST::Forza::zopEvent *event, zopMsgT *msg_type, zopOpc *msg_opc)
+void ZQM::sendZopAck(SST::Forza::zopEvent *event, zopMsgT msg_type, zopOpc msg_opc)
 {
     // Note: Caller handles what happens to event
     // Create zop
@@ -690,10 +690,10 @@ void ZQM::sendZopAck(SST::Forza::zopEvent *event, zopMsgT *msg_type, zopOpc *msg
     ack_msg->setAppID(event->getAppID());
 
     zone_nic->send(ack_msg, static_cast<zopCompID>(ack_msg->getDestZCID()));
-    std::string str = ack->msgTToStr(msg_type);
+    std::string str = ack_msg->msgTToStr(msg_type);
     output.verbose(CALL_INFO, 9, 0, "ZQM [%s] sending %s:%u with msg_id=%" PRIu16 " from in zop %s to %s\n",
-                    getName().c_str(), str.c_str(), (uint8_t)msg_opc, ev->getID(), event->getSrcString().c_str(), 
-                    ack->getDestString().c_str());
+                    getName().c_str(), str.c_str(), (uint8_t)msg_opc, event->getID(), event->getSrcString().c_str(), 
+                    ack_msg->getDestString().c_str());
 }
 
 void ZQM::processTMigMsgs()
@@ -704,7 +704,7 @@ void ZQM::processTMigMsgs()
     for ( unsigned i = 0; i < process_per_cycle; i++ ) {
         auto *event = tmig_zop_q.front();
         tmig_zop_q.pop();
-        output.verbose(CALL_INFO, 7, 0, "ZQM [%s]: Processing tmig packet id=%u for ZQM\n", getName.c_str(), event->getID() );
+        output.verbose(CALL_INFO, 7, 0, "ZQM [%s]: Processing tmig packet id=%u for ZQM\n", getName().c_str(), event->getID() );
         if ( event->getOpc() == SST::Forza::zopOpc::Z_TMIG_REQUEST ){
             AwaitingThreadsQueue.push( event->getSrcZCID() );
         } else { 
