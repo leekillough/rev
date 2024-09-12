@@ -686,6 +686,7 @@ void RevCPU::processZOPQ() {
           output.fatal( CALL_INFO, -1, "[FORZA][RZA] Failed to inject HZOP into pipeline; ID=%d\n", zev->getID() );
         }
         break;
+#if 0
       case Forza::zopMsgT::Z_HZOPV:
         // send to the HZOP pipeline
         output.fatal(
@@ -695,6 +696,7 @@ void RevCPU::processZOPQ() {
           zNic->msgTToStr( zev->getType() ).c_str()
         );
         break;
+#endif
       default:
         output.fatal(
           CALL_INFO, -1, "[FORZA][RZA] RZA's cannot handle ZOP messages of Type=%s\n", zNic->msgTToStr( zev->getType() ).c_str()

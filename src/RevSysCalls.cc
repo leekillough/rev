@@ -4156,8 +4156,8 @@ EcallStatus RevCore::ECALL_forza_zqm_setup() {
     CALL_INFO,
     5,
     0,
-    "Arguments: mboxes_used=0x%lx, logcial_pe=%lu, hart=%lu,"
-    " zap=%lu, aid=%lu\n",
+    "Arguments: mboxes_used=0x%llx, logcial_pe=%llu, hart=%u,"
+    " zap=%u, aid=%llu\n",
     mboxs_used,
     logical_pe,
     HartToExecID,

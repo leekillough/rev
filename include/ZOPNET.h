@@ -335,7 +335,8 @@ enum class zopCompID : uint8_t {
   Z_RZA      = 0b00001000,  /// zopCompID: RZA
   Z_ZQM      = 0b00001010,  /// zopCompID: ZQM
   Z_ZEN      = 0b00001100,  /// zopCompID: ZEN
-  Z_PREC_ZIP = 0b00001111,  /// zopCompID: PRECINCT ZIP
+  Z_PREC_ZIP = 0b00001110,  /// zopCompID: PRECINCT ZIP - update doc?
+  Z_UNK_COMP = 0b00001111,  /// zopCompID:: Z_UNK_COMP - mostly needed for initialization
 };
 
 // --------------------------------------------

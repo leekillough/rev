@@ -789,7 +789,8 @@ bool RZAAMOCoProc::handleHZOP( Forza::zopEvent* zev, bool& flag ) {
 }
 
 bool RZAAMOCoProc::InjectZOP( Forza::zopEvent* zev, bool& flag ) {
-  if( ( zev->getType() != Forza::zopMsgT::Z_HZOPAC ) && ( zev->getType() != Forza::zopMsgT::Z_HZOPV ) ) {
+  //if( ( zev->getType() != Forza::zopMsgT::Z_HZOPAC ) && ( zev->getType() != Forza::zopMsgT::Z_HZOPV ) ) {
+  if( zev->getType() != Forza::zopMsgT::Z_HZOPAC ) {
     // wrong ZOP type injected
     output->fatal(
       CALL_INFO, -1, "[FORZA][RZA][HZOP]: Cannot handle ZOP message of type: %s\n", zNic->msgTToStr( zev->getType() ).c_str()

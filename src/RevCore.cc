@@ -1677,7 +1677,7 @@ void RevCore::MarkLoadComplete( const MemReq& req ) {
 }
 
 void RevCore::ReqThreadFromZqm() {
-  output.verbose( CALL_INFO, 11, 0, "NOTE Core %" PRIu32 " needs to request a thread\n", id );
+  output->verbose( CALL_INFO, 11, 0, "NOTE Core %" PRIu32 " needs to request a thread\n", id );
   if( !HasIdleHart() )
     return;
 
@@ -1706,6 +1706,7 @@ void RevCore::ReqThreadFromZqm() {
 
   zNic->send(zev, SST::Forza::zopCompID::Z_ZQM,
              zNic->getPCID(Zone), Precinct);
+#endif
 }
 
 bool RevCore::ClockTick( SST::Cycle_t currentCycle ) {
@@ -1714,7 +1715,7 @@ bool RevCore::ClockTick( SST::Cycle_t currentCycle ) {
   Stats.totalCycles++;
 
   // FORZA specific
-  if ( zNic && !ThreadReqd )
+  if( zNic && !ThreadReqd )
     ReqThreadFromZqm();
 
   // -- MAIN PROGRAM LOOP --

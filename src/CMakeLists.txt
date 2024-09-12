@@ -28,6 +28,7 @@ set(RevCPUSrcs
 
 set(ZOPSrcs
 ZOPNET.cc
+RingNet.cc
 )
 
 add_subdirectory(../common common)
