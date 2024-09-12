@@ -4140,37 +4140,42 @@ EcallStatus RevCore::ECALL_forza_zen_setup() {
 #endif
 }
 
-// 4006, forza_zqm_setup(uint64_t addr, uint64_t size, uint64_t min_hart, uint64_t max_hart, uint64_t seq_ld_flag);
+// 4006, forza_zqm_setup(uint64_t reg_value);
 EcallStatus RevCore::ECALL_forza_zqm_setup() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: forza_zqm_setup called by thread %" PRIu32 " on hart %" PRIu32 "\n", GetActiveThreadID(), HartToExecID
   );
 
-  uint64_t mboxs_used = (uint64_t) RegFile->GetX<uint64_t>( RevReg::a0 );
-  uint64_t logical_pe = (uint64_t) RegFile->GetX<uint64_t>( RevReg::a1 );
+  //uint64_t mboxs_used = (uint64_t) RegFile->GetX<uint64_t>( RevReg::a0 );
+  //uint64_t logical_pe = (uint64_t) RegFile->GetX<uint64_t>( RevReg::a1 );
 
-  uint8_t  zap        = (uint8_t) zNic->getEndpointType();
-  uint64_t aid        = 0;  // FIXME
+  //uint8_t  zap        = (uint8_t) zNic->getEndpointType();
+  //uint64_t aid        = 0;  // FIXME
 
-  output->verbose(
-    CALL_INFO,
-    5,
-    0,
-    "Arguments: mboxes_used=0x%llx, logcial_pe=%llu, hart=%u,"
-    " zap=%u, aid=%llu\n",
-    mboxs_used,
-    logical_pe,
-    HartToExecID,
-    zap,
-    aid
-  );
+  uint64_t reg_value = (uint64_t) RegFile->GetX<uint64_t>( RevReg::a0 );
+
+  output->verbose( CALL_INFO, 5, 0, "Arguments: reg_value=0x%" PRIx64 "\n", reg_value );
 
   // Using values in zqm.h
+#if 0
   uint64_t outreg = mboxs_used & 0x0FF;
   outreg |= ( ( logical_pe & 0x7FF ) << 8 );
   outreg |= ( ( HartToExecID & 0x1FF ) << 19 );
   outreg |= ( ( zap & 0x0F ) << 28 );
   outreg |= ( ( aid & 0x0F ) << 60 );
+#endif
+
+  SST::Forza::ringEvent* ring_ev = new SST::Forza::ringEvent(
+    zNic->getEndpointType(), HartToExecID, SST::Forza::zopCompID::Z_ZQM, SST::Forza::ringMsgT::R_UPDATE, R_ZQMMBOXREG, reg_value
+  );
+
+  if( zoneRing ) {
+    uint64_t next_dest = zoneRing->getNextAddress();
+    zoneRing->send( ring_ev, next_dest );
+  } else {
+    output->verbose( CALL_INFO, 5, 0, "[ERROR] NO RING NETWORK\n" );
+    delete ring_ev;
+  }
 
   // NOTE: THIS WILL BE THROUGH THE RING RATHER THAN A ZOP
 #if 0

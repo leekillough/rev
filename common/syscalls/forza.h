@@ -27,11 +27,7 @@ FORZA_SYSCALL( 4005, int forza_zen_setup( uint64_t addr, size_t size, uint64_t t
  * @return
  *
  */
-FORZA_SYSCALL( 4006, int forza_zqm_setup( uint64_t addr,
-                                          uint64_t size,
-                                          uint64_t min_hart,
-                                          uint64_t max_hart,
-                                          uint64_t seq_ld_flag ) );
+FORZA_SYSCALL( 4006, int forza_zqm_setup( uint64_t reg_value ) );
 
 FORZA_SYSCALL( 4007, int forza_get_harts_per_zap() );
 FORZA_SYSCALL( 4008, int forza_get_zaps_per_zone() );

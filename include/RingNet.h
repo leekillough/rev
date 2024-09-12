@@ -42,6 +42,12 @@ namespace SST::Forza {
 #define R_ZENOMC              0xcc3
 // spawning
 
+// CSR registers used by the ZQM
+#define R_ZQMSTAT             0x803
+#define R_ZQMMBOXREG          0x804
+#define R_ZQMDQ_0             0x808
+#define R_ZQMDQ_7             0x80F
+
 // encoding for the ring event
 /**
  * [32:31] -- cmd

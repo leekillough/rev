@@ -40,6 +40,7 @@
 #include "RevThread.h"
 
 // -- FORZA Headers
+#include "RingNet.h"
 #include "ZOPNET.h"
 
 namespace SST::RevCPU {
@@ -313,10 +314,11 @@ private:
   unsigned Precinct;  ///< RevCPU: FORZA precinct ID
   unsigned Zone;      ///< RevCPU: FORZA zone ID
 
-  Forza::zopAPI*   zNic;             ///< RevCPU: FORZA ZOP NIC
-  Forza::zopMsgID* zNicMsgIds;       ///< RevCPU: FORZA ZOP NIC Message ID handler
-  TimeConverter*   timeConverter{};  ///< RevCPU: SST time conversion handler
-  SST::Output      output{};         ///< RevCPU: SST output handler
+  Forza::zopAPI*     zNic;             ///< RevCPU: FORZA ZOP NIC
+  Forza::zopMsgID*   zNicMsgIds;       ///< RevCPU: FORZA ZOP NIC Message ID handler
+  Forza::RingNetAPI* zoneRing{};       ///< RevCPU: FORZA Zone Ring network
+  TimeConverter*     timeConverter{};  ///< RevCPU: SST time conversion handler
+  SST::Output        output{};         ///< RevCPU: SST output handler
 
   nicAPI*     Nic{};   ///< RevCPU: Network interface controller
   RevMemCtrl* Ctrl{};  ///< RevCPU: Rev memory controller
@@ -436,6 +438,9 @@ private:
 
   /// RevCPU: Handle FORZA Thread Migration (Top level)
   void handleZOPThreadMigrate( Forza::zopEvent* zev );
+
+  /// RevCPU: Handle Zone Ring Message
+  void handleRingMsg( SST::Event* event );
 
   /// RevCPU: Handle FORZA scratchpad request responses
   void MarkLoadCompleteDummy( const MemReq& req );

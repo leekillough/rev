@@ -13,7 +13,7 @@ add_rev_test(forza_recv forza_recv 30 "all;memh;rv64;loader;forza" SCRIPT "run_r
 #add_rev_test(forza_send forza_send 30 "all;memh;rv64;loader;forza" SCRIPT "run_send.sh")
 
 # remove scratchpad calls, just do registration (how to verify? - probably just read it back)
-#add_rev_test(forza_zqm_mbox_setup forza_zqm_mbox_setup 30 "all;memh;rv64;loader;forza" SCRIPT "run_zqm_mbox_setup.sh")
+add_rev_test(forza_zqm_mbox_setup forza_zqm_mbox_setup 30 "all;memh;rv64;loader;forza" SCRIPT "run_zqm_mbox_setup.sh")
 
 # What is the point of this test?
 add_rev_test(forza_python forza_python 100 "all;memh;rv64;loader;forza" SCRIPT "run_python.sh")

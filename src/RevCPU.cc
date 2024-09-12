@@ -238,6 +238,12 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params )
       }
       zNic->setEndpointType( zapId );
       output.verbose( CALL_INFO, 4, 0, "[FORZA] device=%s initialized as ZAP device: ZAP%d\n", getName().c_str(), zap );
+
+      zoneRing = loadUserSubComponent<SST::Forza::RingNetAPI>( "ring_nic" );
+      if( zoneRing ) {
+        zoneRing->setMsgHandler( new Event::Handler<RevCPU>( this, &RevCPU::handleRingMsg ) );
+        zoneRing->setEndpointType( zapId );
+      }
     }
   }
 
@@ -328,6 +334,7 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params )
       RevCore* tmpNewRevCore = new RevCore( i, Opts, numHarts, Mem, Loader, this->GetNewTID(), &output );
       tmpNewRevCore->setZNic( zNic );
       tmpNewRevCore->setZNicMsgIds( zNicMsgIds );
+      tmpNewRevCore->setZRing( zoneRing );
       Procs.push_back( tmpNewRevCore );
     }
   }
@@ -1083,6 +1090,25 @@ void RevCPU::handleZOPMessage( Event* ev ) {
   } else {
     // I am a ZAP device, handle the message accordingly
     handleZOPMessageZAP( zev );
+  }
+}
+
+void RevCPU::handleRingMsg( Event* ev ) {
+  output.verbose( CALL_INFO, 9, 0, "[FORZA][%s] Received Ring Message\n", getName().c_str() );
+  Forza::ringEvent* ring_ev = static_cast<Forza::ringEvent*>( ev );
+
+  if( ring_ev == nullptr ) {
+    output.fatal( CALL_INFO, -1, "[FORZA][handleRingMessage] : ringEvent is null\n" );
+  } else {
+    output.verbose(
+      CALL_INFO,
+      9,
+      0,
+      "[FORZA][%s] Received Ring Message; datum=0x%" PRIx64 "; deleting packet\n",
+      getName().c_str(),
+      ring_ev->getDatum()
+    );
+    delete ring_ev;
   }
 }
 

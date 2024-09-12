@@ -50,6 +50,9 @@
 #include "RevRand.h"
 #include "RevThread.h"
 #include "RevTracer.h"
+
+#include "RingNet.h"
+
 #define SYSCALL_TYPES_ONLY
 #include "../common/include/RevCommon.h"
 #include "../common/syscalls/syscalls.h"
@@ -196,6 +199,9 @@ public:
   ///< RevCore: Set the ZOP NIC msg id generator
   void setZNicMsgIds( Forza::zopMsgID* Z ) { zNicMsgIds = Z; }
 
+  ///< RevCore: Set the zone ring handler
+  void setZRing( Forza::RingNetAPI* Z ) { zoneRing = Z; }
+
   ///< RevCore: Add a co-processor to the RevCore
   void SetCoProc( RevCoProc* coproc );
 
@@ -311,14 +317,15 @@ private:
   std::bitset<_MAX_HARTS_>              HartsClearToDecode{};   ///< RevCore: Thread is clear to start (proceed with decode)
   std::bitset<_MAX_HARTS_>              HartsClearToExecute{};  ///< RevCore: Thread is clear to execute (no register dependencides)
 
-  Forza::zopAPI*   zNic;          ///< RevCore: ZOPNic object
-  Forza::zopMsgID* zNicMsgIds;    ///< RevCore: FORZA ZOP NIC Message ID handler
-  bool             ThreadReqd{};  ///< RevCore: FORZA Thread has been requested from ZQM
-  unsigned         numHarts{};    ///< RevCore: Number of Harts for this core
-  RevOpts*         opts{};        ///< RevCore: options object
-  RevMem*          mem{};         ///< RevCore: memory object
-  RevCoProc*       coProc{};      ///< RevCore: attached co-processor
-  RevLoader*       loader{};      ///< RevCore: loader object
+  Forza::zopAPI*     zNic;          ///< RevCore: ZOPNic object
+  Forza::zopMsgID*   zNicMsgIds;    ///< RevCore: FORZA ZOP NIC Message ID handler
+  Forza::RingNetAPI* zoneRing{};    ///< RevCPU: FORZA Zone Ring network
+  bool               ThreadReqd{};  ///< RevCore: FORZA Thread has been requested from ZQM
+  unsigned           numHarts{};    ///< RevCore: Number of Harts for this core
+  RevOpts*           opts{};        ///< RevCore: options object
+  RevMem*            mem{};         ///< RevCore: memory object
+  RevCoProc*         coProc{};      ///< RevCore: attached co-processor
+  RevLoader*         loader{};      ///< RevCore: loader object
 
   // Function pointer to the GetNewThreadID function in RevCPU (monotonically increasing thread ID counter)
   std::function<uint32_t()> GetNewThreadID;
