@@ -138,7 +138,7 @@ class ZEN : public SST::Component{
     SST_ELI_DOCUMENT_SUBCOMPONENT_SLOTS(
       {"zone_nic", "[FORZA] Zone NIC", "SST::Forza::zopNIC"},
       {"precinct_nic", "[FORZA] Precinct NIC", "SST::Forza::zopNIC"},
-      {"ring_nic", "[FORZA] Zone Ring Network", "SST::Forza::RingNIC"}
+      {"ring_nic", "[FORZA] Zone Ring Network", "SST::Forza::RingNetNIC"}
     )
 
     // public class members

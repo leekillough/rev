@@ -67,9 +67,13 @@ ZEN::ZEN(ComponentId_t id, Params& params)
 
   zone_ring = loadUserSubComponent<SST::Forza::RingNetAPI>( "ring_nic" );
   if (zone_ring){
+    output.verbose( CALL_INFO, 4, 0, "[TJD-FORZA] device=%s create zone ring\n", getName().c_str() );
     zone_ring->setMsgHandler( new Event::Handler<ZEN>(this, &ZEN::handleRingMsg) );
     zone_ring->setEndpointType(zopCompID::Z_ZEN);
+  } else {
+    output.verbose( CALL_INFO, 4, 0, "[TJD-FORZA] device=%s failed to create zone ring\n", getName().c_str() );
   }
+  output.flush();
 
   // Size internal data structures
   PerHartCSRs.resize( m_num_zaps );
@@ -99,14 +103,18 @@ void ZEN::init(unsigned int phase) {
   if ( m_prec_iface ) {
     m_prec_iface->init(phase);
   }
+  if ( zone_ring )
+    zone_ring->init(phase);
 }
 
 void ZEN::setup() {
   if ( zone_nic )
     zone_nic->setup();
   if ( m_prec_iface ) {
-    m_prec_iface->setup();
+    m_prec_iface->setup();    
   }
+  if ( zone_ring )
+    zone_ring->setup();
 }
 
 void ZEN::complete(unsigned int phase) {
@@ -115,6 +123,8 @@ void ZEN::complete(unsigned int phase) {
   if ( m_prec_iface ) {
     m_prec_iface->complete(phase);
   }
+  if ( zone_ring )
+    zone_ring->complete(phase);
 }
 
 void ZEN::finish() {
@@ -124,6 +134,15 @@ void ZEN::finish() {
 void ZEN::handleRingMsg( SST::Event *event )
 {
   SST::Forza::ringEvent *ev = static_cast<SST::Forza::ringEvent*>(event);
+  if ( ev->getDestComp() != zopCompID::Z_ZEN ){
+    output.verbose(CALL_INFO, 5, 0, "[ZEN] %s forwarding ring message; CSR=0x%" PRIx16 "; op=%" PRIu8 "\n", getName().c_str(), ev->getCSR(), (uint8_t)ev->getOp());
+    uint64_t next_addr = zone_ring->getNextAddress();
+    zone_ring->send( ev, next_addr );
+  }
+
+  if ( ev->getSrcComp() == zopCompID::Z_ZEN ){
+    output.fatal(CALL_INFO, -1, "[ZEN] %s unexpected ring message; CSR=0x%" PRIx16 "; op=%" PRIu8 "\n", getName().c_str(), ev->getCSR(), (uint8_t)ev->getOp());
+  }
 
   switch( ev->getCSR() ){
     case R_ZENSTAT:
@@ -142,7 +161,7 @@ void ZEN::handleRingMsg( SST::Event *event )
       handleRingSpawn(ev);
       break;
     default:
-      output.fatal(CALL_INFO, -1, "[ZEN] %s unexpected ring message; CSR=0x%" PRIx16 "\n", getName().c_str(), ev->getCSR());
+      output.fatal(CALL_INFO, -2, "[ZEN] %s unexpected ring message; CSR=0x%" PRIx16 "\n", getName().c_str(), ev->getCSR());
       break;
   }
   delete ev;

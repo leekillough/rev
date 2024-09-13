@@ -122,9 +122,14 @@ ZQM::ZQM(ComponentId_t id, Params& params)
 
     zone_ring = loadUserSubComponent<SST::Forza::RingNetAPI>( "ring_nic" );
     if (zone_ring) {
+        output.verbose( CALL_INFO, 4, 0, "[TJD-FORZA] device=%s create zone ring\n", getName().c_str() );
         zone_ring->setMsgHandler( new Event::Handler<ZQM>(this, &ZQM::handleRingMsg) );
         zone_ring->setEndpointType(zopCompID::Z_ZQM);
+    } else {
+        output.verbose( CALL_INFO, 4, 0, "[TJD-FORZA] device=%s failed to create zone ring\n", getName().c_str() );
     }
+    output.flush();
+
 
     // Create and init matrix of HART status
     // zap_hart_status.resize(numCores);
@@ -160,12 +165,16 @@ void ZQM::init(unsigned int phase) {
     output.verbose(CALL_INFO, 1, 0, "Init %s\n", my_name.c_str());
     if ( zone_nic )
         zone_nic->init(phase);
+    if ( zone_ring )
+        zone_ring->init(phase);
 }
 
 void ZQM::setup() {
     output.verbose(CALL_INFO, 1, 0, "Setup %s\n", my_name.c_str());
 	if ( zone_nic )
         zone_nic->setup();
+    if ( zone_ring )
+        zone_ring->setup();
 }
 
 void ZQM::complete(unsigned int phase) {
@@ -179,6 +188,16 @@ void ZQM::finish() {
 void ZQM::handleRingMsg( SST::Event *event )
 {
   SST::Forza::ringEvent *ev = static_cast<SST::Forza::ringEvent*>(event);
+
+  if ( ev->getDestComp() != zopCompID::Z_ZQM ){
+    output.verbose(CALL_INFO, 5, 0, "[ZQM] %s forwarding ring message; CSR=0x%" PRIx16 "; op=%" PRIu8 "\n", getName().c_str(), ev->getCSR(), (uint8_t)ev->getOp());
+    uint64_t next_addr = zone_ring->getNextAddress();
+    zone_ring->send( ev, next_addr );
+  }
+
+  if ( ev->getSrcComp() == zopCompID::Z_ZQM ){
+    output.fatal(CALL_INFO, -1, "[ZQM] %s unexpected ring message; CSR=0x%" PRIx16 "; op=%" PRIu8 "\n", getName().c_str(), ev->getCSR(), (uint8_t)ev->getOp());
+  }
 
   if ( ev->getCSR() == R_ZQMSTAT ){
     handleRingStatus(ev);    
