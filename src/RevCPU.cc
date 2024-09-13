@@ -241,9 +241,13 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params )
 
       zoneRing = loadUserSubComponent<SST::Forza::RingNetAPI>( "ring_nic" );
       if( zoneRing ) {
+        output.verbose( CALL_INFO, 4, 0, "[TJD-FORZA] device=%s create zone ring\n", getName().c_str() );
         zoneRing->setMsgHandler( new Event::Handler<RevCPU>( this, &RevCPU::handleRingMsg ) );
         zoneRing->setEndpointType( zapId );
+      } else {
+        output.verbose( CALL_INFO, 4, 0, "[TJD-FORZA] device=%s failed to create zone ring\n", getName().c_str() );
       }
+      output.flush();
     }
   }
 
@@ -637,6 +641,8 @@ void RevCPU::setup() {
   if( EnableZopNIC ) {
     zNic->setup();
   }
+  if( zoneRing )
+    zoneRing->setup();
 }
 
 void RevCPU::finish() {}
@@ -648,6 +654,8 @@ void RevCPU::init( unsigned int phase ) {
     Ctrl->init( phase );
   if( EnableZopNIC )
     zNic->init( phase );
+  if( zoneRing )
+    zoneRing->init( phase );
 }
 
 void RevCPU::processZOPQ() {
@@ -1096,6 +1104,31 @@ void RevCPU::handleZOPMessage( Event* ev ) {
 void RevCPU::handleRingMsg( Event* ev ) {
   output.verbose( CALL_INFO, 9, 0, "[FORZA][%s] Received Ring Message\n", getName().c_str() );
   Forza::ringEvent* ring_ev = static_cast<Forza::ringEvent*>( ev );
+
+  if( ring_ev->getDestComp() != zoneRing->getEndpointType() ) {
+    output.verbose(
+      CALL_INFO,
+      5,
+      0,
+      "[FORZA][ZAP] %s forwarding ring message; CSR=0x%" PRIx16 "; op=%" PRIu8 "\n",
+      getName().c_str(),
+      ring_ev->getCSR(),
+      (uint8_t) ring_ev->getOp()
+    );
+    uint64_t next_addr = zoneRing->getNextAddress();
+    zoneRing->send( ring_ev, next_addr );
+  }
+
+  if( ring_ev->getSrcComp() == zoneRing->getEndpointType() ) {
+    output.fatal(
+      CALL_INFO,
+      -1,
+      "[FORZA][ZAP] %s unexpected ring message; CSR=0x%" PRIx16 "; op=%" PRIu8 "\n",
+      getName().c_str(),
+      ring_ev->getCSR(),
+      (uint8_t) ring_ev->getOp()
+    );
+  }
 
   if( ring_ev == nullptr ) {
     output.fatal( CALL_INFO, -1, "[FORZA][handleRingMessage] : ringEvent is null\n" );

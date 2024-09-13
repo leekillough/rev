@@ -4172,6 +4172,7 @@ EcallStatus RevCore::ECALL_forza_zqm_setup() {
   if( zoneRing ) {
     uint64_t next_dest = zoneRing->getNextAddress();
     zoneRing->send( ring_ev, next_dest );
+    output->verbose( CALL_INFO, 5, 0, "SENDING RING MESSAGE, next addr = %lu\n", next_dest );
   } else {
     output->verbose( CALL_INFO, 5, 0, "[ERROR] NO RING NETWORK\n" );
     delete ring_ev;

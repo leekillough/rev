@@ -147,6 +147,7 @@ public:
     {"rza_ls",  "[FORZA] RZA Load/Store Pipeline", "SST::RevCPU::RZALSCoProc"},
     {"rza_amo", "[FORZA] RZA AMO Pipeline", "SST::RevCPU::RZAAMOCoProc"},
     {"zone_nic","[FORZA] Zone NIC", "SST::Forza::zopNIC"},
+    {"ring_nic", "[FORZA] Zone Ring Network", "SST::Forza::RingNetNIC"}
     )
 
   // -------------------------------------------------------

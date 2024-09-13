@@ -59,7 +59,7 @@ void RingNetNIC::init( unsigned int phase ) {
       initBcastSent = true;
 
       uint64_t id   = (uint64_t) ( iFace->getEndpointID() );
-      output.verbose( CALL_INFO, 9, 0, "Broadcasting endpoint id=%" PRIu64 "\n", id );
+      output.verbose( CALL_INFO, 5, 0, "[FORZA] Broadcasting endpoint id=%" PRIu64 "\n", id );
       ringEvent*                               ev  = new ringEvent( Type, id );
       SST::Interfaces::SimpleNetwork::Request* req = new SST::Interfaces::SimpleNetwork::Request();
       req->dest                                    = SST::Interfaces::SimpleNetwork::INIT_BROADCAST_ADDR;
@@ -75,7 +75,7 @@ void RingNetNIC::init( unsigned int phase ) {
 
     // decode the endpoint id
     uint64_t endP = ev->getDatum();
-    output.verbose( CALL_INFO, 9, 0, "Receiving endpoint id=%" PRIu64 "\n", endP );
+    output.verbose( CALL_INFO, 5, 0, "Receiving endpoint id=%" PRIu64 "\n", endP );
 
     endPoints.push_back( endP );
   }
@@ -126,6 +126,10 @@ SST::Interfaces::SimpleNetwork::nid_t RingNetNIC::getAddress() {
 
 uint64_t RingNetNIC::getNextAddress() {
   uint64_t myAddr = (uint64_t) ( getAddress() );
+  output.verbose( CALL_INFO, 5, 0, "TJD: my_addr=%lu, num_endpts=%u\n", myAddr, endPoints.size() );
+  for( unsigned i = 0; i < endPoints.size(); i++ ) {
+    output.verbose( CALL_INFO, 5, 0, "TJD: endpoint[%u]=%lu\n", i, endPoints[i] );
+  }
   for( unsigned i = 0; i < endPoints.size(); i++ ) {
     if( endPoints[i] == myAddr ) {
       if( ( i + 1 ) <= ( endPoints.size() - 1 ) ) {

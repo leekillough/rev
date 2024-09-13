@@ -263,7 +263,7 @@ public:
   // register with the SST Core
   SST_ELI_REGISTER_SUBCOMPONENT(
     RingNetNIC,
-    "RingNet",     // component library
+    "forza",       // component library
     "RingNetNIC",  // component name
     SST_ELI_ELEMENT_VERSION( 0, 0, 1 ),
     "RingNet SST NIC",
