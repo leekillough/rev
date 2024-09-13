@@ -304,8 +304,8 @@ bool oper( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) 
 
 // Integer arithmetic unary operator template
 template<template<class> class OP, bool W_MODE = false, template<class> class SIGN = std::make_unsigned_t>
-bool operUnary( RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) {
-  if( W_MODE || F->IsRV32() ) {
+bool operUnary( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) {
+  if( W_MODE || !F->IsRV64() ) {
     R->SetX( Inst.rd, OP()( R->GetX<SIGN<int32_t>>( Inst.rs1 ) ) );
   } else {
     R->SetX( Inst.rd, OP()( R->GetX<SIGN<int64_t>>( Inst.rs1 ) ) );

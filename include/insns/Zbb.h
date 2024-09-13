@@ -208,6 +208,7 @@ class Zbb : public RevExt {
   static constexpr auto& maxu  = oper<max_func, OpKind::Reg, std::make_unsigned_t>;
   static constexpr auto& min   = oper<min_func, OpKind::Reg, std::make_signed_t>;
   static constexpr auto& minu  = oper<min_func, OpKind::Reg, std::make_unsigned_t>;
+  static constexpr auto& rori  = oper<rori_func, OpKind::Reg>;
 
   static constexpr auto& clz   = operUnary<clz_func, false>;
   static constexpr auto& clzw  = operUnary<clz_func, true>;
@@ -219,6 +220,7 @@ class Zbb : public RevExt {
   static constexpr auto& zexth = operUnary<zexth_func, false>;
   static constexpr auto& sexth = operUnary<sexth_func, false>;
   static constexpr auto& sextb = operUnary<sextb_func, false>;
+  static constexpr auto& orcb  = operUnary<orcb_func, false>;
 
   // ----------------------------------------------------------------------
   //
@@ -263,7 +265,7 @@ class Zbb : public RevExt {
 
 public:
   /// Zbb: standard constructor
-  Zbb( RevFeature* Feature, RevMem* RevMem, SST::Output* Output ) : RevExt( "Zbb", Feature, RevMem, Output ) {
+  Zbb( const RevFeature* Feature, RevMem* RevMem, SST::Output* Output ) : RevExt( "Zbb", Feature, RevMem, Output ) {
     if( Feature->IsRV64() ) {
       auto RV64Table{ RV64ZbbTable() };
       RV64Table.insert( RV64Table.end(), std::move_iterator( ZbbTable.begin() ), std::move_iterator( ZbbTable.end() ) );

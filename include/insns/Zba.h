@@ -19,7 +19,7 @@ namespace SST::RevCPU {
 class Zba : public RevExt {
 
   template<int SHIFT, bool W_MODE>
-  static bool shadd( RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) {
+  static bool shadd( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) {
     if constexpr( W_MODE ) {
       R->SetX( Inst.rd, ( uint64_t{ R->GetX<uint32_t>( Inst.rs1 ) } << SHIFT ) + R->GetX<uint64_t>( Inst.rs2 ) );
     } else if( F->IsRV64() ) {
@@ -39,7 +39,7 @@ class Zba : public RevExt {
   static constexpr auto& sh3add   = shadd<3, false>;
   static constexpr auto& sh3adduw = shadd<3, true>;
 
-  static bool slliuw( RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) {
+  static bool slliuw( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) {
     R->SetX( Inst.rd, uint64_t{ R->GetX<uint32_t>( Inst.rs1 ) } << ( Inst.imm & 0x3f ) );
     R->AdvancePC( Inst );
     return true;
