@@ -241,11 +241,11 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params )
 
       zoneRing = loadUserSubComponent<SST::Forza::RingNetAPI>( "ring_nic" );
       if( zoneRing ) {
-        output.verbose( CALL_INFO, 4, 0, "[TJD-FORZA] device=%s create zone ring\n", getName().c_str() );
+        output.verbose( CALL_INFO, 4, 0, "[FORZA] device=%s create zone ring\n", getName().c_str() );
         zoneRing->setMsgHandler( new Event::Handler<RevCPU>( this, &RevCPU::handleRingMsg ) );
         zoneRing->setEndpointType( zapId );
       } else {
-        output.verbose( CALL_INFO, 4, 0, "[TJD-FORZA] device=%s failed to create zone ring\n", getName().c_str() );
+        output.verbose( CALL_INFO, 4, 0, "[FORZA] device=%s failed to create zone ring\n", getName().c_str() );
       }
       output.flush();
     }

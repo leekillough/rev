@@ -30,7 +30,7 @@ int main( int argc, char** argv ) {
   mbox_reg_value |= 7;               // mboxes used
   mbox_reg_value |= ( 0x0AD << 8 );  // logical PE
   mbox_reg_value |= ( 0x0B << 19 );  // phys hart
-  mbox_reg_value |= ( 1UL << 28 );   // phys zap
+  mbox_reg_value |= ( 0UL << 28 );   // phys zap
   mbox_reg_value |= ( 2UL << 60 );   // aid
 
   forza_debug_print( mbox_reg_value, 0, 0xcafe );

@@ -13,6 +13,7 @@ import sst
 
 # Define SST core options
 sst.setProgramOption("timebase", "1ps")
+#sst.setProgramOption("stop-at", "10ms")
 
 DEBUG_L1 = 0
 DEBUG_MEM = 0
@@ -29,7 +30,7 @@ zen.addParams({
   "clockFreq" : "1.0GHz",     # Clock Frequency
   "precinctId" : 0,           # precinct Id
   "zoneId" : 0,               # zone Id
-  "numHarts" : 1,             # number of harts
+  "numHarts" : 32,             # number of harts
   "numZaps" : 1,
   "numZones" : 1,             # number of zones
   "numPrecincts" : 1,         # number of precincts
@@ -48,7 +49,7 @@ zqm.addParams({
   "clockFreq" : "1.0GHz",     # Clock Frequency
   "precinctId" : 0,           # precinct Id
   "zoneId" : 0,               # zone Id
-  "numHarts" : 1,             # number of harts
+  "numHarts" : 32,             # number of harts
   "numCores" : 1,             # number of cores
 })
 
@@ -59,7 +60,7 @@ zap_cpu0 = sst.Component("zap0", "revcpu.RevCPU")
 zap_cpu0.addParams({
         "verbose" : 5,                                # Verbosity
         "numCores" : 1,                               # Number of cores
-        "numHarts" : 1,
+        "numHarts" : 32,
         "clock" : "1.0GHz",                           # Clock
         "memSize" : 1024*1024*1024,                   # Memory size in bytes
         "machine" : "[0:RV64GC]",                     # Core:Config; RV64I for core 0

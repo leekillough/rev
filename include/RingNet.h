@@ -170,7 +170,7 @@ public:
     default: return "UNKNOWN"; break;
     }
   }
-
+#if 0
   /// ringEvent: decode this event and set the appropriate internal structures
   void decodeEvent() {
     Hart     = (uint16_t) ( ( Packet[0] >> R_SHIFT_HARTID ) & R_MASK_HARTID );
@@ -183,6 +183,7 @@ public:
 
   /// ringEvent: encode this event and set the appropriate internal packet structures
   void encodeEvent() {
+    Packet.resize(2);
     Packet[0] = 0;
     Packet[0] |= ( (uint64_t) ( Hart & R_MASK_HARTID ) << R_SHIFT_HARTID );
     Packet[0] |= ( (uint64_t) ( Hart & R_MASK_ZCID ) << R_SHIFT_SRCZCID );
@@ -191,9 +192,9 @@ public:
     Packet[0] |= ( (uint64_t) ( Hart & R_MASK_CMD ) << R_SHIFT_CMD );
     Packet[1] = Datum;
   }
-
+#endif
 private:
-  std::vector<uint64_t> Packet;  ///< zopEvent: data payload: serialized payload
+  //std::vector<uint64_t> Packet;  ///< zopEvent: data payload: serialized payload
 
   zopCompID SrcComp;   /// ringEvent: Dest component
   uint16_t  Hart;      /// ringEvent: HART involved in transaction
@@ -206,7 +207,12 @@ public:
   // ringEvent: event serializer
   void serialize_order( SST::Core::Serialization::serializer& ser ) override {
     Event::serialize_order( ser );
-    ser & Packet;
+    ser & SrcComp;
+    ser & Hart;
+    ser & DestComp;
+    ser & Type;
+    ser & CSR;
+    ser & Datum;
   }
 
   // ringEvent: implements the nic serialization

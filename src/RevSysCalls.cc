@@ -4171,6 +4171,14 @@ EcallStatus RevCore::ECALL_forza_zqm_setup() {
 
   if( zoneRing ) {
     uint64_t next_dest = zoneRing->getNextAddress();
+    output->verbose(
+      CALL_INFO,
+      5,
+      0,
+      "[ZAP] sending ring message; CSR=0x%" PRIx16 "; op=%" PRIu8 "\n",
+      ring_ev->getCSR(),
+      (uint8_t) ring_ev->getOp()
+    );
     zoneRing->send( ring_ev, next_dest );
     output->verbose( CALL_INFO, 5, 0, "SENDING RING MESSAGE, next addr = %lu\n", next_dest );
   } else {

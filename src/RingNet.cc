@@ -125,8 +125,25 @@ SST::Interfaces::SimpleNetwork::nid_t RingNetNIC::getAddress() {
 }
 
 uint64_t RingNetNIC::getNextAddress() {
-  uint64_t myAddr = (uint64_t) ( getAddress() );
-  output.verbose( CALL_INFO, 5, 0, "TJD: my_addr=%lu, num_endpts=%u\n", myAddr, endPoints.size() );
+  uint64_t myAddr   = (uint64_t) ( getAddress() );
+  uint64_t lastAddr = endPoints[( endPoints.size() - 1 )];
+  output.verbose(
+    CALL_INFO,
+    5,
+    0,
+    "RingNet: my_addr=%lu, num_endpts=%u, lastAddr=%lu\n",
+    myAddr,
+    endPoints.size(),
+    endPoints[( endPoints.size() - 1 )]
+  );
+  if( myAddr > lastAddr )
+    return endPoints[0];
+
+  for( unsigned i = 0; i < endPoints.size(); i++ )
+    if( endPoints[i] > myAddr )
+      return endPoints[i];
+
+#if 0
   for( unsigned i = 0; i < endPoints.size(); i++ ) {
     output.verbose( CALL_INFO, 5, 0, "TJD: endpoint[%u]=%lu\n", i, endPoints[i] );
   }
@@ -140,6 +157,8 @@ uint64_t RingNetNIC::getNextAddress() {
     }
   }
   return 0;
+#endif
+  output.fatal( CALL_INFO, -1, "Failed to find a valid endPoint\n" );
 }
 
 bool RingNetNIC::clockTick( Cycle_t cycle ) {
