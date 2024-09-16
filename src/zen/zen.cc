@@ -132,7 +132,6 @@ void ZEN::finish() {
 void ZEN::handleRingMsg( SST::Event *event )
 {
   SST::Forza::ringEvent *ev = static_cast<SST::Forza::ringEvent*>(event);
-  output.verbose(CALL_INFO, 5, 0, "[ZEN] %s forwarding ring message; CSR=0x%" PRIx16 "; op=%" PRIu8 "\n", getName().c_str(), ev->getCSR(), (uint8_t)ev->getOp());
   if ( ev->getDestComp() != zopCompID::Z_ZEN ){
     uint64_t next_addr = zone_ring->getNextAddress();
     zone_ring->send( ev, next_addr );

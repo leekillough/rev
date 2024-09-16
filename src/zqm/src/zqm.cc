@@ -245,9 +245,9 @@ void ZQM::handleRingMboxReg( SST::Forza::ringEvent *ev )
     }
     std::pair<uint8_t, uint16_t> p2(phys_zap, phys_hart);
     LogicalToPhysicalMap.insert( std::pair<std::pair<uint8_t, uint16_t>, std::pair<uint8_t, uint16_t>>(p1, p2) );
-    //output.verbose(CALL_INFO, 7, 0, "[ZQM] A, phys_zap=%u, hart=%u\n", phys_zap, phys_hart);
+    output.verbose(CALL_INFO, 7, 0, "[ZQM] A, phys_zap=%u, hart=%u\n", phys_zap, phys_hart);
     auto regs = PerHartCSRs[phys_zap][phys_hart];
-    //output.verbose(CALL_INFO, 7, 0, "[ZQM] B, aid=%u, pe=%u=0x%x, mboxes=%u\n", aid, logic_pe, logic_pe, mbx_bitmap);
+    output.verbose(CALL_INFO, 7, 0, "[ZQM] B, aid=%u, pe=%u=0x%x, mboxes=%u=0x%lx\n", aid, logic_pe, logic_pe, mbx_bitmap, mbx_bitmap);
     regs.logical_pe = logic_pe;
     regs.aid = aid;
     for ( uint8_t i = 0; i < NUM_MBOXES; i++ ){
