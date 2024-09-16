@@ -122,20 +122,10 @@ ZQM::ZQM(ComponentId_t id, Params& params)
 
     zone_ring = loadUserSubComponent<SST::Forza::RingNetAPI>( "ring_nic" );
     if (zone_ring) {
-        output.verbose( CALL_INFO, 4, 0, "[TJD-FORZA] device=%s create zone ring\n", getName().c_str() );
+        output.verbose( CALL_INFO, 4, 0, "ZQM[%s] create zone ring\n", getName().c_str() );
         zone_ring->setMsgHandler( new Event::Handler<ZQM>(this, &ZQM::handleRingMsg) );
         zone_ring->setEndpointType(zopCompID::Z_ZQM);
-    } else {
-        output.verbose( CALL_INFO, 4, 0, "[TJD-FORZA] device=%s failed to create zone ring\n", getName().c_str() );
     }
-    output.flush();
-
-
-    // Create and init matrix of HART status
-    // zap_hart_status.resize(numCores);
-    // for (auto &hart_vec: zap_hart_status)
-    //  hart_vec.resize(numHarts, false);
-
     dma_enabled = true;
 
     my_name = "Precinct[" + std::to_string(PrecinctId) + "].Zone[" + std::to_string(ZoneId) + "].ZQM";
@@ -155,6 +145,7 @@ ZQM::ZQM(ComponentId_t id, Params& params)
 
     // register with SST
     registerAsPrimaryComponent();
+    //primaryComponentDoNotEndSim();
 }
 
 ZQM::~ZQM()
@@ -190,15 +181,18 @@ void ZQM::handleRingMsg( SST::Event *event )
   SST::Forza::ringEvent *ev = static_cast<SST::Forza::ringEvent*>(event);
 
   if ( ev->getDestComp() != zopCompID::Z_ZQM ){
-    output.verbose(CALL_INFO, 5, 0, "[ZQM] %s forwarding ring message; CSR=0x%" PRIx16 "; op=%" PRIu8 "\n", getName().c_str(), ev->getCSR(), (uint8_t)ev->getOp());
     uint64_t next_addr = zone_ring->getNextAddress();
     zone_ring->send( ev, next_addr );
+    output.verbose(CALL_INFO, 5, 0, "[ZQM] %s forwarding ring message; CSR=0x%" PRIx16 "; op=%" PRIu8 "\n", getName().c_str(), ev->getCSR(), (uint8_t)ev->getOp());
+    return;
   }
 
   if ( ev->getSrcComp() == zopCompID::Z_ZQM ){
     output.fatal(CALL_INFO, -1, "[ZQM] %s unexpected ring message; CSR=0x%" PRIx16 "; op=%" PRIu8 "\n", getName().c_str(), ev->getCSR(), (uint8_t)ev->getOp());
   }
 
+  output.verbose(CALL_INFO, 5, 0, "[ZQM] %s handling ring message; CSR=0x%" PRIx16 "; op=%" PRIu8 "\n", getName().c_str(), ev->getCSR(), (uint8_t)ev->getOp());
+  output.flush();
   if ( ev->getCSR() == R_ZQMSTAT ){
     handleRingStatus(ev);    
   } else if ( ev->getCSR() == R_ZQMMBOXREG ){
@@ -224,7 +218,6 @@ void ZQM::handleRingStatus( SST::Forza::ringEvent *ev )
 
 void ZQM::handleRingMboxReg( SST::Forza::ringEvent *ev )
 {
-    output.verbose(CALL_INFO, 7, 0, "[ZQM] %s; handling a mailbox registration message\n", getName().c_str() );
     // Writing non-zero configures a mapping
     // Writing 0 clears a mapping - ignore for now
     auto x = ev->getDatum();
@@ -241,6 +234,9 @@ void ZQM::handleRingMboxReg( SST::Forza::ringEvent *ev )
     uint16_t phys_hart = ( x >> R_SHIFT_PHYSHART ) & R_MASK_PHYSHART;
     uint16_t logic_pe = ( x >> R_SHIFT_LOGICALPE ) & R_MASK_LOGICALPE;
     uint8_t mbx_bitmap = ( x >> R_SHIFT_MBXSUSED ) & R_MASK_MBXSUSED;
+    output.verbose(CALL_INFO, 7, 0, "[ZQM] %s; handling a mailbox registration message; datum = 0x%" PRIx64 "\n", getName().c_str(), x );
+    output.flush();
+
     std::pair<uint8_t, uint16_t> p1(aid, logic_pe);
     auto iter = LogicalToPhysicalMap.find( p1 );
     if (iter != LogicalToPhysicalMap.end() ){
@@ -249,12 +245,16 @@ void ZQM::handleRingMboxReg( SST::Forza::ringEvent *ev )
     }
     std::pair<uint8_t, uint16_t> p2(phys_zap, phys_hart);
     LogicalToPhysicalMap.insert( std::pair<std::pair<uint8_t, uint16_t>, std::pair<uint8_t, uint16_t>>(p1, p2) );
+    //output.verbose(CALL_INFO, 7, 0, "[ZQM] A, phys_zap=%u, hart=%u\n", phys_zap, phys_hart);
     auto regs = PerHartCSRs[phys_zap][phys_hart];
+    //output.verbose(CALL_INFO, 7, 0, "[ZQM] B, aid=%u, pe=%u=0x%x, mboxes=%u\n", aid, logic_pe, logic_pe, mbx_bitmap);
     regs.logical_pe = logic_pe;
     regs.aid = aid;
     for ( uint8_t i = 0; i < NUM_MBOXES; i++ ){
         regs.active_mboxes[i] = ( ( ( mbx_bitmap >> i ) & 1 ) == 1);
     }
+    //output.verbose(CALL_INFO, 7, 0, "[ZQM] %s; return from handling a mailbox registration message; datum = 0x%lx\n", getName().c_str(), x );
+    //output.flush();
 }
 
 void ZQM::handleRingDq( SST::Forza::ringEvent *ev )

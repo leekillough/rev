@@ -67,13 +67,10 @@ ZEN::ZEN(ComponentId_t id, Params& params)
 
   zone_ring = loadUserSubComponent<SST::Forza::RingNetAPI>( "ring_nic" );
   if (zone_ring){
-    output.verbose( CALL_INFO, 4, 0, "[TJD-FORZA] device=%s create zone ring\n", getName().c_str() );
+    output.verbose( CALL_INFO, 4, 0, "ZEN[%s] create zone ring\n", getName().c_str() );
     zone_ring->setMsgHandler( new Event::Handler<ZEN>(this, &ZEN::handleRingMsg) );
     zone_ring->setEndpointType(zopCompID::Z_ZEN);
-  } else {
-    output.verbose( CALL_INFO, 4, 0, "[TJD-FORZA] device=%s failed to create zone ring\n", getName().c_str() );
   }
-  output.flush();
 
   // Size internal data structures
   PerHartCSRs.resize( m_num_zaps );
@@ -89,6 +86,7 @@ ZEN::ZEN(ComponentId_t id, Params& params)
 
   // complete SST registration
   registerAsPrimaryComponent();
+  //primaryComponentDoNotEndSim();
 }
 
 ZEN::~ZEN(){
@@ -134,10 +132,12 @@ void ZEN::finish() {
 void ZEN::handleRingMsg( SST::Event *event )
 {
   SST::Forza::ringEvent *ev = static_cast<SST::Forza::ringEvent*>(event);
+  output.verbose(CALL_INFO, 5, 0, "[ZEN] %s forwarding ring message; CSR=0x%" PRIx16 "; op=%" PRIu8 "\n", getName().c_str(), ev->getCSR(), (uint8_t)ev->getOp());
   if ( ev->getDestComp() != zopCompID::Z_ZEN ){
-    output.verbose(CALL_INFO, 5, 0, "[ZEN] %s forwarding ring message; CSR=0x%" PRIx16 "; op=%" PRIu8 "\n", getName().c_str(), ev->getCSR(), (uint8_t)ev->getOp());
     uint64_t next_addr = zone_ring->getNextAddress();
     zone_ring->send( ev, next_addr );
+    output.verbose(CALL_INFO, 5, 0, "[ZEN] %s forwarding ring message; CSR=0x%" PRIx16 "; op=%" PRIu8 "\n", getName().c_str(), ev->getCSR(), (uint8_t)ev->getOp());
+    return;
   }
 
   if ( ev->getSrcComp() == zopCompID::Z_ZEN ){
