@@ -7,6 +7,8 @@
 #include <filesystem>
 #include <sys/xattr.h>
 
+#include "RingNet.h"
+
 namespace SST::RevCPU {
 
 /// Parse a string for an ECALL starting at address straddr, updating the state
@@ -4146,27 +4148,33 @@ EcallStatus RevCore::ECALL_forza_zqm_setup() {
     CALL_INFO, 2, 0, "ECALL: forza_zqm_setup called by thread %" PRIu32 " on hart %" PRIu32 "\n", GetActiveThreadID(), HartToExecID
   );
 
-  //uint64_t mboxs_used = (uint64_t) RegFile->GetX<uint64_t>( RevReg::a0 );
-  //uint64_t logical_pe = (uint64_t) RegFile->GetX<uint64_t>( RevReg::a1 );
+  uint64_t logical_pe = (uint64_t) RegFile->GetX<uint64_t>( RevReg::a0 );
+  uint64_t mboxs_used = (uint64_t) RegFile->GetX<uint64_t>( RevReg::a1 );
 
-  //uint8_t  zap        = (uint8_t) zNic->getEndpointType();
-  //uint64_t aid        = 0;  // FIXME
+  uint8_t  zap        = (uint8_t) zNic->getEndpointType();
+  uint16_t hart       = HartToExecID;
+  uint64_t aid        = 0;  // FIXME
 
-  uint64_t reg_value = (uint64_t) RegFile->GetX<uint64_t>( RevReg::a0 );
+  uint64_t mbox_mask  = 0;
+  for( unsigned i = 0; i < mboxs_used; i++ ) {
+    mbox_mask |= ( 1UL << i );
+  }
 
-  output->verbose( CALL_INFO, 5, 0, "Arguments: reg_value=0x%" PRIx64 "\n", reg_value );
+  //uint64_t reg_value = (uint64_t) RegFile->GetX<uint64_t>( RevReg::a0 );
 
-  // Using values in zqm.h
-#if 0
-  uint64_t outreg = mboxs_used & 0x0FF;
-  outreg |= ( ( logical_pe & 0x7FF ) << 8 );
-  outreg |= ( ( HartToExecID & 0x1FF ) << 19 );
-  outreg |= ( ( zap & 0x0F ) << 28 );
-  outreg |= ( ( aid & 0x0F ) << 60 );
+  // Using values in RingNet.h
+#if 1
+  uint64_t outreg = ( ( mbox_mask & ZQMMBOXREG_MASK_MBXSUSED ) << ZQMMBOXREG_SHIFT_MBXSUSED );
+  outreg |= ( ( logical_pe & ZQMMBOXREG_MASK_LOGICALPE ) << ZQMMBOXREG_SHIFT_LOGICALPE );
+  outreg |= ( ( HartToExecID & ZQMMBOXREG_MASK_PHYSHART ) << ZQMMBOXREG_SHIFT_PHYSHART );
+  outreg |= ( ( zap & ZQMMBOXREG_MASK_PHYSZAP ) << ZQMMBOXREG_SHIFT_PHYSZAP );
+  outreg |= ( ( aid & ZQMMBOXREG_MASK_AID ) << ZQMMBOXREG_SHIFT_AID );
 #endif
 
+  output->verbose( CALL_INFO, 5, 0, "Arguments: mbox_mask=0x%lx; data value=0x%" PRIx64 "\n", mbox_mask, outreg );
+
   SST::Forza::ringEvent* ring_ev = new SST::Forza::ringEvent(
-    zNic->getEndpointType(), HartToExecID, SST::Forza::zopCompID::Z_ZQM, SST::Forza::ringMsgT::R_UPDATE, R_ZQMMBOXREG, reg_value
+    zNic->getEndpointType(), HartToExecID, SST::Forza::zopCompID::Z_ZQM, SST::Forza::ringMsgT::R_UPDATE, R_ZQMMBOXREG, outreg
   );
 
   if( zoneRing ) {

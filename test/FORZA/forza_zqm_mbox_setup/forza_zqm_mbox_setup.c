@@ -25,16 +25,9 @@ int main( int argc, char** argv ) {
   if( forza_get_my_zone() > 0 )
     return 0;
 
-  uint64_t mbox_reg_value = 0;
-
-  mbox_reg_value |= 7;               // mboxes used
-  mbox_reg_value |= ( 0x0AD << 8 );  // logical PE
-  mbox_reg_value |= ( 0x0B << 19 );  // phys hart
-  mbox_reg_value |= ( 0UL << 28 );   // phys zap
-  mbox_reg_value |= ( 2UL << 60 );   // aid
-
-  forza_debug_print( mbox_reg_value, 0, 0xcafe );
-  forza_zqm_setup( mbox_reg_value );
+  forza_debug_print( 0x0AD, 0, 0xcafe );
+  // forza_zqm_setup( logical_pe, n_mailboxes );
+  forza_zqm_setup( 0x0AD, 6 );
 
   uint64_t nzaps = ( forza_get_my_zone() == 0 ) ? forza_get_zaps_per_zone() : 0;
   forza_zone_barrier( nzaps );
