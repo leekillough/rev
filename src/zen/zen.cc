@@ -86,7 +86,7 @@ ZEN::ZEN(ComponentId_t id, Params& params)
 
   // complete SST registration
   registerAsPrimaryComponent();
-  //primaryComponentDoNotEndSim();
+  primaryComponentDoNotEndSim();
 }
 
 ZEN::~ZEN(){
@@ -178,7 +178,6 @@ void ZEN::handleRingOmc( SST::Forza::ringEvent *ev )
     full_cnt |= ( cnts[i] << i*8 );
 
   sendRingResponse(ev, full_cnt);
-  delete ev;
 }
 
 void ZEN::handleRingStatus( SST::Forza::ringEvent *ev )
@@ -190,7 +189,6 @@ void ZEN::handleRingStatus( SST::Forza::ringEvent *ev )
   auto status = PerHartCSRs[ev->getSrcZap()][ev->getHart()].status;
   status |= ( PerHartCSRs[ev->getSrcZap()][ev->getHart()].is_sending ) ? 0x0ffUL : 0;
   sendRingResponse(ev, status);
-  delete ev;
 }
 
 void ZEN::handleRingEqData( SST::Forza::ringEvent *ev )
@@ -199,7 +197,8 @@ void ZEN::handleRingEqData( SST::Forza::ringEvent *ev )
   if ( ev->getOp() != SST::Forza::ringMsgT::R_UPDATE )
     output.fatal(CALL_INFO, -1, "[ZEN] %s unexpected optype message; OpType=%" PRIu8 "\n", getName().c_str(), ev->getOp());
 
-  auto regs = PerHartCSRs[ev->getSrcZap()][ev->getHart()];
+  auto &regs = PerHartCSRs[ev->getSrcZap()][ev->getHart()];
+  output.verbose(CALL_INFO, 7, 0, "[ZEN] %s ZENEQData cur_wd=%u, data=0x%llx\n", getName().c_str(), regs.msg_cur_word, ev->getDatum());
   // sanity check
   if (regs.msg_cur_word >= 8)
     output.fatal(CALL_INFO, -2, "[ZEN] %s msg_cur_word exceeded max; [zap%u][hart%u].msg_cur_word=%u\n", 
@@ -211,7 +210,7 @@ void ZEN::handleRingEqData( SST::Forza::ringEvent *ev )
   regs.is_sending = true;
 
   // TODO: DOES THIS NEED A RING RESPONSE?
-  delete ev;
+  output.verbose(CALL_INFO, 7, 0, "[ZEN] %s completed ZENEQData message\n", getName().c_str());
 }
 
 void ZEN::handleRingEqCtrl( SST::Forza::ringEvent *ev )
@@ -220,11 +219,11 @@ void ZEN::handleRingEqCtrl( SST::Forza::ringEvent *ev )
   if ( ev->getOp() != SST::Forza::ringMsgT::R_UPDATE )
     output.fatal(CALL_INFO, -1, "[ZEN] %s unexpected optype message; OpType=%" PRIu8 "\n", getName().c_str(), ev->getOp());
 
-  auto regs = PerHartCSRs[ev->getSrcZap()][ev->getHart()];
+  auto &regs = PerHartCSRs[ev->getSrcZap()][ev->getHart()];
   regs.msg[0] = ev->getDatum();
   uint64_t dest_mbox = ( ev->getDatum() >> ZENEQC_SHIFT_DESTMBOX ) & ZENEQC_MASK_DESTMBOX;
   if ( regs.mbox_cntrs[dest_mbox] == UINT8_MAX )
-    output.fatal(CALL_INFO, -2, "[ZEN] %s no support for saturated mbox counter yet; zap=%u, hart=%u, mbox=%u\n",
+    output.fatal(CALL_INFO, -2, "[ZEN] %s no support for saturated mbox counter yet; zap=%u, hart=%u, mbox=%" PRIu64 "\n",
                  getName().c_str(), ev->getSrcZap(), ev->getHart(), dest_mbox);
   else if ( regs.mbox_cntrs[dest_mbox] == (UINT8_MAX-1) )
     regs.status |= ( 1UL << dest_mbox ); //if we're about to saturate the mbox counter, we have to set the status bit
@@ -235,7 +234,6 @@ void ZEN::handleRingEqCtrl( SST::Forza::ringEvent *ev )
 
   auto out_msg = new OutgoingMessage( regs.msg, ev->getSrcZap(), ev->getHart() );
   OutMsgQueue.push(out_msg);
-  delete ev;
 }
 
 void ZEN::handleRingSpawn( SST::Forza::ringEvent *ev )
@@ -259,7 +257,6 @@ void ZEN::handleRingSpawn( SST::Forza::ringEvent *ev )
     OutSpawnQueue.push(out_spawn);
   }
   // TODO: DOES THIS NEED A RING RESPONSE?
-  delete ev;
 }
 
 void ZEN::sendRingResponse( SST::Forza::ringEvent *ev, uint64_t data )
@@ -328,8 +325,9 @@ void ZEN::sendMsgZop(OutgoingMessage* msg, bool is_msg, uint16_t zop_msg_id)
   }
   
   std::vector<uint64_t> payload;
-  for (uint16_t i = 0; i < msg->msg.size(); i++)
-    payload[i] = msg->msg[i];
+  for (uint16_t i = 0; i < msg->msg.size(); i++){
+    payload.push_back(msg->msg[i]);
+  }
   zop->setPayload(payload);
   zop->encodeEvent();
   output.verbose(CALL_INFO, 9, 0, "ZEN[%s]: Send msg from %s to %s\n", getName().c_str(),
@@ -369,8 +367,11 @@ void ZEN::handleMsgAck(zopEvent *ack)
 {    
   ack->decodeEvent();
   // Reduce the mailbox counter
-  auto regs = PerHartCSRs[ack->getDestZCID()][ack->getDestHart()];
+  auto &regs = PerHartCSRs[ack->getDestZCID()][ack->getDestHart()];
   auto cntr = regs.mbox_cntrs[ack->getCredit()];
+  //output.verbose(CALL_INFO, 9, 0, "ZEN[%s]; Counter=%u; packet %s to %s; credit=%u \n", getName().c_str(), cntr,
+  //               ack->getSrcString().c_str(), ack->getDestString().c_str(), ack->getCredit());
+  
   // Sanity check
   if (cntr == 0){
     output.fatal(CALL_INFO, -1, "ZEN[%s]; Counter was zero; packet %s to %s \n", getName().c_str(), 
@@ -393,14 +394,22 @@ void ZEN::handleMsgAck(zopEvent *ack)
   // Remove the entry from the RetryMgrMap
   auto num_deletes = RetryMgrMap.erase(retry_num);
   if (num_deletes != 1) {
-    output.fatal(CALL_INFO, -2, "ZEN[%s]; Deleted %u entries in the RetryMgrMap[%u]; Packet %s to %s \n", getName().c_str(), 
+    output.fatal(CALL_INFO, -2, "ZEN[%s]; Deleted %lu entries in the RetryMgrMap[%u]; Packet %s to %s \n", getName().c_str(), 
                  num_deletes, retry_num, ack->getSrcString().c_str(), ack->getDestString().c_str());
   }
 }
 
 void ZEN::execMsgPipe1()
 {
-    // Pipeline stalled
+  // If any acks have returned, clear the retry entry and update counter
+  if ( !MsgAckQueue.empty() ) {
+    auto ack = MsgAckQueue.front();
+    MsgAckQueue.pop();
+    handleMsgAck(ack);
+    delete ack;
+  }
+
+  // Pipeline stalled
   if ( MsgPipeline[2] != nullptr )
     return;
   
@@ -413,13 +422,6 @@ void ZEN::execMsgPipe1()
 
   // Insert message into retry mgr map
   RetryMgrMap[MsgPipeline[1]->msg_id] = MsgPipeline[1];
-
-  // If any acks have returned, clear the retry entry and update counter
-  if ( !MsgAckQueue.empty() ) {
-    auto ack = MsgAckQueue.front();
-    handleMsgAck(ack);
-    delete ack;
-  }
 
   // Move down the pipe
   MsgPipeline[2] = MsgPipeline[1];
@@ -648,6 +650,7 @@ void ZEN::helper_handleMsgZop(SST::Forza::zopEvent *ev)
     case SST::Forza::zopOpc::Z_MSG_ACK:
       // clear the retry msg entry for this ack; push it onto the queue to handle
       // in the msg pipeline
+      output.verbose( CALL_INFO, 9, 0, "ZEN %s: received a MSG_ACK\n", getName().c_str() );
       MsgAckQueue.push(ev);
     break;
 

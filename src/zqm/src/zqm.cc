@@ -145,7 +145,7 @@ ZQM::ZQM(ComponentId_t id, Params& params)
 
     // register with SST
     registerAsPrimaryComponent();
-    //primaryComponentDoNotEndSim();
+    primaryComponentDoNotEndSim();
 }
 
 ZQM::~ZQM()
@@ -247,7 +247,7 @@ void ZQM::handleRingMboxReg( SST::Forza::ringEvent *ev )
     LogicalToPhysicalMap.insert( std::pair<std::pair<uint8_t, uint16_t>, std::pair<uint8_t, uint16_t>>(p1, p2) );
     output.verbose(CALL_INFO, 7, 0, "[ZQM] A, phys_zap=%u, hart=%u\n", phys_zap, phys_hart);
     auto regs = PerHartCSRs[phys_zap][phys_hart];
-    output.verbose(CALL_INFO, 7, 0, "[ZQM] B, aid=%u, pe=%u=0x%x, mboxes=%u=0x%lx\n", aid, logic_pe, logic_pe, mbx_bitmap, mbx_bitmap);
+    output.verbose(CALL_INFO, 7, 0, "[ZQM] B, aid=%u, pe=%u=0x%x, mboxes=%u=0x%x\n", aid, logic_pe, logic_pe, mbx_bitmap, mbx_bitmap);
     regs.logical_pe = logic_pe;
     regs.aid = aid;
     for ( uint8_t i = 0; i < NUM_MBOXES; i++ ){
@@ -325,8 +325,8 @@ void ZQM::updateMailboxes()
     if ( iter == LogicalToPhysicalMap.end() )
         output.fatal(CALL_INFO, -1, "[ZQM] %s incoming msg zop - no mapping found. aid=%u, logical_pe=%u\n", 
                      getName().c_str(), dest_aid, dest_pe );
-    output.verbose(CALL_INFO, 9, 0, "[ZQM] %s incoming msg zop - mapping found. aid=%u, logical_pe=%u, zap=%u, hart=%u\n", 
-                   getName().c_str(), dest_aid, dest_pe, iter->second.first, iter->second.second );
+    output.verbose(CALL_INFO, 9, 0, "[ZQM] %s incoming msg zop - mapping found. aid=%u, logical_pe=%u, mbox=%u, zap=%u, hart=%u\n", 
+                   getName().c_str(), dest_aid, dest_pe, dest_mbox, iter->second.first, iter->second.second );
 
     auto mbox = PerHartCSRs[iter->second.first][iter->second.second].mbox_buffs[dest_mbox];
     IncomingMsgQueue.pop();
@@ -339,6 +339,10 @@ void ZQM::updateMailboxes()
         sendZopAck(msg, zopMsgT::Z_MSG, zopOpc::Z_MSG_ACK);
         // delete the zop
         delete msg;
+        //output.verbose( CALL_INFO, 9, 0, "Msg Buf sz=%zu\n", mbox.msg.size() );
+        //for ( auto i : mbox.msg )
+        //    output.verbose(CALL_INFO, 9, 0, "ZQM Msg = 0x%" PRIx64 "\n", i);
+        //output.flush();
     } else {
         // rather than leave the msg at the front of the queue (where it's blocking), we recycle
         // it to the end of the queue
@@ -669,7 +673,6 @@ void ZQM::processMessagingMsgs()
                 //processMessagingZqmMboxSet(event);
                 break;
             case SST::Forza::zopOpc::Z_MSG_SENDP:{
-                output.verbose(CALL_INFO, 9, 0, "ZQM RECV MSG_SENDP\n");
                 IncomingMsgQueue.push(event);
                 break;}
                 // TODO: Add ZQM Free AID (or equivalent)
@@ -709,10 +712,12 @@ void ZQM::sendZopAck(SST::Forza::zopEvent *event, zopMsgT msg_type, zopOpc msg_o
     SST::Forza::zopEvent *ack_msg = new SST::Forza::zopEvent(msg_type, msg_opc);
 
     // Set src/dest info
+    event->decodeEvent();
     setMeAsZopSrc(ack_msg);
     setDestFromSrcInfo(ack_msg, event);
     ack_msg->setID(event->getID());
     ack_msg->setAppID(event->getAppID());
+    ack_msg->setCredit(event->getCredit());
 
     zone_nic->send(ack_msg, static_cast<zopCompID>(ack_msg->getDestZCID()));
     std::string str = ack_msg->msgTToStr(msg_type);
