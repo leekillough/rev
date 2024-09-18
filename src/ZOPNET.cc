@@ -383,6 +383,8 @@ void zopNIC::send( zopEvent* ev, zopCompID dest, zopPrecID zone, unsigned prec )
     }
   }
 
+  output.verbose( CALL_INFO, 9, 0, "ZOPNET: sending packet; realDest=%u\n", (uint32_t) realDest );
+
   ev->encodeEvent();
   req->dest = realDest;  // FIXME - what needs fixed here?
   req->src  = getAddress();
@@ -814,6 +816,7 @@ bool zopNIC::clockTick( SST::Cycle_t cycle ) {
           iFace->send( ( *it ), 0 );
           it    = sendQ.erase( it );
           erase = true;
+          output.verbose( CALL_INFO, 9, 0, "ZOPNET: Sending message to Type=%s\n", endPToStr( Type ).c_str() );
         }
       } else if( ev->getType() == SST::Forza::zopMsgT::Z_FENCE ) {
         // handle the fence operation

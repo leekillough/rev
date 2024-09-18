@@ -699,7 +699,7 @@ private:
   EcallStatus ECALL_forza_scratchpad_alloc();        // 4000, forza_scratchpad_alloc(size_t size);
   EcallStatus ECALL_forza_scratchpad_free();         // 4001, forza_scratchpad_free(size_t size);
   EcallStatus ECALL_forza_get_hart_id();             // 4002, forza_get_hart_id();
-  EcallStatus ECALL_forza_send();                    // 4003, forza_send();
+  EcallStatus ECALL_forza_send_word();               // 4003, forza_send_word();
   EcallStatus ECALL_forza_zen_credit_release();      // 4004, forza_popq();
   EcallStatus ECALL_forza_zen_setup();               // 4005, forza_zen_setup();
   EcallStatus ECALL_forza_zqm_setup();               // 4006, forza_zqm_setup();

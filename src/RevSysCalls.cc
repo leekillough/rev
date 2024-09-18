@@ -3713,7 +3713,7 @@ const std::unordered_map<uint32_t, EcallStatus(RevCore::*)()> RevCore::Ecalls = 
     { 4000, &RevCore::ECALL_forza_scratchpad_alloc }, // , forza_scratchpad_alloc(size_t size);
     { 4001, &RevCore::ECALL_forza_scratchpad_free },  // , forza_scratchpad_free(size_t size);
     { 4002, &RevCore::ECALL_forza_get_hart_id },  // , forza_get_hart_id();
-    { 4003, &RevCore::ECALL_forza_send },  // , forza_send();
+    { 4003, &RevCore::ECALL_forza_send_word },    // , forza_send();
     { 4004, &RevCore::ECALL_forza_zen_credit_release },  // , forza_popq();
     { 4005, &RevCore::ECALL_forza_zen_setup },  // , forza_zen_setup();
     { 4006, &RevCore::ECALL_forza_zqm_setup }, // , forza_zqm_setup();
@@ -3822,15 +3822,46 @@ union ECALL_forza_send_union {
 
 // clang-format on
 
-// 4003 forza_send( uint64_t dst, uint64_t spaddr, size_t size  )
-EcallStatus RevCore::ECALL_forza_send() {
-  output->fatal(
-    CALL_INFO,
-    -1,
-    " ECALL: forza_send called by thread %" PRIu32 " on hart %" PRIu32 " needs updating; no more scratchpad\n",
-    GetActiveThreadID(),
-    HartToExecID
+// 4003 forza_send_word( uint64_t data, bool is_control_word )
+EcallStatus RevCore::ECALL_forza_send_word() {
+  uint64_t data       = (uint64_t) RegFile->GetX<uint64_t>( RevReg::a0 );
+  bool     is_ctrl_wd = (bool) RegFile->GetX<bool>( RevReg::a1 );
+
+  // Using values in RingNet.h
+#if 0
+  uint64_t outreg = ( ( mbox_mask & ZQMMBOXREG_MASK_MBXSUSED ) << ZQMMBOXREG_SHIFT_MBXSUSED );
+  outreg |= ( ( logical_pe & ZQMMBOXREG_MASK_LOGICALPE ) << ZQMMBOXREG_SHIFT_LOGICALPE );
+  outreg |= ( ( HartToExecID & ZQMMBOXREG_MASK_PHYSHART ) << ZQMMBOXREG_SHIFT_PHYSHART );
+  outreg |= ( ( zap & ZQMMBOXREG_MASK_PHYSZAP ) << ZQMMBOXREG_SHIFT_PHYSZAP );
+  outreg |= ( ( aid & ZQMMBOXREG_MASK_AID ) << ZQMMBOXREG_SHIFT_AID );
+#endif
+
+  output->verbose( CALL_INFO, 5, 0, "Arguments: data value=0x%" PRIx64 "\n", data );
+
+  uint16_t dest_reg              = ( is_ctrl_wd ) ? R_ZENEQC : R_ZENEQD;
+
+  SST::Forza::ringEvent* ring_ev = new SST::Forza::ringEvent(
+    zNic->getEndpointType(), HartToExecID, SST::Forza::zopCompID::Z_ZEN, SST::Forza::ringMsgT::R_UPDATE, dest_reg, data
   );
+
+  if( zoneRing ) {
+    uint64_t next_dest = zoneRing->getNextAddress();
+    output->verbose(
+      CALL_INFO,
+      5,
+      0,
+      "[ZAP] %u sending ring message; CSR=0x%" PRIx16 "; op=%" PRIu8 "\n",
+      (uint8_t) zNic->getEndpointType(),
+      ring_ev->getCSR(),
+      (uint8_t) ring_ev->getOp()
+    );
+    zoneRing->send( ring_ev, next_dest );
+    output->verbose( CALL_INFO, 5, 0, "SENDING RING MESSAGE, next addr = %lu\n", next_dest );
+  } else {
+    output->verbose( CALL_INFO, 5, 0, "[ERROR] NO RING NETWORK\n" );
+    delete ring_ev;
+  }
+
 #if 0
   uint64_t dst               = (uint64_t) RegFile->GetX<uint64_t>( RevReg::a0 );
   uint64_t spaddr            = (uint64_t) RegFile->GetX<uint64_t>( RevReg::a1 );
@@ -4145,7 +4176,13 @@ EcallStatus RevCore::ECALL_forza_zen_setup() {
 // 4006, forza_zqm_setup(uint64_t reg_value);
 EcallStatus RevCore::ECALL_forza_zqm_setup() {
   output->verbose(
-    CALL_INFO, 2, 0, "ECALL: forza_zqm_setup called by thread %" PRIu32 " on hart %" PRIu32 "\n", GetActiveThreadID(), HartToExecID
+    CALL_INFO,
+    2,
+    0,
+    "ECALL: forza_zqm_setup called by thread %" PRIu32 " on hart %" PRIu32 " on zap %" PRIu32 "\n",
+    GetActiveThreadID(),
+    HartToExecID,
+    (uint32_t) zNic->getEndpointType()
   );
 
   uint64_t logical_pe = (uint64_t) RegFile->GetX<uint64_t>( RevReg::a0 );
@@ -4171,7 +4208,9 @@ EcallStatus RevCore::ECALL_forza_zqm_setup() {
   outreg |= ( ( aid & ZQMMBOXREG_MASK_AID ) << ZQMMBOXREG_SHIFT_AID );
 #endif
 
-  output->verbose( CALL_INFO, 5, 0, "Arguments: mbox_mask=0x%lx; data value=0x%" PRIx64 "\n", mbox_mask, outreg );
+  output->verbose(
+    CALL_INFO, 5, 0, "Arguments: mbox_mask=0x%lx; logical_pe=0x%lx, data value=0x%" PRIx64 "\n", mbox_mask, logical_pe, outreg
+  );
 
   SST::Forza::ringEvent* ring_ev = new SST::Forza::ringEvent(
     zNic->getEndpointType(), HartToExecID, SST::Forza::zopCompID::Z_ZQM, SST::Forza::ringMsgT::R_UPDATE, R_ZQMMBOXREG, outreg
@@ -4183,7 +4222,8 @@ EcallStatus RevCore::ECALL_forza_zqm_setup() {
       CALL_INFO,
       5,
       0,
-      "[ZAP] sending ring message; CSR=0x%" PRIx16 "; op=%" PRIu8 "\n",
+      "[ZAP] %u sending ring message; CSR=0x%" PRIx16 "; op=%" PRIu8 "\n",
+      (uint8_t) zNic->getEndpointType(),
       ring_ev->getCSR(),
       (uint8_t) ring_ev->getOp()
     );
@@ -4385,15 +4425,17 @@ EcallStatus RevCore::ECALL_forza_debug_print() {
     CALL_INFO,
     2,
     0,
-    "ECALL: forza_debug_print called by thread %" PRIu32 " on hart %" PRIu32 "; a=0x%" PRIx64 "; b=0x%" PRIx64 "; c=0x%" PRIx64
-    "\n",
+    "ECALL: forza_debug_print called by thread %" PRIu32 " on hart %" PRIu32 " on zap=%" PRIu32 "; a=0x%" PRIx64 "; b=0x%" PRIx64
+    "; c=0x%" PRIx64 "\n",
     GetActiveThreadID(),
     HartToExecID,
+    (unsigned) zNic->getEndpointType(),
     a,
     b,
     c
   );
-
+  output->verbose( CALL_INFO, 2, 0, "\tECALL RegFile=%p\n", RegFile );
+  output->flush();
   RegFile->SetX( RevReg::a0, 0 );
   return EcallStatus::SUCCESS;
 }

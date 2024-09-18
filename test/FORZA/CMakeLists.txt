@@ -10,7 +10,7 @@ add_rev_test(forza_amoadd_c forza_amoadd_c 30 "all;memh;rv64;loader;forza" SCRIP
 add_rev_test(forza_recv forza_recv 30 "all;memh;rv64;loader;forza" SCRIPT "run_recv.sh")
 
 # needs review and update since it's blank
-#add_rev_test(forza_send forza_send 30 "all;memh;rv64;loader;forza" SCRIPT "run_send.sh")
+add_rev_test(forza_send forza_send 30 "all;memh;rv64;loader;forza" SCRIPT "run_send.sh")
 
 # remove scratchpad calls, just do registration (how to verify? - probably just read it back)
 add_rev_test(forza_zqm_mbox_setup forza_zqm_mbox_setup 30 "all;memh;rv64;loader;forza" SCRIPT "run_zqm_mbox_setup.sh")

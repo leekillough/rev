@@ -1117,6 +1117,7 @@ void RevCPU::handleRingMsg( Event* ev ) {
     );
     uint64_t next_addr = zoneRing->getNextAddress();
     zoneRing->send( ring_ev, next_addr );
+    return;
   }
 
   if( ring_ev->getSrcComp() == zoneRing->getEndpointType() ) {
