@@ -207,13 +207,12 @@ void ZQM::handleRingMsg( SST::Event *event )
 
 void ZQM::handleRingStatus( SST::Forza::ringEvent *ev )
 {
-  output.verbose(CALL_INFO, 7, 0, "[ZQM] %s handle ZENSTAT message\n", getName().c_str());
+  output.verbose(CALL_INFO, 7, 0, "[ZQM] %s handle ZQMSTAT message\n", getName().c_str());
   if ( ev->getOp() != SST::Forza::ringMsgT::R_READ )
     output.fatal(CALL_INFO, -1, "[ZQM] %s unexpected optype message; OpType=%" PRIu8 "\n", getName().c_str(), ev->getOp());
 
   auto status = PerHartCSRs[ev->getSrcZap()][ev->getHart()].status;
   sendRingResponse(ev, status);
-  delete ev;
 }
 
 void ZQM::handleRingMboxReg( SST::Forza::ringEvent *ev )
@@ -246,7 +245,7 @@ void ZQM::handleRingMboxReg( SST::Forza::ringEvent *ev )
     std::pair<uint8_t, uint16_t> p2(phys_zap, phys_hart);
     LogicalToPhysicalMap.insert( std::pair<std::pair<uint8_t, uint16_t>, std::pair<uint8_t, uint16_t>>(p1, p2) );
     output.verbose(CALL_INFO, 7, 0, "[ZQM] A, phys_zap=%u, hart=%u\n", phys_zap, phys_hart);
-    auto regs = PerHartCSRs[phys_zap][phys_hart];
+    auto &regs = PerHartCSRs[phys_zap][phys_hart];
     output.verbose(CALL_INFO, 7, 0, "[ZQM] B, aid=%u, pe=%u=0x%x, mboxes=%u=0x%x\n", aid, logic_pe, logic_pe, mbx_bitmap, mbx_bitmap);
     regs.logical_pe = logic_pe;
     regs.aid = aid;
@@ -289,16 +288,19 @@ void ZQM::handleRingDq( SST::Forza::ringEvent *ev )
 
 void ZQM::sendRingResponse( SST::Forza::ringEvent *ev, uint64_t data )
 {
-    output.fatal(CALL_INFO, -1, "[ZQM] %s function not yet implemented\n", getName().c_str());
-#if 0
-    auto resp = new ringEvent();
-    // resp Hart = src Hart
-    // resp CSR = src CSR
-    // resp device = src device
-    // resp cmd = src cmd
-    // resp data = data argument
-
-    // push response onto ring output (or structure that holds output events)
+    //output.fatal(CALL_INFO, -1, "[ZQM] %s function not yet implemented\n", getName().c_str());
+#if 1
+    auto resp = new ringEvent(zopCompID::Z_ZQM, ev->getHart(), ev->getSrcComp(), ringMsgT::R_RETDATA, ev->getCSR(), data );
+    uint64_t next_dest = zone_ring->getNextAddress();
+    output.verbose(
+      CALL_INFO,
+      5,
+      0,
+      "[ZQM] sending ring message; CSR=0x%" PRIx16 "; op=%" PRIu8 "\n",
+      resp->getCSR(),
+      (uint8_t) resp->getOp()
+    );
+    zone_ring->send( resp, next_dest );
 #endif
 }
 
@@ -328,7 +330,7 @@ void ZQM::updateMailboxes()
     output.verbose(CALL_INFO, 9, 0, "[ZQM] %s incoming msg zop - mapping found. aid=%u, logical_pe=%u, mbox=%u, zap=%u, hart=%u\n", 
                    getName().c_str(), dest_aid, dest_pe, dest_mbox, iter->second.first, iter->second.second );
 
-    auto mbox = PerHartCSRs[iter->second.first][iter->second.second].mbox_buffs[dest_mbox];
+    auto &mbox = PerHartCSRs[iter->second.first][iter->second.second].mbox_buffs[dest_mbox];
     IncomingMsgQueue.pop();
     if ( mbox.buff_state == msgBuffState::IDLE ){
         // fill the msg buffer, set to ready
@@ -343,6 +345,8 @@ void ZQM::updateMailboxes()
         //for ( auto i : mbox.msg )
         //    output.verbose(CALL_INFO, 9, 0, "ZQM Msg = 0x%" PRIx64 "\n", i);
         //output.flush();
+        // Update status
+        PerHartCSRs[iter->second.first][iter->second.second].status |= (1UL << dest_mbox);
     } else {
         // rather than leave the msg at the front of the queue (where it's blocking), we recycle
         // it to the end of the queue

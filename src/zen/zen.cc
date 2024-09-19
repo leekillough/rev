@@ -261,16 +261,19 @@ void ZEN::handleRingSpawn( SST::Forza::ringEvent *ev )
 
 void ZEN::sendRingResponse( SST::Forza::ringEvent *ev, uint64_t data )
 {
-    output.fatal(CALL_INFO, -1, "[ZEN] %s function not yet implemented\n", getName().c_str());
-#if 0
-    auto resp = new ringEvent();
-    // resp Hart = src Hart
-    // resp CSR = src CSR
-    // resp device = src device
-    // resp cmd = src cmd
-    // resp data = data argument
-
-    // push response onto ring output (or structure that holds output events)
+    //output.fatal(CALL_INFO, -1, "[ZEN] %s function not yet implemented\n", getName().c_str());
+#if 1
+    auto resp = new ringEvent(zopCompID::Z_ZEN, ev->getHart(), ev->getSrcComp(), ringMsgT::R_RETDATA, ev->getCSR(), data );
+    uint64_t next_dest = zone_ring->getNextAddress();
+    output.verbose(
+      CALL_INFO,
+      5,
+      0,
+      "[ZEN] sending ring message; CSR=0x%" PRIx16 "; op=%" PRIu8 "\n",
+      resp->getCSR(),
+      (uint8_t) resp->getOp()
+    );
+    zone_ring->send( resp, next_dest );
 #endif
 }
 
