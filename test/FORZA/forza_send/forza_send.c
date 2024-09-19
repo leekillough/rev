@@ -15,6 +15,8 @@ int main( int argc, char** argv ) {
   //if (TID != 0)
   //  return 0;
 
+  uint64_t abba       = forza_scratchpad_alloc( 32 );
+
   uint64_t logical_pe = 0xbeef;
 #if 1
   if( TID == 0 )
@@ -23,7 +25,7 @@ int main( int argc, char** argv ) {
     logical_pe = 0x93UL;
 #endif
 
-  forza_debug_print( logical_pe, TID, 0xcafe );
+  forza_debug_print( logical_pe, TID, abba /*0xcafe*/ );
   // forza_zqm_setup( logical_pe, n_mailboxes );
   forza_zqm_setup( logical_pe, 6 );
 
@@ -41,5 +43,12 @@ int main( int argc, char** argv ) {
     ctrl_word |= dest_pe;
     forza_send_word( ctrl_word, true );
   }
+
+  abba = forza_scratchpad_alloc( 64 );
+  if( TID == 1 )
+    while( abba == 0 )
+      abba = forza_scratchpad_alloc( 64 );
+  forza_debug_print( logical_pe, 0xcafe, abba );
+
   return 0;
 }

@@ -3740,6 +3740,7 @@ const std::unordered_map<uint32_t, EcallStatus(RevCore::*)()> RevCore::Ecalls = 
 
 // 4000, forza_scratchpad_alloc(size_t size);
 EcallStatus RevCore::ECALL_forza_scratchpad_alloc() {
+#if 0
   output->fatal(
     CALL_INFO,
     -1,
@@ -3747,7 +3748,8 @@ EcallStatus RevCore::ECALL_forza_scratchpad_alloc() {
     GetActiveThreadID(),
     HartToExecID
   );
-#if 0
+#endif
+
   output->verbose(
     CALL_INFO,
     2,
@@ -3756,8 +3758,34 @@ EcallStatus RevCore::ECALL_forza_scratchpad_alloc() {
     GetActiveThreadID(),
     HartToExecID
   );
-  uint64_t size = RegFile->GetX<uint64_t>( RevReg::a0 );
+  uint64_t size                  = RegFile->GetX<uint64_t>( RevReg::a0 );
 
+  SST::Forza::ringEvent* ring_ev = new SST::Forza::ringEvent(
+    zNic->getEndpointType(), HartToExecID, SST::Forza::zopCompID::Z_ZQM, SST::Forza::ringMsgT::R_READ, R_ZQMSTAT, 0xdefafUL
+  );
+
+  if( zoneRing ) {
+    uint64_t next_dest = zoneRing->getNextAddress();
+    output->verbose(
+      CALL_INFO,
+      5,
+      0,
+      "[ZAP] %u sending ring message; CSR=0x%" PRIx16 "; op=%" PRIu8 "\n",
+      (uint8_t) zNic->getEndpointType(),
+      ring_ev->getCSR(),
+      (uint8_t) ring_ev->getOp()
+    );
+    zoneRing->send( ring_ev, next_dest );
+    output->verbose( CALL_INFO, 5, 0, "SENDING RING MESSAGE, next addr = %lu\n", next_dest );
+  } else {
+    output->verbose( CALL_INFO, 5, 0, "[ERROR] NO RING NETWORK\n" );
+    delete ring_ev;
+  }
+
+  DependencySet( HartToExecID, RevReg::a0, RevRegClass::RegGPR );
+  return EcallStatus::SUCCESS;
+
+#if 0
   output->verbose( CALL_INFO, 4, 0, "ECALL: forza_scratchpad_alloc attempting to allocate %" PRIu64 " bytes\n", size );
   uint64_t Addr = mem->ScratchpadAlloc( size );
 

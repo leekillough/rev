@@ -1134,15 +1134,7 @@ void RevCPU::handleRingMsg( Event* ev ) {
   if( ring_ev == nullptr ) {
     output.fatal( CALL_INFO, -1, "[FORZA][handleRingMessage] : ringEvent is null\n" );
   } else {
-    output.verbose(
-      CALL_INFO,
-      9,
-      0,
-      "[FORZA][%s] Received Ring Message; datum=0x%" PRIx64 "; deleting packet\n",
-      getName().c_str(),
-      ring_ev->getDatum()
-    );
-    delete ring_ev;
+    Procs[0]->handleRingReadData( ring_ev );
   }
 }
 

@@ -907,6 +907,9 @@ private:
     DependencySet( HartID, RegNum, regClass, false );
   }
 
+public:
+  void handleRingReadData( Forza::ringEvent* ring_ev );
+
 };  // class RevCore
 
 }  // namespace SST::RevCPU

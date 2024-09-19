@@ -2154,6 +2154,21 @@ void RevCore::UpdateStatusOfHarts() {
   return;
 }
 
+void RevCore::handleRingReadData( Forza::ringEvent* ring_ev ) {
+  output->verbose(
+    CALL_INFO,
+    5,
+    0,
+    "[FORZA][%u] Received Ring Message; datum=0x%" PRIx64 "; deleting packet\n",
+    (unsigned) zNic->getEndpointType(),
+    ring_ev->getDatum()
+  );
+  // Need to clear the dependency for Procs[0].Harts[0]
+  DependencyClear( ring_ev->getHart(), RevReg::a0, RevRegClass::RegGPR );
+  Harts.at( ring_ev->getHart() )->RegFile->SetX( RevReg::a0, ring_ev->getDatum() );
+  delete ring_ev;
+}
+
 }  // namespace SST::RevCPU
 
 // EOF
