@@ -183,7 +183,8 @@ void ZQM::handleRingMsg( SST::Event *event )
   if ( ev->getDestComp() != zopCompID::Z_ZQM ){
     uint64_t next_addr = zone_ring->getNextAddress();
     zone_ring->send( ev, next_addr );
-    output.verbose(CALL_INFO, 5, 0, "[ZQM] %s forwarding ring message; CSR=0x%" PRIx16 "; op=%" PRIu8 "\n", getName().c_str(), ev->getCSR(), (uint8_t)ev->getOp());
+    output.verbose(CALL_INFO, 5, 0, "[ZQM] %s forwarding ring message; CSR=0x%" PRIx16 "; op=%" PRIu8 "; data=0x%" PRIx64 "\n", 
+                   getName().c_str(), ev->getCSR(), (uint8_t)ev->getOp(), ev->getDatum());
     return;
   }
 

@@ -172,10 +172,12 @@ void ZEN::handleRingOmc( SST::Forza::ringEvent *ev )
   if ( ev->getOp() != SST::Forza::ringMsgT::R_READ )
     output.fatal(CALL_INFO, -1, "[ZEN] %s unexpected optype message; OpType=%" PRIu8 "\n", getName().c_str(), ev->getOp());
 
-  auto cnts = PerHartCSRs[ev->getSrcZap()][ev->getHart()].mbox_cntrs;
+  auto &cnts = PerHartCSRs[ev->getSrcZap()][ev->getHart()].mbox_cntrs;
   uint64_t full_cnt = 0;
-  for (unsigned i = 0; i < NUM_MBOXES; i++)
-    full_cnt |= ( cnts[i] << i*8 );
+  for (uint64_t i = 0; i < NUM_MBOXES; i++){
+    full_cnt |= ( ( (uint64_t)cnts[i] ) << i*8 );
+    //output.verbose(CALL_INFO, 7, 0, "[ZEN] %s ZENOMC; fullcnt=0x%" PRIx64 "; cnt[]=0x%" PRIx8 "\n", getName().c_str(), full_cnt, cnts[i]);
+  }
 
   sendRingResponse(ev, full_cnt);
 }
@@ -186,7 +188,7 @@ void ZEN::handleRingStatus( SST::Forza::ringEvent *ev )
   if ( ev->getOp() != SST::Forza::ringMsgT::R_READ )
     output.fatal(CALL_INFO, -1, "[ZEN] %s unexpected optype message; OpType=%" PRIu8 "\n", getName().c_str(), ev->getOp());
 
-  auto status = PerHartCSRs[ev->getSrcZap()][ev->getHart()].status;
+  auto &status = PerHartCSRs[ev->getSrcZap()][ev->getHart()].status;
   status |= ( PerHartCSRs[ev->getSrcZap()][ev->getHart()].is_sending ) ? 0x0ffUL : 0;
   sendRingResponse(ev, status);
 }
@@ -245,7 +247,7 @@ void ZEN::handleRingSpawn( SST::Forza::ringEvent *ev )
   if ( ev->getOp() != SST::Forza::ringMsgT::R_UPDATE )
     output.fatal(CALL_INFO, -1, "[ZEN] %s unexpected optype message; OpType=%" PRIu8 "\n", getName().c_str(), ev->getOp());
 
-  auto regs = PerHartCSRs[ev->getSrcZap()][ev->getHart()];
+  auto &regs = PerHartCSRs[ev->getSrcZap()][ev->getHart()];
   // TODO: Check on status before setting it?
   // TODO: Check on value of spawn_cur_word?
   regs.status |= (1UL << ZENSTAT_SHIFT_SPNBUSY);
@@ -261,20 +263,18 @@ void ZEN::handleRingSpawn( SST::Forza::ringEvent *ev )
 
 void ZEN::sendRingResponse( SST::Forza::ringEvent *ev, uint64_t data )
 {
-    //output.fatal(CALL_INFO, -1, "[ZEN] %s function not yet implemented\n", getName().c_str());
-#if 1
     auto resp = new ringEvent(zopCompID::Z_ZEN, ev->getHart(), ev->getSrcComp(), ringMsgT::R_RETDATA, ev->getCSR(), data );
     uint64_t next_dest = zone_ring->getNextAddress();
     output.verbose(
       CALL_INFO,
       5,
       0,
-      "[ZEN] sending ring message; CSR=0x%" PRIx16 "; op=%" PRIu8 "\n",
+      "[ZEN] sending ring message; CSR=0x%" PRIx16 "; op=%" PRIu8 "; data=0x%" PRIx64 "\n",
       resp->getCSR(),
-      (uint8_t) resp->getOp()
+      (uint8_t) resp->getOp(),
+      data
     );
     zone_ring->send( resp, next_dest );
-#endif
 }
 
 uint32_t ZEN::getRetrySeqNum()
