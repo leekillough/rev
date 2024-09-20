@@ -204,6 +204,11 @@ public:
 
 class ZqmPerHartRegs {
 public:
+
+  // disallow copying and assignment
+  //ZqmPerHartRegs ( const ZqmPerHartRegs& ) = delete;
+  //ZqmPerHartRegs& operator=( const ZqmPerHartRegs& ) = delete;
+
   // Note: may need to add some other status variables, etc in here
   // May want to put this into the zqm class
   uint64_t status{0};

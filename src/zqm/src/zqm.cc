@@ -261,14 +261,15 @@ void ZQM::handleRingDq( SST::Forza::ringEvent *ev )
     output.verbose(CALL_INFO, 7, 0, "[ZQM] %s; handling a dequeue message\n", getName().c_str() );
     // Maybe use a ZEN like reading scheme for now to get something implemented
     // That would at least let us work on developing s/w
-    auto regs = PerHartCSRs[ev->getSrcZap()][ev->getHart()];
-    auto mbox = regs.mbox_buffs[( ev->getCSR() & R_MASK_ZQMDQMBOX )];
+    auto &regs = PerHartCSRs[ev->getSrcZap()][ev->getHart()];
+    auto &mbox = regs.mbox_buffs[( ev->getCSR() & R_MASK_ZQMDQMBOX )];
 
     if ( mbox.buff_state != msgBuffState::READY )
         output.fatal(CALL_INFO, -1, "[ZQM] %s; messager buffer not ready \n", getName().c_str() );
 
     // Get the data word to return
     auto ret_data = mbox.msg[mbox.msg_cur_word];
+    output.verbose(CALL_INFO, 7, 0, "[ZQM] %s; handling a dequeue message; msg_cur_word=%u\n", getName().c_str(), mbox.msg_cur_word );
 
     // Use data field to do the proper read/write/update
     if ( ev->getDatum() == 0 ){
@@ -283,7 +284,6 @@ void ZQM::handleRingDq( SST::Forza::ringEvent *ev )
     }
 
     sendRingResponse( ev, ret_data );
-    delete ev;
 }
 
 void ZQM::sendRingResponse( SST::Forza::ringEvent *ev, uint64_t data )
@@ -335,7 +335,7 @@ void ZQM::updateMailboxes()
     if ( mbox.buff_state == msgBuffState::IDLE ){
         // fill the msg buffer, set to ready
         mbox.setMsg(msg->getPayload());
-        mbox.msg_cur_word = 1;
+        mbox.msg_cur_word = 0;
         mbox.buff_state = msgBuffState::READY;
         // send the ack zop
         sendZopAck(msg, zopMsgT::Z_MSG, zopOpc::Z_MSG_ACK);
