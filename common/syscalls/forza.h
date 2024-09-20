@@ -12,11 +12,11 @@
 #define FORZA_SYSCALL(NUM, PROTO) __attribute__((naked)) \
   static PROTO{ asm(" li a7," #NUM "; ecall; ret"); }
 
-FORZA_SYSCALL( 4000, uint64_t forza_scratchpad_alloc( size_t size ) );
-FORZA_SYSCALL( 4001, int forza_scratchpad_free( uint64_t addr, size_t size ) );
+FORZA_SYSCALL( 4000, uint64_t forza_read_zen_status() );
+FORZA_SYSCALL( 4001, uint64_t forza_read_zqm_status() );
 FORZA_SYSCALL( 4002, int forza_get_hart_id() );
 FORZA_SYSCALL( 4003, int forza_send_word( uint64_t data, bool is_control_wd ) );
-FORZA_SYSCALL( 4004, int forza_zen_credit_release( size_t size ) );
+FORZA_SYSCALL( 4004, int forza_receive_word( uint64_t mbox_id ) );
 FORZA_SYSCALL( 4005, int forza_zen_setup( uint64_t addr, size_t size, uint64_t tailptr, uint64_t mbox_id ) );
 
 /**
