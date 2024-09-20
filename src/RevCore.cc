@@ -2159,8 +2159,9 @@ void RevCore::handleRingReadData( Forza::ringEvent* ring_ev ) {
     CALL_INFO,
     5,
     0,
-    "[FORZA][%u] Received Ring Message; datum=0x%" PRIx64 "; deleting packet\n",
+    "[FORZA][%u] Received Ring Message; CSR=0x%x, datum=0x%" PRIx64 "\n",
     (unsigned) zNic->getEndpointType(),
+    ring_ev->getCSR(),
     ring_ev->getDatum()
   );
   // Need to clear the dependency for Procs[0].Harts[0]

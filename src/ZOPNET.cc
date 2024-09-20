@@ -383,7 +383,7 @@ void zopNIC::send( zopEvent* ev, zopCompID dest, zopPrecID zone, unsigned prec )
     }
   }
 
-  output.verbose( CALL_INFO, 9, 0, "ZOPNET: sending packet; realDest=%u\n", (uint32_t) realDest );
+  //output.verbose( CALL_INFO, 9, 0, "ZOPNET: sending packet; realDest=%u\n", (uint32_t) realDest );
 
   ev->encodeEvent();
   req->dest = realDest;  // FIXME - what needs fixed here?

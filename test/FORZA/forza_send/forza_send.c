@@ -42,6 +42,8 @@ int main( int argc, char** argv ) {
     uint64_t ctrl_word = dest_mbox << 33;
     ctrl_word |= dest_pe;
     forza_send_word( ctrl_word, true );
+    uint64_t cntrs = forza_zen_get_cntrs();
+    forza_debug_print( 0xabcd, cntrs, 0xcdef );
   }
 
   uint64_t msg_array[9] = { 0 };

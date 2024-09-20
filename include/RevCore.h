@@ -701,7 +701,7 @@ private:
   EcallStatus ECALL_forza_get_hart_id();             // 4002, forza_get_hart_id();
   EcallStatus ECALL_forza_send_word();               // 4003, forza_send_word();
   EcallStatus ECALL_forza_receive_word();            // 4004, forza_receive_word();
-  EcallStatus ECALL_forza_zen_setup();               // 4005, forza_zen_setup();
+  EcallStatus ECALL_forza_zen_get_cntrs();           // 4005, forza_zen_get_cntrs();
   EcallStatus ECALL_forza_zqm_setup();               // 4006, forza_zqm_setup();
   EcallStatus ECALL_forza_get_harts_per_zap();       // 4007, forza_get_harts_per_zap
   EcallStatus ECALL_forza_get_zaps_per_zone();       // 4008, forza_get_zaps_per_zone();
