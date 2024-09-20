@@ -18,16 +18,6 @@ FORZA_SYSCALL( 4002, int forza_get_hart_id() );
 FORZA_SYSCALL( 4003, int forza_send_word( uint64_t data, bool is_control_wd ) );
 FORZA_SYSCALL( 4004, int forza_receive_word( uint64_t mbox_id ) );
 FORZA_SYSCALL( 4005, uint64_t forza_zen_get_cntrs() );
-
-/**
- * @param addr - start of application zone run queue - should be 8byte aligned
- * @param size - num bytes of application zone run queue; can be 0
- * @param min_hart - low HART number for this application
- * @param max_hart - top HART number for this application (inclusive)
- * @param seq_ld_flag - set to 1 if actor program, 0 for migr thread program
- * @return
- *
- */
 FORZA_SYSCALL( 4006, int forza_zqm_setup( uint64_t logical_pe, uint64_t n_mailboxes ) );
 
 FORZA_SYSCALL( 4007, int forza_get_harts_per_zap() );

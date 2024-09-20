@@ -4158,8 +4158,6 @@ EcallStatus RevCore::ECALL_forza_zqm_setup() {
     mbox_mask |= ( 1UL << i );
   }
 
-  //uint64_t reg_value = (uint64_t) RegFile->GetX<uint64_t>( RevReg::a0 );
-
   // Using values in RingNet.h
 #if 1
   uint64_t outreg = ( ( mbox_mask & ZQMMBOXREG_MASK_MBXSUSED ) << ZQMMBOXREG_SHIFT_MBXSUSED );
@@ -4194,55 +4192,6 @@ EcallStatus RevCore::ECALL_forza_zqm_setup() {
     output->verbose( CALL_INFO, 5, 0, "[ERROR] NO RING NETWORK\n" );
     delete ring_ev;
   }
-
-  // NOTE: THIS WILL BE THROUGH THE RING RATHER THAN A ZOP
-#if 0
-  SST::Forza::zopEvent* zev = new SST::Forza::zopEvent();
-
-  uint8_t msg_id            = 0;
-  zev->setType( SST::Forza::zopMsgT::Z_MSG );
-  zev->setID( msg_id );
-  zev->setOpc( SST::Forza::zopOpc::Z_MSG_ZQMSET );
-  zev->setAppID( 0 );  // FIXME: Pull this from the executing thread; for now, just use 0
-
-  // src info
-  zev->setSrcHart( HartToExecID );
-  zev->setSrcZCID( zNic->getEndpointType() );
-  zev->setSrcPCID( zNic->getZoneID() );
-  zev->setSrcPrec( zNic->getPrecinctID() );
-
-  // Dest info is the ZQM
-  zev->setDestHart( 0 );
-  zev->setDestZCID( SST::Forza::zopCompID::Z_ZQM );
-  zev->setDestPCID( zNic->getZoneID() );
-  zev->setDestPrec( zNic->getPrecinctID() );
-
-  /*
-   * payload[0] = minimum ZAP hart for this AppID
-   * payload[1] = maximum ZAP hart for this AppID (inclusive)
-   * payload[2] = run queue low memory address (cannot be 0)
-   * payload[3] = run queue high memory address (cannot be 0)
-   * payload[4] = sequential fill flag (1 for actor programs, 0 otherwise)
-   *
-   * Note: For actor programs (e.g, payload[4] == 1), it's generally expected that no run queue is
-   * necessary, thus, payload[2] can equal payload[3]. For migrating thread programs, the buffer should
-   * be equal to the following (( (num_threads_to_store+1) * bytes_per_thread_stored) - 1); there isn't a "full"
-   * flag to in the ZQM to denote if the buffer is full/empty if the read and write pointers match, thus there
-   * is always space for "one extra thread" hence the +1.  The -1 just ensures that the high address ends with
-   * 0x7 or 0xF (since we're dealing with 8byte storage chunks)
-   */
-
-  std::vector<uint64_t> payload;
-  payload.push_back( min_hart );
-  payload.push_back( max_hart );
-  payload.push_back( low_addr );
-  payload.push_back( high_addr );
-  payload.push_back( seq_ld_flag );
-  zev->setPayload( payload );
-
-  // Let's send the message
-  zNic->send( zev, SST::Forza::zopCompID::Z_ZQM, zNic->getPCID( zev->getDestPCID() ), zev->getDestPrec() );
-#endif
 
   return EcallStatus::SUCCESS;
 }
