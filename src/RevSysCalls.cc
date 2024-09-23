@@ -3871,6 +3871,8 @@ EcallStatus RevCore::ECALL_forza_send_word() {
     delete ring_ev;
   }
 
+  return EcallStatus::SUCCESS;
+
 #if 0
   uint64_t dst               = (uint64_t) RegFile->GetX<uint64_t>( RevReg::a0 );
   uint64_t spaddr            = (uint64_t) RegFile->GetX<uint64_t>( RevReg::a1 );
