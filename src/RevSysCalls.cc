@@ -4310,9 +4310,11 @@ EcallStatus RevCore::ECALL_forza_zone_barrier() {
       CALL_INFO,
       2,
       0,
-      "ECALL: forza_zone_barrier called by thread %" PRIu32 " on hart %" PRIu32 ", Prec=%" PRIu32 ", num_harts=%" PRIu32 "\n",
+      "ECALL: forza_zone_barrier called by thread %" PRIu32 " on hart %" PRIu32 ", Zone=%" PRIu32 ", Prec=%" PRIu32
+      ", num_harts=%" PRIu32 "\n",
       GetActiveThreadID(),
       HartToExecID,
+      zNic->getZoneID(),
       zNic->getPrecinctID(),
       num_harts
     );
