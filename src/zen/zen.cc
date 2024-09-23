@@ -86,7 +86,7 @@ ZEN::ZEN(ComponentId_t id, Params& params)
 
   // complete SST registration
   registerAsPrimaryComponent();
-  primaryComponentDoNotEndSim();
+  //primaryComponentDoNotEndSim();
 }
 
 ZEN::~ZEN(){

@@ -145,7 +145,7 @@ ZQM::ZQM(ComponentId_t id, Params& params)
 
     // register with SST
     registerAsPrimaryComponent();
-    primaryComponentDoNotEndSim();
+    //primaryComponentDoNotEndSim();
 }
 
 ZQM::~ZQM()

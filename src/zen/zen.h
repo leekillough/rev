@@ -331,7 +331,7 @@ class ZEN : public SST::Component{
     std::vector<bool> SeqNumMgrList;
     std::map<int32_t, OutgoingMessage*> RetryMgrMap;
     std::queue<OutgoingMessage*> OutMsgQueue;
-    std::array<OutgoingMessage*, 3> MsgPipeline;
+    std::array<OutgoingMessage*, 3> MsgPipeline{};
     std::queue<zopEvent*> MsgAckQueue;
     std::queue<OutgoingSpawn*> OutSpawnQueue;
 
