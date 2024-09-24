@@ -29,6 +29,7 @@
 #include "ZOPNET.h"
 #include "RingNet.h"
 #include <string>
+#include <bitset>
 
 namespace SST::Forza{
 
