@@ -231,7 +231,6 @@ void ZEN::handleRingEqCtrl( SST::Forza::ringEvent *ev )
     regs.status |= ( 1UL << dest_mbox ); //if we're about to saturate the mbox counter, we have to set the status bit
   regs.mbox_cntrs[dest_mbox]++;
 
-
   // TODO: DOES THIS NEED A RING RESPONSE?
 
   auto out_msg = new OutgoingMessage( regs.msg, ev->getSrcZap(), ev->getHart() );
@@ -335,7 +334,10 @@ void ZEN::sendMsgZop(OutgoingMessage* msg, bool is_msg, uint16_t zop_msg_id)
   zop->encodeEvent();
   output.verbose(CALL_INFO, 9, 0, "ZEN[%s]: Send msg from %s to %s\n", getName().c_str(),
                  zop->getSrcString().c_str(), zop->getDestString().c_str());
-  zone_nic->send(zop, zopCompID::Z_ZQM);
+  if ( (zop->getDestPrec() == Precinct ) && ( zop->getDestPCID() == Zone ) )  
+    zone_nic->send(zop, zopCompID::Z_ZQM);
+  else
+    m_prec_iface->send(zop, zopCompID::Z_ZQM, zop->getPCID( zop->getDestPCID() ), zop->getDestPrec());
 }
 
 void ZEN::execMsgPipe2()
@@ -359,10 +361,12 @@ void ZEN::execMsgPipe2()
     }
   } else {
     // put onto m_prec_iface;
-    output.fatal( CALL_INFO, -1, "ZEN[%s]; no send of msg to precinct nic implemented\n", getName().c_str() );
+    sendMsgZop(MsgPipeline[2], true, 0);
+    //output.fatal( CALL_INFO, -1, "ZEN[%s]; no send of msg to precinct nic implemented\n", getName().c_str() );
   }
 
-  // Update pipeline
+  // Delete outgoing message and Update pipeline
+  delete MsgPipeline[2];
   MsgPipeline[2] = nullptr;
 }
 
@@ -381,7 +385,7 @@ void ZEN::handleMsgAck(zopEvent *ack)
                  ack->getSrcString().c_str(), ack->getDestString().c_str());
   }
   cntr--;
-  // we've reduced the counter, so the busy bit for this mbox should be cleared (active sending is handled with the is_sending flag)
+  // we've reduced the counter (no longer saturated), so the busy bit for this mbox should be cleared (active sending is handled with the is_sending flag)
   uint64_t mask = ~( 1UL << ack->getCredit() );
   regs.status &= mask;
 
@@ -467,7 +471,7 @@ void ZEN::updateMsgPipe0()
   OutMsgQueue.pop();
 
   // message into pipeline, we can reset the send buffers for this hart
-  auto regs = PerHartCSRs[MsgPipeline[0]->src_zap][MsgPipeline[0]->src_hart];
+  auto &regs = PerHartCSRs[MsgPipeline[0]->src_zap][MsgPipeline[0]->src_hart];
   regs.msg_cur_word = 1;
   regs.is_sending = false;
 }
