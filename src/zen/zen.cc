@@ -657,7 +657,7 @@ void ZEN::helper_handleMsgZop(SST::Forza::zopEvent *ev)
     case SST::Forza::zopOpc::Z_MSG_ACK:
       // if for this locale, clear the retry msg entry for this ack; push it onto the queue to handle
       // in the msg pipeline; if for diff locale, put it onto the precinct network
-      if ( (ev->getDestPrec() == Precinct ) && ( ev->getDestZCID() == Zone ) ){
+      if ( isDestLocal( ev ) ){
         output.verbose( CALL_INFO, 9, 0, "ZEN %s: received a MSG_ACK\n", getName().c_str() );
         MsgAckQueue.push(ev);
       } else {
@@ -673,6 +673,7 @@ void ZEN::helper_handleMsgZop(SST::Forza::zopEvent *ev)
       break;
     
     case SST::Forza::zopOpc::Z_MSG_SENDP:
+      output.verbose( CALL_INFO, 9, 0, "ZEN %s: received a MSG_SENDP\n", getName().c_str() );
       if ( (ev->getSrcPrec() == Precinct ) && ( ev->getSrcZCID() == Zone ) )
         output.fatal(CALL_INFO, -1, "ZEN[%s]: received an messaging packet from this zone Packet %s to %s\n",
                      getName().c_str(), ev->getSrcString().c_str(), ev->getDestString().c_str());
