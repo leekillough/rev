@@ -5,6 +5,8 @@
 #include <stdlib.h>
 #include "forza_message_lib.h"
 
+// NOTE: This requires #HARTs to be > logical_pe numbers (> 0xb)
+
 int main( int argc, char** argv ) {
   uint64_t TID = forza_get_my_zap();
   uint64_t zen_status = forza_read_zen_status();

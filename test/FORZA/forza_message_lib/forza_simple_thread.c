@@ -30,7 +30,9 @@ static int forza_thread_join( forza_thread_t tid ) {
 
 void* forza_thread1( void* FArgs ) {
   ForzaThreadArgs* args_recv = (ForzaThreadArgs*) FArgs;
-	const char msg[20] = "\nThread1 init\n";
+	uint64_t tid = rev_gettid() % 10UL;
+	char msg[20] = "\nTIDX: Thread1 init\n";
+	msg[4] = '0' + tid;
   rev_write( STDOUT_FILENO, msg, sizeof( msg ) );
   assert( 13 == args_recv->ActorID );
   return NULL;
@@ -38,7 +40,9 @@ void* forza_thread1( void* FArgs ) {
 
 void* forza_thread2( void* FArgs ) {
   ForzaThreadArgs* args_recv = (ForzaThreadArgs*) FArgs;
-  const char msg[20] = "\nThread2 init\n";
+	uint64_t tid = rev_gettid() % 10UL;
+  char msg[20] = "\nTIDX: Thread2 init\n";
+	msg[4] = '0' + tid;
   rev_write( STDOUT_FILENO, msg, sizeof( msg ) );
   assert( 14 == args_recv->ActorID );
   return NULL;
@@ -46,7 +50,10 @@ void* forza_thread2( void* FArgs ) {
 
 
 int main( int argc, char** argv ) {
-  const char msg1[15] = "\nMain start\n";
+  
+	uint64_t tid = rev_gettid() % 10UL;
+	char msg1[20] = "\nTIDX: Main start\n";
+	msg1[4] = '0' + tid;
   rev_write( STDOUT_FILENO, msg1, sizeof( msg1 ) );
 
   ForzaThreadArgs FArgs[2];
@@ -63,8 +70,9 @@ int main( int argc, char** argv ) {
     &actor_threads[1], (void*) forza_thread2, (void*) &(FArgs[1]) );
 #endif
 
-	const char msg2[25] = "\nAfter thread create\n";
-  rev_write( STDOUT_FILENO, msg2, sizeof( msg2 ) );
+	char msg2[30] = "\nTIDX: After thread create\n";
+  msg2[4] = '0' + tid;
+	rev_write( STDOUT_FILENO, msg2, sizeof( msg2 ) );
 
 #if 1
   forza_thread_join( actor_threads[0] );
@@ -73,7 +81,8 @@ int main( int argc, char** argv ) {
 	forza_thread_join( actor_threads[1] );
 #endif
 
-	const char msg3[20] = "\nAfter join\n";
-  rev_write( STDOUT_FILENO, msg3, sizeof( msg3 ) );
+	char msg3[20] = "\nTIDX: After join\n";
+  msg3[4] = '0' + tid;
+	rev_write( STDOUT_FILENO, msg3, sizeof( msg3 ) );
   return 0;
 }

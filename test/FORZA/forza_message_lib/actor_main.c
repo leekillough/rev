@@ -140,9 +140,6 @@ if (fargs->local_pe == 0 )
   }
 }
  
- 	// Wait for all threads to complete send 
-	// (Shouldn't be necessary since receive waits for messages to arrive)
-  forza_zone_barrier( forza_get_zaps_per_zone() );
 
 if (fargs->local_pe == 1 ) 
 {
@@ -227,8 +224,6 @@ if (fargs->local_pe == 1 )
   }
 }
 
-	// Ensure PE 1 is done sending before PE0 starts receiving, shouldn't be necessary
-  forza_zone_barrier( forza_get_zaps_per_zone() );
 
 if (fargs->local_pe == 0 ) {
   // Process RESPONSE messages
