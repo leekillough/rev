@@ -126,7 +126,7 @@ SST::Interfaces::SimpleNetwork::nid_t RingNetNIC::getAddress() {
 
 uint64_t RingNetNIC::getNextAddress() {
   uint64_t myAddr   = (uint64_t) ( getAddress() );
-  uint64_t lastAddr = endPoints[( endPoints.size() - 1 )];
+  uint64_t lastAddr = endPoints.back();
   output.verbose(
     CALL_INFO,
     11,

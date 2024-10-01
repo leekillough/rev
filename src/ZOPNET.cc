@@ -369,11 +369,17 @@ void zopNIC::send( zopEvent* ev, zopCompID dest, zopPrecID zone, unsigned prec )
     );
   }
   auto realDest = 0;
-  if( ev->getDestZCID() <= (uint8_t) SST::Forza::zopCompID::Z_ZAP7 && ev->getType() == SST::Forza::zopMsgT::Z_MSG ) {
-    if( ev->getOpc() == SST::Forza::zopOpc::Z_MSG_SENDP || ev->getOpc() == SST::Forza::zopOpc::Z_MSG_SENDAS )
-      TmpDest = zopCompID::Z_ZQM;  // any send message so go to a zqm
-    else if( ev->getOpc() == SST::Forza::zopOpc::Z_MSG_ACK || ev->getOpc() == SST::Forza::zopOpc::Z_MSG_NACK )
-      TmpDest = zopCompID::Z_ZEN;  // any msg ack/nack goes to a zen
+  if( ( (unsigned) zone == Zone ) && ( prec == Precinct ) ) {
+    if( ev->getDestZCID() <= (uint8_t) SST::Forza::zopCompID::Z_ZAP7 && ev->getType() == SST::Forza::zopMsgT::Z_MSG ) {
+      if( ev->getOpc() == SST::Forza::zopOpc::Z_MSG_SENDP || ev->getOpc() == SST::Forza::zopOpc::Z_MSG_SENDAS )
+        TmpDest = zopCompID::Z_ZQM;  // any send message so go to a zqm
+      else if( ev->getOpc() == SST::Forza::zopOpc::Z_MSG_ACK || ev->getOpc() == SST::Forza::zopOpc::Z_MSG_NACK )
+        TmpDest = zopCompID::Z_ZEN;  // any msg ack/nack goes to a zen
+    }
+  } else if( prec == Precinct ) {
+    TmpDest = zopCompID::Z_ZEN;
+  } else {
+    output.fatal( CALL_INFO, -1, "Packet should be for a diff precinct - not yet supported\n" );
   }
 
   for( auto i : hostMap ) {
@@ -382,8 +388,6 @@ void zopNIC::send( zopEvent* ev, zopCompID dest, zopPrecID zone, unsigned prec )
       realDest = i.first;
     }
   }
-
-  //output.verbose( CALL_INFO, 9, 0, "ZOPNET: sending packet; realDest=%u\n", (uint32_t) realDest );
 
   ev->encodeEvent();
   req->dest = realDest;  // FIXME - what needs fixed here?

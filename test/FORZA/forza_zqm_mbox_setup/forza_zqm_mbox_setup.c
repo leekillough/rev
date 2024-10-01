@@ -21,16 +21,14 @@
   while( 0 )
 
 int main( int argc, char** argv ) {
-  int TID = forza_get_my_zap();
-  if( forza_get_my_zone() > 0 )
-    return 0;
+  int TID             = forza_get_my_zap();
 
-  forza_debug_print( 0x0AD, 0, 0xcafe );
-  // forza_zqm_setup( logical_pe, n_mailboxes );
-  forza_zqm_setup( 0x0AD, 6 );
+  uint64_t logical_pe = 0x11 * ( forza_get_my_zone() + 1 );
 
-  uint64_t nzaps = ( forza_get_my_zone() == 0 ) ? forza_get_zaps_per_zone() : 0;
-  forza_zone_barrier( nzaps );
+  forza_debug_print( logical_pe, 0, 0xcafe );
+  forza_zqm_setup( logical_pe, 6 );
+
+  forza_zone_barrier( forza_get_zaps_per_zone() );
 
   return 0;
 }
