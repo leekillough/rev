@@ -726,8 +726,8 @@ void ZQM::sendZopAck(SST::Forza::zopEvent *event, zopMsgT msg_type, zopOpc msg_o
 
     zone_nic->send(ack_msg, static_cast<zopCompID>(ack_msg->getDestZCID()));
     std::string str = ack_msg->msgTToStr(msg_type);
-    output.verbose(CALL_INFO, 9, 0, "ZQM [%s] sending %s:%u with msg_id=%" PRIu16 " from in zop %s to %s\n",
-                    getName().c_str(), str.c_str(), (uint8_t)msg_opc, event->getID(), event->getSrcString().c_str(), 
+    output.verbose(CALL_INFO, 9, 0, "ZQM [%s] sending ack %s:%u with msg_id=%" PRIu16 " from %s to %s\n",
+                    getName().c_str(), str.c_str(), (uint8_t)msg_opc, event->getID(), ack_msg->getSrcString().c_str(), 
                     ack_msg->getDestString().c_str());
 }
 

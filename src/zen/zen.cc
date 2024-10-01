@@ -655,10 +655,15 @@ void ZEN::helper_handleMsgZop(SST::Forza::zopEvent *ev)
   // There are several of these that the ZEN needs to handle
   switch(ev->getOpc()){
     case SST::Forza::zopOpc::Z_MSG_ACK:
-      // clear the retry msg entry for this ack; push it onto the queue to handle
-      // in the msg pipeline
-      output.verbose( CALL_INFO, 9, 0, "ZEN %s: received a MSG_ACK\n", getName().c_str() );
-      MsgAckQueue.push(ev);
+      // if for this locale, clear the retry msg entry for this ack; push it onto the queue to handle
+      // in the msg pipeline; if for diff locale, put it onto the precinct network
+      if ( (ev->getDestPrec() == Precinct ) && ( ev->getDestZCID() == Zone ) ){
+        output.verbose( CALL_INFO, 9, 0, "ZEN %s: received a MSG_ACK\n", getName().c_str() );
+        MsgAckQueue.push(ev);
+      } else {
+        output.verbose( CALL_INFO, 9, 0, "ZEN %s: received a MSG_ACK; PUT ON PRECINCT NOC\n", getName().c_str() );
+        m_prec_iface->send( ev, SST::Forza::zopCompID::Z_ZEN, ev->getPCID( ev->getDestPCID() ), ev->getDestPrec() );
+      }
     break;
 
     case SST::Forza::zopOpc::Z_MSG_NACK:
@@ -667,8 +672,15 @@ void ZEN::helper_handleMsgZop(SST::Forza::zopEvent *ev)
                  getName().c_str());
       break;
     
+    case SST::Forza::zopOpc::Z_MSG_SENDP:
+      if ( (ev->getSrcPrec() == Precinct ) && ( ev->getSrcZCID() == Zone ) )
+        output.fatal(CALL_INFO, -1, "ZEN[%s]: received an messaging packet from this zone Packet %s to %s\n",
+                     getName().c_str(), ev->getSrcString().c_str(), ev->getDestString().c_str());
+      zone_nic->send(ev, SST::Forza::zopCompID::Z_ZQM);
+      break;
+
     default:
-      output.fatal(CALL_INFO, -1, "\nZEN[%s]: received an unexpected messaging packet opcode=%u; Packet: %s to %s\n\n",
+      output.fatal(CALL_INFO, -1, "ZEN[%s]: received an unexpected messaging packet opcode=%u; Packet: %s to %s\n\n",
                  getName().c_str(), (unsigned)ev->getOpc(), ev->getSrcString().c_str(), ev->getDestString().c_str());
       break;
   }
