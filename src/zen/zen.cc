@@ -200,7 +200,8 @@ void ZEN::handleRingEqData( SST::Forza::ringEvent *ev )
     output.fatal(CALL_INFO, -1, "[ZEN] %s unexpected optype message; OpType=%" PRIu8 "\n", getName().c_str(), ev->getOp());
 
   auto &regs = PerHartCSRs[ev->getSrcZap()][ev->getHart()];
-  output.verbose(CALL_INFO, 7, 0, "[ZEN] %s ZENEQData cur_wd=%u, data=0x%llx\n", getName().c_str(), regs.msg_cur_word, ev->getDatum());
+  output.verbose(CALL_INFO, 7, 0, "[ZEN] %s ZENEQData src[Zap:Hart]=[%u:%u], cur_wd=%u, data=0x%llx\n", 
+                 getName().c_str(), ev->getSrcZap(), ev->getHart(), regs.msg_cur_word, ev->getDatum());
   // sanity check
   if (regs.msg_cur_word >= 8)
     output.fatal(CALL_INFO, -2, "[ZEN] %s msg_cur_word exceeded max; [zap%u][hart%u].msg_cur_word=%u\n", 
@@ -230,7 +231,8 @@ void ZEN::handleRingEqCtrl( SST::Forza::ringEvent *ev )
   else if ( regs.mbox_cntrs[dest_mbox] == (UINT8_MAX-1) )
     regs.status |= ( 1UL << dest_mbox ); //if we're about to saturate the mbox counter, we have to set the status bit
   regs.mbox_cntrs[dest_mbox]++;
-
+  output.verbose(CALL_INFO, 7, 0, "[ZEN] %s ZENEqCtrl src[Zap:Hart]=[%u:%u], data=0x%llx\n", 
+                 getName().c_str(), ev->getSrcZap(), ev->getHart(), ev->getDatum());
   // TODO: DOES THIS NEED A RING RESPONSE?
 
   auto out_msg = new OutgoingMessage( regs.msg, ev->getSrcZap(), ev->getHart() );

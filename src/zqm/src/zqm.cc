@@ -314,6 +314,7 @@ void ZQM::updateMailboxes()
         return;
 
     auto msg = IncomingMsgQueue.front();
+    IncomingMsgQueue.pop();
     auto dest_aid = msg->getAppID();
     auto dest_mbox = msg->getCredit();
 
@@ -332,7 +333,6 @@ void ZQM::updateMailboxes()
                    getName().c_str(), dest_aid, dest_pe, dest_mbox, iter->second.first, iter->second.second );
 
     auto &mbox = PerHartCSRs[iter->second.first][iter->second.second].mbox_buffs[dest_mbox];
-    IncomingMsgQueue.pop();
     if ( mbox.buff_state == msgBuffState::IDLE ){
         // fill the msg buffer, set to ready
         mbox.setMsg(msg->getPayload());
@@ -723,6 +723,7 @@ void ZQM::sendZopAck(SST::Forza::zopEvent *event, zopMsgT msg_type, zopOpc msg_o
     ack_msg->setID(event->getID());
     ack_msg->setAppID(event->getAppID());
     ack_msg->setCredit(event->getCredit());
+    ack_msg->setPktRes(event->getPktRes());
 
     zone_nic->send(ack_msg, static_cast<zopCompID>(ack_msg->getDestZCID()));
     std::string str = ack_msg->msgTToStr(msg_type);
