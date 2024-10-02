@@ -82,10 +82,10 @@ public:
   virtual void setup() {}
 
   /// VerilatorScratchpadAPI: write data into the scratchpad module
-  virtual bool WriteMem( unsigned Hart, uint64_t Addr, size_t Len, const void* Data )               = 0;
+  virtual bool WriteMem( uint64_t Addr, size_t Len, const void* Data )               = 0;
 
   /// VerilatorScratchpadAPI: read data from the scratchpad module
-  virtual bool ReadMem( unsigned Hart, uint64_t Addr, size_t Len, void* Target, const MemReq& req ) = 0;
+  virtual bool ReadMem( uint64_t Addr, size_t Len, void* Target, const MemReq& req ) = 0;
 
 protected:
   SST::Output* output;  ///< VerilatorScratchpadAPI: SST output object

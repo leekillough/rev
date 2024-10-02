@@ -154,7 +154,7 @@ void VerilatorScratchpadCtrl::ScheduleReadOp( uint64_t Address, uint8_t Len ) {
   scratchQueue.emplace( Len );           // push catch rdata operation
 }
 
-bool VerilatorScratchpadCtrl::WriteMem( unsigned Hart, uint64_t Addr, size_t Len, const void* Data ) {
+bool VerilatorScratchpadCtrl::WriteMem( uint64_t Addr, size_t Len, const void* Data ) {
   // Len is in bytes here...
   opQueue.emplace( Addr, Len, Data );
   uint8_t* toWrite = new uint8_t[Len];
@@ -164,7 +164,7 @@ bool VerilatorScratchpadCtrl::WriteMem( unsigned Hart, uint64_t Addr, size_t Len
 }
 
 /* Consider reorganizing these to be sequential instead of all buffered on the verilog side, same for writes */
-bool VerilatorScratchpadCtrl::ReadMem( unsigned Hart, uint64_t Addr, size_t Len, void* Target, const MemReq& req ) {
+bool VerilatorScratchpadCtrl::ReadMem( uint64_t Addr, size_t Len, void* Target, const MemReq& req ) {
   opQueue.emplace( Addr, Len, Target, req );
   return true;
 }
