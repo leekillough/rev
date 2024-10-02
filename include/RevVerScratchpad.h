@@ -135,19 +135,19 @@ public:
   virtual ~VerilatorScratchpadCtrl();
 
   /// VerilatorScratchpadCtrl: initialization function
-  virtual void init( unsigned int phase );
+  virtual void init( unsigned int phase ) override;
 
   /// VerilatorScratchpadCtrl: setup function
-  virtual void setup();
+  virtual void setup() override;
 
   /// VerilatorScratchpadCtrl: clock function
   virtual bool clockTick( Cycle_t cycle );
 
   /// VerilatorScratchpadCtrl: write memory to the scratchpad
-  virtual bool WriteMem( unsigned Hart, uint64_t Addr, size_t Len, const void* Data );
+  virtual bool WriteMem( uint64_t Addr, size_t Len, const void* Data ) override;
 
   /// VerilatorScratchpadCtrl: read memory from the scratchpad
-  virtual bool ReadMem( unsigned Hart, uint64_t Addr, size_t Len, void* Target, const MemReq& req );
+  virtual bool ReadMem( uint64_t Addr, size_t Len, void* Target, const MemReq& req ) override;
 
   /// VerilatorScratchpadCtrl: helper encapsulating one write operation
   void ScheduleWriteOp( uint64_t Address, uint64_t Data, uint8_t Len );
