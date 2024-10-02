@@ -42,9 +42,11 @@ int main( int argc, char** argv ) {
   assert( i_zaps_per_zone == forza_get_zaps_per_zone() );
 
   int i_zones_per_precinct = 8;  //atoi(argv[3]); //8
+  //TODO: this is inaccurate for the test setup; may need to
+  // revise where these syscalls find this info
   assert( i_zones_per_precinct == forza_get_zones_per_precinct() );
 
-  int i_num_precincts = 3;  //atoi(argv[4]); //3
+  int i_num_precincts = 1;  //atoi(argv[4]); //3
   assert( i_num_precincts == forza_get_num_precincts() );
 
   int i_my_zap = 0;  //atoi(argv[5]); //0

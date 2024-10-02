@@ -255,7 +255,7 @@ void RevMem::AddToTLB( uint64_t vAddr, uint64_t physAddr ) {
     // Insert the vAddr and physAddr into the TLB and LRU list
     LRUQueue.push_front( vAddr );
     TLB.insert( {
-      vAddr, {physAddr, LRUQueue.begin()}
+      vAddr, { physAddr, LRUQueue.begin() }
     } );
   }
 }
@@ -863,7 +863,6 @@ bool RevMem::ReadMem( unsigned Hart, uint64_t Addr, size_t Len, void* Target, co
           DataMem[i] = BaseMem[i];
         }
       }
-
       BaseMem = &physMem[adjPhysAddr];
       if( !ctrl && !zNic ) {
         unsigned Cur = ( Len - span );
@@ -1102,9 +1101,13 @@ uint64_t RevMem::ExpandHeap( uint64_t Size ) {
 // ---- FORZA Interfaces
 // ----------------------------------------------------
 
-void RevMem::InitScratchpad( const unsigned ZapNum, size_t ScratchpadSize, size_t ChunkSize ) {
+void RevMem::InitScratchpad( const unsigned ZapNum, size_t ScratchpadSize, size_t ChunkSize, VerilatorScratchpadAPI* VerScratch ) {
   // Allocate the scratchpad memory
-  scratchpad = std::make_shared<RevScratchpad>( ZapNum, _SCRATCHPAD_SIZE_, _CHUNK_SIZE_, output );
+  if( !VerScratch ) {
+    scratchpad = std::make_shared<RevScratchpad>( ZapNum, _SCRATCHPAD_SIZE_, _CHUNK_SIZE_, output );  //TODO: replace with params
+  } else {
+    scratchpad = std::make_shared<RevScratchpad>( ZapNum, _SCRATCHPAD_SIZE_, _CHUNK_SIZE_, output, VerScratch );
+  }
   if( !scratchpad ) {
     output->fatal( CALL_INFO, -1, "Error: could not allocate backing memory\n" );
   }

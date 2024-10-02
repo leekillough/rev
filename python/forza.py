@@ -24,10 +24,6 @@ host_link_latency = None
 link_latency = "100ns"
 rtr_prefix="cornelis_"
 
-num_pes_per_zone = 2
-num_zaps = 2
-num_zones = 4
-
 topo_params = {
     "routing_alg":"deterministic",
     "adaptive_threshold":0.5
@@ -178,6 +174,11 @@ def calculateTopo():
     for i in range(1,len(downs)-1):
         groups_per_level[i] = groups_per_level[i-1] // downs[i]
 
+    print("Total hosts: " + str(total_hosts))
+    print("Routers per level: " + str(routers_per_level))
+    print("Downs: " + str(downs))
+    print("Ups: " + str(ups))
+
 def buildTopo():
     global host_link_latency
     if not host_link_latency:
@@ -192,15 +193,11 @@ def buildTopo():
             # create all the nodes
             for i in range(downs[0]):
                 node_id = id * downs[0] + i
+                print("Building endpoint " + str(node_id))
                 ep_lc = HFIEndpoints[node_id]
                 plink = sst.Link("precinctlink_%d"%node_id)
                 ep_lc.addLink(plink, "rtr_port", host_link_latency)
                 host_links.append(plink)
-                #(ep, ep_lc) = instanciateEndpoint(node_id)
-                #if ep:
-                #    plink = sst.Link("precinctlink_%d"%node_id)
-                #    ep_lc.addLink(plink, "rtr_port", host_link_latency)
-                #    host_links.append(plink)
 
             # Create the edge router
             rtr_id = id
@@ -288,477 +285,531 @@ def buildTopo():
     rtr_id = 0
 
 class FORZA:
-  def __init__(self, name = "FORZA", zones = 4, precincts = 1,
-               zapsPerZone = 4, hartsPerZap = 1, clock = "1GHz",
-               program = "test.exe", memSize = 1073741823,
-               memAccessTime = "100ns", reqPerCycle = 1,
-               inputBufSize = "2048B", outputBufSize = "2048B",
-               linkBW = "100GB/s", flitSize = "8B", linkLatency = "100ns",
-               xbarBW = "800GB/s", verbose = "5"):
-    print("Initializing FORZA")
-    self.name           = name
-    self.zones          = zones
-    self.precincts      = precincts
-    self.zapsPerZone    = zapsPerZone
-    self.hartsPerZap    = hartsPerZap
-    self.clock          = clock
-    self.program        = program
-    self.memSize        = memSize
-    self.memAccessTime  = memAccessTime
-    self.reqPerCycle    = reqPerCycle
-    self.inputBufSize   = inputBufSize
-    self.outputBufSize  = outputBufSize
-    self.linkBW         = linkBW
-    self.flitSize       = flitSize
-    self.linkLatency    = linkLatency
-    self.xbarBW         = xbarBW
-    self.verbose        = verbose
+    def __init__(self, name = "FORZA", zones = 4, precincts = 1,
+                 zapsPerZone = 4, hartsPerZap = 1, clock = "1GHz",
+                 program = "test.exe", progArgs = "", memSize = 1073741823,
+                 memAccessTime = "100ns", reqPerCycle = 1,
+                 inputBufSize = "2048B", outputBufSize = "2048B",
+                 linkBW = "100GB/s", flitSize = "8B", linkLatency = "100ns",
+                 xbarBW = "800GB/s", verbose = "5", verScratch = False):
+        print("Initializing FORZA")
+        self.name           = name
+        self.zones          = zones
+        self.precincts      = precincts
+        self.zapsPerZone    = zapsPerZone
+        self.hartsPerZap    = hartsPerZap
+        self.clock          = clock
+        self.program        = program
+        self.progArgs       = progArgs
+        self.memSize        = memSize
+        self.memAccessTime  = memAccessTime
+        self.reqPerCycle    = reqPerCycle
+        self.inputBufSize   = inputBufSize
+        self.outputBufSize  = outputBufSize
+        self.linkBW         = linkBW
+        self.flitSize       = flitSize
+        self.linkLatency    = linkLatency
+        self.xbarBW         = xbarBW
+        self.verbose        = verbose
+        # Toggle verilator model scratchpad
+        if verScratch:
+            self.enableVerScratch = 1
+            print("Config using Verilator scratchpad subcomponent")
+        else:
+            self.enableVerScratch = 0
+            print("Config using SST scratchpad subcomponent")
+        # avoid multiple zaps conflicting address spaces
+        if self.zapsPerZone > 1:
+            self.memSizeChange = True
+        else:
+            self.memSizeChange = False
 
-  @property
-  def name(self):
-    return self._name
+    @property
+    def name(self):
+        return self._name
 
-  @name.setter
-  def name(self, value):
-    self._name = value
+    @name.setter
+    def name(self, value):
+        self._name = value
 
-  @property
-  def zones(self):
-    return self._zones
+    @property
+    def zones(self):
+        return self._zones
 
-  @zones.setter
-  def zones(self, value):
-    self._zones = value
+    @zones.setter
+    def zones(self, value):
+        self._zones = value
 
-  @property
-  def precincts(self):
-    return self._precincts
+    @property
+    def precincts(self):
+        return self._precincts
 
-  @precincts.setter
-  def precincts(self, value):
-    self._precincts = value
+    @precincts.setter
+    def precincts(self, value):
+        self._precincts = value
 
-  @property
-  def zapsPerZone(self):
-    return self._zapsPerZone
+    @property
+    def zapsPerZone(self):
+        return self._zapsPerZone
 
-  @zapsPerZone.setter
-  def zapsPerZone(self, value):
-    self._zapsPerZone = value
+    @zapsPerZone.setter
+    def zapsPerZone(self, value):
+        self._zapsPerZone = value
 
-  @property
-  def hartsPerZap(self):
-    return self._hartsPerZap
+    @property
+    def hartsPerZap(self):
+        return self._hartsPerZap
 
-  @hartsPerZap.setter
-  def hartsPerZap(self, value):
-    self._hartsPerZap = value
+    @hartsPerZap.setter
+    def hartsPerZap(self, value):
+        self._hartsPerZap = value
 
-  @property
-  def clock(self):
-    return self._clock
+    @property
+    def clock(self):
+        return self._clock
 
-  @clock.setter
-  def clock(self, value):
-    self._clock = value
+    @clock.setter
+    def clock(self, value):
+        self._clock = value
 
-  @property
-  def program(self):
-    return self._program
+    @property
+    def program(self):
+        return self._program
 
-  @program.setter
-  def program(self, value):
-    self._program = value
+    @program.setter
+    def program(self, value):
+        self._program = value
 
-  @property
-  def memSize(self):
-    return self._memSize
+    @property
+    def memSize(self):
+        return self._memSize
 
-  @memSize.setter
-  def memSize(self, value):
-    self._memSize = value
+    @memSize.setter
+    def memSize(self, value):
+        self._memSize = value
 
-  @property
-  def memAccessTime(self):
-    return self._memAccessTime
+    @property
+    def memAccessTime(self):
+        return self._memAccessTime
 
-  @memAccessTime.setter
-  def memAccessTime(self, value):
-    self._memAccessTime = value
+    @memAccessTime.setter
+    def memAccessTime(self, value):
+        self._memAccessTime = value
 
-  @property
-  def reqPerCycle(self):
-    return self._reqPerCycle
+    @property
+    def reqPerCycle(self):
+        return self._reqPerCycle
 
-  @reqPerCycle.setter
-  def reqPerCycle(self, value):
-    self._reqPerCycle = value
+    @reqPerCycle.setter
+    def reqPerCycle(self, value):
+        self._reqPerCycle = value
 
-  @property
-  def inputBufSize(self):
-    return self._inputBufSize
+    @property
+    def inputBufSize(self):
+        return self._inputBufSize
 
-  @inputBufSize.setter
-  def inputBufSize(self, value):
-    self._inputBufSize = value
+    @inputBufSize.setter
+    def inputBufSize(self, value):
+        self._inputBufSize = value
 
-  @property
-  def outputBufSize(self):
-    return self._outputBufSize
+    @property
+    def outputBufSize(self):
+        return self._outputBufSize
 
-  @outputBufSize.setter
-  def outputBufSize(self, value):
-    self._outputBufSize = value
+    @outputBufSize.setter
+    def outputBufSize(self, value):
+        self._outputBufSize = value
 
-  @property
-  def linkBW(self):
-    return self._linkBW
+    @property
+    def linkBW(self):
+        return self._linkBW
 
-  @linkBW.setter
-  def linkBW(self, value):
-    self._linkBW = value
+    @linkBW.setter
+    def linkBW(self, value):
+        self._linkBW = value
 
-  @property
-  def flitSize(self):
-    return self._flitSize
+    @property
+    def flitSize(self):
+        return self._flitSize
 
-  @flitSize.setter
-  def flitSize(self, value):
-    self._flitSize = value
+    @flitSize.setter
+    def flitSize(self, value):
+        self._flitSize = value
 
-  @property
-  def linkLatency(self):
-    return self._linkLatency
+    @property
+    def linkLatency(self):
+        return self._linkLatency
 
-  @linkLatency.setter
-  def linkLatency(self, value):
-    self._linkLatency = value
+    @linkLatency.setter
+    def linkLatency(self, value):
+        self._linkLatency = value
 
-  @property
-  def xbarBW(self):
-    return self._xbarBW
+    @property
+    def xbarBW(self):
+        return self._xbarBW
 
-  @xbarBW.setter
-  def xbarBW(self, value):
-    self._xbarBW = value
+    @xbarBW.setter
+    def xbarBW(self, value):
+        self._xbarBW = value
 
-  @property
-  def verbose(self):
-    return self._verbose
+    @property
+    def verbose(self):
+        return self._verbose
 
-  @verbose.setter
-  def verbose(self, value):
-    self._verbose = value
+    @verbose.setter
+    def verbose(self, value):
+        self._verbose = value
 
-  def enableStatistics(self, level):
-    print("Enabling Statistics")
-    sst.setStatisticOutput("sst.statOutputCSV")
-    sst.enableAllStatisticsForComponentType("revcpu.RevCPU")
-    sst.enableAllStatisticsForComponentType("revcpu.RZAAMOCoProc")
-    sst.enableAllStatisticsForComponentType("revcpu.RZALSCoProc")
-    sst.enableAllStatisticsForComponentType("revcpu.RevBasicMemCtrl")
-    sst.enableAllStatisticsForComponentType("memHierarchy.MemController")
-    sst.enableAllStatisticsForComponentType("memHierarchy.simpleMem")
-    sst.enableAllStatisticsForComponentType("forzazen.ZEN")
-    sst.enableAllStatisticsForComponentType("forzazqm.ZQM")
-    sst.enableAllStatisticsForComponentType("forza.zopNIC")
+    def enableStatistics(self, level):
+        print("Enabling Statistics")
+        sst.setStatisticOutput("sst.statOutputCSV")
+        sst.enableAllStatisticsForComponentType("revcpu.RevCPU")
+        sst.enableAllStatisticsForComponentType("revcpu.RZAAMOCoProc")
+        sst.enableAllStatisticsForComponentType("revcpu.RZALSCoProc")
+        sst.enableAllStatisticsForComponentType("revcpu.RevBasicMemCtrl")
+        sst.enableAllStatisticsForComponentType("memHierarchy.MemController")
+        sst.enableAllStatisticsForComponentType("memHierarchy.simpleMem")
+        sst.enableAllStatisticsForComponentType("forzazen.ZEN")
+        sst.enableAllStatisticsForComponentType("forzazqm.ZQM")
+        sst.enableAllStatisticsForComponentType("forza.zopNIC")
+        sst.enableAllStatisticsForComponentType("ForzaZIP.ZIP")
 
-  def build(self):
+    def build(self):
 
-    ZipArray = []
+        ZipArray = []
 
-    for i in range(self.precincts):
-      #-- create the precinct router
-      prec_router = sst.Component("prec_router_"+str(i), "merlin.hr_router")
-      prec_router.setSubComponent("topology", "merlin.singlerouter")
-      prec_router.addParams({
-        "input_buf_size" : self.inputBufSize,
-        "output_buf_size" : self.outputBufSize,
-        "link_bw" : self.linkBW,
-        "xbar_bw" : self.xbarBW,
-        "flit_size" : self.flitSize,
-        "num_ports" : self.zones+1,
-        "id" : 0
-      })
+        for i in range(self.precincts):
+            #-- create the precinct router
+            prec_router = sst.Component("prec_router_"+str(i), "merlin.hr_router")
+            prec_router.setSubComponent("topology", "merlin.singlerouter")
+            prec_router.addParams({
+              "input_buf_size" : self.inputBufSize,
+              "output_buf_size" : self.outputBufSize,
+              "link_bw" : self.linkBW,
+              "xbar_bw" : self.xbarBW,
+              "flit_size" : self.flitSize,
+              "num_ports" : self.zones+1,
+              "id" : 0
+            })
 
-      #-- create the zip
-      zipComp = sst.Component("zip"+str(i), "ForzaZIP.ZIP")
-      zipComp.addParams({"precID" : i, "maxWait" : "1us"})
+            #-- create the zip
+            zipComp = sst.Component("zip"+str(i), "ForzaZIP.ZIP")
+            zipComp.addParams({"precID" : i, "maxWait" : "1us"})
 
-      zipMem = zipComp.setSubComponent("memory", "ForzaZIP.ZIPBasicMemCtrl", 0)
-      zipMemIface = zipMem.setSubComponent("memIface", "memHierarchy.standardInterface", 0)
+            zipMem = zipComp.setSubComponent("memory", "ForzaZIP.ZIPBasicMemCtrl", 0)
+            zipMemIface = zipMem.setSubComponent("memIface", "memHierarchy.standardInterface", 0)
 
-      zipMemCtrl = sst.Component("zipMemCtrl_"+str(i), "memHierarchy.MemController")
-      zipMemCtrl.addParams({"clock" : "2GHz", "addr_range_start" : 0, "backing" : "malloc"})
-      zipMemBackend = zipMemCtrl.setSubComponent("backend", "memHierarchy.simpleMem")
-      zipMemBackend.addParams({"access_time" : "100ns", "mem_size" : "8GB"})
+            zipMemCtrl = sst.Component("zipMemCtrl_"+str(i), "memHierarchy.MemController")
+            zipMemCtrl.addParams({"clock" : "2GHz", "addr_range_start" : 0, "backing" : "malloc"})
+            zipMemBackend = zipMemCtrl.setSubComponent("backend", "memHierarchy.simpleMem")
+            zipMemBackend.addParams({"access_time" : "100ns", "mem_size" : "8GB"})
 
-      zipMemLink = sst.Link("zipMemLink_"+str(i))
-      zipMemLink.connect((zipMemIface, "port", "50ps"), (zipMemCtrl, "direct_link", "50ps"))
+            zipMemLink = sst.Link("zipMemLink_"+str(i))
+            zipMemLink.connect((zipMemIface, "port", "50ps"), (zipMemCtrl, "direct_link", "50ps"))
 
-      zipNIC = zipComp.setSubComponent("zopLink", "forza.zopNIC", 1)
-      zipNIC.addParams({"precinctID" : i})
-      zipNIC_lc = zipNIC.setSubComponent("iface", "merlin.linkcontrol", 0)
+            zipNIC = zipComp.setSubComponent("zopLink", "forza.zopNIC", 1)
+            zipNIC.addParams({"precinctID" : i})
+            zipNIC_lc = zipNIC.setSubComponent("iface", "merlin.linkcontrol", 0)
 
-      zipNIC.addParams({
-        "verbose" : self.verbose,
-        "clock" : self.clock,
-        "req_per_cycle" : self.reqPerCycle
-      })
-      zipNIC_lc.addParams({
-        "input_buf_size" : self.inputBufSize,
-        "output_buf_size" : self.outputBufSize,
-        "link_bw" : self.linkBW,
-      })
+            zipNIC.addParams({
+              "verbose" : self.verbose,
+              "clock" : self.clock,
+              "req_per_cycle" : self.reqPerCycle
+            })
+            zipNIC_lc.addParams({
+              "input_buf_size" : self.inputBufSize,
+              "output_buf_size" : self.outputBufSize,
+              "link_bw" : self.linkBW,
+            })
 
-      zipNICLink = sst.Link("zipNICLink_"+str(i))
-      zipNICLink.connect((zipNIC_lc, "rtr_port", "1us"), (prec_router, "port"+str(self.zones), "1us"))
+            zipNICLink = sst.Link("zipNICLink_"+str(i))
+            zipNICLink.connect((zipNIC_lc, "rtr_port", "1us"), (prec_router, "port"+str(self.zones), "1us"))
 
-      zipHFINIC = zipComp.setSubComponent("hfiLink", "ForzaZIP.ZIPHFINIC", 2)
-      zipHFINIC.addParams({"precinctID" : i})
-      zipComp_lc = zipHFINIC.setSubComponent("iface", "merlin.linkcontrol", 0)
-      zipComp_lc.addParams({
-        "input_buf_size" : "14kB",
-        "job_id" : "0",
-        "job_size" : "2",
-        "link_bw" : "400Gb/s",
-        "output_buf_size" : "14kB",
-        "use_nid_remap" : "False",
-      })
+            zipHFINIC = zipComp.setSubComponent("hfiLink", "ForzaZIP.ZIPHFINIC", 2)
+            zipHFINIC.addParams({"precinctID" : i})
+            zipComp_lc = zipHFINIC.setSubComponent("iface", "merlin.linkcontrol", 0)
+            zipComp_lc.addParams({
+              "input_buf_size" : "14kB",
+              "job_id" : "0",
+              "job_size" : "2",
+              "link_bw" : "400Gb/s",
+              "output_buf_size" : "14kB",
+              "use_nid_remap" : "False",
+            })
 
-      #-- store off the ZIP linkcontrol object in an array for future topology connectivity
-      ZipArray.append(zipComp_lc)
+            #-- store off the ZIP linkcontrol object in an array for future topology connectivity
+            ZipArray.append(zipComp_lc)
 
-      for j in range(self.zones):
-        #-- create the zone router
-        zone_router = sst.Component("zone_router_"+str(i)+"_"+str(j), "merlin.hr_router")
-        zone_router.setSubComponent("topology", "merlin.singlerouter")
-        zone_router.addParams({
-          "input_buf_size" : self.inputBufSize,
-          "output_buf_size" : self.outputBufSize,
-          "link_bw" : self.linkBW,
-          "xbar_bw" : self.xbarBW,
-          "flit_size" : self.flitSize,
-          "num_ports" : self.zapsPerZone+3,
-          "id" : 0
-        })
+            for j in range(self.zones):
+                #-- create the zone router
+                zone_router = sst.Component("zone_router_"+str(i)+"_"+str(j), "merlin.hr_router")
+                zone_router.setSubComponent("topology", "merlin.singlerouter")
+                zone_router.addParams({
+                  "input_buf_size" : self.inputBufSize,
+                  "output_buf_size" : self.outputBufSize,
+                  "link_bw" : self.linkBW,
+                  "xbar_bw" : self.xbarBW,
+                  "flit_size" : self.flitSize,
+                  "num_ports" : self.zapsPerZone+3,
+                  "id" : 0
+                })
+                #-- create the ZQM
+                zqm = sst.Component("zqm_"+str(i)+"_"+str(j), "forzazqm.ZQM")
+                zqm.addParams({
+                  "verbose" : self.verbose,
+                  "clockFreq" : self.clock,
+                  "precinctId" : i,
+                  "zoneId" : j,
+                  "numHarts" : 1,
+                  "numCores" : 1
+                })
+                zqm_nic = zqm.setSubComponent("zone_nic", "forza.zopNIC")
+                zqm_iface = zqm_nic.setSubComponent("iface", "merlin.linkcontrol")
+                zqm_nic.addParams({
+                  "verbose" : self.verbose,
+                  "clock" : self.clock,
+                  "req_per_cycle" : self.reqPerCycle
+                })
+                zqm_iface.addParams({
+                  "input_buf_size" : self.inputBufSize,
+                  "output_buf_size" : self.outputBufSize,
+                  "link_bw" : self.linkBW,
+                })
 
-        #-- create the ZQM
-        zqm = sst.Component("zqm_"+str(i)+"_"+str(j), "forzazqm.ZQM")
-        zqm.addParams({
-          "verbose" : self.verbose,
-          "clockFreq" : self.clock,
-          "precinctId" : i,
-          "zoneId" : j,
-          "numHarts" : 1,
-          "numCores" : 1
-        })
-        zqm_nic = zqm.setSubComponent("zone_nic", "forza.zopNIC")
-        zqm_iface = zqm_nic.setSubComponent("iface", "merlin.linkcontrol")
-        zqm_nic.addParams({
-          "verbose" : self.verbose,
-          "clock" : self.clock,
-          "req_per_cycle" : self.reqPerCycle
-        })
-        zqm_iface.addParams({
-          "input_buf_size" : self.inputBufSize,
-          "output_buf_size" : self.outputBufSize,
-          "link_bw" : self.linkBW,
-        })
+                zqm_link = sst.Link("zqm_link_"+str(i)+"_"+str(j))
+                zqm_link.connect( (zqm_iface, "rtr_port", "1us"),
+                                  (zone_router, "port"+str(self.zapsPerZone), "1us") )
 
-        zqm_link = sst.Link("zqm_link_"+str(i)+"_"+str(j))
-        zqm_link.connect( (zqm_iface, "rtr_port", "1us"),
-                          (zone_router, "port"+str(self.zapsPerZone), "1us") )
+                #-- create the ZEN
+                zen = sst.Component("zen_"+str(i)+"_"+str(j), "forzazen.ZEN")
+                zen.addParams({
+                  "verbose" : self.verbose,
+                  "clockFreq" : self.clock,
+                  "precinctId" : i,
+                  "zoneId" : j,
+                  "numHarts" : self.hartsPerZap,
+                  "numZap" : self.zapsPerZone,
+                  "numZones" : self.zones,
+                  "numPrecincts" : self.precincts,
+                  "enableDMA" : 0,
+                  "zenQSizeLimit" : 100000,
+                  "processPerCycle" : 100000
+                })
+                zen_nic = zen.setSubComponent("zone_nic", "forza.zopNIC")
+                zen_iface = zen_nic.setSubComponent("iface", "merlin.linkcontrol")
+                zen_nic.addParams({
+                  "verbose" : self.verbose,
+                  "clock" : self.clock,
+                  "req_per_cycle" : self.reqPerCycle
+                })
+                zen_iface.addParams({
+                  "input_buf_size" : self.inputBufSize,
+                  "output_buf_size" : self.outputBufSize,
+                  "link_bw" : self.linkBW,
+                })
 
-        #-- create the ZEN
-        zen = sst.Component("zen_"+str(i)+"_"+str(j), "forzazen.ZEN")
-        zen.addParams({
-          "verbose" : self.verbose,
-          "clockFreq" : self.clock,
-          "precinctId" : i,
-          "zoneId" : j,
-          "numHarts" : self.hartsPerZap,
-          "numZap" : self.zapsPerZone,
-          "numZones" : self.zones,
-          "numPrecincts" : self.precincts,
-          "enableDMA" : 0,
-          "zenQSizeLimit" : 100000,
-          "processPerCycle" : 100000
-        })
-        zen_nic = zen.setSubComponent("zone_nic", "forza.zopNIC")
-        zen_iface = zen_nic.setSubComponent("iface", "merlin.linkcontrol")
-        zen_nic.addParams({
-          "verbose" : self.verbose,
-          "clock" : self.clock,
-          "req_per_cycle" : self.reqPerCycle
-        })
-        zen_iface.addParams({
-          "input_buf_size" : self.inputBufSize,
-          "output_buf_size" : self.outputBufSize,
-          "link_bw" : self.linkBW,
-        })
+                zen_link = sst.Link("zen_link_"+str(i)+"_"+str(j))
+                zen_link.connect( (zen_iface, "rtr_port", "1us"),
+                                  (zone_router, "port"+str(self.zapsPerZone+1), "1us") )
 
-        zen_link = sst.Link("zen_link_"+str(i)+"_"+str(j))
-        zen_link.connect( (zen_iface, "rtr_port", "1us"),
-                          (zone_router, "port"+str(self.zapsPerZone+1), "1us") )
+                zen_prec_nic = zen.setSubComponent("precinct_nic", "forza.zopNIC")
+                zen_prec_iface = zen_prec_nic.setSubComponent("iface", "merlin.linkcontrol")
+                zen_prec_nic.addParams({
+                  "verbose" : self.verbose,
+                  "clock" : self.clock,
+                  "req_per_cycle" : self.reqPerCycle
+                })
+                zen_prec_iface.addParams({
+                  "input_buf_size" : self.inputBufSize,
+                  "output_buf_size" : self.outputBufSize,
+                  "link_bw" : self.linkBW,
+                })
 
-        zen_prec_nic = zen.setSubComponent("precinct_nic", "forza.zopNIC")
-        zen_prec_iface = zen_prec_nic.setSubComponent("iface", "merlin.linkcontrol")
-        zen_prec_nic.addParams({
-          "verbose" : self.verbose,
-          "clock" : self.clock,
-          "req_per_cycle" : self.reqPerCycle
-        })
-        zen_prec_iface.addParams({
-          "input_buf_size" : self.inputBufSize,
-          "output_buf_size" : self.outputBufSize,
-          "link_bw" : self.linkBW,
-        })
+                zen_prec_link = sst.Link("zen_prec_link_"+str(i)+"_"+str(j))
+                zen_prec_link.connect( (zen_prec_iface, "rtr_port", "1us"),
+                                       (prec_router, "port"+str(j), "1us") )
 
-        zen_prec_link = sst.Link("zen_prec_link_"+str(i)+"_"+str(j))
-        zen_prec_link.connect( (zen_prec_iface, "rtr_port", "1us"),
-                               (prec_router, "port"+str(j), "1us") )
-
-        #-- create the RZA
-        rza = sst.Component("rza_"+str(i)+"_"+str(j), "revcpu.RevCPU")
-        rza.addParams({
-          "verbose" : self.verbose,
-          "numCores" : 2,
-          "clock" : self.clock,
-          "memSize" : self.memSize,
-          "machine" : "[CORES:RV64G]",
-          "startAddr" : "[CORES:0x00000000]",
-          "program" : self.program,
-          "enableZoneNIC" : 1,
-          "enableRZA" : 1,
-          "precinctId" : i,
-          "zoneId" : j,
-          "enable_memH" : 1,
-          "splash" : 0
-        })
-        rza_lspipe = rza.setSubComponent("rza_ls","revcpu.RZALSCoProc")
-        rza_lspipe.addParams({
-          "clock" : self.clock,
-          "verbose" : self.verbose
-        })
-        rza_amopipe = rza.setSubComponent("rza_amo","revcpu.RZAAMOCoProc")
-        rza_amopipe.addParams({
-          "clock" : self.clock,
-          "verbose" : self.verbose
-        })
-        rza_lsq = rza.setSubComponent("memory", "revcpu.RevBasicMemCtrl")
-        rza_lsq.addParams({
-          "verbose" : self.verbose,
-          "clock" : self.clock,
-          "max_loads"       : 16,
-          "max_stores"      : 16,
-          "max_flush"       : 16,
-          "max_llsc"        : 16,
-          "max_readlock"    : 16,
-          "max_writeunlock" : 16,
-          "max_custom"      : 16,
-          "ops_per_cycle"   : 16
-        })
-        rza_lsq_iface = rza_lsq.setSubComponent("memIface", "memHierarchy.standardInterface")
-        rza_lsq_iface.addParams({
-          "verbose" : self.verbose
-        })
-        memctrl = sst.Component("memory_"+str(i)+"_"+str(j), "memHierarchy.MemController")
-        memctrl.addParams({
-          "debug" : 0,
-          "debug_level" : 0,
-          "clock" : self.clock,
-          "verbose" : self.verbose,
-          "addr_range_start" : 0,
-          "addr_range_end" : self.memSize,
-          "backing" : "malloc"
-        })
-        backing_memory = memctrl.setSubComponent("backend", "memHierarchy.simpleMem")
-        backing_memory.addParams({
-          "access_time" : self.memAccessTime,
-          "mem_size" : str(self.memSize)+"B"
-        })
-        rza_mem_link = sst.Link("rza_mem_link_"+str(i)+"_"+str(j))
-        rza_mem_link.connect( (rza_lsq_iface, "port", "50ps"), (memctrl, "direct_link", "50ps") )
-
-        rza_nic = rza.setSubComponent("zone_nic", "forza.zopNIC")
-        rza_iface = rza_nic.setSubComponent("iface", "merlin.linkcontrol")
-        rza_nic.addParams({
-          "verbose" : self.verbose,
-          "clock" : self.clock,
-          "req_per_cycle" : self.reqPerCycle
-        })
-        rza_iface.addParams({
-          "input_buf_size" : self.inputBufSize,
-          "output_buf_size" : self.outputBufSize,
-          "link_bw" : self.linkBW,
-        })
-
-        rza_link = sst.Link("rza_link_"+str(i)+"_"+str(j))
-        rza_link.connect( (rza_iface, "rtr_port", "1us"),
-                          (zone_router, "port"+str(self.zapsPerZone+2), "1us") )
-
-        #-- create the ZAPS
-        for k in range(self.zapsPerZone):
-          zap = sst.Component("zap_"+str(i)+"_"+str(j)+"_"+str(k), "revcpu.RevCPU")
-          zap.addParams({
-            "verbose" : self.verbose,
-            "numCores" : 1,
-            "clock" : self.clock,
-            "memSize" : self.memSize,
-            "machine" : "[CORES:RV64GC]",
-            "startAddr" : "[CORES:0x00000000]",
-            "program" : self.program,
-            "enableZoneNIC" : 1,
-            "enableRZA" : 0,
-            "precinctId" : i,
-            "zoneId" : j,
-            "zapId" : k,
-            "splash" : 0
-          })
-          zap_nic = zap.setSubComponent("zone_nic", "forza.zopNIC")
-          zap_iface = zap_nic.setSubComponent("iface", "merlin.linkcontrol")
-          zap_nic.addParams({
-            "verbose" : self.verbose,
-            "clock" : self.clock,
-            "req_per_cycle" : self.reqPerCycle
-          })
-          zap_iface.addParams({
-            "input_buf_size" : self.inputBufSize,
-            "output_buf_size" : self.outputBufSize,
-            "link_bw" : self.linkBW,
-          })
-          zap_link = sst.Link("zap_link_"+str(i)+"_"+str(j)+"_"+str(k))
-          zap_link.connect( (zap_iface, "rtr_port", "1us"),
-                            (zone_router, "port"+str(k), "1us") )
-
-    return ZipArray
+                #-- create the RZA
+                rza = sst.Component("rza_"+str(i)+"_"+str(j), "revcpu.RevCPU")
+                if self.memSizeChange:
+                    memSizeRza = self.memSize + 1024*1024*200*self.zapsPerZone
+                else:
+                    memSizeRza = self.memSize
+                rza.addParams({
+                  "verbose" : self.verbose,
+                  "numCores" : 2,
+                  "clock" : self.clock,
+                  "memSize" : memSizeRza,
+                  "machine" : "[CORES:RV64G]",
+                  "program" : self.program,
+                  "args"    : self.progArgs,
+                  "enableZoneNIC" : 1,
+                  "enableRZA" : 1,
+                  "precinctId" : i,
+                  "zoneId" : j,
+                  "enable_memH" : 1,
+                  "splash" : 0
+                })
+                rza_lspipe = rza.setSubComponent("rza_ls","revcpu.RZALSCoProc")
+                rza_lspipe.addParams({
+                  "clock" : self.clock,
+                  "verbose" : self.verbose
+                })
+                rza_amopipe = rza.setSubComponent("rza_amo","revcpu.RZAAMOCoProc")
+                rza_amopipe.addParams({
+                  "clock" : self.clock,
+                  "verbose" : self.verbose
+                })
+                rza_lsq = rza.setSubComponent("memory", "revcpu.RevBasicMemCtrl")
+                rza_lsq.addParams({
+                  "verbose" : self.verbose,
+                  "clock" : self.clock,
+                  "max_loads"       : 16,
+                  "max_stores"      : 16,
+                  "max_flush"       : 16,
+                  "max_llsc"        : 16,
+                  "max_readlock"    : 16,
+                  "max_writeunlock" : 16,
+                  "max_custom"      : 16,
+                  "ops_per_cycle"   : 16
+                })
+                rza_lsq_iface = rza_lsq.setSubComponent("memIface", "memHierarchy.standardInterface")
+                rza_lsq_iface.addParams({
+                  "verbose" : self.verbose
+                })
+                memctrl = sst.Component("memory_"+str(i)+"_"+str(j), "memHierarchy.MemController")
+                memctrl.addParams({
+                  "debug" : 0,
+                  "debug_level" : 0,
+                  "clock" : self.clock,
+                  "verbose" : self.verbose,
+                  "addr_range_start" : 0,
+                  "addr_range_end" : memSizeRza,
+                  "backing" : "malloc"
+                })
+                backing_memory = memctrl.setSubComponent("backend", "memHierarchy.simpleMem")
+                backing_memory.addParams({
+                  "access_time" : self.memAccessTime,
+                  "mem_size" : str(memSizeRza)+"B"
+                })
+                rza_mem_link = sst.Link("rza_mem_link_"+str(i)+"_"+str(j))
+                rza_mem_link.connect( (rza_lsq_iface, "port", "50ps"), (memctrl, "direct_link", "50ps") )
+                rza_nic = rza.setSubComponent("zone_nic", "forza.zopNIC")
+                rza_iface = rza_nic.setSubComponent("iface", "merlin.linkcontrol")
+                rza_nic.addParams({
+                  "verbose" : self.verbose,
+                  "clock" : self.clock,
+                  "req_per_cycle" : self.reqPerCycle
+                })
+                rza_iface.addParams({
+                  "input_buf_size" : self.inputBufSize,
+                  "output_buf_size" : self.outputBufSize,
+                  "link_bw" : self.linkBW,
+                })
+                rza_link = sst.Link("rza_link_"+str(i)+"_"+str(j))
+                rza_link.connect( (rza_iface, "rtr_port", "1us"),
+                                  (zone_router, "port"+str(self.zapsPerZone+2), "1us") )
+                #-- create the ZAPS
+                for k in range(self.zapsPerZone):
+                    zap = sst.Component("zap_"+str(i)+"_"+str(j)+"_"+str(k), "revcpu.RevCPU")
+                    if self.memSizeChange:
+                        memSizeZap = self.memSize + 1024*1024*200*k
+                    else:
+                        memSizeZap = self.memSize
+                    zap.addParams({
+                      "verbose" : self.verbose,
+                      #"verbose" : 16,
+                      "numCores" : 1,
+                      "numHarts" : self.hartsPerZap,
+                      "clock" : self.clock,
+                      #"memSize" : self.memSize,
+                      "memSize" : memSizeZap,
+                      # if this works will need to change it for
+                      # multi zone/precinct designs
+                      #"memSize" : (self.memSize + 1024*1024*200*k),
+                      "machine" : "[CORES:RV64GC]",
+                      #"startAddr" : "[CORES:0x00000000]",
+                      "program" : self.program,
+                      "args"    : self.progArgs,
+                      "enableZoneNIC" : 1,
+                      "enableVerScratchpad" : self.enableVerScratch,
+                      "enableRZA" : 0,
+                      "precinctId" : i,
+                      "zoneId" : j,
+                      "zapId" : k,
+                      "splash" : 0
+                    })
+                    if self.enableVerScratch:
+                        # Verilator scratchpad instantiation start
+                        scratch_ctrl = zap.setSubComponent("scratch", "revcpu.VerilatorScratchpadCtrl") #Added verilator-backed scratchpad controller
+                        scratch_ctrl.addParams({
+                          "clock" : "2.0GHz",
+                          "verbose" : self.verbose
+                        })
+                        verilatorsst = sst.Component("vsst"+str(i)+"_"+str(j)+"_"+str(k), "verilatorcomponent.VerilatorComponent") # and verilatorsst component
+                        model = verilatorsst.setSubComponent("model", "verilatorsstScratchpad.VerilatorSSTScratchpad") # and verilatorsst subcomponent
+                        model.addParams({
+                          "useVPI" : 0,
+                          "clockFreq" : "2.0GHz",
+                          "clockPort" : "clk"
+                        })
+                        clk_link = sst.Link("clkLink"+str(i)+"_"+str(j)+"_"+str(k))
+                        clk_link.connect( (model, "clk", "0ps"), (scratch_ctrl, "clk", "0ps") )
+                        en_link = sst.Link("enLink"+str(i)+"_"+str(j)+"_"+str(k))
+                        en_link.connect( (model, "en", "0ps"), (scratch_ctrl, "en", "0ps") )
+                        addr_link = sst.Link("addrLink"+str(i)+"_"+str(j)+"_"+str(k))
+                        addr_link.connect( (model, "addr", "0ps"), (scratch_ctrl, "addr", "0ps") )
+                        write_link = sst.Link("writeLink"+str(i)+"_"+str(j)+"_"+str(k))
+                        write_link.connect( (model, "write", "0ps"), (scratch_ctrl, "write", "0ps") )
+                        wdata_link = sst.Link("wdataLink"+str(i)+"_"+str(j)+"_"+str(k))
+                        wdata_link.connect( (model, "wdata", "0ps"), (scratch_ctrl, "wdata", "0ps") )
+                        len_link = sst.Link("lenLink"+str(i)+"_"+str(j)+"_"+str(k))
+                        len_link.connect( (model, "len", "0ps"), (scratch_ctrl, "len", "0ps") )
+                        rdata_link = sst.Link("rdataLink"+str(i)+"_"+str(j)+"_"+str(k))
+                        rdata_link.connect( (model, "rdata", "0ps"), (scratch_ctrl, "rdata", "0ps") )
+                        # Verilator scratchpad instantiation end
+                    zap_nic = zap.setSubComponent("zone_nic", "forza.zopNIC")
+                    zap_iface = zap_nic.setSubComponent("iface", "merlin.linkcontrol")
+                    zap_nic.addParams({
+                      "verbose" : self.verbose,
+                      "clock" : self.clock,
+                      "req_per_cycle" : self.reqPerCycle
+                    })
+                    zap_iface.addParams({
+                      "input_buf_size" : self.inputBufSize,
+                      "output_buf_size" : self.outputBufSize,
+                      "link_bw" : self.linkBW,
+                    })
+                    zap_link = sst.Link("zap_link_"+str(i)+"_"+str(j)+"_"+str(k))
+                    zap_link.connect( (zap_iface, "rtr_port", "1us"),
+                                      (zone_router, "port"+str(k), "1us") )
+        return ZipArray
 
 if __name__ == "__main__":
-  #-- parse the args
-  ap = argparse.ArgumentParser()
-  ap.add_argument("-a", "--hartsperzap", required=True, help="sets the number of harts per zap")
-  ap.add_argument("-z", "--zaps", required=True, help="sets the number of zaps per zone")
-  ap.add_argument("-o", "--zones", required=True, help="sets the number of zones per precinct")
-  ap.add_argument("-p", "--precincts", required=True, help="sets the number of precincts")
-  ap.add_argument("-r", "--program", required=True, help="sets the target program exe")
-  ap.add_argument("-s", "--shape", required=True, help="sets the shape of the system network")
-  args = vars(ap.parse_args())
-
-  #-- this argument is only used for the merlin network
-  shape = args['shape']
-
-  #-- build all the inner-precinct logic
-  f = FORZA(zones=int(args['zones']), precincts=int(args['precincts']),
-            zapsPerZone=int(args['zaps']), hartsPerZap=int(args['hartsperzap']),
-            program=args['program'])
-  HFIEndpoints = f.build()
-
-  #-- build the system network
-  sst.addGlobalParams("router_params", router_params)
-  sst.addGlobalParams("networkLinkControl_params",networkLinkControl_params)
-  calculateTopo()
-  buildTopo()
+    #-- parse the args
+    ap = argparse.ArgumentParser()
+    ap.add_argument("-a", "--hartsperzap", required=True, help="sets the number of harts per zap")
+    ap.add_argument("-z", "--zaps", required=True, help="sets the number of zaps per zone")
+    ap.add_argument("-o", "--zones", required=True, help="sets the number of zones per precinct")
+    ap.add_argument("-p", "--precincts", required=True, help="sets the number of precincts")
+    ap.add_argument("-r", "--program", required=True, help="sets the target program exe")
+    ap.add_argument("-s", "--shape", required=True, help="sets the shape of the system network")
+    ap.add_argument("-g", "--progargs", default="", required=False, help="sets the arguments for the program ran by the zaps")
+    ap.add_argument("-c", "--vscratch", default=False, required=False, help="toggles use of Verilator model scratchpad")
+    args = vars(ap.parse_args())
+    #-- this argument is only used for the merlin network
+    shape = args['shape']
+    print("Running with program "+str(args['program'])+" with args: "+args['progargs'])
+    #-- build all the inner-precinct logic
+    f = FORZA(zones=int(args['zones']), precincts=int(args['precincts']),
+              zapsPerZone=int(args['zaps']), hartsPerZap=int(args['hartsperzap']),
+              program=args['program'], progArgs=args['progargs'], verScratch=bool(args['vscratch']))
+    HFIEndpoints = f.build()
+    #-- build the system network
+    sst.addGlobalParams("router_params", router_params)
+    sst.addGlobalParams("networkLinkControl_params",networkLinkControl_params)
+    calculateTopo()
+    buildTopo()
 
 #-- EOF
 

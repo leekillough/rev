@@ -38,6 +38,10 @@
 #include "RevOpts.h"
 #include "RevRand.h"
 #include "RevThread.h"
+#include "RevVerScratchpad.h"
+
+// -- FORZA Headers
+#include "ZOPNET.h"
 
 // -- FORZA Headers
 #include "ZOPNET.h"
@@ -127,6 +131,7 @@ public:
     {"memTrafficInput",         "[FORZA] Input txt file for memory addres traffic",           "Input_MemTraffic"},
     {"memTrafficOutput",        "[FORZA] Output txt file for memory addres traffic",          "Output_MemTraffic"},
     {"enableForzaSecurity",     "[FORZA] Enables Forza memory security logic",                "0"},
+    {"enableVerScratchpad",     "[FORZA] Enables Verilog impl. of RevScratchpad",             "0"},
     )
 
   // -------------------------------------------------------
@@ -145,6 +150,7 @@ public:
     {"co_proc", "Co-processor attached to RevCore", "SST::RevCPU::RevSimpleCoProc"},
     {"rza_ls",  "[FORZA] RZA Load/Store Pipeline", "SST::RevCPU::RZALSCoProc"},
     {"rza_amo", "[FORZA] RZA AMO Pipeline", "SST::RevCPU::RZAAMOCoProc"},
+    {"scratch", "[FORZA][VSST] Verilator backed scratchpad", "SST::RevCPU::VerilatorScratchpadAPI"},
     {"zone_nic","[FORZA] Zone NIC", "SST::Forza::zopNIC"},
     )
 
@@ -312,8 +318,9 @@ private:
   TimeConverter*   timeConverter{};  ///< RevCPU: SST time conversion handler
   SST::Output      output{};         ///< RevCPU: SST output handler
 
-  nicAPI*                     Nic{};  ///< RevCPU: Network interface controller
-  std::unique_ptr<RevMemCtrl> Ctrl;   ///< RevCPU: Rev memory controller
+  nicAPI*                     Nic{};      ///< RevCPU: Network interface controller
+  std::unique_ptr<RevMemCtrl> Ctrl;       ///< RevCPU: Rev memory controller
+  VerilatorScratchpadAPI*     Scratch{};  ///< RevCPU: Verilator scratchpad model controller
 
   std::vector<std::unique_ptr<RevCoProc>> CoProcs;  ///< RevCPU: CoProcessor attached to Rev
 
@@ -324,8 +331,8 @@ private:
 
   std::queue<std::pair<uint32_t, char*>> ZeroRqst{};   ///< RevCPU: tracks incoming zero address put requests; pair<Size, Data>
   std::list<std::pair<uint8_t, int>>     TrackTags{};  ///< RevCPU: tracks the outgoing messages; pair<Tag, Dest>
-  std::vector<std::tuple<uint8_t, uint64_t, uint32_t>>
-    TrackGets{};  ///< RevCPU: tracks the outstanding get messages; tuple<Tag, Addr, Sz>
+  std::vector<std::tuple<uint8_t, uint64_t, uint32_t>> TrackGets{
+  };  ///< RevCPU: tracks the outstanding get messages; tuple<Tag, Addr, Sz>
   std::vector<std::tuple<uint8_t, uint32_t, unsigned, int, uint64_t>> ReadQueue{};  ///< RevCPU: outgoing memory read queue
   ///<         - Tag
   ///<         - Size

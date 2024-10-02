@@ -221,6 +221,20 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params ) : SST::Compon
     }
   }
 
+  // FORZA: initialize scratchpad
+  bool EnableVerScratchpad = params.find<bool>( "enableVerScratchpad", 0 );
+  if( !EnableVerScratchpad ) {
+    // TODO: Use std::nothrow to return null instead of throwing std::bad_alloc
+    Mem->InitScratchpad( id, _SCRATCHPAD_SIZE_, _CHUNK_SIZE_ );
+  } else {
+    Scratch = loadUserSubComponent<VerilatorScratchpadAPI>( "scratch" );
+    if( !Scratch )
+      output.fatal( CALL_INFO, -1, "Error : failed to inintialize the verilator scratchpad subcomponent\n" );
+
+    // TODO: Use std::nothrow to return null instead of throwing std::bad_alloc
+    Mem->InitScratchpad( id, _SCRATCHPAD_SIZE_, _CHUNK_SIZE_, Scratch );
+  }
+
   // Set TLB Size
   const uint64_t tlbSize = params.find<unsigned long>( "tlbSize", 512 );
   Mem->SetTLBSize( tlbSize );
@@ -721,9 +735,20 @@ void RevCPU::handleZOPMZOP( Forza::zopEvent* zev ) {
   uint64_t data                                                  = 0x00ull;
   bool     isLoad                                                = false;
 
+  //if( Scratch == nullptr ) {
+  // if scratchpad is sst simulated
   // used only for load operations
   std::function<void( const MemReq& )> LocalMarkLoadCompleteFunc = [=]( const MemReq& req ) { this->MarkLoadCompleteDummy( req ); };
   MemReq req{ addr, 0x00, RevRegClass::RegGPR, zev->getSrcHart(), MemOp::MemOpREAD, true, LocalMarkLoadCompleteFunc };
+  /*
+  } else {
+    // if scratchpad is verilator simulated
+    // use real mark load complete
+    // TODO:: what core to call the markloadcomplete function on?
+    std::function<void( const MemReq& )> LocalMarkLoadCompleteFunc = [=]( const MemReq& req ) { this->MarkLoadComplete( req ); };
+    MemReq req{ addr, 0x00, RevRegClass::RegGPR, zev->getSrcHart(), MemOp::MemOpREAD, true, LocalMarkLoadCompleteFunc };
+  }
+*/
 
   // retrieve the address
   if( !zev->getFLIT( Z_FLIT_ADDR, &addr ) ) {
