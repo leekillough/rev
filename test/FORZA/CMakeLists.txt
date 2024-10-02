@@ -24,6 +24,9 @@ add_rev_test(forza_config_syscalls forza_config_syscalls 60 "all;memh;rv64;loade
 add_rev_test(forza_argc forza_argc 30 "all;memh;rv64;loader;forza" SCRIPT "run_forza_argc.sh")
 add_rev_test(forza_barrier forza_barrier 30 "all;memh;rv64;loader;forza" SCRIPT "run_forza_barrier.sh")
 
+# New actor test
+# add_rev_test(forza_actor forza_message_lib 30 "all;memh;rv64;loader;forza" SCRIPT "run_actor.sh")
+
 # this does a simple one packet send from zap 0 -> zap 1
 # will need to remove scratchpad calls, do zqm_mbox setup and then do basic send/recv testing
 # could probably kill the separate zqm_mbox setup if we wanted to do so
