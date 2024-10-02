@@ -185,11 +185,11 @@ add_forza_test(forza_zen_setup forza_zen_setup 30 "all;memh;rv64;loader;forza" "
 add_forza_test(forza_zen_setup_cxx forza_zen_setup 30 "all;memh;rv64;loader;forza" "hartsperzap=1;zaps=4;zones=2;precincts=1;shape=1,1:1")
 add_forza_test(forza_zqm_setup forza_zqm_setup 30 "all;memh;rv64;loader;forza" "hartsperzap=4;zaps=4;zones=2;precincts=1;shape=1,1:1")
 
-add_forza_test(forza_python1 forza_python 100 "all;memh;rv64;loader;forza" "hartsperzap=1;zaps=1;zones=1;precincts=8;shape=2,2:4;program=ex2")
-add_forza_test(forza_python2 forza_python 100 "all;memh;rv64;loader;forza" "hartsperzap=512;zaps=1;zones=1;precincts=8;shape=2,2:4;program=ex2")
-add_forza_test(forza_python3 forza_python 100 "all;memh;rv64;loader;forza" "hartsperzap=512;zaps=2;zones=1;precincts=8;shape=2,2:4;program=ex2")
-add_forza_test(forza_python4 forza_python 100 "all;memh;rv64;loader;forza" "hartsperzap=512;zaps=2;zones=2;precincts=8;shape=2,2:4;program=ex2")
-add_forza_test(forza_python5 forza_python 100 "all;memh;rv64;loader;forza" "hartsperzap=512;zaps=2;zones=4;precincts=8;shape=2,2:4;program=ex2")
+add_forza_test(forza_python1 forza_python 30 "all;memh;rv64;loader;forza" "hartsperzap=1;zaps=1;zones=1;precincts=8;shape=2,2:4;program=ex2")
+add_forza_test(forza_python2 forza_python 30 "all;memh;rv64;loader;forza" "hartsperzap=512;zaps=1;zones=1;precincts=8;shape=2,2:4;program=ex2")
+add_forza_test(forza_python3 forza_python 60 "all;memh;rv64;loader;forza" "hartsperzap=512;zaps=2;zones=1;precincts=8;shape=2,2:4;program=ex2")
+add_forza_test(forza_python4 forza_python 60 "all;memh;rv64;loader;forza" "hartsperzap=512;zaps=2;zones=2;precincts=8;shape=2,2:4;program=ex2")
+add_forza_test(forza_python5 forza_python 120 "all;memh;rv64;loader;forza" "hartsperzap=512;zaps=2;zones=4;precincts=8;shape=2,2:4;program=ex2")
 
 add_forza_test(forza_harts_per_zap forza_config_syscalls 30 "all;memh;rv64;loader;forza" "hartsperzap=128;zaps=1;zones=1;precincts=1;shape=1,1:1;program=ex2;progargs=128")
 add_forza_test(forza_config_syscalls forza_config_syscalls 60 "all;memh;rv64;loader;forza" "hartsperzap=64;zaps=1;zones=1;precincts=1;shape=1,1:1;program=config_ecalls;progargs=64 1 8 3 0 0 0")
