@@ -8,6 +8,8 @@
     }                             \
   while( 0 )
 
+#define I 10
+
 typedef unsigned long int forza_thread_t;
 static forza_thread_t     actor_threads[16];
 
@@ -31,9 +33,12 @@ static int forza_thread_join( forza_thread_t tid ) {
 void* forza_thread1( void* FArgs ) {
   ForzaThreadArgs* args_recv = (ForzaThreadArgs*) FArgs;
 	uint64_t tid = rev_gettid() % 10UL;
-	char msg[20] = "\nTIDX: Thread1 init\n";
-	msg[4] = '0' + tid;
-  rev_write( STDOUT_FILENO, msg, sizeof( msg ) );
+	for (int i=0; i<I; i++) {
+		char msg[20] = "\nTIDX: II: thread1\n";
+		msg[4] = '0' + tid;
+		msg[8] = '0' + i;
+  	rev_write( STDOUT_FILENO, msg, sizeof( msg ) );
+	}
   assert( 13 == args_recv->ActorID );
   return NULL;
 }
@@ -41,10 +46,13 @@ void* forza_thread1( void* FArgs ) {
 void* forza_thread2( void* FArgs ) {
   ForzaThreadArgs* args_recv = (ForzaThreadArgs*) FArgs;
 	uint64_t tid = rev_gettid() % 10UL;
-  char msg[20] = "\nTIDX: Thread2 init\n";
-	msg[4] = '0' + tid;
-  rev_write( STDOUT_FILENO, msg, sizeof( msg ) );
-  assert( 14 == args_recv->ActorID );
+	for (int i=0; i<I; i++) {
+  	char msg[20] = "\nTIDX: II: thread2\n";
+		msg[4] = '0' + tid;
+		msg[8] = '0' + i;
+  	rev_write( STDOUT_FILENO, msg, sizeof( msg ) );
+  }
+	assert( 14 == args_recv->ActorID );
   return NULL;
 }
 
