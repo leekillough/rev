@@ -221,10 +221,6 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params ) : SST::Compon
     }
   }
 
-  // FORZA: initialize scratchpad
-  // TODO: Use std::nothrow to return null instead of throwing std::bad_alloc
-  Mem->InitScratchpad( id, _SCRATCHPAD_SIZE_, _CHUNK_SIZE_ );
-
   // Set TLB Size
   const uint64_t tlbSize = params.find<unsigned long>( "tlbSize", 512 );
   Mem->SetTLBSize( tlbSize );
