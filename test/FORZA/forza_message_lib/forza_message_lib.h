@@ -89,6 +89,15 @@ int forza_zqm_pe_setup( uint64_t logical_pe, uint64_t n_mailboxes ) {
  *
  */
 uint64_t forza_get_outstanding_msg_count( uint64_t mb_id ) {
+
+  if( mb_id >= NMBOX ) {
+#if DEBUG
+    char msg[55] = "\ndebug: forza_send: INVALID_MBOX\n";
+    rev_write( STDOUT_FILENO, msg, sizeof( msg ) );
+#endif
+    return INVALID_MBOX;
+  }
+
   uint64_t shift    = 8 * mb_id;
   uint64_t mb_mask  = 0xFFUL << shift;
   uint64_t mb_count = forza_zen_get_cntrs() & mb_mask;
@@ -100,6 +109,15 @@ uint64_t forza_get_outstanding_msg_count( uint64_t mb_id ) {
  *  all messages have been delivered
  */
 int forza_wait_mailbox_done( uint64_t mb_id ) {
+
+  if( mb_id >= NMBOX ) {
+#if DEBUG
+    char msg[55] = "\ndebug: forza_send: INVALID_MBOX\n";
+    rev_write( STDOUT_FILENO, msg, sizeof( msg ) );
+#endif
+    return INVALID_MBOX;
+  }
+
   uint64_t shift    = 8 * mb_id;
   uint64_t mb_mask  = 0xFFUL << shift;
   uint64_t mb_count = forza_zen_get_cntrs() & mb_mask;
@@ -294,7 +312,12 @@ int forza_message_available( uint64_t mb_id ) {
 
   // Check for message
   uint64_t zqmstat = forza_read_zqm_status();
+  zqmstat &= ( 1UL << mb_id );
   if( zqmstat == 0 ) {
+#if 1
+    char msg[55] = "\ndebug: forza_message_available: NO_MSG\n";
+    rev_write( STDOUT_FILENO, msg, sizeof( msg ) );
+#endif
     return NO_MSG;
   } else {
     return SUCCESS;
@@ -335,8 +358,9 @@ int forza_message_receive( uint64_t mb_id, uint64_t* pkt, size_t pkt_size ) {
 
   // Wait for ZQM ready
   uint64_t zqmstat = forza_read_zqm_status();
+  zqmstat &= ( 1UL << mb_id );
   if( zqmstat == 0 ) {
-#if DEBUG
+#if 1
     char msg[55] = "\ndebug: forza_message_receive: NO_MSG\n";
     rev_write( STDOUT_FILENO, msg, sizeof( msg ) );
 #endif
