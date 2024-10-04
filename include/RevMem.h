@@ -397,9 +397,7 @@ public:
   inline bool IsAddrInScratchpad( const uint64_t& Addr );
 
   /// FORZA: Init Scratchpad
-  void InitScratchpad(
-    const unsigned ZapNum, const size_t Size, const size_t ChunkSize, VerilatorScratchpadAPI* VerScratch = nullptr
-  );
+  void InitScratchpad( const unsigned ZapNum, const size_t Size, const size_t ChunkSize );
 
   /// FORZA: Interface for allocating in the Scratchpad
   uint64_t ScratchpadAlloc( size_t numBytes );

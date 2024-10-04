@@ -23,7 +23,6 @@ set(RevCPUSrcs
   RevRegFile.cc
   RevThread.cc
   RevScratchpad.cc
-  RevVerScratchpad.cc
 #  ZOPNET.cc
   )
 

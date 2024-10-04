@@ -12,7 +12,6 @@
 #define _SST_REVCPU_REVSCRATCHPAD_H_
 
 #include "../common/include/RevCommon.h"
-#include "RevVerScratchpad.h"
 #include "SST.h"
 #include <bitset>
 
@@ -26,21 +25,11 @@ namespace SST::RevCPU {
 class RevScratchpad {
 public:
   RevScratchpad( const unsigned ZapNum, size_t Size, size_t ChunkSize, SST::Output* Output )
-    : ZapNum( ZapNum ), Size( Size ), ChunkSize( ChunkSize ), output( Output ), VerScratch( nullptr ) {
+    : ZapNum( ZapNum ), Size( Size ), ChunkSize( ChunkSize ), output( Output ) {
     // Create the byte array
     // TODO: Verify this is correct
     BaseAddr += ZapNum * Size;
     BackingMem = new char[Size]{};
-    FreeList.set();
-    TopAddr = BaseAddr + Size - 1;
-  }
-
-  RevScratchpad( const unsigned ZapNum, size_t Size, size_t ChunkSize, SST::Output* Output, VerilatorScratchpadAPI* Scratch )
-    : ZapNum( ZapNum ), Size( Size ), ChunkSize( ChunkSize ), output( Output ), VerScratch( Scratch ) {
-    // Using verilator model scratchpad; do NOT initalize BackingMem
-    // TODO: Verify this is correct
-    BaseAddr += ZapNum * Size;
-    //BackingMem = new char[Size]{};
     FreeList.set();
     TopAddr = BaseAddr + Size - 1;
   }
@@ -155,7 +144,6 @@ private:
   uint64_t                                      BaseAddr   = _SCRATCHPAD_BASE_;  ///< RevMem: Base address of the scratchpad
   uint64_t                                      TopAddr;                         ///< RevScratchpad: Base address of the scratchpad
   SST::Output*                                  output;                          ///< RevScratchpad: Output stream
-  VerilatorScratchpadAPI* VerScratch = nullptr;  ///< RevScratchpad: Pointer to verilator-backed scratchpad API
 };
 }  // namespace SST::RevCPU
 

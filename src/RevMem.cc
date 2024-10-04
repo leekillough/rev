@@ -1101,13 +1101,9 @@ uint64_t RevMem::ExpandHeap( uint64_t Size ) {
 // ---- FORZA Interfaces
 // ----------------------------------------------------
 
-void RevMem::InitScratchpad( const unsigned ZapNum, size_t ScratchpadSize, size_t ChunkSize, VerilatorScratchpadAPI* VerScratch ) {
+void RevMem::InitScratchpad( const unsigned ZapNum, size_t ScratchpadSize, size_t ChunkSize ) {
   // Allocate the scratchpad memory
-  if( !VerScratch ) {
-    scratchpad = std::make_shared<RevScratchpad>( ZapNum, _SCRATCHPAD_SIZE_, _CHUNK_SIZE_, output );  //TODO: replace with params
-  } else {
-    scratchpad = std::make_shared<RevScratchpad>( ZapNum, _SCRATCHPAD_SIZE_, _CHUNK_SIZE_, output, VerScratch );
-  }
+  scratchpad = std::make_shared<RevScratchpad>( ZapNum, _SCRATCHPAD_SIZE_, _CHUNK_SIZE_, output );  //TODO: replace with params
   if( !scratchpad ) {
     output->fatal( CALL_INFO, -1, "Error: could not allocate backing memory\n" );
   }

@@ -38,10 +38,6 @@
 #include "RevOpts.h"
 #include "RevRand.h"
 #include "RevThread.h"
-#include "RevVerScratchpad.h"
-
-// -- FORZA Headers
-#include "ZOPNET.h"
 
 // -- FORZA Headers
 #include "ZOPNET.h"
@@ -131,7 +127,6 @@ public:
     {"memTrafficInput",         "[FORZA] Input txt file for memory addres traffic",           "Input_MemTraffic"},
     {"memTrafficOutput",        "[FORZA] Output txt file for memory addres traffic",          "Output_MemTraffic"},
     {"enableForzaSecurity",     "[FORZA] Enables Forza memory security logic",                "0"},
-    {"enableVerScratchpad",     "[FORZA] Enables Verilog impl. of RevScratchpad",             "0"},
     )
 
   // -------------------------------------------------------
@@ -150,7 +145,6 @@ public:
     {"co_proc", "Co-processor attached to RevCore", "SST::RevCPU::RevSimpleCoProc"},
     {"rza_ls",  "[FORZA] RZA Load/Store Pipeline", "SST::RevCPU::RZALSCoProc"},
     {"rza_amo", "[FORZA] RZA AMO Pipeline", "SST::RevCPU::RZAAMOCoProc"},
-    {"scratch", "[FORZA][VSST] Verilator backed scratchpad", "SST::RevCPU::VerilatorScratchpadAPI"},
     {"zone_nic","[FORZA] Zone NIC", "SST::Forza::zopNIC"},
     )
 
@@ -318,9 +312,8 @@ private:
   TimeConverter*   timeConverter{};  ///< RevCPU: SST time conversion handler
   SST::Output      output{};         ///< RevCPU: SST output handler
 
-  nicAPI*                     Nic{};      ///< RevCPU: Network interface controller
-  std::unique_ptr<RevMemCtrl> Ctrl;       ///< RevCPU: Rev memory controller
-  VerilatorScratchpadAPI*     Scratch{};  ///< RevCPU: Verilator scratchpad model controller
+  nicAPI*                     Nic{};  ///< RevCPU: Network interface controller
+  std::unique_ptr<RevMemCtrl> Ctrl;   ///< RevCPU: Rev memory controller
 
   std::vector<std::unique_ptr<RevCoProc>> CoProcs;  ///< RevCPU: CoProcessor attached to Rev
 

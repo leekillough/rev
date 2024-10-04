@@ -67,17 +67,12 @@ bool RevScratchpad::ReadMem(
   }
 
   // Perform the read
-  if( !VerScratch ) {
-    std::memcpy( Target, &BackingMem[Addr - BaseAddr], Len );
-    // clear the hazard
-    if( req.MarkLoadCompleteFunc != nullptr ) {
-      req.MarkLoadComplete();
-    }
-    return true;
-  } else {
-    return VerScratch->ReadMem( Addr, Len, Target, req );
-    // VerScratch will need to mark the req as complete when the operation is done, so it has to catch it
+  std::memcpy( Target, &BackingMem[Addr - BaseAddr], Len );
+  // clear the hazard
+  if( req.MarkLoadCompleteFunc != nullptr ) {
+    req.MarkLoadComplete();
   }
+  return true;
   // TODO: Add scratchpad stats --- memStats.bytesRead += Len;
 }
 
@@ -117,12 +112,8 @@ bool RevScratchpad::WriteMem(
     }
   }
 
-  // write the memory to the BackingStore or Verilator-backed scratchpad
-  if( !VerScratch ) {
-    std::memcpy( &BackingMem[Addr - BaseAddr], Data, Len );
-  } else {
-    return VerScratch->WriteMem( Addr, Len, Data );
-  }
+  // write the memory to the BackingStore
+  std::memcpy( &BackingMem[Addr - BaseAddr], Data, Len );
 
   // TODO: Add scratchpad stats --- memStats.bytesWritten += Len;
   return true;
