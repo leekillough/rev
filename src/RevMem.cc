@@ -863,6 +863,7 @@ bool RevMem::ReadMem( unsigned Hart, uint64_t Addr, size_t Len, void* Target, co
           DataMem[i] = BaseMem[i];
         }
       }
+
       BaseMem = &physMem[adjPhysAddr];
       if( !ctrl && !zNic ) {
         unsigned Cur = ( Len - span );
@@ -1103,7 +1104,7 @@ uint64_t RevMem::ExpandHeap( uint64_t Size ) {
 
 void RevMem::InitScratchpad( const unsigned ZapNum, size_t ScratchpadSize, size_t ChunkSize ) {
   // Allocate the scratchpad memory
-  scratchpad = std::make_shared<RevScratchpad>( ZapNum, _SCRATCHPAD_SIZE_, _CHUNK_SIZE_, output );  //TODO: replace with params
+  scratchpad = std::make_shared<RevScratchpad>( ZapNum, _SCRATCHPAD_SIZE_, _CHUNK_SIZE_, output );
   if( !scratchpad ) {
     output->fatal( CALL_INFO, -1, "Error: could not allocate backing memory\n" );
   }
