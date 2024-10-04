@@ -377,9 +377,9 @@ void ZEN::handleMsgAck(zopEvent *ack)
   ack->decodeEvent();
   // Reduce the mailbox counter
   auto &regs = PerHartCSRs[ack->getDestZCID()][ack->getDestHart()];
-  auto cntr = regs.mbox_cntrs[ack->getCredit()];
-  //output.verbose(CALL_INFO, 9, 0, "ZEN[%s]; Counter=%u; packet %s to %s; credit=%u \n", getName().c_str(), cntr,
-  //               ack->getSrcString().c_str(), ack->getDestString().c_str(), ack->getCredit());
+  auto &cntr = regs.mbox_cntrs[ack->getCredit()];
+  output.verbose(CALL_INFO, 9, 0, "ZEN[%s]; Counter=%u; packet %s to %s; credit=%u \n", getName().c_str(), cntr,
+                 ack->getSrcString().c_str(), ack->getDestString().c_str(), ack->getCredit());
   
   // Sanity check
   if (cntr == 0){
@@ -406,6 +406,10 @@ void ZEN::handleMsgAck(zopEvent *ack)
     output.fatal(CALL_INFO, -2, "ZEN[%s]; Deleted %lu entries in the RetryMgrMap[%u]; Packet %s to %s \n", getName().c_str(), 
                  num_deletes, retry_num, ack->getSrcString().c_str(), ack->getDestString().c_str());
   }
+
+  //output.verbose(CALL_INFO, 9, 0, "ZEN[%s]; Counter=%u; packet %s to %s; credit=%u \n", getName().c_str(), cntr,
+  //               ack->getSrcString().c_str(), ack->getDestString().c_str(), ack->getCredit());
+
 }
 
 void ZEN::execMsgPipe1()
@@ -463,6 +467,7 @@ void ZEN::execMsgPipe0()
 
 void ZEN::updateMsgPipe0()
 {
+  //output.flush();
   if ( MsgPipeline[0] != nullptr )
     return;
 

@@ -266,7 +266,8 @@ void ZQM::handleRingDq( SST::Forza::ringEvent *ev )
     auto &mbox = regs.mbox_buffs[( ev->getCSR() & R_MASK_ZQMDQMBOX )];
 
     if ( mbox.buff_state != msgBuffState::READY )
-        output.fatal(CALL_INFO, -1, "[ZQM] %s; messager buffer not ready \n", getName().c_str() );
+        output.fatal(CALL_INFO, -1, "[ZQM] %s; messager buffer for [Zap:Hart:Mbox]=[%u:%u:%u] not ready \n", 
+                    getName().c_str(), ev->getSrcZap(), ev->getHart(), (ev->getCSR() & R_MASK_ZQMDQMBOX) );
 
     // Get the data word to return
     auto ret_data = mbox.msg[mbox.msg_cur_word];
@@ -274,12 +275,14 @@ void ZQM::handleRingDq( SST::Forza::ringEvent *ev )
 
     // Use data field to do the proper read/write/update
     if ( ev->getDatum() == 0 ){
-        if (mbox.msg_cur_word == 7) //sent last word; get next msg
+        if (mbox.msg_cur_word == 7){ //sent last word; get next msg
             mbox.buff_state = msgBuffState::IDLE;
-        else
+            output.verbose(CALL_INFO, 9, 0, "[ZQM] %s; handling a dequeue message; set state to IDLE\n", getName().c_str() );
+        } else
             mbox.msg_cur_word++;
     } else if ( ev->getDatum() == 1 ) {
         mbox.buff_state = msgBuffState::IDLE;
+        output.verbose(CALL_INFO, 9, 0, "[ZQM] %s; handling a dequeue message; datum=1; set state to IDLE\n", getName().c_str() );
     } else {
         output.fatal(CALL_INFO, -2, "[ZQM] %s; deque msg with unexpected data = %" PRIu64 "\n", getName().c_str(), ev->getDatum() );
     }
@@ -665,7 +668,7 @@ void ZQM::processMessagingMsgs()
 
     for ( unsigned i = 0; i < process_per_cycle; i++ ) {
         auto *event = msg_zop_q.front();
-        output.verbose(CALL_INFO, 7, 0, "%s: Processing messaging packet id=%u for ZQM\n", my_name.c_str(), event->getID() );
+        output.verbose(CALL_INFO, 9, 0, "%s: Processing messaging packet id=%u for ZQM\n", my_name.c_str(), event->getID() );
         switch(event->getOpc()){
             case SST::Forza::zopOpc::Z_MSG_ZQMSET:
                 output.fatal(CALL_INFO, -2, "%s: Received an old ZQM setup message\n", my_name.c_str());
