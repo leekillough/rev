@@ -68,12 +68,14 @@ bool RevScratchpad::ReadMem(
 
   // Perform the read
   std::memcpy( Target, &BackingMem[Addr - BaseAddr], Len );
+
+  // TODO: Add scratchpad stats --- memStats.bytesRead += Len;
+
   // clear the hazard
   if( req.MarkLoadCompleteFunc != nullptr ) {
     req.MarkLoadComplete();
   }
   return true;
-  // TODO: Add scratchpad stats --- memStats.bytesRead += Len;
 }
 
 bool RevScratchpad::WriteMem(
