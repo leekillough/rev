@@ -208,11 +208,11 @@ void ZQM::handleRingMsg( SST::Event *event )
 
 void ZQM::handleRingStatus( SST::Forza::ringEvent *ev )
 {
-  output.verbose(CALL_INFO, 7, 0, "[ZQM] %s handle ZQMSTAT message\n", getName().c_str());
   if ( ev->getOp() != SST::Forza::ringMsgT::R_READ )
     output.fatal(CALL_INFO, -1, "[ZQM] %s unexpected optype message; OpType=%" PRIu8 "\n", getName().c_str(), ev->getOp());
 
   auto status = PerHartCSRs[ev->getSrcZap()][ev->getHart()].status;
+  output.verbose(CALL_INFO, 7, 0, "[ZQM] %s handle ZQMSTAT message; return status=0x%" PRIx64 "\n", getName().c_str(), status);
   sendRingResponse(ev, status);
 }
 
@@ -277,11 +277,21 @@ void ZQM::handleRingDq( SST::Forza::ringEvent *ev )
     if ( ev->getDatum() == 0 ){
         if (mbox.msg_cur_word == 7){ //sent last word; get next msg
             mbox.buff_state = msgBuffState::IDLE;
+            // Update status -- clear out the mailbox ready bit in the status
+            uint64_t mbox_id = ( ev->getCSR() & R_MASK_ZQMDQMBOX );
+            uint64_t mask = 1UL << mbox_id;
+            uint64_t inv_mask = ~mask;
+            regs.status &= inv_mask;
             output.verbose(CALL_INFO, 9, 0, "[ZQM] %s; handling a dequeue message; set state to IDLE\n", getName().c_str() );
         } else
             mbox.msg_cur_word++;
     } else if ( ev->getDatum() == 1 ) {
         mbox.buff_state = msgBuffState::IDLE;
+        // Update status -- clear out the mailbox ready bit in the status
+        uint64_t mbox_id = ( ev->getCSR() & R_MASK_ZQMDQMBOX );
+        uint64_t mask = 1UL << mbox_id; // sets the ready bit
+        uint64_t inv_mask = ~mask; // invert the mask
+        regs.status &= inv_mask;
         output.verbose(CALL_INFO, 9, 0, "[ZQM] %s; handling a dequeue message; datum=1; set state to IDLE\n", getName().c_str() );
     } else {
         output.fatal(CALL_INFO, -2, "[ZQM] %s; deque msg with unexpected data = %" PRIu64 "\n", getName().c_str(), ev->getDatum() );
