@@ -39,6 +39,9 @@
 #include "RevRand.h"
 #include "RevThread.h"
 
+// -- FORZA Headers
+#include "ZOPNET.h"
+
 namespace SST::RevCPU {
 
 class RevCPU : public SST::Component {
@@ -104,6 +107,11 @@ public:
     { "enableMemH",      "Enable memHierarchy",                          "0" },
     { "enableRDMAMbox",  "Enable the RDMA mailbox",                      "1" },
     { "enableCoProc",    "Enable an attached coProcessor for all cores", "0" },
+    { "enableRZA",       "[FORZA] Enables the RZA functionality",        "0" },
+    { "enableZoneNIC",   "[FORZA] Enables the zone NIC functionality",   "0" },
+    { "precinctId",      "[FORZA] The precinct ID of the local device",  "0" },
+    { "zoneId",          "[FORZA] The zone ID of the local device",      "0" },
+    { "zapId",           "[FORZA] The ZAP ID if the device is a ZAP",    "0" },
     { "enable_faults",   "Enable the fault injection logic",             "0" },
     { "faults",          "Enable specific faults",                       "decode,mem,reg,alu" },
     { "fault_width",     "Specify the bit width of potential faults",    "single,word,N" },
@@ -116,6 +124,9 @@ public:
     { "trcStartCycle",   "Starting tracer cycle (disables trcOp)",       "0" },
     { "splash",          "Display the splash logo",                      "0" },
     { "independentCoprocClock",  "Enables each coprocessor to register its own clock handler", "0" },
+    { "memTrafficInput",         "[FORZA] Input txt file for memory addres traffic",           "Input_MemTraffic" },
+    { "memTrafficOutput",        "[FORZA] Output txt file for memory addres traffic",          "Output_MemTraffic" },
+    { "enableForzaSecurity",     "[FORZA] Enables Forza memory security logic",                "0" },
     )
 
   // -------------------------------------------------------
@@ -132,6 +143,9 @@ public:
     { "pan_nic", "PAN Network interface", "SST::RevCPU::PanNet" },
     { "memory", "Memory interface to utilize for cache/memory hierachy", "SST::RevCPU::RevMemCtrl" },
     { "co_proc", "Co-processor attached to RevCore", "SST::RevCPU::RevSimpleCoProc" },
+    { "rza_ls",  "[FORZA] RZA Load/Store Pipeline", "SST::RevCPU::RZALSCoProc" },
+    { "rza_amo", "[FORZA] RZA AMO Pipeline", "SST::RevCPU::RZAAMOCoProc" },
+    { "zone_nic","[FORZA] Zone NIC", "SST::Forza::zopNIC" },
     )
 
   // -------------------------------------------------------
@@ -186,7 +200,6 @@ public:
     { "SuccessRecv",         "Operation count for incoming Success Commands",        "count",  1 },
     { "FailedRecv",          "Operation count for incoming Failed Commands",         "count",  1 },
     { "BOTWRecv",            "Operation count for incoming BOTW Commands",           "count",  1 },
-
     { "CyclesWithIssue",     "Cycles with succesful instruction issue",              "count",  1 },
     { "TotalCycles",         "Total clock cycles",                                   "count",  1 },
     { "FloatsRead",          "Total SP floating point values read",                  "count",  1 },
@@ -198,7 +211,6 @@ public:
     { "FloatsExec",          "Total SP or DP float instructions executed",           "count",  1 },
     { "TLBHitsPerCore",      "TLB hits per core",                                    "count",  1 },
     { "TLBMissesPerCore",    "TLB misses per core",                                  "count",  1 },
-
     { "TLBHits",             "TLB hits",                                             "count",  1 },
     { "TLBMisses",           "TLB misses",                                           "count",  1 },
     )
@@ -265,7 +277,6 @@ private:
 
   uint8_t PrivTag{};  ///< RevCPU: private tag locator
   //  uint32_t LToken{};   ///< RevCPU: token identifier for PAN Test
-
   int address{ -1 };  ///< RevCPU: local network address
 
   unsigned fault_width{};  ///< RevCPU: the width (in bits) for target faults
@@ -278,6 +289,12 @@ private:
   bool EnableMemH{};    ///< RevCPU: Enable memHierarchy
   bool EnableCoProc{};  ///< RevCPU: Enable a co-processor attached to all cores
 
+  bool        EnableRZA{};            ///< RevCPU: Enables the RZA functionality
+  bool        EnableZopNIC{};         ///< RevCPU: Enables the ZONE/ZOP NIC functionality
+  bool        EnableForzaSecurity{};  ///< RevCPU: Enables the FORZA memory security
+  std::string memTrafficInput{};      ///< RevCPU: Memory traffic input
+  std::string memTrafficOutput{};     ///< RevCPU: Memory traffic output
+
   bool EnableFaults{};       ///< RevCPU: Enable fault injection logic
   bool EnableCrackFaults{};  ///< RevCPU: Enable Crack+Decode Faults
   bool EnableMemFaults{};    ///< RevCPU: Enable memory faults (bit flips)
@@ -286,8 +303,13 @@ private:
 
   bool DisableCoprocClock{};  ///< RevCPU: Disables manual coproc clocking
 
-  TimeConverter* timeConverter{};  ///< RevCPU: SST time conversion handler
-  SST::Output    output{};         ///< RevCPU: SST output handler
+  unsigned Precinct{};  ///< RevCPU: FORZA precinct ID
+  unsigned Zone{};      ///< RevCPU: FORZA zone ID
+
+  Forza::zopAPI*   zNic{};           ///< RevCPU: FORZA ZOP NIC
+  Forza::zopMsgID* zNicMsgIds{};     ///< RevCPU: FORZA ZOP NIC Message ID handler
+  TimeConverter*   timeConverter{};  ///< RevCPU: SST time conversion handler
+  SST::Output      output{};         ///< RevCPU: SST output handler
 
   nicAPI*                     Nic{};  ///< RevCPU: Network interface controller
   std::unique_ptr<RevMemCtrl> Ctrl;   ///< RevCPU: Rev memory controller
@@ -295,6 +317,9 @@ private:
   std::vector<std::unique_ptr<RevCoProc>> CoProcs;  ///< RevCPU: CoProcessor attached to Rev
 
   SST::Clock::Handler<RevCPU>* ClockHandler{};  ///< RevCPU: Clock Handler
+
+  std::vector<Forza::zopEvent*>        ZIQ;    ///< RevCPU: ZOP Issue Queue
+  std::map<uint64_t, Forza::zopEvent*> ZRqst;  ///< RevCPU: outstanding ZOP requests
 
   std::queue<std::pair<uint32_t, char*>> ZeroRqst{};   ///< RevCPU: tracks incoming zero address put requests; pair<Size, Data>
   std::list<std::pair<uint8_t, int>>     TrackTags{};  ///< RevCPU: tracks the outgoing messages; pair<Tag, Dest>
@@ -384,6 +409,27 @@ private:
   /// RevCPU: RevNIC message handler
   void handleMessage( SST::Event* ev );
 
+  /// RevCPU: Handle FORZA ZOP Message
+  void handleZOPMessage( SST::Event* ev );
+
+  /// RevCPU: Handle FORZA ZOP Message for RZA devices
+  void handleZOPMessageRZA( Forza::zopEvent* zev );
+
+  /// RevCPU: Handle FORZA ZOP Message for ZAP devices
+  void handleZOPMessageZAP( Forza::zopEvent* zev );
+
+  /// RevCPU: Handle FORZA MZOP requests
+  void handleZOPMZOP( Forza::zopEvent* zev );
+
+  /// RevCPU: Handle FORZA Thread Migration
+  void handleZOPThreadMigrate( Forza::zopEvent* zev );
+
+  /// RevCPU: Handle FORZA scratchpad request responses
+  void MarkLoadCompleteDummy( const MemReq& req );
+
+  /// RevCPU: Inform the ZQM that a thread is done
+  void sendZQMThreadComplete( uint32_t ThreadID, uint32_t HartID );
+
   /// RevCPU: Creates a unique tag for this message
   uint8_t createTag();
 
@@ -407,6 +453,9 @@ private:
 
   /// RevCPU: updates sst statistics on a per core basis
   void UpdateCoreStatistics( unsigned coreNum );
+
+  /// RevCPU: processes the incoming ZOP queue
+  void processZOPQ();
 
 };  // class RevCPU
 

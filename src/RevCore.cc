@@ -104,6 +104,7 @@ bool RevCore::SingleStepHart() {
 void RevCore::SetCoProc( RevCoProc* coproc ) {
   if( coProc == nullptr ) {
     coProc = coproc;
+    coProc->Reset();
   } else {
     output->fatal(
       CALL_INFO,
@@ -1570,29 +1571,54 @@ void RevCore::ExternalReleaseHart( RevCorePasskey<RevCoProc>, uint16_t HartID ) 
   }
 }
 
+// unsigned RevCore::GetNextHartToDecodeID() const {
+//   if(HartsClearToDecode.none()) { return HartToDecodeID;};
+
+//   unsigned nextID = HartToDecodeID;
+//   if(HartsClearToDecode[HartToDecodeID]){
+//     nextID = HartToDecodeID;
+//   }else{
+//     for(size_t tID = 0; tID < Harts.size(); tID++){
+//       nextID++;
+//       if(nextID >= Harts.size()){
+//         nextID = 0;
+//       }
+//       if(HartsClearToDecode[nextID]){ break; };
+//     }
+//     output->verbose(CALL_INFO, 6, 0,
+//                     "Core %" PRIu32 "; Hart switch from %" PRIu32 " to %" PRIu32 "\n",
+//                     id, HartToDecodeID, nextID);
+//   }
+//   return nextID;
+// }
 unsigned RevCore::GetNextHartToDecodeID() const {
   if( HartsClearToDecode.none() ) {
     return HartToDecodeID;
-  };
-
-  unsigned nextID = HartToDecodeID;
-  if( HartsClearToDecode[HartToDecodeID] ) {
-    nextID = HartToDecodeID;
-  } else {
-    for( size_t tID = 0; tID < Harts.size(); tID++ ) {
-      nextID++;
-      if( nextID >= Harts.size() ) {
-        nextID = 0;
-      }
-      if( HartsClearToDecode[nextID] ) {
-        break;
-      };
+  }  // This should never happen
+  // start with HartToDecodeID + 1
+  unsigned nextID         = ( HartToDecodeID + 1 ) % Harts.size();
+  // store the original ID to return if no other ID is clear
+  unsigned originalHartID = HartToDecodeID;
+  // Loop from HartToDecodeID + 1 to end of Harts
+  for( ; nextID < Harts.size(); nextID++ ) {
+    if( HartsClearToDecode[nextID] ) {
+      output->verbose(
+        CALL_INFO, 6, 0, "Core %" PRIu32 "; Hart switch from %" PRIu32 " to %" PRIu32 "\n", id, HartToDecodeID, nextID
+      );
+      return nextID;  // if nextID is clear, return it
     }
-    output->verbose(
-      CALL_INFO, 6, 0, "Core %" PRIu32 "; Hart switch from %" PRIu32 " to %" PRIu32 "\n", id, HartToDecodeID, nextID
-    );
   }
-  return nextID;
+  // Second loop from 0 to HartToDecodeID
+  for( nextID = 0; nextID < originalHartID; nextID++ ) {
+    if( HartsClearToDecode[nextID] ) {
+      output->verbose(
+        CALL_INFO, 6, 0, "Core %" PRIu32 "; Hart switch from %" PRIu32 " to %" PRIu32 "\n", id, HartToDecodeID, nextID
+      );
+      return nextID;
+    }
+  }
+  // Nothing else was clear, return original
+  return originalHartID;
 }
 
 void RevCore::MarkLoadComplete( const MemReq& req ) {

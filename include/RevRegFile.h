@@ -125,6 +125,9 @@ enum class RevExceptionCause : int32_t {
   INST_PAGE_FAULT           = 12,
   LOAD_PAGE_FAULT           = 13,
   STORE_AMO_PAGE_FAULT      = 15,
+
+  // FORZA
+  THREAD_MIGRATED           = 999,
 };
 
 class RevCore;
@@ -355,6 +358,10 @@ public:
       BoxNaN( &SPF[size_t( rd )], &value );
     }
   }
+
+  uint32_t GetThreadID() const { return ThreadID; }
+
+  void SetThreadID( uint32_t tid ) { ThreadID = tid; }
 
   // Friend functions and classes to access internal register state
   template<typename INT, typename FP>

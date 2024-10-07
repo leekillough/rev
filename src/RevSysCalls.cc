@@ -1,3 +1,4 @@
+#include "RevCPU.h"
 #include "RevCommon.h"
 #include "RevCore.h"
 #include "RevMem.h"
@@ -2042,23 +2043,19 @@ EcallStatus RevCore::ECALL_readahead() {
   return EcallStatus::SUCCESS;
 }
 
-// 214, rev_brk(unsigned long brk)
-EcallStatus RevCore::ECALL_brk() {
-  auto Addr              = RegFile->GetX<uint64_t>( RevReg::a0 );
+// 214, rev_sbrk(unsigned long brk)
+EcallStatus RevCore::ECALL_sbrk() {
+  auto NumBytes      = RegFile->GetX<uint64_t>( RevReg::a0 );
 
-  const uint64_t heapend = mem->GetHeapEnd();
-  if( Addr > 0 && Addr > heapend ) {
-    uint64_t Size = Addr - heapend;
-    mem->ExpandHeap( Size );
-  } else {
-    output->fatal(
-      CALL_INFO,
-      11,
-      "Out of memory / Unable to expand system break (brk) to "
-      "Addr = 0x%" PRIx64 "\n",
-      Addr
-    );
-  }
+  // Return the current brk and then incremenet it by NumBytes
+  const uint64_t brk = mem->GetHeapEnd();
+  // FIXME: Add Error Checking
+  mem->AdjustBrk( NumBytes );
+  // output->fatal(CALL_INFO, 11,
+  //               "Out of memory / Unable to expand system break (brk) to "
+  //               "NumBytes = 0x%" PRIx64 "\n", NumBytes);
+  //}
+  RegFile->SetX( RevReg::a0, brk );
   return EcallStatus::SUCCESS;
 }
 
@@ -3436,322 +3433,338 @@ EcallStatus RevCore::ECALL_fast_printf() {
 /* ========================================= */
 // clang-format off
 const std::unordered_map<uint32_t, EcallStatus(RevCore::*)()> RevCore::Ecalls = {
-    { 0,   &RevCore::ECALL_io_setup },                  //  rev_io_setup(unsigned nr_reqs, aio_context_t  *ctx)
-    { 1,   &RevCore::ECALL_io_destroy },                //  rev_io_destroy(aio_context_t ctx)
-    { 2,   &RevCore::ECALL_io_submit },                 //  rev_io_submit(aio_context_t, long, struct iocb  *  *)
-    { 3,   &RevCore::ECALL_io_cancel },                 //  rev_io_cancel(aio_context_t ctx_id, struct iocb  *iocb, struct io_event  *result)
-    { 4,   &RevCore::ECALL_io_getevents },              //  rev_io_getevents(aio_context_t ctx_id, long min_nr, long nr, struct io_event  *events, struct __kernel_timespec  *timeout)
-    { 5,   &RevCore::ECALL_setxattr },                  //  rev_setxattr(const char  *path, const char  *name, const void  *value, size_t size, int flags)
-    { 6,   &RevCore::ECALL_lsetxattr },                 //  rev_lsetxattr(const char  *path, const char  *name, const void  *value, size_t size, int flags)
-    { 7,   &RevCore::ECALL_fsetxattr },                 //  rev_fsetxattr(int fd, const char  *name, const void  *value, size_t size, int flags)
-    { 8,   &RevCore::ECALL_getxattr },                  //  rev_getxattr(const char  *path, const char  *name, void  *value, size_t size)
-    { 9,   &RevCore::ECALL_lgetxattr },                 //  rev_lgetxattr(const char  *path, const char  *name, void  *value, size_t size)
-    { 10,  &RevCore::ECALL_fgetxattr },                 //  rev_fgetxattr(int fd, const char  *name, void  *value, size_t size)
-    { 11,  &RevCore::ECALL_listxattr },                 //  rev_listxattr(const char  *path, char  *list, size_t size)
-    { 12,  &RevCore::ECALL_llistxattr },                //  rev_llistxattr(const char  *path, char  *list, size_t size)
-    { 13,  &RevCore::ECALL_flistxattr },                //  rev_flistxattr(int fd, char  *list, size_t size)
-    { 14,  &RevCore::ECALL_removexattr },               //  rev_removexattr(const char  *path, const char  *name)
-    { 15,  &RevCore::ECALL_lremovexattr },              //  rev_lremovexattr(const char  *path, const char  *name)
-    { 16,  &RevCore::ECALL_fremovexattr },              //  rev_fremovexattr(int fd, const char  *name)
-    { 17,  &RevCore::ECALL_getcwd },                    //  rev_getcwd(char  *buf, unsigned long size)
-    { 18,  &RevCore::ECALL_lookup_dcookie },            //  rev_lookup_dcookie(u64 cookie64, char  *buf, size_t len)
-    { 19,  &RevCore::ECALL_eventfd2 },                  //  rev_eventfd2(unsigned int count, int flags)
-    { 20,  &RevCore::ECALL_epoll_create1 },             //  rev_epoll_create1(int flags)
-    { 21,  &RevCore::ECALL_epoll_ctl },                 //  rev_epoll_ctl(int epfd, int op, int fd, struct epoll_event  *event)
-    { 22,  &RevCore::ECALL_epoll_pwait },               //  rev_epoll_pwait(int epfd, struct epoll_event  *events, int maxevents, int timeout, const sigset_t  *sigmask, size_t sigsetsize)
-    { 23,  &RevCore::ECALL_dup },                       //  rev_dup(unsigned int fildes)
-    { 24,  &RevCore::ECALL_dup3 },                      //  rev_dup3(unsigned int oldfd, unsigned int newfd, int flags)
-    { 25,  &RevCore::ECALL_fcntl64 },                   //  rev_fcntl64(unsigned int fd, unsigned int cmd, unsigned long arg)
-    { 26,  &RevCore::ECALL_inotify_init1 },             //  rev_inotify_init1(int flags)
-    { 27,  &RevCore::ECALL_inotify_add_watch },         //  rev_inotify_add_watch(int fd, const char  *path, u32 mask)
-    { 28,  &RevCore::ECALL_inotify_rm_watch },          //  rev_inotify_rm_watch(int fd, __s32 wd)
-    { 29,  &RevCore::ECALL_ioctl },                     //  rev_ioctl(unsigned int fd, unsigned int cmd, unsigned long arg)
-    { 30,  &RevCore::ECALL_ioprio_set },                //  rev_ioprio_set(int which, int who, int ioprio)
-    { 31,  &RevCore::ECALL_ioprio_get },                //  rev_ioprio_get(int which, int who)
-    { 32,  &RevCore::ECALL_flock },                     //  rev_flock(unsigned int fd, unsigned int cmd)
-    { 33,  &RevCore::ECALL_mknodat },                   //  rev_mknodat(int dfd, const char  * filename, umode_t mode, unsigned dev)
-    { 34,  &RevCore::ECALL_mkdirat },                   //  rev_mkdirat(int dfd, const char  * pathname, umode_t mode)
-    { 35,  &RevCore::ECALL_unlinkat },                  //  rev_unlinkat(int dfd, const char  * pathname, int flag)
-    { 36,  &RevCore::ECALL_symlinkat },                 //  rev_symlinkat(const char  * oldname, int newdfd, const char  * newname)
-    { 37,  &RevCore::ECALL_linkat },                    //  rev_unlinkat(int dfd, const char  * pathname, int flag)
-    { 38,  &RevCore::ECALL_renameat },                  //  rev_renameat(int olddfd, const char  * oldname, int newdfd, const char  * newname)
-    { 39,  &RevCore::ECALL_umount },                    //  rev_umount(char  *name, int flags)
-    { 40,  &RevCore::ECALL_mount },                     //  rev_umount(char  *name, int flags)
-    { 41,  &RevCore::ECALL_pivot_root },                //  rev_pivot_root(const char  *new_root, const char  *put_old)
-    { 42,  &RevCore::ECALL_ni_syscall },                //  rev_ni_syscall(void)
-    { 43,  &RevCore::ECALL_statfs64 },                  //  rev_statfs64(const char  *path, size_t sz, struct statfs64  *buf)
-    { 44,  &RevCore::ECALL_fstatfs64 },                 //  rev_fstatfs64(unsigned int fd, size_t sz, struct statfs64  *buf)
-    { 45,  &RevCore::ECALL_truncate64 },                //  rev_truncate64(const char  *path, loff_t length)
-    { 46,  &RevCore::ECALL_ftruncate64 },               //  rev_ftruncate64(unsigned int fd, loff_t length)
-    { 47,  &RevCore::ECALL_fallocate },                 //  rev_fallocate(int fd, int mode, loff_t offset, loff_t len)
-    { 48,  &RevCore::ECALL_faccessat },                 //  rev_faccessat(int dfd, const char  *filename, int mode)
-    { 49,  &RevCore::ECALL_chdir },                     //  rev_chdir(const char  *filename)
-    { 50,  &RevCore::ECALL_fchdir },                    //  rev_fchdir(unsigned int fd)
-    { 51,  &RevCore::ECALL_chroot },                    //  rev_chroot(const char  *filename)
-    { 52,  &RevCore::ECALL_fchmod },                    //  rev_fchmod(unsigned int fd, umode_t mode)
-    { 53,  &RevCore::ECALL_fchmodat },                  //  rev_fchmodat(int dfd, const char  * filename, umode_t mode)
-    { 54,  &RevCore::ECALL_fchownat },                  //  rev_fchownat(int dfd, const char  *filename, uid_t user, gid_t group, int flag)
-    { 55,  &RevCore::ECALL_fchown },                    //  rev_fchown(unsigned int fd, uid_t user, gid_t group)
-    { 56,  &RevCore::ECALL_openat },                    //  rev_openat(int dfd, const char  *filename, int flags, umode_t mode)
-    { 57,  &RevCore::ECALL_close },                     //  rev_close(unsigned int fd)
-    { 58,  &RevCore::ECALL_vhangup },                   //  rev_vhangup(void)
-    { 59,  &RevCore::ECALL_pipe2 },                     //  rev_pipe2(int  *fildes, int flags)
-    { 60,  &RevCore::ECALL_quotactl },                  //  rev_quotactl(unsigned int cmd, const char  *special, qid_t id, void  *addr)
-    { 61,  &RevCore::ECALL_getdents64 },                //  rev_getdents64(unsigned int fd, struct linux_dirent64  *dirent, unsigned int count)
-    { 62,  &RevCore::ECALL_lseek },                     //  rev_llseek(unsigned int fd, unsigned long offset_high, unsigned long offset_low, loff_t  *result, unsigned int whence)
-    { 63,  &RevCore::ECALL_read },                      //  rev_read(unsigned int fd, char  *buf, size_t count)
-    { 64,  &RevCore::ECALL_write },                     //  rev_write(unsigned int fd, const char  *buf, size_t count)
-    { 65,  &RevCore::ECALL_readv },                     //  rev_readv(unsigned long fd, const struct iovec  *vec, unsigned long vlen)
-    { 66,  &RevCore::ECALL_writev },                    //  rev_writev(unsigned long fd, const struct iovec  *vec, unsigned long vlen)
-    { 67,  &RevCore::ECALL_pread64 },                   //  rev_pread64(unsigned int fd, char  *buf, size_t count, loff_t pos)
-    { 68,  &RevCore::ECALL_pwrite64 },                  //  rev_pwrite64(unsigned int fd, const char  *buf, size_t count, loff_t pos)
-    { 69,  &RevCore::ECALL_preadv },                    //  rev_preadv(unsigned long fd, const struct iovec  *vec, unsigned long vlen, unsigned long pos_l, unsigned long pos_h)
-    { 70,  &RevCore::ECALL_pwritev },                   //  rev_pwritev(unsigned long fd, const struct iovec  *vec, unsigned long vlen, unsigned long pos_l, unsigned long pos_h)
-    { 71,  &RevCore::ECALL_sendfile64 },                //  rev_sendfile64(int out_fd, int in_fd, loff_t  *offset, size_t count)
-    { 72,  &RevCore::ECALL_pselect6_time32 },           //  rev_pselect6_time32(int, fd_set  *, fd_set  *, fd_set  *, struct old_timespec32  *, void  *)
-    { 73,  &RevCore::ECALL_ppoll_time32 },              //  rev_ppoll_time32(struct pollfd  *, unsigned int, struct old_timespec32  *, const sigset_t  *, size_t)
-    { 74,  &RevCore::ECALL_signalfd4 },                 //  rev_signalfd4(int ufd, sigset_t  *user_mask, size_t sizemask, int flags)
-    { 75,  &RevCore::ECALL_vmsplice },                  //  rev_vmsplice(int fd, const struct iovec  *iov, unsigned long nr_segs, unsigned int flags)
-    { 76,  &RevCore::ECALL_splice },                    //  rev_vmsplice(int fd, const struct iovec  *iov, unsigned long nr_segs, unsigned int flags)
-    { 77,  &RevCore::ECALL_tee },                       //  rev_tee(int fdin, int fdout, size_t len, unsigned int flags)
-    { 78,  &RevCore::ECALL_readlinkat },                //  rev_readlinkat(int dfd, const char  *path, char  *buf, int bufsiz)
-    { 79,  &RevCore::ECALL_newfstatat },                //  rev_newfstatat(int dfd, const char  *filename, struct stat  *statbuf, int flag)
-    { 80,  &RevCore::ECALL_newfstat },                  //  rev_newfstat(unsigned int fd, struct stat  *statbuf)
-    { 81,  &RevCore::ECALL_sync },                      //  rev_sync(void)
-    { 82,  &RevCore::ECALL_fsync },                     //  rev_fsync(unsigned int fd)
-    { 83,  &RevCore::ECALL_fdatasync },                 //  rev_fdatasync(unsigned int fd)
-    { 84,  &RevCore::ECALL_sync_file_range2 },          //  rev_sync_file_range2(int fd, unsigned int flags, loff_t offset, loff_t nbytes)
-    { 84,  &RevCore::ECALL_sync_file_range },           //  rev_sync_file_range(int fd, loff_t offset, loff_t nbytes, unsigned int flags)
-    { 85,  &RevCore::ECALL_timerfd_create },            //  rev_timerfd_create(int clockid, int flags)
-    { 86,  &RevCore::ECALL_timerfd_settime },           //  rev_timerfd_settime(int ufd, int flags, const struct __kernel_itimerspec  *utmr, struct __kernel_itimerspec  *otmr)
-    { 87,  &RevCore::ECALL_timerfd_gettime },           //  rev_timerfd_gettime(int ufd, struct __kernel_itimerspec  *otmr)
-    { 88,  &RevCore::ECALL_utimensat },                 //  rev_utimensat(int dfd, const char  *filename, struct __kernel_timespec  *utimes, int flags)
-    { 89,  &RevCore::ECALL_acct },                      //  rev_acct(const char  *name)
-    { 90,  &RevCore::ECALL_capget },                    //  rev_capget(cap_user_header_t header, cap_user_data_t dataptr)
-    { 91,  &RevCore::ECALL_capset },                    //  rev_capset(cap_user_header_t header, const cap_user_data_t data)
-    { 92,  &RevCore::ECALL_personality },               //  rev_personality(unsigned int personality)
-    { 93,  &RevCore::ECALL_exit },                      //  rev_exit(int error_code)
-    { 94,  &RevCore::ECALL_exit_group },                //  rev_exit_group(int error_code)
-    { 95,  &RevCore::ECALL_waitid },                    //  rev_waitid(int which, pid_t pid, struct siginfo  *infop, int options, struct rusage  *ru)
-    { 96,  &RevCore::ECALL_set_tid_address },           //  rev_set_tid_address(int  *tidptr)
-    { 97,  &RevCore::ECALL_unshare },                   //  rev_unshare(unsigned long unshare_flags)
-    { 98,  &RevCore::ECALL_futex },                     //  rev_futex(u32  *uaddr, int op, u32 val, struct __kernel_timespec  *utime, u32  *uaddr2, u32 val3)
-    { 99,  &RevCore::ECALL_set_robust_list },           //  rev_set_robust_list(struct robust_list_head  *head, size_t len)
-    { 100, &RevCore::ECALL_get_robust_list },           //  rev_get_robust_list(int pid, struct robust_list_head  *  *head_ptr, size_t  *len_ptr)
-    { 101, &RevCore::ECALL_nanosleep },                 //  rev_nanosleep(struct __kernel_timespec  *rqtp, struct __kernel_timespec  *rmtp)
-    { 102, &RevCore::ECALL_getitimer },                 //  rev_getitimer(int which, struct __kernel_old_itimerval  *value)
-    { 103, &RevCore::ECALL_setitimer },                 //  rev_setitimer(int which, struct __kernel_old_itimerval  *value, struct __kernel_old_itimerval  *ovalue)
-    { 104, &RevCore::ECALL_kexec_load },                //  rev_kexec_load(unsigned long entry, unsigned long nr_segments, struct kexec_segment  *segments, unsigned long flags)
-    { 105, &RevCore::ECALL_init_module },               //  rev_init_module(void  *umod, unsigned long len, const char  *uargs)
-    { 106, &RevCore::ECALL_delete_module },             //  rev_delete_module(const char  *name_user, unsigned int flags)
-    { 107, &RevCore::ECALL_timer_create },              //  rev_timer_create(clockid_t which_clock, struct sigevent  *timer_event_spec, timer_t  * created_timer_id)
-    { 108, &RevCore::ECALL_timer_gettime },             //  rev_timer_gettime(timer_t timer_id, struct __kernel_itimerspec  *setting)
-    { 109, &RevCore::ECALL_timer_getoverrun },          //  rev_timer_getoverrun(timer_t timer_id)
-    { 110, &RevCore::ECALL_timer_settime },             //  rev_timer_settime(timer_t timer_id, int flags, const struct __kernel_itimerspec  *new_setting, struct __kernel_itimerspec  *old_setting)
-    { 111, &RevCore::ECALL_timer_delete },              //  rev_timer_delete(timer_t timer_id)
-    { 112, &RevCore::ECALL_clock_settime },             //  rev_clock_settime(clockid_t which_clock, const struct __kernel_timespec  *tp)
-    { 113, &RevCore::ECALL_clock_gettime },             //  rev_clock_gettime(clockid_t which_clock, struct __kernel_timespec  *tp)
-    { 114, &RevCore::ECALL_clock_getres },              //  rev_clock_getres(clockid_t which_clock, struct __kernel_timespec  *tp)
-    { 115, &RevCore::ECALL_clock_nanosleep },           //  rev_clock_nanosleep(clockid_t which_clock, int flags, const struct __kernel_timespec  *rqtp, struct __kernel_timespec  *rmtp)
-    { 116, &RevCore::ECALL_syslog },                    //  rev_syslog(int type, char  *buf, int len)
-    { 117, &RevCore::ECALL_ptrace },                    //  rev_ptrace(long request, long pid, unsigned long addr, unsigned long data)
-    { 118, &RevCore::ECALL_sched_setparam },            //  rev_sched_setparam(pid_t pid, struct sched_param  *param)
-    { 119, &RevCore::ECALL_sched_setscheduler },        //  rev_sched_setscheduler(pid_t pid, int policy, struct sched_param  *param)
-    { 120, &RevCore::ECALL_sched_getscheduler },        //  rev_sched_getscheduler(pid_t pid)
-    { 121, &RevCore::ECALL_sched_getparam },            //  rev_sched_getparam(pid_t pid, struct sched_param  *param)
-    { 122, &RevCore::ECALL_sched_setaffinity },         //  rev_sched_setaffinity(pid_t pid, unsigned int len, unsigned long  *user_mask_ptr)
-    { 123, &RevCore::ECALL_sched_getaffinity },         //  rev_sched_getaffinity(pid_t pid, unsigned int len, unsigned long  *user_mask_ptr)
-    { 124, &RevCore::ECALL_sched_yield },               //  rev_sched_yield(void)
-    { 125, &RevCore::ECALL_sched_get_priority_max },    //  rev_sched_get_priority_max(int policy)
-    { 126, &RevCore::ECALL_sched_get_priority_min },    //  rev_sched_get_priority_min(int policy)
-    { 127, &RevCore::ECALL_sched_rr_get_interval },     //  rev_sched_rr_get_interval(pid_t pid, struct __kernel_timespec  *interval)
-    { 128, &RevCore::ECALL_restart_syscall },           //  rev_restart_syscall(void)
-    { 129, &RevCore::ECALL_kill },                      //  rev_kill(pid_t pid, int sig)
-    { 130, &RevCore::ECALL_tkill },                     //  rev_tkill(pid_t pid, int sig)
-    { 131, &RevCore::ECALL_tgkill },                    //  rev_tgkill(pid_t tgid, pid_t pid, int sig)
-    { 132, &RevCore::ECALL_sigaltstack },               //  rev_sigaltstack(const struct sigaltstack  *uss, struct sigaltstack  *uoss)
-    { 133, &RevCore::ECALL_rt_sigsuspend },             //  rev_rt_sigsuspend(sigset_t  *unewset, size_t sigsetsize)
-    { 134, &RevCore::ECALL_rt_sigaction },              //  rev_rt_sigaction(int, const struct sigaction  *, struct sigaction  *, size_t)
-    { 135, &RevCore::ECALL_rt_sigprocmask },            //  rev_rt_sigprocmask(int how, sigset_t  *set, sigset_t  *oset, size_t sigsetsize)
-    { 136, &RevCore::ECALL_rt_sigpending },             //  rev_rt_sigpending(sigset_t  *set, size_t sigsetsize)
-    { 137, &RevCore::ECALL_rt_sigtimedwait_time32 },    //  rev_rt_sigtimedwait_time32(const sigset_t  *uthese, siginfo_t  *uinfo, const struct old_timespec32  *uts, size_t sigsetsize)
-    { 138, &RevCore::ECALL_rt_sigqueueinfo },           //  rev_rt_sigqueueinfo(pid_t pid, int sig, siginfo_t  *uinfo)
-    { 140, &RevCore::ECALL_setpriority },               //  rev_setpriority(int which, int who, int niceval)
-    { 141, &RevCore::ECALL_getpriority },               //  rev_getpriority(int which, int who)
-    { 142, &RevCore::ECALL_reboot },                    //  rev_reboot(int magic1, int magic2, unsigned int cmd, void  *arg)
-    { 143, &RevCore::ECALL_setregid },                  //  rev_setregid(gid_t rgid, gid_t egid)
-    { 144, &RevCore::ECALL_setgid },                    //  rev_setgid(gid_t gid)
-    { 145, &RevCore::ECALL_setreuid },                  //  rev_setreuid(uid_t ruid, uid_t euid)
-    { 146, &RevCore::ECALL_setuid },                    //  rev_setuid(uid_t uid)
-    { 147, &RevCore::ECALL_setresuid },                 //  rev_setresuid(uid_t ruid, uid_t euid, uid_t suid)
-    { 148, &RevCore::ECALL_getresuid },                 //  rev_getresuid(uid_t  *ruid, uid_t  *euid, uid_t  *suid)
-    { 149, &RevCore::ECALL_setresgid },                 //  rev_setresgid(gid_t rgid, gid_t egid, gid_t sgid)
-    { 150, &RevCore::ECALL_getresgid },                 //  rev_getresgid(gid_t  *rgid, gid_t  *egid, gid_t  *sgid)
-    { 151, &RevCore::ECALL_setfsuid },                  //  rev_setfsuid(uid_t uid)
-    { 152, &RevCore::ECALL_setfsgid },                  //  rev_setfsgid(gid_t gid)
-    { 153, &RevCore::ECALL_times },                     //  rev_times(struct tms  *tbuf)
-    { 154, &RevCore::ECALL_setpgid },                   //  rev_setpgid(pid_t pid, pid_t pgid)
-    { 155, &RevCore::ECALL_getpgid },                   //  rev_getpgid(pid_t pid)
-    { 156, &RevCore::ECALL_getsid },                    //  rev_getsid(pid_t pid)
-    { 157, &RevCore::ECALL_setsid },                    //  rev_setsid(void)
-    { 158, &RevCore::ECALL_getgroups },                 //  rev_getgroups(int gidsetsize, gid_t  *grouplist)
-    { 159, &RevCore::ECALL_setgroups },                 //  rev_setgroups(int gidsetsize, gid_t  *grouplist)
-    { 160, &RevCore::ECALL_newuname },                  //  rev_newuname(struct new_utsname  *name)
-    { 161, &RevCore::ECALL_sethostname },               //  rev_sethostname(char  *name, int len)
-    { 162, &RevCore::ECALL_setdomainname },             //  rev_setdomainname(char  *name, int len)
-    { 163, &RevCore::ECALL_getrlimit },                 //  rev_getrlimit(unsigned int resource, struct rlimit  *rlim)
-    { 164, &RevCore::ECALL_setrlimit },                 //  rev_setrlimit(unsigned int resource, struct rlimit  *rlim)
-    { 165, &RevCore::ECALL_getrusage },                 //  rev_getrusage(int who, struct rusage  *ru)
-    { 166, &RevCore::ECALL_umask },                     //  rev_umask(int mask)
-    { 167, &RevCore::ECALL_prctl },                     //  rev_prctl(int option, unsigned long arg2, unsigned long arg3, unsigned long arg4, unsigned long arg5)
-    { 168, &RevCore::ECALL_getcpu },                    //  rev_getcpu(unsigned  *cpu, unsigned  *node, struct getcpu_cache  *cache)
-    { 169, &RevCore::ECALL_gettimeofday },              //  rev_gettimeofday(struct __kernel_old_timeval  *tv, struct timezone  *tz)
-    { 170, &RevCore::ECALL_settimeofday },              //  rev_settimeofday(struct __kernel_old_timeval  *tv, struct timezone  *tz)
-    { 171, &RevCore::ECALL_adjtimex },                  //  rev_adjtimex(struct __kernel_timex  *txc_p)
-    { 172, &RevCore::ECALL_getpid },                    //  rev_getpid(void)
-    { 173, &RevCore::ECALL_getppid },                   //  rev_getppid(void)
-    { 174, &RevCore::ECALL_getuid },                    //  rev_getuid(void)
-    { 175, &RevCore::ECALL_geteuid },                   //  rev_geteuid(void)
-    { 176, &RevCore::ECALL_getgid },                    //  rev_getgid(void)
-    { 177, &RevCore::ECALL_getegid },                   //  rev_getegid(void)
-    { 178, &RevCore::ECALL_gettid },                    //  rev_gettid(void)
-    { 179, &RevCore::ECALL_sysinfo },                   //  rev_sysinfo(struct sysinfo  *info)
-    { 180, &RevCore::ECALL_mq_open },                   //  rev_mq_open(const char  *name, int oflag, umode_t mode, struct mq_attr  *attr)
-    { 181, &RevCore::ECALL_mq_unlink },                 //  rev_mq_unlink(const char  *name)
-    { 182, &RevCore::ECALL_mq_timedsend },              //  rev_mq_timedsend(mqd_t mqdes, const char  *msg_ptr, size_t msg_len, unsigned int msg_prio, const struct __kernel_timespec  *abs_timeout)
-    { 183, &RevCore::ECALL_mq_timedreceive },           //  rev_mq_timedreceive(mqd_t mqdes, char  *msg_ptr, size_t msg_len, unsigned int  *msg_prio, const struct __kernel_timespec  *abs_timeout)
-    { 184, &RevCore::ECALL_mq_notify },                 //  rev_mq_notify(mqd_t mqdes, const struct sigevent  *notification)
-    { 185, &RevCore::ECALL_mq_getsetattr },             //  rev_mq_getsetattr(mqd_t mqdes, const struct mq_attr  *mqstat, struct mq_attr  *omqstat)
-    { 186, &RevCore::ECALL_msgget },                    //  rev_msgget(key_t key, int msgflg)
-    { 187, &RevCore::ECALL_msgctl },                    //  rev_old_msgctl(int msqid, int cmd, struct msqid_ds  *buf)
-    { 188, &RevCore::ECALL_msgrcv },                    //  rev_msgrcv(int msqid, struct msgbuf  *msgp, size_t msgsz, long msgtyp, int msgflg)
-    { 189, &RevCore::ECALL_msgsnd },                    //  rev_msgsnd(int msqid, struct msgbuf  *msgp, size_t msgsz, int msgflg)
-    { 190, &RevCore::ECALL_semget },                    //  rev_semget(key_t key, int nsems, int semflg)
-    { 191, &RevCore::ECALL_semctl },                    //  rev_semctl(int semid, int semnum, int cmd, unsigned long arg)
-    { 192, &RevCore::ECALL_semtimedop },                //  rev_semtimedop(int semid, struct sembuf  *sops, unsigned nsops, const struct __kernel_timespec  *timeout)
-    { 193, &RevCore::ECALL_semop },                     //  rev_semop(int semid, struct sembuf  *sops, unsigned nsops)
-    { 194, &RevCore::ECALL_shmget },                    //  rev_shmget(key_t key, size_t size, int flag)
-    { 195, &RevCore::ECALL_shmctl },                    //  rev_old_shmctl(int shmid, int cmd, struct shmid_ds  *buf)
-    { 196, &RevCore::ECALL_shmat },                     //  rev_shmat(int shmid, char  *shmaddr, int shmflg)
-    { 197, &RevCore::ECALL_shmdt },                     //  rev_shmdt(char  *shmaddr)
-    { 198, &RevCore::ECALL_socket },                    //  rev_socket(int, int, int)
-    { 199, &RevCore::ECALL_socketpair },                //  rev_socketpair(int, int, int, int  *)
-    { 200, &RevCore::ECALL_bind },                      //  rev_bind(int, struct sockaddr  *, int)
-    { 201, &RevCore::ECALL_listen },                    //  rev_listen(int, int)
-    { 202, &RevCore::ECALL_accept },                    //  rev_accept(int, struct sockaddr  *, int  *)
-    { 203, &RevCore::ECALL_connect },                   //  rev_connect(int, struct sockaddr  *, int)
-    { 204, &RevCore::ECALL_getsockname },               //  rev_getsockname(int, struct sockaddr  *, int  *)
-    { 205, &RevCore::ECALL_getpeername },               //  rev_getpeername(int, struct sockaddr  *, int  *)
-    { 206, &RevCore::ECALL_sendto },                    //  rev_sendto(int, void  *, size_t, unsigned, struct sockaddr  *, int)
-    { 207, &RevCore::ECALL_recvfrom },                  //  rev_recvfrom(int, void  *, size_t, unsigned, struct sockaddr  *, int  *)
-    { 208, &RevCore::ECALL_setsockopt },                //  rev_setsockopt(int fd, int level, int optname, char  *optval, int optlen)
-    { 209, &RevCore::ECALL_getsockopt },                //  rev_getsockopt(int fd, int level, int optname, char  *optval, int  *optlen)
-    { 210, &RevCore::ECALL_shutdown },                  //  rev_shutdown(int, int)
-    { 211, &RevCore::ECALL_sendmsg },                   //  rev_sendmsg(int fd, struct user_msghdr  *msg, unsigned flags)
-    { 212, &RevCore::ECALL_recvmsg },                   //  rev_recvmsg(int fd, struct user_msghdr  *msg, unsigned flags)
-    { 213, &RevCore::ECALL_readahead },                 //  rev_readahead(int fd, loff_t offset, size_t count)
-    { 214, &RevCore::ECALL_brk },                       //  rev_brk(unsigned long brk)
-    { 215, &RevCore::ECALL_munmap },                    //  rev_munmap(unsigned long addr, size_t len)
-    { 216, &RevCore::ECALL_mremap },                    //  rev_mremap(unsigned long addr, unsigned long old_len, unsigned long new_len, unsigned long flags, unsigned long new_addr)
-    { 217, &RevCore::ECALL_add_key },                   //  rev_add_key(const char  *_type, const char  *_description, const void  *_payload, size_t plen, key_serial_t destringid)
-    { 218, &RevCore::ECALL_request_key },               //  rev_request_key(const char  *_type, const char  *_description, const char  *_callout_info, key_serial_t destringid)
-    { 219, &RevCore::ECALL_keyctl },                    //  rev_keyctl(int cmd, unsigned long arg2, unsigned long arg3, unsigned long arg4, unsigned long arg5)
-    { 220, &RevCore::ECALL_clone },                     //  rev_clone(unsigned long, unsigned long, int  *, unsigned long, int  *)
-    { 221, &RevCore::ECALL_execve },                    //  rev_execve(const char  *filename, const char  *const  *argv, const char  *const  *envp)
-    { 222, &RevCore::ECALL_mmap },                      //  rev_old_mmap(struct mmap_arg_struct  *arg)
-    { 223, &RevCore::ECALL_fadvise64_64 },              //  rev_fadvise64_64(int fd, loff_t offset, loff_t len, int advice)
-    { 224, &RevCore::ECALL_swapon },                    //  rev_swapon(const char  *specialfile, int swap_flags)
-    { 225, &RevCore::ECALL_swapoff },                   //  rev_swapoff(const char  *specialfile)
-    { 226, &RevCore::ECALL_mprotect },                  //  rev_mprotect(unsigned long start, size_t len, unsigned long prot)
-    { 227, &RevCore::ECALL_msync },                     //  rev_msync(unsigned long start, size_t len, int flags)
-    { 228, &RevCore::ECALL_mlock },                     //  rev_mlock(unsigned long start, size_t len)
-    { 229, &RevCore::ECALL_munlock },                   //  rev_munlock(unsigned long start, size_t len)
-    { 230, &RevCore::ECALL_mlockall },                  //  rev_mlockall(int flags)
-    { 231, &RevCore::ECALL_munlockall },                //  rev_munlockall(void)
-    { 232, &RevCore::ECALL_mincore },                   //  rev_mincore(unsigned long start, size_t len, unsigned char  * vec)
-    { 233, &RevCore::ECALL_madvise },                   //  rev_madvise(unsigned long start, size_t len, int behavior)
-    { 234, &RevCore::ECALL_remap_file_pages },          //  rev_remap_file_pages(unsigned long start, unsigned long size, unsigned long prot, unsigned long pgoff, unsigned long flags)
-    { 235, &RevCore::ECALL_mbind },                     //  rev_mbind(unsigned long start, unsigned long len, unsigned long mode, const unsigned long  *nmask, unsigned long maxnode, unsigned flags)
-    { 236, &RevCore::ECALL_get_mempolicy },             //  rev_get_mempolicy(int  *policy, unsigned long  *nmask, unsigned long maxnode, unsigned long addr, unsigned long flags)
-    { 237, &RevCore::ECALL_set_mempolicy },             //  rev_set_mempolicy(int mode, const unsigned long  *nmask, unsigned long maxnode)
-    { 238, &RevCore::ECALL_migrate_pages },             //  rev_migrate_pages(pid_t pid, unsigned long maxnode, const unsigned long  *from, const unsigned long  *to)
-    { 239, &RevCore::ECALL_move_pages },                //  rev_move_pages(pid_t pid, unsigned long nr_pages, const void  *  *pages, const int  *nodes, int  *status, int flags)
-    { 240, &RevCore::ECALL_rt_tgsigqueueinfo },         //  rev_rt_tgsigqueueinfo(pid_t tgid, pid_t pid, int sig, siginfo_t  *uinfo)
-    { 241, &RevCore::ECALL_perf_event_open },           //  rev_perf_event_open(")
-    { 242, &RevCore::ECALL_accept4 },                   //  rev_accept4(int, struct sockaddr  *, int  *, int)
-    { 243, &RevCore::ECALL_recvmmsg_time32 },           //  rev_recvmmsg_time32(int fd, struct mmsghdr  *msg, unsigned int vlen, unsigned flags, struct old_timespec32  *timeout)
-    { 260, &RevCore::ECALL_wait4 },                     //  rev_wait4(pid_t pid, int  *stat_addr, int options, struct rusage  *ru)
-    { 261, &RevCore::ECALL_prlimit64 },                 //  rev_prlimit64(pid_t pid, unsigned int resource, const struct rlimit64  *new_rlim, struct rlimit64  *old_rlim)
-    { 262, &RevCore::ECALL_fanotify_init },             //  rev_fanotify_init(unsigned int flags, unsigned int event_f_flags)
-    { 263, &RevCore::ECALL_fanotify_mark },             //  rev_fanotify_mark(int fanotify_fd, unsigned int flags, u64 mask, int fd, const char  *pathname)
-    { 264, &RevCore::ECALL_name_to_handle_at },         //  rev_name_to_handle_at(int dfd, const char  *name, struct file_handle  *handle, int  *mnt_id, int flag)
-    { 265, &RevCore::ECALL_open_by_handle_at },         //  rev_open_by_handle_at(int mountdirfd, struct file_handle  *handle, int flags)
-    { 266, &RevCore::ECALL_clock_adjtime },             //  rev_clock_adjtime(clockid_t which_clock, struct __kernel_timex  *tx)
-    { 267, &RevCore::ECALL_syncfs },                    //  rev_syncfs(int fd)
-    { 268, &RevCore::ECALL_setns },                     //  rev_setns(int fd, int nstype)
-    { 269, &RevCore::ECALL_sendmmsg },                  //  rev_sendmmsg(int fd, struct mmsghdr  *msg, unsigned int vlen, unsigned flags)
-    { 270, &RevCore::ECALL_process_vm_readv },          //  rev_process_vm_readv(pid_t pid, const struct iovec  *lvec, unsigned long liovcnt, const struct iovec  *rvec, unsigned long riovcnt, unsigned long flags)
-    { 271, &RevCore::ECALL_process_vm_writev },         //  rev_process_vm_writev(pid_t pid, const struct iovec  *lvec, unsigned long liovcnt, const struct iovec  *rvec, unsigned long riovcnt, unsigned long flags)
-    { 272, &RevCore::ECALL_kcmp },                      //  rev_kcmp(pid_t pid1, pid_t pid2, int type, unsigned long idx1, unsigned long idx2)
-    { 273, &RevCore::ECALL_finit_module },              //  rev_finit_module(int fd, const char  *uargs, int flags)
-    { 274, &RevCore::ECALL_sched_setattr },             //  rev_sched_setattr(pid_t pid, struct sched_attr  *attr, unsigned int flags)
-    { 275, &RevCore::ECALL_sched_getattr },             //  rev_sched_getattr(pid_t pid, struct sched_attr  *attr, unsigned int size, unsigned int flags)
-    { 276, &RevCore::ECALL_renameat2 },                 //  rev_renameat2(int olddfd, const char  *oldname, int newdfd, const char  *newname, unsigned int flags)
-    { 277, &RevCore::ECALL_seccomp },                   //  rev_seccomp(unsigned int op, unsigned int flags, void  *uargs)
-    { 278, &RevCore::ECALL_getrandom },                 //  rev_getrandom(char  *buf, size_t count, unsigned int flags)
-    { 279, &RevCore::ECALL_memfd_create },              //  rev_memfd_create(const char  *uname_ptr, unsigned int flags)
-    { 280, &RevCore::ECALL_bpf },                       //  rev_bpf(int cmd, union bpf_attr *attr, unsigned int size)
-    { 281, &RevCore::ECALL_execveat },                  //  rev_execveat(int dfd, const char  *filename, const char  *const  *argv, const char  *const  *envp, int flags)
-    { 282, &RevCore::ECALL_userfaultfd },               //  rev_userfaultfd(int flags)
-    { 283, &RevCore::ECALL_membarrier },                //  rev_membarrier(int cmd, unsigned int flags, int cpu_id)
-    { 284, &RevCore::ECALL_mlock2 },                    //  rev_mlock2(unsigned long start, size_t len, int flags)
-    { 285, &RevCore::ECALL_copy_file_range },           //  rev_copy_file_range(int fd_in, loff_t  *off_in, int fd_out, loff_t  *off_out, size_t len, unsigned int flags)
-    { 286, &RevCore::ECALL_preadv2 },                   //  rev_preadv2(unsigned long fd, const struct iovec  *vec, unsigned long vlen, unsigned long pos_l, unsigned long pos_h, rwf_t flags)
-    { 287, &RevCore::ECALL_pwritev2 },                  //  rev_pwritev2(unsigned long fd, const struct iovec  *vec, unsigned long vlen, unsigned long pos_l, unsigned long pos_h, rwf_t flags)
-    { 288, &RevCore::ECALL_pkey_mprotect },             //  rev_pkey_mprotect(unsigned long start, size_t len, unsigned long prot, int pkey)
-    { 289, &RevCore::ECALL_pkey_alloc },                //  rev_pkey_alloc(unsigned long flags, unsigned long init_val)
-    { 290, &RevCore::ECALL_pkey_free },                 //  rev_pkey_free(int pkey)
-    { 291, &RevCore::ECALL_statx },                     //  rev_statx(int dfd, const char  *path, unsigned flags, unsigned mask, struct statx  *buffer)
-    { 292, &RevCore::ECALL_io_pgetevents },             //  rev_io_pgetevents(aio_context_t ctx_id, long min_nr, long nr, struct io_event  *events, struct __kernel_timespec  *timeout, const struct __aio_sigset *sig)
-    { 293, &RevCore::ECALL_rseq },                      //  rev_rseq(struct rseq  *rseq, uint32_t rseq_len, int flags, uint32_t sig)
-    { 294, &RevCore::ECALL_kexec_file_load },           //  rev_kexec_file_load(int kernel_fd, int initrd_fd, unsigned long cmdline_len, const char  *cmdline_ptr, unsigned long flags)
-    { 403, &RevCore::ECALL_clock_gettime },             //  rev_clock_gettime(clockid_t which_clock, struct __kernel_timespec  *tp)
-    { 404, &RevCore::ECALL_clock_settime },             //  rev_clock_settime(clockid_t which_clock, const struct __kernel_timespec  *tp)
-    { 405, &RevCore::ECALL_clock_adjtime },             //  rev_clock_adjtime(clockid_t which_clock, struct __kernel_timex  *tx)
-    { 406, &RevCore::ECALL_clock_getres },              //  rev_clock_getres(clockid_t which_clock, struct __kernel_timespec  *tp)
-    { 407, &RevCore::ECALL_clock_nanosleep },           //  rev_clock_nanosleep(clockid_t which_clock, int flags, const struct __kernel_timespec  *rqtp, struct __kernel_timespec  *rmtp)
-    { 408, &RevCore::ECALL_timer_gettime },             //  rev_timer_gettime(timer_t timer_id, struct __kernel_itimerspec  *setting)
-    { 409, &RevCore::ECALL_timer_settime },             //  rev_timer_settime(timer_t timer_id, int flags, const struct __kernel_itimerspec  *new_setting, struct __kernel_itimerspec  *old_setting)
-    { 410, &RevCore::ECALL_timerfd_gettime },           //  rev_timerfd_gettime(int ufd, struct __kernel_itimerspec  *otmr)
-    { 411, &RevCore::ECALL_timerfd_settime },           //  rev_timerfd_settime(int ufd, int flags, const struct __kernel_itimerspec  *utmr, struct __kernel_itimerspec  *otmr)
-    { 412, &RevCore::ECALL_utimensat },                 //  rev_utimensat(int dfd, const char  *filename, struct __kernel_timespec  *utimes, int flags)
-    { 416, &RevCore::ECALL_io_pgetevents },             //  rev_io_pgetevents(aio_context_t ctx_id, long min_nr, long nr, struct io_event  *events, struct __kernel_timespec  *timeout, const struct __aio_sigset *sig)
-    { 418, &RevCore::ECALL_mq_timedsend },              //  rev_mq_timedsend(mqd_t mqdes, const char  *msg_ptr, size_t msg_len, unsigned int msg_prio, const struct __kernel_timespec  *abs_timeout)
-    { 419, &RevCore::ECALL_mq_timedreceive },           //  rev_mq_timedreceive(mqd_t mqdes, char  *msg_ptr, size_t msg_len, unsigned int  *msg_prio, const struct __kernel_timespec  *abs_timeout)
-    { 420, &RevCore::ECALL_semtimedop },                //  rev_semtimedop(int semid, struct sembuf  *sops, unsigned nsops, const struct __kernel_timespec  *timeout)
-    { 422, &RevCore::ECALL_futex },                     //  rev_futex(u32  *uaddr, int op, u32 val, struct __kernel_timespec  *utime, u32  *uaddr2, u32 val3)
-    { 423, &RevCore::ECALL_sched_rr_get_interval },     //  rev_sched_rr_get_interval(pid_t pid, struct __kernel_timespec  *interval)
-    { 424, &RevCore::ECALL_pidfd_send_signal },         //  rev_pidfd_send_signal(int pidfd, int sig, siginfo_t  *info, unsigned int flags)
-    { 425, &RevCore::ECALL_io_uring_setup },            //  rev_io_uring_setup(u32 entries, struct io_uring_params  *p)
-    { 426, &RevCore::ECALL_io_uring_enter },            //  rev_io_uring_enter(unsigned int fd, u32 to_submit, u32 min_complete, u32 flags, const sigset_t  *sig, size_t sigsz)
-    { 427, &RevCore::ECALL_io_uring_register },         //  rev_io_uring_register(unsigned int fd, unsigned int op, void  *arg, unsigned int nr_args)
-    { 428, &RevCore::ECALL_open_tree },                 //  rev_open_tree(int dfd, const char  *path, unsigned flags)
-    { 429, &RevCore::ECALL_move_mount },                //  rev_move_mount(int from_dfd, const char  *from_path, int to_dfd, const char  *to_path, unsigned int ms_flags)
-    { 430, &RevCore::ECALL_fsopen },                    //  rev_fsopen(const char  *fs_name, unsigned int flags)
-    { 431, &RevCore::ECALL_fsconfig },                  //  rev_fsconfig(int fs_fd, unsigned int cmd, const char  *key, const void  *value, int aux)
-    { 432, &RevCore::ECALL_fsmount },                   //  rev_fsmount(int fs_fd, unsigned int flags, unsigned int ms_flags)
-    { 433, &RevCore::ECALL_fspick },                    //  rev_fspick(int dfd, const char  *path, unsigned int flags)
-    { 434, &RevCore::ECALL_pidfd_open },                //  rev_pidfd_open(pid_t pid, unsigned int flags)
-    { 435, &RevCore::ECALL_clone3 },                    //  rev_clone3(struct clone_args  *uargs, size_t size)
-    { 436, &RevCore::ECALL_close_range },               //  rev_close_range(unsigned int fd, unsigned int max_fd, unsigned int flags)
-    { 437, &RevCore::ECALL_openat2 },                   //  rev_openat2(int dfd, const char  *filename, struct open_how *how, size_t size)
-    { 438, &RevCore::ECALL_pidfd_getfd },               //  rev_pidfd_getfd(int pidfd, int fd, unsigned int flags)
-    { 439, &RevCore::ECALL_faccessat2 },                //  rev_faccessat2(int dfd, const char  *filename, int mode, int flags)
-    { 440, &RevCore::ECALL_process_madvise },           //  rev_process_madvise(int pidfd, const struct iovec  *vec, size_t vlen, int behavior, unsigned int flags)
-    { 500, &RevCore::ECALL_cpuinfo },                   //  rev_cpuinfo(struct rev_cpuinfo *info)
-    { 501, &RevCore::ECALL_perf_stats },                //  rev_cpuinfo(struct rev_perf_stats *stats)
-    { 1000, &RevCore::ECALL_pthread_create },           //
-    { 1001, &RevCore::ECALL_pthread_join },             //
+    { 0,   &RevCore::ECALL_io_setup },               //  rev_io_setup(unsigned nr_reqs, aio_context_t  *ctx)
+    { 1,   &RevCore::ECALL_io_destroy },             //  rev_io_destroy(aio_context_t ctx)
+    { 2,   &RevCore::ECALL_io_submit },              //  rev_io_submit(aio_context_t, long, struct iocb  *  *)
+    { 3,   &RevCore::ECALL_io_cancel },              //  rev_io_cancel(aio_context_t ctx_id, struct iocb  *iocb, struct io_event  *result)
+    { 4,   &RevCore::ECALL_io_getevents },           //  rev_io_getevents(aio_context_t ctx_id, long min_nr, long nr, struct io_event  *events, struct __kernel_timespec  *timeout)
+    { 5,   &RevCore::ECALL_setxattr },               //  rev_setxattr(const char  *path, const char  *name, const void  *value, size_t size, int flags)
+    { 6,   &RevCore::ECALL_lsetxattr },              //  rev_lsetxattr(const char  *path, const char  *name, const void  *value, size_t size, int flags)
+    { 7,   &RevCore::ECALL_fsetxattr },              //  rev_fsetxattr(int fd, const char  *name, const void  *value, size_t size, int flags)
+    { 8,   &RevCore::ECALL_getxattr },               //  rev_getxattr(const char  *path, const char  *name, void  *value, size_t size)
+    { 9,   &RevCore::ECALL_lgetxattr },              //  rev_lgetxattr(const char  *path, const char  *name, void  *value, size_t size)
+    { 10,  &RevCore::ECALL_fgetxattr },              //  rev_fgetxattr(int fd, const char  *name, void  *value, size_t size)
+    { 11,  &RevCore::ECALL_listxattr },              //  rev_listxattr(const char  *path, char  *list, size_t size)
+    { 12,  &RevCore::ECALL_llistxattr },             //  rev_llistxattr(const char  *path, char  *list, size_t size)
+    { 13,  &RevCore::ECALL_flistxattr },             //  rev_flistxattr(int fd, char  *list, size_t size)
+    { 14,  &RevCore::ECALL_removexattr },            //  rev_removexattr(const char  *path, const char  *name)
+    { 15,  &RevCore::ECALL_lremovexattr },           //  rev_lremovexattr(const char  *path, const char  *name)
+    { 16,  &RevCore::ECALL_fremovexattr },           //  rev_fremovexattr(int fd, const char  *name)
+    { 17,  &RevCore::ECALL_getcwd },                 //  rev_getcwd(char  *buf, unsigned long size)
+    { 18,  &RevCore::ECALL_lookup_dcookie },         //  rev_lookup_dcookie(u64 cookie64, char  *buf, size_t len)
+    { 19,  &RevCore::ECALL_eventfd2 },               //  rev_eventfd2(unsigned int count, int flags)
+    { 20,  &RevCore::ECALL_epoll_create1 },          //  rev_epoll_create1(int flags)
+    { 21,  &RevCore::ECALL_epoll_ctl },              //  rev_epoll_ctl(int epfd, int op, int fd, struct epoll_event  *event)
+    { 22,  &RevCore::ECALL_epoll_pwait },            //  rev_epoll_pwait(int epfd, struct epoll_event  *events, int maxevents, int timeout, const sigset_t  *sigmask, size_t sigsetsize)
+    { 23,  &RevCore::ECALL_dup },                    //  rev_dup(unsigned int fildes)
+    { 24,  &RevCore::ECALL_dup3 },                   //  rev_dup3(unsigned int oldfd, unsigned int newfd, int flags)
+    { 25,  &RevCore::ECALL_fcntl64 },                //  rev_fcntl64(unsigned int fd, unsigned int cmd, unsigned long arg)
+    { 26,  &RevCore::ECALL_inotify_init1 },          //  rev_inotify_init1(int flags)
+    { 27,  &RevCore::ECALL_inotify_add_watch },      //  rev_inotify_add_watch(int fd, const char  *path, u32 mask)
+    { 28,  &RevCore::ECALL_inotify_rm_watch },       //  rev_inotify_rm_watch(int fd, __s32 wd)
+    { 29,  &RevCore::ECALL_ioctl },                  //  rev_ioctl(unsigned int fd, unsigned int cmd, unsigned long arg)
+    { 30,  &RevCore::ECALL_ioprio_set },             //  rev_ioprio_set(int which, int who, int ioprio)
+    { 31,  &RevCore::ECALL_ioprio_get },             //  rev_ioprio_get(int which, int who)
+    { 32,  &RevCore::ECALL_flock },                  //  rev_flock(unsigned int fd, unsigned int cmd)
+    { 33,  &RevCore::ECALL_mknodat },                //  rev_mknodat(int dfd, const char  * filename, umode_t mode, unsigned dev)
+    { 34,  &RevCore::ECALL_mkdirat },                //  rev_mkdirat(int dfd, const char  * pathname, umode_t mode)
+    { 35,  &RevCore::ECALL_unlinkat },               //  rev_unlinkat(int dfd, const char  * pathname, int flag)
+    { 36,  &RevCore::ECALL_symlinkat },              //  rev_symlinkat(const char  * oldname, int newdfd, const char  * newname)
+    { 37,  &RevCore::ECALL_linkat },                 //  rev_unlinkat(int dfd, const char  * pathname, int flag)
+    { 38,  &RevCore::ECALL_renameat },               //  rev_renameat(int olddfd, const char  * oldname, int newdfd, const char  * newname)
+    { 39,  &RevCore::ECALL_umount },                 //  rev_umount(char  *name, int flags)
+    { 40,  &RevCore::ECALL_mount },                  //  rev_umount(char  *name, int flags)
+    { 41,  &RevCore::ECALL_pivot_root },             //  rev_pivot_root(const char  *new_root, const char  *put_old)
+    { 42,  &RevCore::ECALL_ni_syscall },             //  rev_ni_syscall(void)
+    { 43,  &RevCore::ECALL_statfs64 },               //  rev_statfs64(const char  *path, size_t sz, struct statfs64  *buf)
+    { 44,  &RevCore::ECALL_fstatfs64 },              //  rev_fstatfs64(unsigned int fd, size_t sz, struct statfs64  *buf)
+    { 45,  &RevCore::ECALL_truncate64 },             //  rev_truncate64(const char  *path, loff_t length)
+    { 46,  &RevCore::ECALL_ftruncate64 },            //  rev_ftruncate64(unsigned int fd, loff_t length)
+    { 47,  &RevCore::ECALL_fallocate },              //  rev_fallocate(int fd, int mode, loff_t offset, loff_t len)
+    { 48,  &RevCore::ECALL_faccessat },              //  rev_faccessat(int dfd, const char  *filename, int mode)
+    { 49,  &RevCore::ECALL_chdir },                  //  rev_chdir(const char  *filename)
+    { 50,  &RevCore::ECALL_fchdir },                 //  rev_fchdir(unsigned int fd)
+    { 51,  &RevCore::ECALL_chroot },                 //  rev_chroot(const char  *filename)
+    { 52,  &RevCore::ECALL_fchmod },                 //  rev_fchmod(unsigned int fd, umode_t mode)
+    { 53,  &RevCore::ECALL_fchmodat },               //  rev_fchmodat(int dfd, const char  * filename, umode_t mode)
+    { 54,  &RevCore::ECALL_fchownat },               //  rev_fchownat(int dfd, const char  *filename, uid_t user, gid_t group, int flag)
+    { 55,  &RevCore::ECALL_fchown },                 //  rev_fchown(unsigned int fd, uid_t user, gid_t group)
+    { 56,  &RevCore::ECALL_openat },                 //  rev_openat(int dfd, const char  *filename, int flags, umode_t mode)
+    { 57,  &RevCore::ECALL_close },                  //  rev_close(unsigned int fd)
+    { 58,  &RevCore::ECALL_vhangup },                //  rev_vhangup(void)
+    { 59,  &RevCore::ECALL_pipe2 },                  //  rev_pipe2(int  *fildes, int flags)
+    { 60,  &RevCore::ECALL_quotactl },               //  rev_quotactl(unsigned int cmd, const char  *special, qid_t id, void  *addr)
+    { 61,  &RevCore::ECALL_getdents64 },             //  rev_getdents64(unsigned int fd, struct linux_dirent64  *dirent, unsigned int count)
+    { 62,  &RevCore::ECALL_lseek },                  //  rev_llseek(unsigned int fd, unsigned long offset_high, unsigned long offset_low, loff_t  *result, unsigned int whence)
+    { 63,  &RevCore::ECALL_read },                   //  rev_read(unsigned int fd, char  *buf, size_t count)
+    { 64,  &RevCore::ECALL_write },                  //  rev_write(unsigned int fd, const char  *buf, size_t count)
+    { 65,  &RevCore::ECALL_readv },                  //  rev_readv(unsigned long fd, const struct iovec  *vec, unsigned long vlen)
+    { 66,  &RevCore::ECALL_writev },                 //  rev_writev(unsigned long fd, const struct iovec  *vec, unsigned long vlen)
+    { 67,  &RevCore::ECALL_pread64 },                //  rev_pread64(unsigned int fd, char  *buf, size_t count, loff_t pos)
+    { 68,  &RevCore::ECALL_pwrite64 },               //  rev_pwrite64(unsigned int fd, const char  *buf, size_t count, loff_t pos)
+    { 69,  &RevCore::ECALL_preadv },                 //  rev_preadv(unsigned long fd, const struct iovec  *vec, unsigned long vlen, unsigned long pos_l, unsigned long pos_h)
+    { 70,  &RevCore::ECALL_pwritev },                //  rev_pwritev(unsigned long fd, const struct iovec  *vec, unsigned long vlen, unsigned long pos_l, unsigned long pos_h)
+    { 71,  &RevCore::ECALL_sendfile64 },             //  rev_sendfile64(int out_fd, int in_fd, loff_t  *offset, size_t count)
+    { 72,  &RevCore::ECALL_pselect6_time32 },        //  rev_pselect6_time32(int, fd_set  *, fd_set  *, fd_set  *, struct old_timespec32  *, void  *)
+    { 73,  &RevCore::ECALL_ppoll_time32 },           //  rev_ppoll_time32(struct pollfd  *, unsigned int, struct old_timespec32  *, const sigset_t  *, size_t)
+    { 74,  &RevCore::ECALL_signalfd4 },              //  rev_signalfd4(int ufd, sigset_t  *user_mask, size_t sizemask, int flags)
+    { 75,  &RevCore::ECALL_vmsplice },               //  rev_vmsplice(int fd, const struct iovec  *iov, unsigned long nr_segs, unsigned int flags)
+    { 76,  &RevCore::ECALL_splice },                 //  rev_vmsplice(int fd, const struct iovec  *iov, unsigned long nr_segs, unsigned int flags)
+    { 77,  &RevCore::ECALL_tee },                    //  rev_tee(int fdin, int fdout, size_t len, unsigned int flags)
+    { 78,  &RevCore::ECALL_readlinkat },             //  rev_readlinkat(int dfd, const char  *path, char  *buf, int bufsiz)
+    { 79,  &RevCore::ECALL_newfstatat },             //  rev_newfstatat(int dfd, const char  *filename, struct stat  *statbuf, int flag)
+    { 80,  &RevCore::ECALL_newfstat },               //  rev_newfstat(unsigned int fd, struct stat  *statbuf)
+    { 81,  &RevCore::ECALL_sync },                   //  rev_sync(void)
+    { 82,  &RevCore::ECALL_fsync },                  //  rev_fsync(unsigned int fd)
+    { 83,  &RevCore::ECALL_fdatasync },              //  rev_fdatasync(unsigned int fd)
+    { 84,  &RevCore::ECALL_sync_file_range2 },       //  rev_sync_file_range2(int fd, unsigned int flags, loff_t offset, loff_t nbytes)
+    { 84,  &RevCore::ECALL_sync_file_range },        //  rev_sync_file_range(int fd, loff_t offset, loff_t nbytes, unsigned int flags)
+    { 85,  &RevCore::ECALL_timerfd_create },         //  rev_timerfd_create(int clockid, int flags)
+    { 86,  &RevCore::ECALL_timerfd_settime },        //  rev_timerfd_settime(int ufd, int flags, const struct __kernel_itimerspec  *utmr, struct __kernel_itimerspec  *otmr)
+    { 87,  &RevCore::ECALL_timerfd_gettime },        //  rev_timerfd_gettime(int ufd, struct __kernel_itimerspec  *otmr)
+    { 88,  &RevCore::ECALL_utimensat },              //  rev_utimensat(int dfd, const char  *filename, struct __kernel_timespec  *utimes, int flags)
+    { 89,  &RevCore::ECALL_acct },                   //  rev_acct(const char  *name)
+    { 90,  &RevCore::ECALL_capget },                 //  rev_capget(cap_user_header_t header, cap_user_data_t dataptr)
+    { 91,  &RevCore::ECALL_capset },                 //  rev_capset(cap_user_header_t header, const cap_user_data_t data)
+    { 92,  &RevCore::ECALL_personality },            //  rev_personality(unsigned int personality)
+    { 93,  &RevCore::ECALL_exit },                   //  rev_exit(int error_code)
+    { 94,  &RevCore::ECALL_exit_group },             //  rev_exit_group(int error_code)
+    { 95,  &RevCore::ECALL_waitid },                 //  rev_waitid(int which, pid_t pid, struct siginfo  *infop, int options, struct rusage  *ru)
+    { 96,  &RevCore::ECALL_set_tid_address },        //  rev_set_tid_address(int  *tidptr)
+    { 97,  &RevCore::ECALL_unshare },                //  rev_unshare(unsigned long unshare_flags)
+    { 98,  &RevCore::ECALL_futex },                  //  rev_futex(u32  *uaddr, int op, u32 val, struct __kernel_timespec  *utime, u32  *uaddr2, u32 val3)
+    { 99,  &RevCore::ECALL_set_robust_list },        //  rev_set_robust_list(struct robust_list_head  *head, size_t len)
+    { 100, &RevCore::ECALL_get_robust_list },        //  rev_get_robust_list(int pid, struct robust_list_head  *  *head_ptr, size_t  *len_ptr)
+    { 101, &RevCore::ECALL_nanosleep },              //  rev_nanosleep(struct __kernel_timespec  *rqtp, struct __kernel_timespec  *rmtp)
+    { 102, &RevCore::ECALL_getitimer },              //  rev_getitimer(int which, struct __kernel_old_itimerval  *value)
+    { 103, &RevCore::ECALL_setitimer },              //  rev_setitimer(int which, struct __kernel_old_itimerval  *value, struct __kernel_old_itimerval  *ovalue)
+    { 104, &RevCore::ECALL_kexec_load },             //  rev_kexec_load(unsigned long entry, unsigned long nr_segments, struct kexec_segment  *segments, unsigned long flags)
+    { 105, &RevCore::ECALL_init_module },            //  rev_init_module(void  *umod, unsigned long len, const char  *uargs)
+    { 106, &RevCore::ECALL_delete_module },          //  rev_delete_module(const char  *name_user, unsigned int flags)
+    { 107, &RevCore::ECALL_timer_create },           //  rev_timer_create(clockid_t which_clock, struct sigevent  *timer_event_spec, timer_t  * created_timer_id)
+    { 108, &RevCore::ECALL_timer_gettime },          //  rev_timer_gettime(timer_t timer_id, struct __kernel_itimerspec  *setting)
+    { 109, &RevCore::ECALL_timer_getoverrun },       //  rev_timer_getoverrun(timer_t timer_id)
+    { 110, &RevCore::ECALL_timer_settime },          //  rev_timer_settime(timer_t timer_id, int flags, const struct __kernel_itimerspec  *new_setting, struct __kernel_itimerspec  *old_setting)
+    { 111, &RevCore::ECALL_timer_delete },           //  rev_timer_delete(timer_t timer_id)
+    { 112, &RevCore::ECALL_clock_settime },          //  rev_clock_settime(clockid_t which_clock, const struct __kernel_timespec  *tp)
+    { 113, &RevCore::ECALL_clock_gettime },          //  rev_clock_gettime(clockid_t which_clock, struct __kernel_timespec  *tp)
+    { 114, &RevCore::ECALL_clock_getres },           //  rev_clock_getres(clockid_t which_clock, struct __kernel_timespec  *tp)
+    { 115, &RevCore::ECALL_clock_nanosleep },        //  rev_clock_nanosleep(clockid_t which_clock, int flags, const struct __kernel_timespec  *rqtp, struct __kernel_timespec  *rmtp)
+    { 116, &RevCore::ECALL_syslog },                 //  rev_syslog(int type, char  *buf, int len)
+    { 117, &RevCore::ECALL_ptrace },                 //  rev_ptrace(long request, long pid, unsigned long addr, unsigned long data)
+    { 118, &RevCore::ECALL_sched_setparam },         //  rev_sched_setparam(pid_t pid, struct sched_param  *param)
+    { 119, &RevCore::ECALL_sched_setscheduler },     //  rev_sched_setscheduler(pid_t pid, int policy, struct sched_param  *param)
+    { 120, &RevCore::ECALL_sched_getscheduler },     //  rev_sched_getscheduler(pid_t pid)
+    { 121, &RevCore::ECALL_sched_getparam },         //  rev_sched_getparam(pid_t pid, struct sched_param  *param)
+    { 122, &RevCore::ECALL_sched_setaffinity },      //  rev_sched_setaffinity(pid_t pid, unsigned int len, unsigned long  *user_mask_ptr)
+    { 123, &RevCore::ECALL_sched_getaffinity },      //  rev_sched_getaffinity(pid_t pid, unsigned int len, unsigned long  *user_mask_ptr)
+    { 124, &RevCore::ECALL_sched_yield },            //  rev_sched_yield(void)
+    { 125, &RevCore::ECALL_sched_get_priority_max }, //  rev_sched_get_priority_max(int policy)
+    { 126, &RevCore::ECALL_sched_get_priority_min }, //  rev_sched_get_priority_min(int policy)
+    { 127, &RevCore::ECALL_sched_rr_get_interval },  //  rev_sched_rr_get_interval(pid_t pid, struct __kernel_timespec  *interval)
+    { 128, &RevCore::ECALL_restart_syscall },        //  rev_restart_syscall(void)
+    { 129, &RevCore::ECALL_kill },                   //  rev_kill(pid_t pid, int sig)
+    { 130, &RevCore::ECALL_tkill },                  //  rev_tkill(pid_t pid, int sig)
+    { 131, &RevCore::ECALL_tgkill },                 //  rev_tgkill(pid_t tgid, pid_t pid, int sig)
+    { 132, &RevCore::ECALL_sigaltstack },            //  rev_sigaltstack(const struct sigaltstack  *uss, struct sigaltstack  *uoss)
+    { 133, &RevCore::ECALL_rt_sigsuspend },          //  rev_rt_sigsuspend(sigset_t  *unewset, size_t sigsetsize)
+    { 134, &RevCore::ECALL_rt_sigaction },           //  rev_rt_sigaction(int, const struct sigaction  *, struct sigaction  *, size_t)
+    { 135, &RevCore::ECALL_rt_sigprocmask },         //  rev_rt_sigprocmask(int how, sigset_t  *set, sigset_t  *oset, size_t sigsetsize)
+    { 136, &RevCore::ECALL_rt_sigpending },          //  rev_rt_sigpending(sigset_t  *set, size_t sigsetsize)
+    { 137, &RevCore::ECALL_rt_sigtimedwait_time32 }, //  rev_rt_sigtimedwait_time32(const sigset_t  *uthese, siginfo_t  *uinfo, const struct old_timespec32  *uts, size_t sigsetsize)
+    { 138, &RevCore::ECALL_rt_sigqueueinfo },        //  rev_rt_sigqueueinfo(pid_t pid, int sig, siginfo_t  *uinfo)
+    { 140, &RevCore::ECALL_setpriority },            //  rev_setpriority(int which, int who, int niceval)
+    { 141, &RevCore::ECALL_getpriority },            //  rev_getpriority(int which, int who)
+    { 142, &RevCore::ECALL_reboot },                 //  rev_reboot(int magic1, int magic2, unsigned int cmd, void  *arg)
+    { 143, &RevCore::ECALL_setregid },               //  rev_setregid(gid_t rgid, gid_t egid)
+    { 144, &RevCore::ECALL_setgid },                 //  rev_setgid(gid_t gid)
+    { 145, &RevCore::ECALL_setreuid },               //  rev_setreuid(uid_t ruid, uid_t euid)
+    { 146, &RevCore::ECALL_setuid },                 //  rev_setuid(uid_t uid)
+    { 147, &RevCore::ECALL_setresuid },              //  rev_setresuid(uid_t ruid, uid_t euid, uid_t suid)
+    { 148, &RevCore::ECALL_getresuid },              //  rev_getresuid(uid_t  *ruid, uid_t  *euid, uid_t  *suid)
+    { 149, &RevCore::ECALL_setresgid },              //  rev_setresgid(gid_t rgid, gid_t egid, gid_t sgid)
+    { 150, &RevCore::ECALL_getresgid },              //  rev_getresgid(gid_t  *rgid, gid_t  *egid, gid_t  *sgid)
+    { 151, &RevCore::ECALL_setfsuid },               //  rev_setfsuid(uid_t uid)
+    { 152, &RevCore::ECALL_setfsgid },               //  rev_setfsgid(gid_t gid)
+    { 153, &RevCore::ECALL_times },                  //  rev_times(struct tms  *tbuf)
+    { 154, &RevCore::ECALL_setpgid },                //  rev_setpgid(pid_t pid, pid_t pgid)
+    { 155, &RevCore::ECALL_getpgid },                //  rev_getpgid(pid_t pid)
+    { 156, &RevCore::ECALL_getsid },                 //  rev_getsid(pid_t pid)
+    { 157, &RevCore::ECALL_setsid },                 //  rev_setsid(void)
+    { 158, &RevCore::ECALL_getgroups },              //  rev_getgroups(int gidsetsize, gid_t  *grouplist)
+    { 159, &RevCore::ECALL_setgroups },              //  rev_setgroups(int gidsetsize, gid_t  *grouplist)
+    { 160, &RevCore::ECALL_newuname },               //  rev_newuname(struct new_utsname  *name)
+    { 161, &RevCore::ECALL_sethostname },            //  rev_sethostname(char  *name, int len)
+    { 162, &RevCore::ECALL_setdomainname },          //  rev_setdomainname(char  *name, int len)
+    { 163, &RevCore::ECALL_getrlimit },              //  rev_getrlimit(unsigned int resource, struct rlimit  *rlim)
+    { 164, &RevCore::ECALL_setrlimit },              //  rev_setrlimit(unsigned int resource, struct rlimit  *rlim)
+    { 165, &RevCore::ECALL_getrusage },              //  rev_getrusage(int who, struct rusage  *ru)
+    { 166, &RevCore::ECALL_umask },                  //  rev_umask(int mask)
+    { 167, &RevCore::ECALL_prctl },                  //  rev_prctl(int option, unsigned long arg2, unsigned long arg3, unsigned long arg4, unsigned long arg5)
+    { 168, &RevCore::ECALL_getcpu },                 //  rev_getcpu(unsigned  *cpu, unsigned  *node, struct getcpu_cache  *cache)
+    { 169, &RevCore::ECALL_gettimeofday },           //  rev_gettimeofday(struct __kernel_old_timeval  *tv, struct timezone  *tz)
+    { 170, &RevCore::ECALL_settimeofday },           //  rev_settimeofday(struct __kernel_old_timeval  *tv, struct timezone  *tz)
+    { 171, &RevCore::ECALL_adjtimex },               //  rev_adjtimex(struct __kernel_timex  *txc_p)
+    { 172, &RevCore::ECALL_getpid },                 //  rev_getpid(void)
+    { 173, &RevCore::ECALL_getppid },                //  rev_getppid(void)
+    { 174, &RevCore::ECALL_getuid },                 //  rev_getuid(void)
+    { 175, &RevCore::ECALL_geteuid },                //  rev_geteuid(void)
+    { 176, &RevCore::ECALL_getgid },                 //  rev_getgid(void)
+    { 177, &RevCore::ECALL_getegid },                //  rev_getegid(void)
+    { 178, &RevCore::ECALL_gettid },                 //  rev_gettid(void)
+    { 179, &RevCore::ECALL_sysinfo },                //  rev_sysinfo(struct sysinfo  *info)
+    { 180, &RevCore::ECALL_mq_open },                //  rev_mq_open(const char  *name, int oflag, umode_t mode, struct mq_attr  *attr)
+    { 181, &RevCore::ECALL_mq_unlink },              //  rev_mq_unlink(const char  *name)
+    { 182, &RevCore::ECALL_mq_timedsend },           //  rev_mq_timedsend(mqd_t mqdes, const char  *msg_ptr, size_t msg_len, unsigned int msg_prio, const struct __kernel_timespec  *abs_timeout)
+    { 183, &RevCore::ECALL_mq_timedreceive },        //  rev_mq_timedreceive(mqd_t mqdes, char  *msg_ptr, size_t msg_len, unsigned int  *msg_prio, const struct __kernel_timespec  *abs_timeout)
+    { 184, &RevCore::ECALL_mq_notify },              //  rev_mq_notify(mqd_t mqdes, const struct sigevent  *notification)
+    { 185, &RevCore::ECALL_mq_getsetattr },          //  rev_mq_getsetattr(mqd_t mqdes, const struct mq_attr  *mqstat, struct mq_attr  *omqstat)
+    { 186, &RevCore::ECALL_msgget },                 //  rev_msgget(key_t key, int msgflg)
+    { 187, &RevCore::ECALL_msgctl },                 //  rev_old_msgctl(int msqid, int cmd, struct msqid_ds  *buf)
+    { 188, &RevCore::ECALL_msgrcv },                 //  rev_msgrcv(int msqid, struct msgbuf  *msgp, size_t msgsz, long msgtyp, int msgflg)
+    { 189, &RevCore::ECALL_msgsnd },                 //  rev_msgsnd(int msqid, struct msgbuf  *msgp, size_t msgsz, int msgflg)
+    { 190, &RevCore::ECALL_semget },                 //  rev_semget(key_t key, int nsems, int semflg)
+    { 191, &RevCore::ECALL_semctl },                 //  rev_semctl(int semid, int semnum, int cmd, unsigned long arg)
+    { 192, &RevCore::ECALL_semtimedop },             //  rev_semtimedop(int semid, struct sembuf  *sops, unsigned nsops, const struct __kernel_timespec  *timeout)
+    { 193, &RevCore::ECALL_semop },                  //  rev_semop(int semid, struct sembuf  *sops, unsigned nsops)
+    { 194, &RevCore::ECALL_shmget },                 //  rev_shmget(key_t key, size_t size, int flag)
+    { 195, &RevCore::ECALL_shmctl },                 //  rev_old_shmctl(int shmid, int cmd, struct shmid_ds  *buf)
+    { 196, &RevCore::ECALL_shmat },                  //  rev_shmat(int shmid, char  *shmaddr, int shmflg)
+    { 197, &RevCore::ECALL_shmdt },                  //  rev_shmdt(char  *shmaddr)
+    { 198, &RevCore::ECALL_socket },                 //  rev_socket(int, int, int)
+    { 199, &RevCore::ECALL_socketpair },             //  rev_socketpair(int, int, int, int  *)
+    { 200, &RevCore::ECALL_bind },                   //  rev_bind(int, struct sockaddr  *, int)
+    { 201, &RevCore::ECALL_listen },                 //  rev_listen(int, int)
+    { 202, &RevCore::ECALL_accept },                 //  rev_accept(int, struct sockaddr  *, int  *)
+    { 203, &RevCore::ECALL_connect },                //  rev_connect(int, struct sockaddr  *, int)
+    { 204, &RevCore::ECALL_getsockname },            //  rev_getsockname(int, struct sockaddr  *, int  *)
+    { 205, &RevCore::ECALL_getpeername },            //  rev_getpeername(int, struct sockaddr  *, int  *)
+    { 206, &RevCore::ECALL_sendto },                 //  rev_sendto(int, void  *, size_t, unsigned, struct sockaddr  *, int)
+    { 207, &RevCore::ECALL_recvfrom },               //  rev_recvfrom(int, void  *, size_t, unsigned, struct sockaddr  *, int  *)
+    { 208, &RevCore::ECALL_setsockopt },             //  rev_setsockopt(int fd, int level, int optname, char  *optval, int optlen)
+    { 209, &RevCore::ECALL_getsockopt },             //  rev_getsockopt(int fd, int level, int optname, char  *optval, int  *optlen)
+    { 210, &RevCore::ECALL_shutdown },               //  rev_shutdown(int, int)
+    { 211, &RevCore::ECALL_sendmsg },                //  rev_sendmsg(int fd, struct user_msghdr  *msg, unsigned flags)
+    { 212, &RevCore::ECALL_recvmsg },                //  rev_recvmsg(int fd, struct user_msghdr  *msg, unsigned flags)
+    { 213, &RevCore::ECALL_readahead },              //  rev_readahead(int fd, loff_t offset, size_t count)
+    { 214, &RevCore::ECALL_sbrk },                   //  rev_sbrk(size_t increment)
+    { 215, &RevCore::ECALL_munmap },                 //  rev_munmap(unsigned long addr, size_t len)
+    { 216, &RevCore::ECALL_mremap },                 //  rev_mremap(unsigned long addr, unsigned long old_len, unsigned long new_len, unsigned long flags, unsigned long new_addr)
+    { 217, &RevCore::ECALL_add_key },                //  rev_add_key(const char  *_type, const char  *_description, const void  *_payload, size_t plen, key_serial_t destringid)
+    { 218, &RevCore::ECALL_request_key },            //  rev_request_key(const char  *_type, const char  *_description, const char  *_callout_info, key_serial_t destringid)
+    { 219, &RevCore::ECALL_keyctl },                 //  rev_keyctl(int cmd, unsigned long arg2, unsigned long arg3, unsigned long arg4, unsigned long arg5)
+    { 220, &RevCore::ECALL_clone },                  //  rev_clone(unsigned long, unsigned long, int  *, unsigned long, int  *)
+    { 221, &RevCore::ECALL_execve },                 //  rev_execve(const char  *filename, const char  *const  *argv, const char  *const  *envp)
+    { 222, &RevCore::ECALL_mmap },                   //  rev_old_mmap(struct mmap_arg_struct  *arg)
+    { 223, &RevCore::ECALL_fadvise64_64 },           //  rev_fadvise64_64(int fd, loff_t offset, loff_t len, int advice)
+    { 224, &RevCore::ECALL_swapon },                 //  rev_swapon(const char  *specialfile, int swap_flags)
+    { 225, &RevCore::ECALL_swapoff },                //  rev_swapoff(const char  *specialfile)
+    { 226, &RevCore::ECALL_mprotect },               //  rev_mprotect(unsigned long start, size_t len, unsigned long prot)
+    { 227, &RevCore::ECALL_msync },                  //  rev_msync(unsigned long start, size_t len, int flags)
+    { 228, &RevCore::ECALL_mlock },                  //  rev_mlock(unsigned long start, size_t len)
+    { 229, &RevCore::ECALL_munlock },                //  rev_munlock(unsigned long start, size_t len)
+    { 230, &RevCore::ECALL_mlockall },               //  rev_mlockall(int flags)
+    { 231, &RevCore::ECALL_munlockall },             //  rev_munlockall(void)
+    { 232, &RevCore::ECALL_mincore },                //  rev_mincore(unsigned long start, size_t len, unsigned char  * vec)
+    { 233, &RevCore::ECALL_madvise },                //  rev_madvise(unsigned long start, size_t len, int behavior)
+    { 234, &RevCore::ECALL_remap_file_pages },       //  rev_remap_file_pages(unsigned long start, unsigned long size, unsigned long prot, unsigned long pgoff, unsigned long flags)
+    { 235, &RevCore::ECALL_mbind },                  //  rev_mbind(unsigned long start, unsigned long len, unsigned long mode, const unsigned long  *nmask, unsigned long maxnode, unsigned flags)
+    { 236, &RevCore::ECALL_get_mempolicy },          //  rev_get_mempolicy(int  *policy, unsigned long  *nmask, unsigned long maxnode, unsigned long addr, unsigned long flags)
+    { 237, &RevCore::ECALL_set_mempolicy },          //  rev_set_mempolicy(int mode, const unsigned long  *nmask, unsigned long maxnode)
+    { 238, &RevCore::ECALL_migrate_pages },          //  rev_migrate_pages(pid_t pid, unsigned long maxnode, const unsigned long  *from, const unsigned long  *to)
+    { 239, &RevCore::ECALL_move_pages },             //  rev_move_pages(pid_t pid, unsigned long nr_pages, const void  *  *pages, const int  *nodes, int  *status, int flags)
+    { 240, &RevCore::ECALL_rt_tgsigqueueinfo },      //  rev_rt_tgsigqueueinfo(pid_t tgid, pid_t pid, int sig, siginfo_t  *uinfo)
+    { 241, &RevCore::ECALL_perf_event_open },        //  rev_perf_event_open(")
+    { 242, &RevCore::ECALL_accept4 },                //  rev_accept4(int, struct sockaddr  *, int  *, int)
+    { 243, &RevCore::ECALL_recvmmsg_time32 },        //  rev_recvmmsg_time32(int fd, struct mmsghdr  *msg, unsigned int vlen, unsigned flags, struct old_timespec32  *timeout)
+    { 260, &RevCore::ECALL_wait4 },                  //  rev_wait4(pid_t pid, int  *stat_addr, int options, struct rusage  *ru)
+    { 261, &RevCore::ECALL_prlimit64 },              //  rev_prlimit64(pid_t pid, unsigned int resource, const struct rlimit64  *new_rlim, struct rlimit64  *old_rlim)
+    { 262, &RevCore::ECALL_fanotify_init },          //  rev_fanotify_init(unsigned int flags, unsigned int event_f_flags)
+    { 263, &RevCore::ECALL_fanotify_mark },          //  rev_fanotify_mark(int fanotify_fd, unsigned int flags, u64 mask, int fd, const char  *pathname)
+    { 264, &RevCore::ECALL_name_to_handle_at },      //  rev_name_to_handle_at(int dfd, const char  *name, struct file_handle  *handle, int  *mnt_id, int flag)
+    { 265, &RevCore::ECALL_open_by_handle_at },      //  rev_open_by_handle_at(int mountdirfd, struct file_handle  *handle, int flags)
+    { 266, &RevCore::ECALL_clock_adjtime },          //  rev_clock_adjtime(clockid_t which_clock, struct __kernel_timex  *tx)
+    { 267, &RevCore::ECALL_syncfs },                 //  rev_syncfs(int fd)
+    { 268, &RevCore::ECALL_setns },                  //  rev_setns(int fd, int nstype)
+    { 269, &RevCore::ECALL_sendmmsg },               //  rev_sendmmsg(int fd, struct mmsghdr  *msg, unsigned int vlen, unsigned flags)
+    { 270, &RevCore::ECALL_process_vm_readv },       //  rev_process_vm_readv(pid_t pid, const struct iovec  *lvec, unsigned long liovcnt, const struct iovec  *rvec, unsigned long riovcnt, unsigned long flags)
+    { 271, &RevCore::ECALL_process_vm_writev },      //  rev_process_vm_writev(pid_t pid, const struct iovec  *lvec, unsigned long liovcnt, const struct iovec  *rvec, unsigned long riovcnt, unsigned long flags)
+    { 272, &RevCore::ECALL_kcmp },                   //  rev_kcmp(pid_t pid1, pid_t pid2, int type, unsigned long idx1, unsigned long idx2)
+    { 273, &RevCore::ECALL_finit_module },           //  rev_finit_module(int fd, const char  *uargs, int flags)
+    { 274, &RevCore::ECALL_sched_setattr },          //  rev_sched_setattr(pid_t pid, struct sched_attr  *attr, unsigned int flags)
+    { 275, &RevCore::ECALL_sched_getattr },          //  rev_sched_getattr(pid_t pid, struct sched_attr  *attr, unsigned int size, unsigned int flags)
+    { 276, &RevCore::ECALL_renameat2 },              //  rev_renameat2(int olddfd, const char  *oldname, int newdfd, const char  *newname, unsigned int flags)
+    { 277, &RevCore::ECALL_seccomp },                //  rev_seccomp(unsigned int op, unsigned int flags, void  *uargs)
+    { 278, &RevCore::ECALL_getrandom },              //  rev_getrandom(char  *buf, size_t count, unsigned int flags)
+    { 279, &RevCore::ECALL_memfd_create },           //  rev_memfd_create(const char  *uname_ptr, unsigned int flags)
+    { 280, &RevCore::ECALL_bpf },                    //  rev_bpf(int cmd, union bpf_attr *attr, unsigned int size)
+    { 281, &RevCore::ECALL_execveat },               //  rev_execveat(int dfd, const char  *filename, const char  *const  *argv, const char  *const  *envp, int flags)
+    { 282, &RevCore::ECALL_userfaultfd },            //  rev_userfaultfd(int flags)
+    { 283, &RevCore::ECALL_membarrier },             //  rev_membarrier(int cmd, unsigned int flags, int cpu_id)
+    { 284, &RevCore::ECALL_mlock2 },                 //  rev_mlock2(unsigned long start, size_t len, int flags)
+    { 285, &RevCore::ECALL_copy_file_range },        //  rev_copy_file_range(int fd_in, loff_t  *off_in, int fd_out, loff_t  *off_out, size_t len, unsigned int flags)
+    { 286, &RevCore::ECALL_preadv2 },                //  rev_preadv2(unsigned long fd, const struct iovec  *vec, unsigned long vlen, unsigned long pos_l, unsigned long pos_h, rwf_t flags)
+    { 287, &RevCore::ECALL_pwritev2 },               //  rev_pwritev2(unsigned long fd, const struct iovec  *vec, unsigned long vlen, unsigned long pos_l, unsigned long pos_h, rwf_t flags)
+    { 288, &RevCore::ECALL_pkey_mprotect },          //  rev_pkey_mprotect(unsigned long start, size_t len, unsigned long prot, int pkey)
+    { 289, &RevCore::ECALL_pkey_alloc },             //  rev_pkey_alloc(unsigned long flags, unsigned long init_val)
+    { 290, &RevCore::ECALL_pkey_free },              //  rev_pkey_free(int pkey)
+    { 291, &RevCore::ECALL_statx },                  //  rev_statx(int dfd, const char  *path, unsigned flags, unsigned mask, struct statx  *buffer)
+    { 292, &RevCore::ECALL_io_pgetevents },          //  rev_io_pgetevents(aio_context_t ctx_id, long min_nr, long nr, struct io_event  *events, struct __kernel_timespec  *timeout, const struct __aio_sigset *sig)
+    { 293, &RevCore::ECALL_rseq },                   //  rev_rseq(struct rseq  *rseq, uint32_t rseq_len, int flags, uint32_t sig)
+    { 294, &RevCore::ECALL_kexec_file_load },        //  rev_kexec_file_load(int kernel_fd, int initrd_fd, unsigned long cmdline_len, const char  *cmdline_ptr, unsigned long flags)
+    { 403, &RevCore::ECALL_clock_gettime },          //  rev_clock_gettime(clockid_t which_clock, struct __kernel_timespec  *tp)
+    { 404, &RevCore::ECALL_clock_settime },          //  rev_clock_settime(clockid_t which_clock, const struct __kernel_timespec  *tp)
+    { 405, &RevCore::ECALL_clock_adjtime },          //  rev_clock_adjtime(clockid_t which_clock, struct __kernel_timex  *tx)
+    { 406, &RevCore::ECALL_clock_getres },           //  rev_clock_getres(clockid_t which_clock, struct __kernel_timespec  *tp)
+    { 407, &RevCore::ECALL_clock_nanosleep },        //  rev_clock_nanosleep(clockid_t which_clock, int flags, const struct __kernel_timespec  *rqtp, struct __kernel_timespec  *rmtp)
+    { 408, &RevCore::ECALL_timer_gettime },          //  rev_timer_gettime(timer_t timer_id, struct __kernel_itimerspec  *setting)
+    { 409, &RevCore::ECALL_timer_settime },          //  rev_timer_settime(timer_t timer_id, int flags, const struct __kernel_itimerspec  *new_setting, struct __kernel_itimerspec  *old_setting)
+    { 410, &RevCore::ECALL_timerfd_gettime },        //  rev_timerfd_gettime(int ufd, struct __kernel_itimerspec  *otmr)
+    { 411, &RevCore::ECALL_timerfd_settime },        //  rev_timerfd_settime(int ufd, int flags, const struct __kernel_itimerspec  *utmr, struct __kernel_itimerspec  *otmr)
+    { 412, &RevCore::ECALL_utimensat },              //  rev_utimensat(int dfd, const char  *filename, struct __kernel_timespec  *utimes, int flags)
+    { 416, &RevCore::ECALL_io_pgetevents },          //  rev_io_pgetevents(aio_context_t ctx_id, long min_nr, long nr, struct io_event  *events, struct __kernel_timespec  *timeout, const struct __aio_sigset *sig)
+    { 418, &RevCore::ECALL_mq_timedsend },           //  rev_mq_timedsend(mqd_t mqdes, const char  *msg_ptr, size_t msg_len, unsigned int msg_prio, const struct __kernel_timespec  *abs_timeout)
+    { 419, &RevCore::ECALL_mq_timedreceive },        //  rev_mq_timedreceive(mqd_t mqdes, char  *msg_ptr, size_t msg_len, unsigned int  *msg_prio, const struct __kernel_timespec  *abs_timeout)
+    { 420, &RevCore::ECALL_semtimedop },             //  rev_semtimedop(int semid, struct sembuf  *sops, unsigned nsops, const struct __kernel_timespec  *timeout)
+    { 422, &RevCore::ECALL_futex },                  //  rev_futex(u32  *uaddr, int op, u32 val, struct __kernel_timespec  *utime, u32  *uaddr2, u32 val3)
+    { 423, &RevCore::ECALL_sched_rr_get_interval },  //  rev_sched_rr_get_interval(pid_t pid, struct __kernel_timespec  *interval)
+    { 424, &RevCore::ECALL_pidfd_send_signal },      //  rev_pidfd_send_signal(int pidfd, int sig, siginfo_t  *info, unsigned int flags)
+    { 425, &RevCore::ECALL_io_uring_setup },         //  rev_io_uring_setup(u32 entries, struct io_uring_params  *p)
+    { 426, &RevCore::ECALL_io_uring_enter },         //  rev_io_uring_enter(unsigned int fd, u32 to_submit, u32 min_complete, u32 flags, const sigset_t  *sig, size_t sigsz)
+    { 427, &RevCore::ECALL_io_uring_register },      //  rev_io_uring_register(unsigned int fd, unsigned int op, void  *arg, unsigned int nr_args)
+    { 428, &RevCore::ECALL_open_tree },              //  rev_open_tree(int dfd, const char  *path, unsigned flags)
+    { 429, &RevCore::ECALL_move_mount },             //  rev_move_mount(int from_dfd, const char  *from_path, int to_dfd, const char  *to_path, unsigned int ms_flags)
+    { 430, &RevCore::ECALL_fsopen },                 //  rev_fsopen(const char  *fs_name, unsigned int flags)
+    { 431, &RevCore::ECALL_fsconfig },               //  rev_fsconfig(int fs_fd, unsigned int cmd, const char  *key, const void  *value, int aux)
+    { 432, &RevCore::ECALL_fsmount },                //  rev_fsmount(int fs_fd, unsigned int flags, unsigned int ms_flags)
+    { 433, &RevCore::ECALL_fspick },                 //  rev_fspick(int dfd, const char  *path, unsigned int flags)
+    { 434, &RevCore::ECALL_pidfd_open },             //  rev_pidfd_open(pid_t pid, unsigned int flags)
+    { 435, &RevCore::ECALL_clone3 },                 //  rev_clone3(struct clone_args  *uargs, size_t size)
+    { 436, &RevCore::ECALL_close_range },            //  rev_close_range(unsigned int fd, unsigned int max_fd, unsigned int flags)
+    { 437, &RevCore::ECALL_openat2 },                //  rev_openat2(int dfd, const char  *filename, struct open_how *how, size_t size)
+    { 438, &RevCore::ECALL_pidfd_getfd },            //  rev_pidfd_getfd(int pidfd, int fd, unsigned int flags)
+    { 439, &RevCore::ECALL_faccessat2 },             //  rev_faccessat2(int dfd, const char  *filename, int mode, int flags)
+    { 440, &RevCore::ECALL_process_madvise },        //  rev_process_madvise(int pidfd, const struct iovec  *vec, size_t vlen, int behavior, unsigned int flags)
+    { 500, &RevCore::ECALL_cpuinfo },                //  rev_cpuinfo(struct rev_cpuinfo *info)
+    { 501, &RevCore::ECALL_perf_stats },             //  rev_cpuinfo(struct rev_perf_stats *stats)
+    { 1000, &RevCore::ECALL_pthread_create },        //
+    { 1001, &RevCore::ECALL_pthread_join },          //
+    { 4000, &RevCore::ECALL_forza_scratchpad_alloc }, // , forza_scratchpad_alloc(size_t size);
+    { 4001, &RevCore::ECALL_forza_scratchpad_free },  // , forza_scratchpad_free(size_t size);
+    { 4002, &RevCore::ECALL_forza_get_hart_id },  // , forza_get_hart_id();
+    { 4003, &RevCore::ECALL_forza_send },  // , forza_send();
+    { 4004, &RevCore::ECALL_forza_zen_credit_release },  // , forza_popq();
+    { 4005, &RevCore::ECALL_forza_zen_setup },  // , forza_zen_setup();
+    { 4006, &RevCore::ECALL_forza_zqm_setup }, // , forza_zqm_setup();
+    { 4007, &RevCore::ECALL_forza_get_harts_per_zap }, // , forza_get_harts_per_zap
+    { 4008, &RevCore::ECALL_forza_get_zaps_per_zone }, // , forza_get_zaps_per_zone();
+    { 4009, &RevCore::ECALL_forza_get_zones_per_precinct }, // , forza_get_zones_per_precinct();
+    { 4010, &RevCore::ECALL_forza_get_num_precincts }, // , forza_get_num_precincts();
+    { 4011, &RevCore::ECALL_forza_get_my_zap }, // , forza_get_my_zap();
+    { 4012, &RevCore::ECALL_forza_get_my_zone }, // , forza_get_my_zone();
+    { 4013, &RevCore::ECALL_forza_get_my_precinct }, // , forza_get_my_precinct();
+    { 4014, &RevCore::ECALL_forza_zone_barrier }, // , forza_zone_barrier();
+    { 4015, &RevCore::ECALL_forza_debug_print }, //, forza_debug_print();
     { 9000, &RevCore::ECALL_dump_mem_range },           // rev_dump_mem_range(uint64_t addr, uint64_t size)
     { 9001, &RevCore::ECALL_dump_mem_range_to_file },   // rev_dump_mem_range_to_file(const char* outputFile, uint64_t addr, uint64_t size)
     { 9002, &RevCore::ECALL_dump_stack },               // rev_dump_stack()
@@ -3762,6 +3775,613 @@ const std::unordered_map<uint32_t, EcallStatus(RevCore::*)()> RevCore::Ecalls = 
     { 9005, &RevCore::ECALL_dump_thread_mem_to_file },  // rev_dump_thread_mem_to_file(const char* filename)
     { 9110, &RevCore::ECALL_fast_printf },              // rev_fast_printf(const char *, ...)
 };
+
 // clang-format on
+
+// 4000, forza_scratchpad_alloc(size_t size);
+EcallStatus RevCore::ECALL_forza_scratchpad_alloc() {
+  output->verbose(
+    CALL_INFO,
+    2,
+    0,
+    "ECALL: forza_scratchpad_alloc called by thread %" PRIu32 " on hart %" PRIu32 "\n",
+    GetActiveThreadID(),
+    HartToExecID
+  );
+  uint64_t size = RegFile->GetX<uint64_t>( RevReg::a0 );
+
+  output->verbose( CALL_INFO, 4, 0, "ECALL: forza_scratchpad_alloc attempting to allocate %" PRIu64 " bytes\n", size );
+  uint64_t Addr = mem->ScratchpadAlloc( size );
+
+  if( Addr == _INVALID_ADDR_ ) {
+    output->verbose( CALL_INFO, 2, 0, "ECALL: forza_scratchpad_alloc failed to allocate %" PRIu64 " bytes\n", size );
+    RegFile->SetX( RevReg::a0, ( uint64_t ) nullptr );
+  } else {
+    output->verbose(
+      CALL_INFO, 2, 0, "ECALL: forza_scratchpad_alloc allocated %" PRIu64 " bytes at address %" PRIx64 "\n", size, Addr
+    );
+    RegFile->SetX( RevReg::a0, Addr );
+  }
+
+  return EcallStatus::SUCCESS;
+}
+
+// 4001, forza_scratchpad_dealloc(size_t size);
+EcallStatus RevCore::ECALL_forza_scratchpad_free() {
+  output->verbose(
+    CALL_INFO,
+    2,
+    0,
+    "ECALL: forza_scratchpad_free called by thread %" PRIu32 " on hart %" PRIu32 "\n",
+    GetActiveThreadID(),
+    HartToExecID
+  );
+  uint64_t addr = RegFile->GetX<uint64_t>( RevReg::a0 );
+  uint64_t size = RegFile->GetX<uint64_t>( RevReg::a1 );
+  output->verbose( CALL_INFO, 2, 0, "ECALL: forza_scratchpad_free with addr 0x%" PRIx64 ", and size %" PRIu64 "\n", addr, size );
+  mem->ScratchpadFree( addr, size );
+
+  return EcallStatus::SUCCESS;
+}
+
+// 4002, forza_get_hart_id();
+EcallStatus RevCore::ECALL_forza_get_hart_id() {
+  output->verbose(
+    CALL_INFO,
+    2,
+    0,
+    "ECALL: forza_get_hart_id called by thread %" PRIu32 " on hart %" PRIu32 "\n",
+    GetActiveThreadID(),
+    HartToExecID
+  );
+  RegFile->SetX( RevReg::a0, HartToExecID );
+  return EcallStatus::SUCCESS;
+}
+
+union ECALL_forza_send_union {
+  uint64_t d;
+  char     b[sizeof( uint64_t )];
+};
+
+// clang-format on
+
+// 4003 forza_send( uint64_t dst, uint64_t spaddr, size_t size  )
+EcallStatus RevCore::ECALL_forza_send() {
+  uint64_t dst               = (uint64_t) RegFile->GetX<uint64_t>( RevReg::a0 );
+  uint64_t spaddr            = (uint64_t) RegFile->GetX<uint64_t>( RevReg::a1 );
+  size_t   size              = (size_t) RegFile->GetX<size_t>( RevReg::a2 );
+
+  const size_t max_data_size = 4000;
+  //unsigned char dat[max_data_size];
+
+  auto& EcallState           = Harts.at( HartToExecID )->GetEcallState();
+  if( EcallState.bytesRead == 0 ) {
+    output->verbose(
+      CALL_INFO,
+      2,
+      0,
+      "ECALL: forza_send called by thread %" PRIu32 " on hart %" PRIu32 " dst = %" PRIx64 ", spaddr = %" PRIu64 ", size = %" PRIu64
+      "\n",
+      GetActiveThreadID(),
+      HartToExecID,
+      dst,
+      spaddr,
+      (uint64_t) size
+    );
+    // TODO: Using the scratchpad addr and size, read scratrpad memory, create a ZOP and send to destination.
+    // force programmer to make padding to uint64_t
+    if( size % sizeof( uint64_t ) ) {
+      output->fatal(
+        CALL_INFO,
+        -1,
+        "ECALL_forza_send: error, size (%" PRIu64 ") should be a multiple of (%" PRIu64 ")\n",
+        (uint64_t) size,
+        (uint64_t) ( sizeof( uint64_t ) )
+      );
+    }
+    if( size > max_data_size ) {
+      output->fatal(
+        CALL_INFO,
+        1,
+        "ECALL_forza_send: error, size (%" PRIu64 ") > max_data_size (%" PRIu64 ")\n",
+        (uint64_t) size,
+        (uint64_t) max_data_size
+      );
+    }
+  }
+
+  auto lsq_hash = LSQHash( RevReg::a0, RevRegClass::RegGPR, HartToExecID );  // Cached hash value
+
+  if( EcallState.bytesRead && LSQueue->count( lsq_hash ) == 0 ) {
+    EcallState.string += std::string_view( EcallState.buf.data(), EcallState.bytesRead );
+    EcallState.bytesRead = 0;
+  }
+
+  auto nleft = size - EcallState.string.size();
+  if( nleft == 0 && LSQueue->count( lsq_hash ) == 0 ) {
+    // Data is read and ready to be sent
+
+    // TODO: note the endianess and fix it to be portable ...
+    ECALL_forza_send_union u;
+    for( size_t i = 0; i < sizeof( uint64_t ); i++ ) {
+      u.b[i] = EcallState.buf[i];
+    }
+
+    uint8_t  SrcZCID          = (uint8_t) ( zNic->getEndpointType() );
+    uint8_t  SrcPCID          = (uint8_t) ( zNic->getPCID( zNic->getZoneID() ) );
+    uint16_t SrcHart          = (uint16_t) HartToExecID;
+
+    // output->verbose(CALL_INFO, 0, 0, "ECALL_forza_send: SrcZCID = %" PRIu8
+    //           ", SrcPCID = %" PRIu8 ", SrcHart = %" PRIu16 "\n", SrcZCID, SrcPCID, SrcHart);
+
+    SST::Forza::zopEvent* zev = new SST::Forza::zopEvent();
+    // set all the fields : FIXME
+    zev->setType( SST::Forza::zopMsgT::Z_MSG );
+    zev->setID( 0 );
+    zev->setOpc( SST::Forza::zopOpc::Z_MSG_SENDP );
+    zev->setSrcZCID( SrcZCID );
+    zev->setSrcPCID( SrcPCID );
+    zev->setSrcHart( SrcHart );
+
+    //TODO: Currently assuming alignment is 0, with a total of 512 threads per ZAP.
+    uint16_t DstHart = dst % opts->GetNumHarts();
+    uint8_t  DstPCID = 0;
+    uint8_t  DstZCID = dst / opts->GetNumHarts();
+    zev->setDestZCID( DstZCID );
+    zev->setDestPCID( DstPCID );
+    zev->setDestHart( DstHart );
+
+    std::vector<uint64_t> payload;
+    for( size_t i = 0; i < size; i += sizeof( uint64_t ) ) {
+      for( size_t j = 0; j < sizeof( uint64_t ); j++ ) {
+        u.b[j] = EcallState.buf[i + j];
+      }
+      payload.push_back( u.d );
+      output->verbose(
+        CALL_INFO,
+        2,
+        0,
+        "ECALL: forza_send called by thread %" PRIu32 " on hart %" PRIu32 ", dat[0]=%" PRIx8 ", dat[1]=%" PRIx8 ", dat[2]=%" PRIx8
+        ", dat[3]=%" PRIx8 ", dat[4]=%" PRIx8 ", dat[5]=%" PRIx8 ", dat[6]=%" PRIx8 ", dat[7]=%" PRIx8 ", dat[0-7]=%" PRIu64 " \n",
+        GetActiveThreadID(),
+        HartToExecID,
+        EcallState.buf[0],
+        EcallState.buf[1],
+        EcallState.buf[2],
+        EcallState.buf[3],
+        EcallState.buf[4],
+        EcallState.buf[5],
+        EcallState.buf[6],
+        EcallState.buf[7],
+        u.d
+      );
+    }
+    zev->setPayload( payload );
+    zev->encodeEvent();
+
+    if( !zNic ) {
+      output->fatal( CALL_INFO, -1, "Error : zNic is nullptr\n" );
+    }
+
+    output->verbose(
+      CALL_INFO,
+      0,
+      0,
+      "ECALL_forza_send: SrcZCID = %" PRIu8 ", SrcPCID = %" PRIu8 ", SrcHart = %" PRIu16 ", DstZCID = %" PRIu8 ", DstPCID = %" PRIu8
+      ", DstHart = %" PRIu16 "\n",
+      SrcZCID,
+      SrcPCID,
+      SrcHart,
+      DstZCID,
+      DstPCID,
+      DstHart
+    );
+
+    switch( DstZCID ) {
+    case 0: zNic->send( zev, SST::Forza::zopCompID::Z_ZAP0 ); break;
+    case 1: zNic->send( zev, SST::Forza::zopCompID::Z_ZAP1 ); break;
+    case 2: zNic->send( zev, SST::Forza::zopCompID::Z_ZAP2 ); break;
+    case 3: zNic->send( zev, SST::Forza::zopCompID::Z_ZAP3 ); break;
+    default: output->fatal( CALL_INFO, -1, "Error : DstZCID[%" PRIu8 "] doesnt exist\n", DstZCID ); break;
+    }
+
+    //RegFile->SetX(RevReg::a0, rc);
+    DependencyClear( HartToExecID, RevReg::a0, RevRegClass::RegGPR );
+    RegFile->SetX( RevReg::a0, 1 );
+    return EcallStatus::SUCCESS;
+  }
+
+  if( LSQueue->count( lsq_hash ) == 0 ) {
+    MemReq req(
+      spaddr + EcallState.string.size(),
+      RevReg::a0,
+      RevRegClass::RegGPR,
+      HartToExecID,
+      MemOp::MemOpREAD,
+      true,
+      RegFile->GetMarkLoadComplete()
+    );
+    LSQueue->insert( req.LSQHashPair() );
+
+    if( nleft >= 8 ) {
+      mem->ReadVal(
+        HartToExecID, spaddr + EcallState.string.size(), reinterpret_cast<uint64_t*>( EcallState.buf.data() ), req, RevFlag::F_NONE
+      );
+      EcallState.bytesRead = 8;
+    } else if( nleft >= 4 ) {
+      mem->ReadVal(
+        HartToExecID, spaddr + EcallState.string.size(), reinterpret_cast<uint32_t*>( EcallState.buf.data() ), req, RevFlag::F_NONE
+      );
+      EcallState.bytesRead = 4;
+    } else if( nleft >= 2 ) {
+      mem->ReadVal(
+        HartToExecID, spaddr + EcallState.string.size(), reinterpret_cast<uint16_t*>( EcallState.buf.data() ), req, RevFlag::F_NONE
+      );
+      EcallState.bytesRead = 2;
+    } else {
+      mem->ReadVal(
+        HartToExecID, spaddr + EcallState.string.size(), reinterpret_cast<uint8_t*>( EcallState.buf.data() ), req, RevFlag::F_NONE
+      );
+      EcallState.bytesRead = 1;
+    }
+
+    DependencySet( HartToExecID, RevReg::a0, RevRegClass::RegGPR );
+    return EcallStatus::CONTINUE;
+  }
+
+  return EcallStatus::CONTINUE;
+}
+
+// 4004, forza_zen_credit_release();
+EcallStatus RevCore::ECALL_forza_zen_credit_release() {
+  output->verbose(
+    CALL_INFO,
+    2,
+    0,
+    "ECALL: forza_zen_credit_release called by thread %" PRIu32 " on hart %" PRIu32 "\n",
+    GetActiveThreadID(),
+    HartToExecID
+  );
+  // TODO: Give back a credit to the zen and update ZEN should update its head pointer to new packet.
+  uint64_t num_creds        = (uint64_t) RegFile->GetX<uint64_t>( RevReg::a0 );
+
+  SST::Forza::zopEvent* zev = new SST::Forza::zopEvent();
+
+  uint8_t msg_id            = 0;
+
+  uint8_t  SrcZCID          = (uint8_t) ( zNic->getEndpointType() );
+  uint8_t  SrcPCID          = (uint8_t) ( zNic->getPCID( zNic->getZoneID() ) );
+  uint16_t SrcHart          = (uint16_t) HartToExecID;
+
+  // set all the fields : FIXME
+  zev->setType( SST::Forza::zopMsgT::Z_MSG );
+  zev->setID( msg_id );
+  zev->setOpc( SST::Forza::zopOpc::Z_MSG_CREDIT );
+  zev->setSrcZCID( SrcZCID );
+  zev->setSrcPCID( SrcPCID );
+  zev->setSrcHart( SrcHart );
+
+  // set the payload, do actual send setup thing : FIXME
+  // read ZEN::processSetupMsgs
+  std::vector<uint64_t> payload;
+  payload.push_back( num_creds );  // acs_pair = payload[0]
+  zev->setPayload( payload );
+
+  if( !zNic ) {
+    output->fatal( CALL_INFO, -1, "Error : zNic is nullptr\n" );
+  }
+  zNic->send( zev, SST::Forza::zopCompID::Z_ZEN );
+  return EcallStatus::SUCCESS;
+}
+
+// 4005, forza_zen_setup(uint64_t addr, size_t size, uint64_t tailptr, uint64_t mbox_id);
+EcallStatus RevCore::ECALL_forza_zen_setup() {
+  uint64_t addr    = (uint64_t) RegFile->GetX<uint64_t>( RevReg::a0 );
+  size_t   size    = (size_t) RegFile->GetX<size_t>( RevReg::a1 );
+  uint64_t tailptr = (uint64_t) RegFile->GetX<uint64_t>( RevReg::a2 );
+  uint64_t mbox_id = (uint64_t) RegFile->GetX<uint64_t>( RevReg::a3 );
+  output->verbose(
+    CALL_INFO, 2, 0, "ECALL: forza_zen_setup called by thread %" PRIu32 " on hart %" PRIu32 "\n", GetActiveThreadID(), HartToExecID
+  );
+
+  // This value should be a construction of the following
+  //   bits[63:60] - Application ID (currently fixed to 0)
+  //   bits[59:8] - Reserved (expect to use some of these in the future for a logical/physical HART ID mapping)
+  //   bits[7:0] - Mailbox ID being setup
+  mbox_id &= 0x0FFUL;
+  uint64_t app_mbox_id      = mbox_id;
+
+  // TODO: Forza library will pass the memory base address and size allocated by each actor to inform/initialize zen.
+
+  SST::Forza::zopEvent* zev = new SST::Forza::zopEvent();
+
+  if( zNicMsgIds == nullptr ) {
+    output->fatal( CALL_INFO, -2, "null msg ids\n" );
+  }
+
+  if( zNic == nullptr )
+    output->fatal( CALL_INFO, -3, "null znic\n" );
+
+  uint16_t msg_id  = zNicMsgIds->getMsgId();
+
+  uint8_t  SrcZCID = (uint8_t) ( zNic->getEndpointType() );
+  uint8_t  SrcPCID = (uint8_t) ( zNic->getPCID( zNic->getZoneID() ) );
+  uint16_t SrcHart = (uint16_t) HartToExecID;
+
+  output->verbose(
+    CALL_INFO,
+    0,
+    0,
+    "ECALL_forza_zen_setup: addr = 0x%" PRIx64 ", size = %" PRIu64 ", tailptr = 0x%" PRIx64 ", SrcZCID = %" PRIu8
+    ", SrcPCID = %" PRIu8 ", SrcHart = %" PRIu16 ", ID=%" PRIu16 "\n",
+    addr,
+    (uint64_t) size,
+    tailptr,
+    SrcZCID,
+    SrcPCID,
+    SrcHart,
+    msg_id
+  );
+
+  // set all the fields
+  zev->setType( SST::Forza::zopMsgT::Z_MSG );
+  zev->setID( msg_id );
+  zev->setOpc( SST::Forza::zopOpc::Z_MSG_ZENSET );
+  zev->setSrcZCID( SrcZCID );
+  zev->setSrcPCID( SrcPCID );
+  zev->setSrcHart( SrcHart );
+  zev->setAppID( 0 );  // FIXME: should come from somewhere else
+  zev->setPktRes( (uint8_t) mbox_id );
+
+  // set the payload, do actual send setup
+  // read ZEN::processSetupMsgs
+  std::vector<uint64_t> payload;
+  payload.push_back( 0x00ull );      // acs_pair = payload[0]
+  payload.push_back( addr );         // mem_start_addr = payload[1]
+  payload.push_back( size );         // size = payload[2]
+  payload.push_back( tailptr );      // scratch_tail = payload[3]
+  payload.push_back( app_mbox_id );  // see def above; payload[4]
+  zev->setPayload( payload );
+
+  if( !zNic ) {
+    output->fatal( CALL_INFO, -1, "Error : zNic is nullptr\n" );
+  }
+  zNic->send( zev, SST::Forza::zopCompID::Z_ZEN );
+
+  return EcallStatus::SUCCESS;
+}
+
+// 4006, forza_zqm_setup(uint64_t addr, uint64_t size, uint64_t min_hart, uint64_t max_hart, uint64_t seq_ld_flag);
+EcallStatus RevCore::ECALL_forza_zqm_setup() {
+  uint64_t low_addr    = (uint64_t) RegFile->GetX<uint64_t>( RevReg::a0 );
+  uint64_t size        = (uint64_t) RegFile->GetX<uint64_t>( RevReg::a1 );
+  uint64_t high_addr   = low_addr + size - 1;
+  uint64_t min_hart    = (uint64_t) RegFile->GetX<uint64_t>( RevReg::a2 );
+  uint64_t max_hart    = (uint64_t) RegFile->GetX<uint64_t>( RevReg::a3 );
+  uint64_t seq_ld_flag = (uint64_t) RegFile->GetX<uint64_t>( RevReg::a4 );
+
+  output->verbose(
+    CALL_INFO, 2, 0, "ECALL: forza_zqm_init called by thread %" PRIu32 " on hart %" PRIu32 "\n", GetActiveThreadID(), HartToExecID
+  );
+  output->verbose(
+    CALL_INFO,
+    5,
+    0,
+    "Arguments: low_addr=0x%lx, size=0x%lx, high_addr=0x%lx,"
+    " min_hart=0x%lx, max_hart=0x%lx, seq_ld_flag=0x%lx\n",
+    low_addr,
+    size,
+    high_addr,
+    min_hart,
+    max_hart,
+    seq_ld_flag
+  );
+
+  // TODO: If this initialization is being executed by a single thread, then one of two things has to happen:
+  // A. This function sends a zop to all ZQMs in the system (so a double for-loop should be written)
+  // or
+  // B. The application itself has to send this to all ZQMs in the system (and the function itself may
+  //    need to have more arguments to support this.
+  // As currently written, this will send the ZQM setup packet to Precinct 0, Zone 0, ZQM.
+
+  SST::Forza::zopEvent* zev = new SST::Forza::zopEvent();
+
+  uint8_t msg_id            = 0;
+  zev->setType( SST::Forza::zopMsgT::Z_MSG );
+  zev->setID( msg_id );
+  zev->setOpc( SST::Forza::zopOpc::Z_MSG_ZQMSET );
+  zev->setAppID( 0 );  // FIXME: Pull this from the executing thread; for now, just use 0
+
+  // src info
+  zev->setSrcHart( HartToExecID );
+  zev->setSrcZCID( zNic->getEndpointType() );
+  zev->setSrcPCID( zNic->getZoneID() );
+  zev->setSrcPrec( zNic->getPrecinctID() );
+
+  // Dest info is the ZQM
+  zev->setDestHart( 0 );
+  zev->setDestZCID( SST::Forza::zopCompID::Z_ZQM );
+  zev->setDestPCID( zNic->getZoneID() );
+  zev->setDestPrec( zNic->getPrecinctID() );
+
+  /*
+   * payload[0] = minimum ZAP hart for this AppID
+   * payload[1] = maximum ZAP hart for this AppID (inclusive)
+   * payload[2] = run queue low memory address (cannot be 0)
+   * payload[3] = run queue high memory address (cannot be 0)
+   * payload[4] = sequential fill flag (1 for actor programs, 0 otherwise)
+   *
+   * Note: For actor programs (e.g, payload[4] == 1), it's generally expected that no run queue is
+   * necessary, thus, payload[2] can equal payload[3]. For migrating thread programs, the buffer should
+   * be equal to the following (( (num_threads_to_store+1) * bytes_per_thread_stored) - 1); there isn't a "full"
+   * flag to in the ZQM to denote if the buffer is full/empty if the read and write pointers match, thus there
+   * is always space for "one extra thread" hence the +1.  The -1 just ensures that the high address ends with
+   * 0x7 or 0xF (since we're dealing with 8byte storage chunks)
+   */
+
+  std::vector<uint64_t> payload;
+  payload.push_back( min_hart );
+  payload.push_back( max_hart );
+  payload.push_back( low_addr );
+  payload.push_back( high_addr );
+  payload.push_back( seq_ld_flag );
+  zev->setPayload( payload );
+
+  // Let's send the message
+  zNic->send( zev, SST::Forza::zopCompID::Z_ZQM, zNic->getPCID( zev->getDestPCID() ), zev->getDestPrec() );
+
+  return EcallStatus::SUCCESS;
+}
+
+// 4007, forza_get_harts_per_zap
+EcallStatus RevCore::ECALL_forza_get_harts_per_zap() {
+  RegFile->SetX( RevReg::a0, this->numHarts );
+  output->verbose(
+    CALL_INFO,
+    2,
+    0,
+    "ECALL: forza_get_harts_per_zap called by thread %" PRIu32 " on hart %" PRIu32 ", val=%" PRIu32 "\n",
+    GetActiveThreadID(),
+    HartToExecID,
+    this->numHarts
+  );
+  return EcallStatus::SUCCESS;
+}
+
+// 4008, forza_get_zaps_per_zone();
+EcallStatus RevCore::ECALL_forza_get_zaps_per_zone() {
+  RegFile->SetX( RevReg::a0, (uint8_t) zNic->getNumZaps() );
+  output->verbose(
+    CALL_INFO,
+    2,
+    0,
+    "ECALL: forza_get_zaps_per_zone called by thread %" PRIu32 " on hart %" PRIu32 ", val=%" PRIu32 "\n",
+    GetActiveThreadID(),
+    HartToExecID,
+    zNic->getNumZaps()
+  );
+  return EcallStatus::SUCCESS;
+}
+
+// 4009, forza_get_zones_per_precinct();
+EcallStatus RevCore::ECALL_forza_get_zones_per_precinct() {
+  RegFile->SetX( RevReg::a0, zNic->getNumZones() );
+  output->verbose(
+    CALL_INFO,
+    2,
+    0,
+    "ECALL: forza_get_zones_per_precinct called by thread %" PRIu32 " on hart %" PRIu32 ", val=%" PRIu32 "\n",
+    GetActiveThreadID(),
+    HartToExecID,
+    zNic->getNumZones()
+  );
+  return EcallStatus::SUCCESS;
+}
+
+// 4010, forza_get_num_precincts();
+EcallStatus RevCore::ECALL_forza_get_num_precincts() {
+  RegFile->SetX( RevReg::a0, zNic->getNumPrecincts() );
+  output->verbose(
+    CALL_INFO,
+    2,
+    0,
+    "ECALL: forza_get_num_precincts called by thread %" PRIu32 " on hart %" PRIu32 ", val=%" PRIu32 "\n",
+    GetActiveThreadID(),
+    HartToExecID,
+    zNic->getNumPrecincts()
+  );
+  return EcallStatus::SUCCESS;
+}
+
+// 4011, forza_get_my_zap();
+EcallStatus RevCore::ECALL_forza_get_my_zap() {
+  RegFile->SetX( RevReg::a0, (uint8_t) zNic->getEndpointType() );
+  output->verbose(
+    CALL_INFO,
+    2,
+    0,
+    "ECALL: forza_get_my_zap called by thread %" PRIu32 " on hart %" PRIu32 ", val=%" PRIu32 "\n",
+    GetActiveThreadID(),
+    HartToExecID,
+    (unsigned) zNic->getEndpointType()
+  );
+  return EcallStatus::SUCCESS;
+}
+
+// 4012, forza_get_my_zone();
+EcallStatus RevCore::ECALL_forza_get_my_zone() {
+  RegFile->SetX( RevReg::a0, zNic->getZoneID() );
+  output->verbose(
+    CALL_INFO,
+    2,
+    0,
+    "ECALL: forza_get_my_zone called by thread %" PRIu32 " on hart %" PRIu32 ", val=%" PRIu32 "\n",
+    GetActiveThreadID(),
+    HartToExecID,
+    zNic->getZoneID()
+  );
+  return EcallStatus::SUCCESS;
+}
+
+// 4013, forza_get_my_precinct();
+EcallStatus RevCore::ECALL_forza_get_my_precinct() {
+  RegFile->SetX( RevReg::a0, zNic->getPrecinctID() );
+  output->verbose(
+    CALL_INFO,
+    2,
+    0,
+    "ECALL: forza_get_my_precinct called by thread %" PRIu32 " on hart %" PRIu32 ", val=%" PRIu32 "\n",
+    GetActiveThreadID(),
+    HartToExecID,
+    zNic->getPrecinctID()
+  );
+  return EcallStatus::SUCCESS;
+}
+
+// 4014, forza_zone_barrier()
+EcallStatus RevCore::ECALL_forza_zone_barrier() {
+  unsigned num_harts = (unsigned) RegFile->GetX<uint32_t>( RevReg::a0 );
+  if( !zNic->hasBarrier( HartToExecID ) ) {
+    zNic->send_zone_barrier( HartToExecID, num_harts );
+    output->verbose(
+      CALL_INFO,
+      2,
+      0,
+      "ECALL: forza_zone_barrier called by thread %" PRIu32 " on hart %" PRIu32 ", val=%" PRIu32 "\n",
+      GetActiveThreadID(),
+      HartToExecID,
+      zNic->getPrecinctID()
+    );
+  }
+
+  if( zNic->isBarrierComplete( HartToExecID ) ) {
+    return EcallStatus::SUCCESS;
+  }
+
+  return EcallStatus::CONTINUE;
+}
+
+// 4015, forza_debug_print
+EcallStatus RevCore::ECALL_forza_debug_print() {
+  uint64_t a = (uint64_t) RegFile->GetX<uint64_t>( RevReg::a0 );
+  uint64_t b = (uint64_t) RegFile->GetX<uint64_t>( RevReg::a1 );
+  uint64_t c = (uint64_t) RegFile->GetX<uint64_t>( RevReg::a2 );
+
+  output->verbose(
+    CALL_INFO,
+    2,
+    0,
+    "ECALL: forza_debug_print called by thread %" PRIu32 " on hart %" PRIu32 "; a=0x%" PRIx64 "; b=0x%" PRIx64 "; c=0x%" PRIx64
+    "\n",
+    GetActiveThreadID(),
+    HartToExecID,
+    a,
+    b,
+    c
+  );
+
+  RegFile->SetX( RevReg::a0, 0 );
+  return EcallStatus::SUCCESS;
+}
 
 }  // namespace SST::RevCPU

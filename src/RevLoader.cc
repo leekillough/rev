@@ -48,7 +48,7 @@ bool RevLoader::IsRVBig( const Elf64_Ehdr eh64 ) {
 
 // breaks the write into cache line chunks
 bool RevLoader::WriteCacheLine( uint64_t Addr, size_t Len, const void* Data ) {
-  if( Len == 0 ) {
+  if( Len == 0 || !isRZA ) {
     // nothing to do here, move along
     return true;
   }
