@@ -11,6 +11,7 @@
 #
 
 EXAMPLE ?= tracer
+REVCFG= $(realpath ../rev-model-options-config.py)
 
 # Set to compile and simulate for spike
 # USE_SPIKE := 1
@@ -70,14 +71,14 @@ compile: $(EXES) $(DIASMS)
 %.rv64gv.c.exe %.rv64gv.cpp.exe: ARCH=rv64gv
 %.rv64gv.c.exe %.rv64gv.cpp.exe: OPTS += -DRV64GV
 
-%.mem.rv32.c.log %.mem.rv32.cpp.log:   REVCFG=./rev-test-tracer.py
-%.memh.rv32.c.log %.memh.rv32.cpp.log: REVCFG=./rev-test-tracer-memh.py
+%.mem.rv32.c.log %.mem.rv32.cpp.log:   MEMH=0
+%.memh.rv32.c.log %.memh.rv32.cpp.log: MEMH=1
 
-%.mem.rv64.c.log %.mem.rv64.cpp.log:   REVCFG=./rev-test-tracer.py
-%.memh.rv64.c.log %.memh.rv64.cpp.log: REVCFG=./rev-test-tracer-memh.py
+%.mem.rv64.c.log %.mem.rv64.cpp.log:   MEMH=0
+%.memh.rv64.c.log %.memh.rv64.cpp.log: MEMH=1
 
-%.mem.rv64gv.c.log %.mem.rv64gv.cpp.log:   REVCFG=./rev-test-tracer.py
-%.memh.rv64gv.c.log %.memh.rv64gv.cpp.log: REVCFG=./rev-test-tracer-memh.py
+%.mem.rv64gv.c.log %.mem.rv64gv.cpp.log:   MEMH=0
+%.memh.rv64gv.c.log %.memh.rv64gv.cpp.log: MEMH=1
 
 %.exe: $(EXAMPLE).c
 	$(GCC) -g -O2 -march=$(ARCH) $(OPTS) $(INCLUDE) -o  $@ $<
@@ -89,7 +90,8 @@ compile: $(EXES) $(DIASMS)
 
 %.log: %.exe
 	@$(eval tmp := $(basename $@).tmplog)
-	ARCH=$(ARCH)_zicntr REV_EXE=$< sst --add-lib-path=../../build/src $(REVCFG) > $(tmp)
+	sst --add-lib-path=../../build/src ../rev-model-options-config.py -- \
+	 --enableMemH=$(MEMH) --trcStartCycle=1 --verbose=5 --program=$< --machine=CORES:$(ARCH)_zicntr > $(tmp)
 	mv $(tmp) $@
 
 %.revlog: %.log
