@@ -183,15 +183,17 @@ check_tight_loop:
                 : "t3", "t4" );
 
   // trace some threads
-#if 0
+#if 1
+  printf( "Thread test starting" );
   rev_pthread_t tid1, tid2;
-  rev_pthread_create(&tid1, NULL, (void *)thread1, NULL);
-  rev_pthread_create(&tid2, NULL, (void *)thread2, NULL);
-  rev_pthread_join(tid1);
-  rev_pthread_join(tid2);
+  rev_pthread_create( &tid1, NULL, (void*) thread1, NULL );
+  rev_pthread_create( &tid2, NULL, (void*) thread2, NULL );
+  rev_pthread_join( tid1 );
+  rev_pthread_join( tid2 );
 
-  TRACE_ASSERT(thread1_counter==10);
-  TRACE_ASSERT(thread2_counter==20);
+  TRACE_ASSERT( thread1_counter == 10 );
+  TRACE_ASSERT( thread2_counter == 20 );
+  printf( "Thread test finished" );
 #endif
 
   TRACE_ON;
