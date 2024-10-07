@@ -16,9 +16,14 @@
 #include "stdlib.h"
 #include "syscalls.h"
 
-#define assert TRACE_ASSERT
-
+#ifdef SPIKE
+// #include "stdio.h"
+#define printf( ... )
+#else
 #define printf rev_fast_printf
+#endif
+
+#define assert TRACE_ASSERT
 
 #if 1
 #define REV_TIME( X )                         \
@@ -31,6 +36,13 @@
     X = 0;            \
   } while( 0 )
 #endif
+
+void trace_vec() {
+#ifdef RV64GV
+  asm volatile( "vsetivli  x0, 0, e8, m1, ta, ma \n\t" );
+
+#endif
+}
 
 // inefficient calculation of r-s
 int long_sub( int r, int s ) {
@@ -90,6 +102,8 @@ int main( int argc, char** argv ) {
   printf( " [no new line] " );
   printf( " [no new line] " );
   printf( " ... new line here->\n" );
+
+  trace_vec();
 
   int res = 3000;
   res     = long_sub( res, 1000 );
