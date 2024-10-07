@@ -11,7 +11,9 @@
 #
 
 EXAMPLE ?= tracer
-REVCFG= $(realpath ../rev-model-options-config.py)
+REVCFG = $(realpath ../rev-model-options-config.py)
+NUMCORES ?= 1
+NUMHARTS ?= 1
 
 # Set to compile and simulate for spike
 # USE_SPIKE := 1
@@ -91,7 +93,8 @@ compile: $(EXES) $(DIASMS)
 %.log: %.exe
 	@$(eval tmp := $(basename $@).tmplog)
 	sst --add-lib-path=../../build/src ../rev-model-options-config.py -- \
-	 --enableMemH=$(MEMH) --trcStartCycle=1 --verbose=5 --program=$< --machine=CORES:$(ARCH)_zicntr > $(tmp)
+	 --enableMemH=$(MEMH) --trcStartCycle=1 --verbose=5 --program=$< --machine=CORES:$(ARCH)_zicntr \
+	 --numCores=$(NUMCORES) --numHarts=$(NUMHARTS) > $(tmp)
 	mv $(tmp) $@
 
 %.revlog: %.log
@@ -105,6 +108,8 @@ clean:
 help:
 	@echo make
 	@echo make compile
+	@echo make NUMHARTS=2
+	@echo make NUMCORES=2
 	@echo make USE_SPIKE=1
 	@echo make TLIST=\"tracer.mem.rv32.c tracer.mem.rv64.c\"
 	@echo available tests:

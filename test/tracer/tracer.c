@@ -184,7 +184,7 @@ check_tight_loop:
 
   // trace some threads
 #if 1
-  printf( "Thread test starting" );
+  printf( "Thread test starting\n" );
   rev_pthread_t tid1, tid2;
   rev_pthread_create( &tid1, NULL, (void*) thread1, NULL );
   rev_pthread_create( &tid2, NULL, (void*) thread2, NULL );
@@ -193,7 +193,7 @@ check_tight_loop:
 
   TRACE_ASSERT( thread1_counter == 10 );
   TRACE_ASSERT( thread2_counter == 20 );
-  printf( "Thread test finished" );
+  printf( "Thread test finished\n" );
 #endif
 
   TRACE_ON;
