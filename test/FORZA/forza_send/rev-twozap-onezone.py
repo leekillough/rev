@@ -58,7 +58,7 @@ zqm.addParams({
 # --------------------------
 zap_cpu0 = sst.Component("zap0", "revcpu.RevCPU")
 zap_cpu0.addParams({
-        "verbose" : 5,                                # Verbosity
+        "verbose" : 9,                                # Verbosity
         "numCores" : 1,                               # Number of cores
         "numHarts" : 32,
         "clock" : "1.0GHz",                           # Clock
@@ -77,7 +77,7 @@ zap_cpu0.addParams({
 
 zap_cpu1 = sst.Component("zap1", "revcpu.RevCPU")
 zap_cpu1.addParams({
-        "verbose" : 5,                                # Verbosity
+        "verbose" : 9,                                # Verbosity
         "numCores" : 1,                               # Number of cores
         "numHarts" : 32,
         "clock" : "1.0GHz",                           # Clock

@@ -324,8 +324,8 @@ private:
   std::bitset<_MAX_HARTS_>              HartsClearToDecode{};   ///< RevCore: Thread is clear to start (proceed with decode)
   std::bitset<_MAX_HARTS_>              HartsClearToExecute{};  ///< RevCore: Thread is clear to execute (no register dependencides)
 
-  Forza::zopAPI*     zNic;          ///< RevCore: ZOPNic object
-  Forza::zopMsgID*   zNicMsgIds;    ///< RevCore: FORZA ZOP NIC Message ID handler
+  Forza::zopAPI*     zNic{};        ///< RevCore: ZOPNic object
+  Forza::zopMsgID*   zNicMsgIds{};  ///< RevCore: FORZA ZOP NIC Message ID handler
   Forza::RingNetAPI* zoneRing{};    ///< RevCPU: FORZA Zone Ring network
   bool               ThreadReqd{};  ///< RevCore: FORZA Thread has been requested from ZQM
   unsigned           numHarts{};    ///< RevCore: Number of Harts for this core

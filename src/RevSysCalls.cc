@@ -4070,7 +4070,7 @@ EcallStatus RevCore::ECALL_forza_receive_word() {
     GetActiveThreadID(),
     HartToExecID
   );
-
+  output->flush();
   uint64_t mbox_id               = (uint64_t) RegFile->GetX<uint64_t>( RevReg::a0 );
   // TODO: ensure mbox_id 0 <= mbox_id <= 7
   uint64_t reg_id                = R_ZQMDQ_0 + mbox_id;

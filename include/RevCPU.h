@@ -309,16 +309,11 @@ private:
   unsigned Precinct{};  ///< RevCPU: FORZA precinct ID
   unsigned Zone{};      ///< RevCPU: FORZA zone ID
 
-  Forza::zopAPI*     zNic;             ///< RevCPU: FORZA ZOP NIC
-  Forza::zopMsgID*   zNicMsgIds;       ///< RevCPU: FORZA ZOP NIC Message ID handler
+  Forza::zopAPI*     zNic{};           ///< RevCPU: FORZA ZOP NIC
+  Forza::zopMsgID*   zNicMsgIds{};     ///< RevCPU: FORZA ZOP NIC Message ID handler
   Forza::RingNetAPI* zoneRing{};       ///< RevCPU: FORZA Zone Ring network
   TimeConverter*     timeConverter{};  ///< RevCPU: SST time conversion handler
   SST::Output        output{};         ///< RevCPU: SST output handler
-
-  Forza::zopAPI*   zNic{};           ///< RevCPU: FORZA ZOP NIC
-  Forza::zopMsgID* zNicMsgIds{};     ///< RevCPU: FORZA ZOP NIC Message ID handler
-  TimeConverter*   timeConverter{};  ///< RevCPU: SST time conversion handler
-  SST::Output      output{};         ///< RevCPU: SST output handler
 
   nicAPI*                     Nic{};  ///< RevCPU: Network interface controller
   std::unique_ptr<RevMemCtrl> Ctrl;   ///< RevCPU: Rev memory controller

@@ -24,7 +24,8 @@ RingNetNIC::RingNetNIC( SST::ComponentId_t id, SST::Params& params ) : RingNetAP
   iFace                      = loadUserSubComponent<SST::Interfaces::SimpleNetwork>( "iface", ComponentInfo::SHARE_NONE, 1 );
 
   clockHandler               = new SST::Clock::Handler<RingNetNIC>( this, &RingNetNIC::clockTick );
-  timeConverter              = registerClock( nicClock, clockHandler );
+  output.output( "ringNIC[%s] Registering clock with frequency=%s\n", getName().c_str(), nicClock.c_str() );
+  timeConverter = registerClock( nicClock, clockHandler );
 
   if( !iFace ) {
     // load the anonymous nic

@@ -173,82 +173,6 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params ) : SST::Compon
     if( !zNic ) {
       output.fatal( CALL_INFO, -1, "Error: no ZONE NIC object loaded into RevCPU\n" );
     }
-    Mem->setZNic( zNic );
-    zNic->setNumHarts( numHarts );
-    zNic->setPrecinctID( Precinct );
-    zNic->setZoneID( Zone );
-
-    // set the message handler for the NoC interface
-    zNic->setMsgHandler( new Event::Handler<RevCPU>( this, &RevCPU::handleZOPMessage ) );
-
-    // set the message id generator
-    zNicMsgIds = new Forza::zopMsgID();
-
-    // now that the NIC has been loaded, we need to ensure that the NIC knows
-    // what type of endpoint it is
-    if( EnableRZA ) {
-      // This Rev instance is an RZA
-      if( !EnableMemH ) {
-        output.fatal(
-          CALL_INFO,
-          -1,
-          "Error : memHierarchy is required if the respective Rev "
-          "instance is an RZA\n"
-        );
-      }
-      zNic->setEndpointType( Forza::zopCompID::Z_RZA );
-      output.verbose( CALL_INFO, 4, 0, "[FORZA] device=%s initialized as RZA device\n", getName().c_str() );
-      // ensure the memory controller knows that it is an RZA device
-      Mem->setRZA();
-    } else {
-      // This Rev instance is a ZAP
-      Mem->unsetRZA();
-      unsigned         zap   = params.find<unsigned>( "zapId", 0 );
-      Forza::zopCompID zapId = Forza::zopCompID::Z_ZAP0;
-      switch( zap ) {
-      case 0: zapId = Forza::zopCompID::Z_ZAP0; break;
-      case 1: zapId = Forza::zopCompID::Z_ZAP1; break;
-      case 2: zapId = Forza::zopCompID::Z_ZAP2; break;
-      case 3: zapId = Forza::zopCompID::Z_ZAP3; break;
-      case 4: zapId = Forza::zopCompID::Z_ZAP4; break;
-      case 5: zapId = Forza::zopCompID::Z_ZAP5; break;
-      case 6: zapId = Forza::zopCompID::Z_ZAP6; break;
-      case 7: zapId = Forza::zopCompID::Z_ZAP7; break;
-      default: output.fatal( CALL_INFO, -1, "Error: zapId is out of range [0-7]\n" ); break;
-      }
-      zNic->setEndpointType( zapId );
-      output.verbose( CALL_INFO, 4, 0, "[FORZA] device=%s initialized as ZAP device: ZAP%d\n", getName().c_str(), zap );
-    }
-  }
-
-  // if the forza security models are enabled, inform RevMem that logging as been enabled
-  if( EnableForzaSecurity ) {
-    if( memTrafficInput != "nil" ) {
-      output.verbose( CALL_INFO, 1, 0, "Enabling MemTrafficInput : %s\n", memTrafficInput.c_str() );
-      Mem->updatePhysHistoryfromInput( memTrafficInput );
-    }
-    if( memTrafficOutput != "nil" ) {
-      output.verbose( CALL_INFO, 1, 0, "Enabling MemTrafficOutput : %s\n", memTrafficOutput.c_str() );
-      Mem->setOutputFile( memTrafficOutput );
-      Mem->enablePhysHistoryLogging();
-    }
-  }
-
-  // FORZA: initialize scratchpad
-  Mem->InitScratchpad( id, _SCRATCHPAD_SIZE_, _CHUNK_SIZE_ );
-
-  // FORZA: initialize the network
-  // setup the FORZA NoC NIC endpoint for the Zone
-  // Note that this must occur AFTER memory initialization
-  EnableZopNIC = params.find<bool>( "enableZoneNIC", 0 );
-  if( EnableZopNIC ) {
-    output.verbose( CALL_INFO, 4, 0, "[FORZA] Enabling zone NIC on device=%s\n", getName().c_str() );
-    Precinct = params.find<unsigned>( "precinctId", 0 );
-    Zone     = params.find<unsigned>( "zoneId", 0 );
-    zNic     = loadUserSubComponent<Forza::zopAPI>( "zone_nic" );
-    if( !zNic ) {
-      output.fatal( CALL_INFO, -1, "Error: no ZONE NIC object loaded into RevCPU\n" );
-    }
     zNic->setNumHarts( numHarts );
     zNic->setPrecinctID( Precinct );
     zNic->setZoneID( Zone );
@@ -1005,7 +929,7 @@ void RevCPU::handleZOPThreadMigrateIntRegs( Forza::zopEvent* zev ) {
   // pkt[65] = f[31] register contents
 
   // Create the regfile
-  std::unique_ptr<RevRegFile> MigratedRegState = std::make_unique<RevRegFile>( Procs[0]->GetRevFeature() );
+  std::unique_ptr<RevRegFile> MigratedRegState = std::make_unique<RevRegFile>( Procs[0].get() );
   uint64_t                    pc               = pkt[2] & ( 0x0FFFFFFFFUL );
   MigratedRegState->SetPC( pc );
   for( unsigned i = 1; i < 32; i++ ) {
@@ -1041,7 +965,7 @@ void RevCPU::handleZOPThreadMigrateSpawn( Forza::zopEvent* zev ) {
   // pkt[3] = x[31] register contents (5-sept-24, tjd: this is my reading of zap doc...needs some clarification)
 
   // Create the regfile
-  std::unique_ptr<RevRegFile> MigratedRegState = std::make_unique<RevRegFile>( Procs[0]->GetRevFeature() );
+  std::unique_ptr<RevRegFile> MigratedRegState = std::make_unique<RevRegFile>( Procs[0].get() );
   uint64_t                    pc               = pkt[2] & ( 0x0FFFFFFFFUL );
   MigratedRegState->SetPC( pc );
   for( unsigned i = 1; i < 31; i++ ) {
@@ -1478,9 +1402,6 @@ void RevCPU::HandleThreadStateChangesForProc( uint32_t ProcID ) {
     case ThreadState::DONE:
       // This thread has completed execution
       output.verbose( CALL_INFO, 8, 0, "Thread %" PRIu32 " on Core %" PRIu32 " is DONE\n", ThreadID, ProcID );
-      if( zNic ) {
-        sendZQMThreadComplete( ThreadID, Procs[ProcID]->GetHartFromThreadID( ThreadID ) );
-      }
       CompletedThreads.emplace( ThreadID, std::move( Thread ) );
       break;
 
