@@ -122,7 +122,7 @@ int forza_wait_mailbox_done( uint64_t mb_id ) {
   uint64_t mb_mask  = 0xFFUL << shift;
   uint64_t mb_count = forza_zen_get_cntrs() & mb_mask;
 
-#if 1
+#if DEBUG
   char msg[55] = "\ndebug: forza_wait_mailbox_done: MB=X Count=Y\n";
   msg[36]      = '0' + mb_id;
   msg[44]      = '0' + mb_count;
@@ -130,13 +130,40 @@ int forza_wait_mailbox_done( uint64_t mb_id ) {
 #endif
   while( mb_count != 0 ) {
     mb_count = forza_zen_get_cntrs() & mb_mask;
-#if 1
+#if DEBUG
     char msg[55] = "\ndebug: forza_wait_mailbox_done: MB=X Count=Y\n";
     msg[36]      = '0' + mb_id;
     msg[44]      = '0' + mb_count;
     rev_write( STDOUT_FILENO, msg, sizeof( msg ) );
 #endif
   }
+  return SUCCESS;
+}
+
+int forza_check_send_status( uint64_t mb_id ) {
+
+  // Check zen send status
+  uint64_t ZEN_ENABLE  = 0x8000000000000000UL;
+  uint64_t ZEN_MB_ERR  = ( 0x100UL << mb_id );
+  uint64_t ZEN_MB_BUSY = ( 0x1UL << mb_id );
+  uint64_t zenstat     = forza_read_zen_status();
+  if( ( zenstat & ZEN_ENABLE ) == 0 ) {
+    char msg[55] = "\ndebug: forza_send_done: zen not enabled\n";
+    rev_write( STDOUT_FILENO, msg, sizeof( msg ) );
+    assert( 0 );  // Fix this later to check status bits. This really shouldn't happen now.
+  } else if( ( zenstat & ZEN_MB_ERR ) != 0 ) {
+    char msg[55] = "\ndebug: forza_send_done: zen mbox error\n";
+    rev_write( STDOUT_FILENO, msg, sizeof( msg ) );
+    assert( 0 );
+  }
+
+  // Wait for ZEN mailbox to be ready
+  while( ( zenstat & ZEN_MB_BUSY ) != 0 ) {
+    char msg[55] = "\ndebug: forza_send_done: zen mbox busy\n";
+    rev_write( STDOUT_FILENO, msg, sizeof( msg ) );
+    zenstat = forza_read_zen_status();
+  }
+
   return SUCCESS;
 }
 
@@ -185,13 +212,8 @@ int forza_send( uint64_t mb_id, void* pkt, uint64_t precinct, uint64_t zone, uin
     return INVALID_LPE;
   }
 
-  // Check zen status
-  uint64_t zenstat = forza_read_zen_status();
-  if( zenstat == 0 ) {
-    char msg[55] = "\ndebug: forza_send: zenstat error\n";
-    rev_write( STDOUT_FILENO, msg, sizeof( msg ) );
-    assert( 0 );
-  }
+  // Currently asserts for any error so only returns if ready
+  int sendstat   = forza_check_send_status( mb_id );
 
   // Send 7 data words
   uint64_t* data = pkt;
@@ -214,13 +236,13 @@ int forza_send( uint64_t mb_id, void* pkt, uint64_t precinct, uint64_t zone, uin
   }
   forza_debug_print( 0x2222, ctrl_word, cntrs );
 #endif
-#if 1
+#if DEBUG
   uint64_t mb_mask  = 0xFFUL << ( 8 * mb_id );
   uint64_t mb_count = forza_zen_get_cntrs() & mb_mask;
-  char     msg[55]  = "\ndebug: forza_send: mbx done count: MB=X Count=Y\n";
-  msg[39]           = '0' + mb_id;
+  char     msg[60]  = "\ndebug: forza_send: mbx outstanding count: MB=X Count=Y\n";
+  msg[46]           = '0' + mb_id;
   //msg[41] = '0' + mb_count >> (8 * mb_id);
-  msg[47]           = '0' + forza_get_outstanding_msg_count( mb_id );
+  msg[54]           = '0' + forza_get_outstanding_msg_count( mb_id );
   rev_write( STDOUT_FILENO, msg, sizeof( msg ) );
 #endif
 
@@ -265,14 +287,15 @@ int forza_send_done( uint64_t mb_id, uint64_t precinct, uint64_t zone, uint64_t 
 
   // Wait for all messages to that mailbox to be delivered
   forza_wait_mailbox_done( mb_id );
-  // Check zen status
-  uint64_t zenstat = forza_read_zen_status();
-  if( zenstat == 0 ) {
-    char msg[55] = "\ndebug: forza_send_done: zen stat error\n";
-    rev_write( STDOUT_FILENO, msg, sizeof( msg ) );
-    assert( 0 );  // Fix this later to check status bits. This really shouldn't happen now.
-  }
 
+  // Check zen send status
+  int sendstat = forza_check_send_status( mb_id );
+
+#if 1
+  // Send empty packet to see if this solves ZQM issue
+  for( int i = 0; i < 7; i++ )
+    forza_send_word( 0UL, false );
+#endif
   // Create the control word
   uint64_t ctrl_word = DONE_OP;
   ctrl_word          = ctrl_word << 40;
@@ -311,15 +334,33 @@ int forza_message_available( uint64_t mb_id ) {
   }
 
   // Check for message
-  uint64_t zqmstat = forza_read_zqm_status();
-  zqmstat &= ( 1UL << mb_id );
-  if( zqmstat == 0 ) {
-#if 1
+  uint64_t ZQM_ERR   = ( 0x100UL << mb_id );
+  uint64_t ZQM_READY = ( 0x1UL << mb_id );
+  uint64_t zqmstat   = forza_read_zqm_status();
+
+#if DEBUG
+  {
+    char msg[55] = "\ndebug: forza_message_available: full zqmstat\n";
+    rev_write( STDOUT_FILENO, msg, sizeof( msg ) );
+  }
+  forza_debug_print( zqmstat, 0UL, 0UL );
+#endif
+
+  if( ( zqmstat & ZQM_ERR ) != 0 ) {
+    char msg[55] = "\ndebug: forza_message_avail: ZQM_ERR\n";
+    rev_write( STDOUT_FILENO, msg, sizeof( msg ) );
+    assert( 0 );
+  } else if( ( zqmstat & ZQM_READY ) == 0 ) {
+#if DEBUG
     char msg[55] = "\ndebug: forza_message_available: NO_MSG\n";
     rev_write( STDOUT_FILENO, msg, sizeof( msg ) );
 #endif
     return NO_MSG;
   } else {
+#if DEBUG
+    char msg[55] = "\ndebug: forza_message_available: msg available\n";
+    rev_write( STDOUT_FILENO, msg, sizeof( msg ) );
+#endif
     return SUCCESS;
   }
 }
@@ -356,15 +397,31 @@ int forza_message_receive( uint64_t mb_id, uint64_t* pkt, size_t pkt_size ) {
     return INVALID_PKT_SZ;
   }
 
-  // Wait for ZQM ready
-  uint64_t zqmstat = forza_read_zqm_status();
-  zqmstat &= ( 1UL << mb_id );
-  if( zqmstat == 0 ) {
-#if 1
+  uint64_t ZQM_ERR   = ( 0x100UL << mb_id );
+  uint64_t ZQM_READY = ( 0x1UL << mb_id );
+  uint64_t zqmstat   = forza_read_zqm_status();
+#if DEBUG
+  char msg[55] = "\ndebug: forza_message_receive: full zqmstat\n";
+  rev_write( STDOUT_FILENO, msg, sizeof( msg ) );
+  forza_debug_print( zqmstat, 0UL, 0UL );
+#endif
+
+  // Check Error
+  if( ( zqmstat & ZQM_ERR ) != 0 ) {
+    char msg[55] = "\ndebug: forza_message_receive: ZQM_ERR\n";
+    rev_write( STDOUT_FILENO, msg, sizeof( msg ) );
+    assert( 0 );
+  } else if( ( zqmstat & ZQM_READY ) == 0 ) {
+#if DEBUG
     char msg[55] = "\ndebug: forza_message_receive: NO_MSG\n";
     rev_write( STDOUT_FILENO, msg, sizeof( msg ) );
 #endif
     return NO_MSG;
+  } else {
+#if DEBUG
+    char msg[55] = "\ndebug: forza_message_receive: msg availabile\n";
+    rev_write( STDOUT_FILENO, msg, sizeof( msg ) );
+#endif
   }
 
   // Read control word and check op
@@ -393,11 +450,14 @@ int forza_message_receive( uint64_t mb_id, uint64_t* pkt, size_t pkt_size ) {
     forza_debug_print( 0x3333, msg_op, zqmstat );
     assert( 0 );  // INDIRECT msg op not yet supported
   } else if( msg_op == DONE_OP ) {
+#if 1  // See if this solves issue with ZQM mailbox not ready \
+  // Read all 7 data words and dump them
+    for( int i = 0; i < 7; i++ )
+      forza_receive_word( mb_id );
+#endif
 #if DEBUG
-    {
-      char msg[40] = "\ndebug: forza_message_receive: DONE_OP\n";
-      rev_write( STDOUT_FILENO, msg, sizeof( msg ) );
-    }
+    char msg[40] = "\ndebug: forza_message_receive: DONE_OP\n";
+    rev_write( STDOUT_FILENO, msg, sizeof( msg ) );
     forza_debug_print( 0x3333, msg_op, zqmstat );
 #endif
     return DONE_MSG;

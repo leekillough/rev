@@ -14,7 +14,7 @@ import argparse
 
 # Define SST core options
 sst.setProgramOption("timebase", "1ps")
-sst.setProgramOption("stop-at", "5ms")
+sst.setProgramOption("stop-at", "8ms")
 
 
 DEBUG_L1 = 0
