@@ -2,6 +2,10 @@
 # Macro to build and configure tests in rev based on the labels the test was specified with
 # Config vals is a list of options to be passed to the forza config script
 # in the order of hartsperzap, zaps, zones, precicnts, program, and shape
+# NOTE: the program option should be set WITHOUT the .exe suffix, as it gets
+# appended. If the program option is not included in config_vals, it defaults
+# to an all lower-case version of test_name. If the shape option is not included,
+# it defaults to 1,1:1 (the most common test case).
 macro(add_forza_test test_name test_dir timeout labels config_vals)
   string(TOLOWER ${test_dir} test_dir_lower)
   string(TOLOWER ${test_name} test_name_lower)
@@ -97,7 +101,7 @@ macro(add_forza_test test_name test_dir timeout labels config_vals)
     math(EXPR shape_index "${shape_index} + 1")
     list(GET config_list "${shape_index}" shape_val)
   else()
-    set(shape_val "2,2:4")
+    set(shape_val "1,1:1")
   endif()
   list(FIND config_list "progargs" args_index)
   if(NOT ${args_index} EQUAL -1)
@@ -124,7 +128,10 @@ macro(add_forza_test test_name test_dir timeout labels config_vals)
       set_tests_properties(${test_name_lower}_${test_name_suffix} PROPERTIES DISABLED TRUE)
     endif()
 
-    # NOTE: every forza test uses memHierarchy so it's now hardcoded in the config
+    # NOTE: Since all forza tests use memHierarchy, RV64, loader, they are no longer options
+    # but are always active regardless of if they are included in labels. Security is the
+    # exception and they should continue to be included in labels regardless as it enables
+    # running subsets of tests with ctest -L
 
     set_tests_properties(${test_name_lower}_${test_name_suffix}
       PROPERTIES
@@ -174,16 +181,16 @@ macro(add_forza_test test_name test_dir timeout labels config_vals)
 endmacro()
 
 #TODO: need to add the other noc discovery variants(?)
-add_forza_test(forza_noc_discovery1 forza_noc_discovery 120 "all;memh;rv64;loader;forza" "hartsperzap=1;zaps=1;zones=1;precints=1;shape=1,1:1;program=ex2")
-add_forza_test(forza_noc_discovery2 forza_noc_discovery 120 "all;memh;rv64;loader;forza" "hartsperzap=1;zaps=4;zones=1;precints=1;shape=1,1:1;program=ex2")
-add_forza_test(forza_noc_discovery3 forza_noc_discovery 120 "all;memh;rv64;loader;forza" "hartsperzap=1;zaps=4;zones=2;precints=1;shape=1,1:1;program=ex2")
+add_forza_test(forza_noc_discovery1 forza_noc_discovery 120 "all;memh;rv64;loader;forza" "hartsperzap=1;zaps=1;zones=1;precints=1;program=ex2")
+add_forza_test(forza_noc_discovery2 forza_noc_discovery 120 "all;memh;rv64;loader;forza" "hartsperzap=1;zaps=4;zones=1;precints=1;program=ex2")
+add_forza_test(forza_noc_discovery3 forza_noc_discovery 120 "all;memh;rv64;loader;forza" "hartsperzap=1;zaps=4;zones=2;precints=1;program=ex2")
 
-add_forza_test(forza_amoadd_c forza_amoadd_c 30 "all;memh;rv64;loader;forza" "hartsperzap=1;zaps=1;zones=1;precincts=1;shape=1,1:1;program=amoadd_c")
-add_forza_test(forza_recv forza_recv 30 "all;memh;rv64;loader;forza" "hartsperzap=1;zaps=1;zones=1;precincts=1;shape=1,1:1")
-add_forza_test(forza_send forza_send 30 "all;memh;rv64;loader;forza" "hartsperzap=1;zaps=1;zones=1;precincts=1;shape=1,1:1")
-add_forza_test(forza_zen_setup forza_zen_setup 30 "all;memh;rv64;loader;forza" "hartsperzap=1;zaps=4;zones=2;precincts=1;shape=1,1:1")
-add_forza_test(forza_zen_setup_cxx forza_zen_setup 30 "all;memh;rv64;loader;forza" "hartsperzap=1;zaps=4;zones=2;precincts=1;shape=1,1:1")
-add_forza_test(forza_zqm_setup forza_zqm_setup 30 "all;memh;rv64;loader;forza" "hartsperzap=4;zaps=4;zones=2;precincts=1;shape=1,1:1")
+add_forza_test(forza_amoadd_c forza_amoadd_c 30 "all;memh;rv64;loader;forza" "hartsperzap=1;zaps=1;zones=1;precincts=1;program=amoadd_c")
+add_forza_test(forza_recv forza_recv 30 "all;memh;rv64;loader;forza" "hartsperzap=1;zaps=1;zones=1;precincts=1")
+add_forza_test(forza_send forza_send 30 "all;memh;rv64;loader;forza" "hartsperzap=1;zaps=1;zones=1;precincts=1")
+add_forza_test(forza_zen_setup forza_zen_setup 30 "all;memh;rv64;loader;forza" "hartsperzap=1;zaps=4;zones=2;precincts=1")
+add_forza_test(forza_zen_setup_cxx forza_zen_setup 30 "all;memh;rv64;loader;forza" "hartsperzap=1;zaps=4;zones=2;precincts=1")
+add_forza_test(forza_zqm_setup forza_zqm_setup 30 "all;memh;rv64;loader;forza" "hartsperzap=4;zaps=4;zones=2;precincts=1")
 
 add_forza_test(forza_python1 forza_python 30 "all;memh;rv64;loader;forza" "hartsperzap=1;zaps=1;zones=1;precincts=8;shape=2,2:4;program=ex2")
 add_forza_test(forza_python2 forza_python 30 "all;memh;rv64;loader;forza" "hartsperzap=512;zaps=1;zones=1;precincts=8;shape=2,2:4;program=ex2")
@@ -191,18 +198,18 @@ add_forza_test(forza_python3 forza_python 60 "all;memh;rv64;loader;forza" "harts
 add_forza_test(forza_python4 forza_python 60 "all;memh;rv64;loader;forza" "hartsperzap=512;zaps=2;zones=2;precincts=8;shape=2,2:4;program=ex2")
 add_forza_test(forza_python5 forza_python 120 "all;memh;rv64;loader;forza" "hartsperzap=512;zaps=2;zones=4;precincts=8;shape=2,2:4;program=ex2")
 
-add_forza_test(forza_harts_per_zap forza_config_syscalls 30 "all;memh;rv64;loader;forza" "hartsperzap=128;zaps=1;zones=1;precincts=1;shape=1,1:1;program=ex2;progargs=128")
-add_forza_test(forza_config_syscalls forza_config_syscalls 60 "all;memh;rv64;loader;forza" "hartsperzap=64;zaps=1;zones=1;precincts=1;shape=1,1:1;program=config_ecalls;progargs=64 1 8 3 0 0 0")
+add_forza_test(forza_harts_per_zap forza_config_syscalls 30 "all;memh;rv64;loader;forza" "hartsperzap=128;zaps=1;zones=1;precincts=1;program=ex2;progargs=128")
+add_forza_test(forza_config_syscalls forza_config_syscalls 60 "all;memh;rv64;loader;forza" "hartsperzap=64;zaps=1;zones=1;precincts=1;program=config_ecalls;progargs=64 1 8 3 0 0 0")
 
-add_forza_test(forza_argc forza_argc 30 "all;memh;rv64;loader;forza" "hartsperzap=1;zaps=1;zones=1;precincts=1;shape=1,1:1;progargs=one")
+add_forza_test(forza_argc forza_argc 30 "all;memh;rv64;loader;forza" "hartsperzap=1;zaps=1;zones=1;precincts=1;progargs=one")
 
-add_forza_test(forza_barrier1 forza_barrier 30 "all;memh;rv64;loader;forza" "hartsperzap=1;zaps=1;zones=1;precincts=1;shape=1,1:1;program=forza_barrier_test_1hart")
-add_forza_test(forza_barrier2 forza_barrier 30 "all;memh;rv64;loader;forza" "hartsperzap=1;zaps=4;zones=1;precincts=1;shape=1,1:1;program=forza_barrier_test_4zap")
-add_forza_test(forza_barrier_multi forza_barrier 30 "all;memh;rv64;loader;forza" "hartsperzap=1;zaps=4;zones=1;precincts=1;shape=1,1:1;program=forza_barrier_test_multi_barrier")
+add_forza_test(forza_barrier1 forza_barrier 30 "all;memh;rv64;loader;forza" "hartsperzap=1;zaps=1;zones=1;precincts=1;program=forza_barrier_test_1hart")
+add_forza_test(forza_barrier2 forza_barrier 30 "all;memh;rv64;loader;forza" "hartsperzap=1;zaps=4;zones=1;precincts=1;program=forza_barrier_test_4zap")
+add_forza_test(forza_barrier_multi forza_barrier 30 "all;memh;rv64;loader;forza" "hartsperzap=1;zaps=4;zones=1;precincts=1;program=forza_barrier_test_multi_barrier")
 
-add_forza_test(forza_zen_flow forza_zen_flow 60 "all;memh;rv64;loader;forza" "hartsperzap=1;zaps=2;zones=1;precincts=1;shape=1,1:1")
+add_forza_test(forza_zen_flow forza_zen_flow 60 "all;memh;rv64;loader;forza" "hartsperzap=1;zaps=2;zones=1;precincts=1")
 
-add_forza_test(forza_multisend forza_multisend 60 "all;memh;rv64;loader;forza" "hartsperzap=1;zaps=2;zones=1;precincts=1;shape=1,1:1")
+add_forza_test(forza_multisend forza_multisend 60 "all;memh;rv64;loader;forza" "hartsperzap=1;zaps=2;zones=1;precincts=1")
 
 #NOTE: security related tests are still using original rev test with custom script
 #Security related test
