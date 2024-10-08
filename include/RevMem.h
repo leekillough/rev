@@ -72,7 +72,7 @@ public:
   RevMem( uint64_t MemSize, RevOpts* Opts, SST::Output* Output );
 
   /// RevMem: standard memory controller constructor
-  RevMem( uint64_t MemSize, RevOpts* Opts, RevMemCtrl* Ctrl, SST::Output* Output );
+  RevMem( uint64_t memSize, RevOpts* opts, RevMemCtrl* ctrl, SST::Output* output );
 
   /// RevMem: standard destructor
   ~RevMem() { delete[] physMem; }
@@ -111,7 +111,7 @@ public:
     bool contains( const uint64_t& vBaseAddr, const uint64_t& Size ) {
       // exclusive top address
       uint64_t vTopAddr = vBaseAddr + Size - 1;
-      return ( this->contains( vBaseAddr ) && this->contains( vTopAddr ) );
+      return contains( vBaseAddr ) && contains( vTopAddr );
     };
 
     /// MemSegment: Override for easy std::cout << *Seg << std::endl;
@@ -296,9 +296,6 @@ public:
   /// RevMem: Get memSize value set in .py file
   uint64_t GetMemSize() const { return memSize; }
 
-  /// RevMem: Sets the next stack top address
-  void SetNextThreadMemAddr( const uint64_t& NextAddr ) { NextThreadMemAddr = NextAddr; }
-
   ///< RevMem: Get MemSegs vector
   std::vector<std::shared_ptr<MemSegment>>& GetMemSegs() { return MemSegs; }
 
@@ -408,7 +405,7 @@ public:
   /// FORZA: Interface for freeing from Scratchpad
   void ScratchpadFree( uint64_t Addr, size_t size );
 
-  /// FORZA: set the ZOP NIC and MsgIDs objects
+  /// FORZA: set the ZOP NIC object
   void setZNic( Forza::zopAPI* Z ) { zNic = Z; }
 
   /// FORZA: set the RZA flag for this instance of RevMem
@@ -523,8 +520,7 @@ private:
   uint64_t TLSBaseAddr       = 0;                   ///< RevMem: TLS Base Address
   uint64_t TLSSize           = sizeof( uint32_t );  ///< RevMem: TLS Size (minimum size is enough to write the TID)
   uint64_t ThreadMemSize     = _STACK_SIZE_;        ///< RevMem: Size of a thread's memory segment (StackSize + TLSSize)
-  uint64_t NextThreadMemAddr = memSize - 1024;      ///< RevMem: Next top address for a new thread's memory
-                                                    //           (starts at the point the 1024 bytes for argc/argv ends)
+  uint64_t NextThreadMemAddr = memSize;             ///< RevMem: Next top address for a new thread's memory
 
   uint64_t SearchTLB( uint64_t vAddr );                    ///< RevMem: Used to check the TLB for an entry
   void     AddToTLB( uint64_t vAddr, uint64_t physAddr );  ///< RevMem: Used to add a new entry to TLB & LRUQueue

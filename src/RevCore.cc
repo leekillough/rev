@@ -17,28 +17,26 @@ namespace SST::RevCPU {
 using MemSegment = RevMem::MemSegment;
 
 RevCore::RevCore(
-  unsigned                  Id,
-  RevOpts*                  Opts,
-  unsigned                  NumHarts,
-  RevMem*                   Mem,
-  RevLoader*                Loader,
+  unsigned                  id,
+  RevOpts*                  opts,
+  unsigned                  numHarts,
+  RevMem*                   mem,
+  RevLoader*                loader,
   std::function<uint32_t()> GetNewTID,
-  SST::Output*              Output
+  SST::Output*              output
 )
-  : Halted( false ), Stalled( false ), SingleStep( false ), CrackFault( false ), ALUFault( false ), fault_width( 0 ), id( Id ),
-    HartToDecodeID( 0 ), HartToExecID( 0 ), zNic( nullptr ), zNicMsgIds( nullptr ), numHarts( NumHarts ), opts( Opts ), mem( Mem ),
-    coProc( nullptr ), loader( Loader ), GetNewThreadID( std::move( GetNewTID ) ), output( Output ), feature( nullptr ),
-    sfetch( nullptr ), Tracer( nullptr ) {
+  : id( id ), numHarts( numHarts ), opts( opts ), mem( mem ), loader( loader ), GetNewThreadID( std::move( GetNewTID ) ),
+    output( output ) {
 
   // initialize the machine model for the target core
   std::string Machine;
-  if( !Opts->GetMachineModel( id, Machine ) )
+  if( !opts->GetMachineModel( id, Machine ) )
     output->fatal( CALL_INFO, -1, "Error: failed to retrieve the machine model for core=%" PRIu32 "\n", id );
 
   unsigned MinCost = 0;
   unsigned MaxCost = 0;
 
-  Opts->GetMemCost( Id, MinCost, MaxCost );
+  opts->GetMemCost( id, MinCost, MaxCost );
 
   LSQueue = std::make_shared<std::unordered_multimap<uint64_t, MemReq>>();
   LSQueue->clear();
@@ -49,19 +47,19 @@ RevCore::RevCore(
     ValidHarts.set( i, true );
   }
 
-  featureUP = std::make_unique<RevFeature>( Machine, output, MinCost, MaxCost, Id );
+  featureUP = std::make_unique<RevFeature>( Machine, output, MinCost, MaxCost, id );
   feature   = featureUP.get();
   if( !feature )
     output->fatal( CALL_INFO, -1, "Error: failed to create the RevFeature object for core=%" PRIu32 "\n", id );
 
   unsigned Depth = 0;
-  Opts->GetPrefetchDepth( Id, Depth );
+  opts->GetPrefetchDepth( id, Depth );
   if( Depth == 0 ) {
     Depth = 16;
   }
 
   sfetch =
-    std::make_unique<RevPrefetcher>( Mem, feature, Depth, LSQueue, [=]( const MemReq& req ) { this->MarkLoadComplete( req ); } );
+    std::make_unique<RevPrefetcher>( mem, feature, Depth, LSQueue, [=]( const MemReq& req ) { this->MarkLoadComplete( req ); } );
   if( !sfetch )
     output->fatal( CALL_INFO, -1, "Error: failed to create the RevPrefetcher object for core=%" PRIu32 "\n", id );
 
@@ -119,7 +117,7 @@ void RevCore::SetCoProc( RevCoProc* coproc ) {
   }
 }
 
-bool RevCore::EnableExt( RevExt* Ext, bool Opt ) {
+bool RevCore::EnableExt( RevExt* Ext ) {
   if( !Ext )
     output->fatal( CALL_INFO, -1, "Error: failed to initialize RISC-V extensions\n" );
 
@@ -128,45 +126,23 @@ bool RevCore::EnableExt( RevExt* Ext, bool Opt ) {
   // add the extension to our vector of enabled objects
   Extensions.push_back( std::unique_ptr<RevExt>( Ext ) );
 
-  // retrieve all the target instructions
-  const std::vector<RevInstEntry>& IT = Ext->GetInstTable();
-
   // setup the mapping of InstTable to Ext objects
-  InstTable.reserve( InstTable.size() + IT.size() );
+  auto load = [&]( const std::vector<RevInstEntry>& Table ) {
+    InstTable.reserve( InstTable.size() + Table.size() );
+    for( unsigned i = 0; i < Table.size(); i++ ) {
+      InstTable.push_back( Table[i] );
+      auto ExtObj = std::pair<unsigned, unsigned>( Extensions.size() - 1, i );
+      EntryToExt.insert( std::pair<unsigned, std::pair<unsigned, unsigned>>( InstTable.size() - 1, ExtObj ) );
+    }
+  };
 
-  for( unsigned i = 0; i < IT.size(); i++ ) {
-    InstTable.push_back( IT[i] );
-    auto ExtObj = std::pair<unsigned, unsigned>( Extensions.size() - 1, i );
-    EntryToExt.insert( std::pair<unsigned, std::pair<unsigned, unsigned>>( InstTable.size() - 1, ExtObj ) );
-  }
+  // retrieve all the target instructions
+  load( Ext->GetTable() );
 
   // load the compressed instructions
   if( feature->IsModeEnabled( RV_C ) ) {
     output->verbose( CALL_INFO, 6, 0, "Core %" PRIu32 " ; Enabling compressed extension=%s\n", id, Ext->GetName().data() );
-
-    const std::vector<RevInstEntry>& CT = Ext->GetCInstTable();
-    InstTable.reserve( InstTable.size() + CT.size() );
-
-    for( unsigned i = 0; i < CT.size(); i++ ) {
-      InstTable.push_back( CT[i] );
-      std::pair<unsigned, unsigned> ExtObj = std::pair<unsigned, unsigned>( Extensions.size() - 1, i );
-      EntryToExt.insert( std::pair<unsigned, std::pair<unsigned, unsigned>>( InstTable.size() - 1, ExtObj ) );
-    }
-    // load the optional compressed instructions
-    if( Opt ) {
-      output->verbose(
-        CALL_INFO, 6, 0, "Core %" PRIu32 " ; Enabling optional compressed extension=%s\n", id, Ext->GetName().data()
-      );
-
-      const std::vector<RevInstEntry>& OT = Ext->GetOInstTable();
-      InstTable.reserve( InstTable.size() + OT.size() );
-
-      for( unsigned i = 0; i < OT.size(); i++ ) {
-        InstTable.push_back( OT[i] );
-        std::pair<unsigned, unsigned> ExtObj = std::pair<unsigned, unsigned>( Extensions.size() - 1, i );
-        EntryToExt.insert( std::pair<unsigned, std::pair<unsigned, unsigned>>( InstTable.size() - 1, ExtObj ) );
-      }
-    }
+    load( Ext->GetCTable() );
   }
 
   return true;
@@ -177,66 +153,70 @@ bool RevCore::SeedInstTable() {
     CALL_INFO, 6, 0, "Core %" PRIu32 " ; Seeding instruction table for machine model=%s\n", id, feature->GetMachineModel().data()
   );
 
-  // I-Extension
+  // I Extension
   if( feature->IsModeEnabled( RV_I ) ) {
+    EnableExt( new RV32I( feature, mem, output ) );
     if( feature->IsRV64() ) {
-      // load RV32I & RV64; no optional compressed
-      EnableExt( new RV32I( feature, mem, output ), false );
-      EnableExt( new RV64I( feature, mem, output ), false );
-    } else {
-      // load RV32I w/ optional compressed
-      EnableExt( new RV32I( feature, mem, output ), true );
+      EnableExt( new RV64I( feature, mem, output ) );
     }
   }
 
-  // M-Extension
-  if( feature->IsModeEnabled( RV_M ) ) {
-    EnableExt( new RV32M( feature, mem, output ), false );
+  // M Extension
+  if( feature->IsModeEnabled( RV_ZMMUL ) ) {
+    EnableExt( new RV32M( feature, mem, output ) );
     if( feature->IsRV64() ) {
-      EnableExt( new RV64M( feature, mem, output ), false );
+      EnableExt( new RV64M( feature, mem, output ) );
     }
   }
 
-  // A-Extension
+  // A Extension
   if( feature->IsModeEnabled( RV_A ) ) {
-    EnableExt( new RV32A( feature, mem, output ), false );
+    EnableExt( new RV32A( feature, mem, output ) );
     if( feature->IsRV64() ) {
-      EnableExt( new RV64A( feature, mem, output ), false );
+      EnableExt( new RV64A( feature, mem, output ) );
     }
   }
 
-  // F-Extension
+  // F Extension
   if( feature->IsModeEnabled( RV_F ) ) {
-    if( !feature->IsModeEnabled( RV_D ) && feature->IsRV32() ) {
-      EnableExt( new RV32F( feature, mem, output ), true );
-    } else {
-      EnableExt( new RV32F( feature, mem, output ), false );
-      EnableExt( new RV64F( feature, mem, output ), false );
-    }
-  }
-
-  // D-Extension
-  if( feature->IsModeEnabled( RV_D ) ) {
-    EnableExt( new RV32D( feature, mem, output ), false );
+    EnableExt( new RV32F( feature, mem, output ) );
     if( feature->IsRV64() ) {
-      EnableExt( new RV64D( feature, mem, output ), false );
+      EnableExt( new RV64F( feature, mem, output ) );
     }
   }
 
-  // Zicbom-Extension
-  if( feature->IsModeEnabled( RV_ZICBOM ) ) {
-    EnableExt( new Zicbom( feature, mem, output ), false );
+  // D Extension
+  if( feature->IsModeEnabled( RV_D ) ) {
+    EnableExt( new RV32D( feature, mem, output ) );
+    if( feature->IsRV64() ) {
+      EnableExt( new RV64D( feature, mem, output ) );
+    }
   }
 
-  // Zifencei-Extension
+  // Zicbom Extension
+  if( feature->IsModeEnabled( RV_ZICBOM ) ) {
+    EnableExt( new Zicbom( feature, mem, output ) );
+  }
+
+  // Zicsr Extension
+  if( feature->IsModeEnabled( RV_ZICSR ) ) {
+    EnableExt( new Zicsr( feature, mem, output ) );
+  }
+
+  // Zifencei Extension
   if( feature->IsModeEnabled( RV_ZIFENCEI ) ) {
-    EnableExt( new Zifencei( feature, mem, output ), false );
+    EnableExt( new Zifencei( feature, mem, output ) );
+  }
+
+  // Zfa Extension
+  if( feature->IsModeEnabled( RV_ZFA ) ) {
+    EnableExt( new Zfa( feature, mem, output ) );
   }
 
   return true;
 }
 
-uint32_t RevCore::CompressCEncoding( RevInstEntry Entry ) {
+uint32_t RevCore::CompressCEncoding( const RevInstEntry& Entry ) {
   uint32_t Value = 0x00;
 
   Value |= Entry.opcode;
@@ -248,43 +228,22 @@ uint32_t RevCore::CompressCEncoding( RevInstEntry Entry ) {
   return Value;
 }
 
-uint32_t RevCore::CompressEncoding( RevInstEntry Entry ) {
-  uint32_t Value = 0x00;
+uint64_t RevCore::CompressEncoding( const RevInstEntry& Entry ) {
+  uint64_t Value = 0x00;
 
   Value |= Entry.opcode;
-  Value |= uint32_t( Entry.funct3 ) << 8;
-  Value |= uint32_t( Entry.funct2or7 ) << 11;
-  Value |= uint32_t( Entry.imm12 ) << 18;
-  // this is a 5 bit field, but only the lower two bits are used, so it *just*
-  // fits without going to a uint64
-  Value |= uint32_t( Entry.fpcvtOp ) << 30;
+  Value |= uint64_t( Entry.funct3 ) << 8;
+  Value |= uint64_t( Entry.funct2or7 ) << 11;
+  Value |= uint64_t( Entry.imm12 ) << 18;
+  Value |= uint64_t( Entry.rs2fcvtOp ) << 30;
 
   return Value;
 }
 
-void RevCore::splitStr( const std::string& s, char c, std::vector<std::string>& v ) {
-  std::string::size_type i = 0;
-  std::string::size_type j = s.find( c );
-
-  // catch strings with no delims
-  if( j == std::string::npos ) {
-    v.push_back( s );
-  }
-
-  // break up the rest of the string
-  while( j != std::string::npos ) {
-    v.push_back( s.substr( i, j - i ) );
-    i = ++j;
-    j = s.find( c, j );
-    if( j == std::string::npos )
-      v.push_back( s.substr( i, s.length() ) );
-  }
-}
-
-std::string RevCore::ExtractMnemonic( RevInstEntry Entry ) {
+std::string RevCore::ExtractMnemonic( const RevInstEntry& Entry ) {
   std::string              Tmp = Entry.mnemonic;
   std::vector<std::string> vstr;
-  splitStr( Tmp, ' ', vstr );
+  RevOpts::splitStr( Tmp, " ", vstr );
 
   return vstr[0];
 }
@@ -298,19 +257,19 @@ bool RevCore::InitTableMapping() {
     NameToEntry.insert( std::pair<std::string, unsigned>( ExtractMnemonic( InstTable[i] ), i ) );
     if( !InstTable[i].compressed ) {
       // map normal instruction
-      EncToEntry.insert( std::pair<uint32_t, unsigned>( CompressEncoding( InstTable[i] ), i ) );
+      EncToEntry.insert( std::pair<uint64_t, unsigned>( CompressEncoding( InstTable[i] ), i ) );
       output->verbose(
         CALL_INFO,
         6,
         0,
-        "Core %" PRIu32 " ; Table Entry %" PRIu32 " = %s\n",
+        "Core %" PRIu32 " ; Table Entry %" PRIu64 " = %s\n",
         id,
         CompressEncoding( InstTable[i] ),
         ExtractMnemonic( InstTable[i] ).data()
       );
     } else {
       // map compressed instruction
-      CEncToEntry.insert( std::pair<uint32_t, unsigned>( CompressCEncoding( InstTable[i] ), i ) );
+      CEncToEntry.insert( std::pair<uint64_t, unsigned>( CompressCEncoding( InstTable[i] ), i ) );
       output->verbose(
         CALL_INFO,
         6,
@@ -464,7 +423,7 @@ RevInst RevCore::DecodeCIInst( uint16_t Inst, unsigned Entry ) const {
     CompInst.imm = 0;
     CompInst.imm = ( ( Inst & 0b1110000 ) >> 2 );         // [4:2]
     CompInst.imm |= ( ( Inst & 0b1000000000000 ) >> 7 );  // [5]
-    CompInst.imm |= ( ( Inst & 1100 ) << 4 );             // [7:6]
+    CompInst.imm |= ( ( Inst & 0b1100 ) << 4 );           // [7:6]
     CompInst.rs1 = 2;                                     // Force rs1 to be x2 (stack pointer)
   } else if( ( CompInst.opcode == 0b10 ) && ( CompInst.funct3 == 0b011 ) ) {
     CompInst.imm = 0;
@@ -478,7 +437,7 @@ RevInst RevCore::DecodeCIInst( uint16_t Inst, unsigned Entry ) const {
       // c.flwsp
       CompInst.imm = ( ( Inst & 0b1110000 ) >> 2 );         // [4:2]
       CompInst.imm |= ( ( Inst & 0b1000000000000 ) >> 7 );  // [5]
-      CompInst.imm |= ( ( Inst & 1100 ) << 4 );             // [7:6]
+      CompInst.imm |= ( ( Inst & 0b1100 ) << 4 );           // [7:6]
       CompInst.rs1 = 2;                                     // Force rs1 to be x2 (stack pointer)
     }
   } else if( ( CompInst.opcode == 0b01 ) && ( CompInst.funct3 == 0b011 ) && ( CompInst.rd == 2 ) ) {
@@ -855,8 +814,8 @@ RevInst RevCore::DecodeCJInst( uint16_t Inst, unsigned Entry ) const {
 
 // Find the first matching encoding which satisfies a predicate, if any
 auto RevCore::matchInst(
-  const std::unordered_multimap<uint32_t, unsigned>& map,
-  uint32_t                                           encoding,
+  const std::unordered_multimap<uint64_t, unsigned>& map,
+  uint64_t                                           encoding,
   const std::vector<RevInstEntry>&                   InstTable,
   uint32_t                                           Inst
 ) const {
@@ -1014,6 +973,9 @@ RevInst RevCore::DecodeRInst( uint32_t Inst, unsigned Entry ) const {
   DInst.opcode    = InstTable[Entry].opcode;
   DInst.funct3    = InstTable[Entry].funct3;
   DInst.funct2or7 = InstTable[Entry].funct2or7;
+
+  // Whether the instruction raises floating-point exceptions
+  DInst.raisefpe  = InstTable[Entry].raisefpe;
 
   // registers
   DInst.rd        = 0x0;
@@ -1240,6 +1202,9 @@ RevInst RevCore::DecodeR4Inst( uint32_t Inst, unsigned Entry ) const {
   DInst.funct2or7  = DECODE_FUNCT2( Inst );
   DInst.rm         = DECODE_RM( Inst );
 
+  // Whether the instruction raises floating-point exceptions
+  DInst.raisefpe   = InstTable[Entry].raisefpe;
+
   // registers
   DInst.rd         = DECODE_RD( Inst );
   DInst.rs1        = DECODE_RS1( Inst );
@@ -1356,7 +1321,6 @@ RevInst RevCore::DecodeInst( uint32_t Inst ) const {
 
   // Stage 2: Retrieve the opcode
   const uint32_t Opcode = Inst & 0b1111111;
-  uint32_t       Enc    = 0;
 
   // Stage 3: Determine if we have a funct3 field
   uint32_t       Funct3 = 0x00ul;
@@ -1374,7 +1338,7 @@ RevInst RevCore::DecodeInst( uint32_t Inst ) const {
     Funct3 = 0x00ul;
   } else {
     // Retrieve the field
-    Funct3 = ( ( Inst & 0b111000000000000 ) >> 12 );
+    Funct3 = DECODE_FUNCT3( Inst );
   }
 
   // Stage 4: Determine if we have a funct7 field (R-Type and some specific I-Type)
@@ -1382,7 +1346,7 @@ RevInst RevCore::DecodeInst( uint32_t Inst ) const {
   if( inst65 == 0b01 ) {
     if( ( inst42 == 0b011 ) || ( inst42 == 0b100 ) || ( inst42 == 0b110 ) ) {
       // R-Type encodings
-      Funct2or7 = ( ( Inst >> 25 ) & 0b1111111 );
+      Funct2or7 = DECODE_FUNCT7( Inst );
       //Atomics have a smaller funct7 field - trim out the aq and rl fields
       if( Opcode == 0b0101111 ) {
         Funct2or7 = ( Funct2or7 & 0b01111100 ) >> 2;
@@ -1393,40 +1357,53 @@ RevInst RevCore::DecodeInst( uint32_t Inst ) const {
     Funct2or7 = DECODE_FUNCT2( Inst );
   } else if( ( inst65 == 0b10 ) && ( inst42 == 0b100 ) ) {
     // R-Type encodings
-    Funct2or7 = ( ( Inst >> 25 ) & 0b1111111 );
+    Funct2or7 = DECODE_FUNCT7( Inst );
   } else if( ( inst65 == 0b00 ) && ( inst42 == 0b110 ) && ( Funct3 != 0 ) ) {
     // R-Type encodings
-    Funct2or7 = ( ( Inst >> 25 ) & 0b1111111 );
+    Funct2or7 = DECODE_FUNCT7( Inst );
   } else if( ( inst65 == 0b00 ) && ( inst42 == 0b100 ) && ( Funct3 == 0b101 ) ) {
     // Special I-Type encoding for SRAI - also, Funct7 is only 6 bits in this case
     Funct2or7 = ( ( Inst >> 26 ) & 0b1111111 );
   }
 
-  uint32_t fcvtOp = 0;
-  //Special encodings for FCVT instructions
+  uint64_t rs2fcvtOp = 0;
+  //Special encodings for FCVT and Zfa instructions
   if( Opcode == 0b1010011 ) {
+    // clang-format off
     switch( Funct2or7 ) {
-    case 0b1100000:
-    case 0b1101000:
-    case 0b0100000:
-    case 0b0100001:
-    case 0b1100001:
-    case 0b1101001: fcvtOp = DECODE_RS2( Inst );
+    case 0b0100000:  // for FCVT.S.D, FCVT.S.Q,  FCVT.S.H, FROUNDNX.S, FROUND.S
+    case 0b0100001:  // for FCVT.D.S, FCVT.D.Q,  FCVT.D.H, FROUNDNX.D, FROUND.D
+    case 0b0100010:  // for FCVT.H.S, FCVT.H.D,  FCVT.H.Q, FROUNDNX.H, FROUND.H
+    case 0b0100011:  // for FCVT.Q.S, FCVT.Q.D,  FCVT.Q.H, FROUNDNX.Q, FROUND.Q
+    case 0b1100000:  // for FCVT.W.S, FCVT.WU.S, FCVT.L.S, FCVT.LU.S
+    case 0b1100001:  // for FCVT.W.D, FCVT.WU.D, FCVT.L.D, FCVT.LU.D, FCVTMOD.W.D
+    case 0b1100010:  // for FCVT.W.H, FCVT.WU.H, FCVT.L.H, FCVT.LU.H
+    case 0b1100011:  // for FCVT.W.Q, FCVT.WU.Q, FCVT.L.Q, FCVT.LU.Q
+    case 0b1101000:  // for FCVT.S.W, FCVT.S.WU, FCVT.S.L, FCVT.S.LU
+    case 0b1101001:  // for FCVT.D.W, FCVT.D.WU, FCVT.D.L, FCVT.D.LU
+    case 0b1101010:  // for FCVT.H.W, FCVT.H.WU, FCVT.H.L, FCVT.H.LU
+    case 0b1101011:  // for FCVT.Q.W, FCVT.Q.WU, FCVT.Q.L, FCVT.Q.LU
+    case 0b1111000:  // for Zfa FLI.S
+    case 0b1111001:  // for Zfa FLI.D
+    case 0b1111010:  // for Zfa FLI.H
+    case 0b1111011:  // for Zfa FLI.Q
+      rs2fcvtOp = DECODE_RS2( Inst );
     }
+    // clang-format on
   }
 
   // Stage 5: Determine if we have an imm12 field (ECALL and EBREAK)
   uint32_t Imm12 = 0x00ul;
-  if( ( inst42 == 0b100 ) && ( inst65 == 0b11 ) && ( Funct3 == 0 ) ) {
+  if( inst42 == 0b100 && inst65 == 0b11 && Funct3 == 0 ) {
     Imm12 = DECODE_IMM12( Inst );
   }
 
   // Stage 6: Compress the encoding
-  Enc |= Opcode;
+  uint64_t Enc = Opcode;
   Enc |= Funct3 << 8;
   Enc |= Funct2or7 << 11;
   Enc |= Imm12 << 18;
-  Enc |= fcvtOp << 30;
+  Enc |= rs2fcvtOp << 30;
 
   // Stage 7: Look up the value in the table
   auto it = matchInst( EncToEntry, Enc, InstTable, Inst );
@@ -1436,39 +1413,35 @@ RevInst RevCore::DecodeInst( uint32_t Inst ) const {
   // set Funct3 to zero and check again. We exclude if Funct3 == 0b101 ||
   // Funct3 == 0b110 because those are invalid FP rounding mode (rm) values.
   if( inst65 == 0b10 && Funct3 != 0b101 && Funct3 != 0b110 && it == EncToEntry.end() ) {
-    Enc &= 0xfffff8ff;
-    it = matchInst( EncToEntry, Enc, InstTable, Inst );
+    Enc = ~( ~Enc | 0x700 );
+    it  = matchInst( EncToEntry, Enc, InstTable, Inst );
   }
 
   bool isCoProcInst = false;
 
   // If we did not find a valid instruction, look for a coprocessor instruction
   if( it == EncToEntry.end() && coProc && coProc->IssueInst( feature, RegFile, mem, Inst ) ) {
-    isCoProcInst     = true;
     //Create NOP - ADDI x0, x0, 0
-    uint32_t addi_op = 0b0010011;
-    Inst             = 0;
-    Enc              = 0;
-    Enc |= addi_op;
-    it = matchInst( EncToEntry, Enc, InstTable, Inst );
+    isCoProcInst = true;
+    Enc          = 0b0010011;
+    Inst         = 0;
+    it           = matchInst( EncToEntry, Enc, InstTable, Inst );
   }
 
   if( it == EncToEntry.end() ) {
     // failed to decode the instruction
-    output->fatal( CALL_INFO, -1, "Error: failed to decode instruction at PC=0x%" PRIx64 "; Enc=%" PRIu32 "\n", GetPC(), Enc );
+    output->fatal( CALL_INFO, -1, "Error: failed to decode instruction at PC=0x%" PRIx64 "; Enc=%" PRIu64 "\n", GetPC(), Enc );
   }
 
   unsigned Entry = it->second;
   if( Entry >= InstTable.size() ) {
     if( coProc && coProc->IssueInst( feature, RegFile, mem, Inst ) ) {
-      isCoProcInst     = true;
       //Create NOP - ADDI x0, x0, 0
-      uint32_t addi_op = 0b0010011;
-      Inst             = 0;
-      Enc              = 0;
-      Enc |= addi_op;
-      it    = matchInst( EncToEntry, Enc, InstTable, Inst );
-      Entry = it->second;
+      isCoProcInst = true;
+      Enc          = 0b0010011;
+      Inst         = 0;
+      it           = matchInst( EncToEntry, Enc, InstTable, Inst );
+      Entry        = it->second;
     }
   }
 
@@ -1476,7 +1449,8 @@ RevInst RevCore::DecodeInst( uint32_t Inst ) const {
     output->fatal(
       CALL_INFO,
       -1,
-      "Error: no entry in table for instruction at PC=0x%" PRIx64 " Opcode = %x Funct3 = %x Funct2or7 = %x Imm12 = %x Enc = %x \n",
+      "Error: no entry in table for instruction at PC=0x%" PRIx64
+      " Opcode = %x Funct3 = %x Funct2or7 = %x Imm12 = %x Enc = %" PRIx64 "\n",
       GetPC(),
       Opcode,
       Funct3,
@@ -1712,7 +1686,9 @@ void RevCore::ReqThreadFromZqm() {
 bool RevCore::ClockTick( SST::Cycle_t currentCycle ) {
   RevInst Inst;
   bool    rtn = false;
-  Stats.totalCycles++;
+  ++Stats.totalCycles;
+  ++cycles;
+  currentSimCycle = currentCycle;
 
   // FORZA specific
   if( zNic && !ThreadReqd )
@@ -1886,7 +1862,8 @@ bool RevCore::ClockTick( SST::Cycle_t currentCycle ) {
         ExecPC
       );
 #endif
-      Stats.retired++;
+      ++Stats.retired;
+      ++RegFile->InstRet;
 
       // Only clear the dependency if there is no outstanding load
       if( ( RegFile->GetLSQueue()->count(
@@ -1992,25 +1969,30 @@ RevRegFile* RevCore::GetRegFile( unsigned HartID ) const {
 void RevCore::CreateThread( uint32_t NewTID, uint64_t firstPC, void* arg ) {
   // tidAddr is the address we have to write the new thread's id to
   output->verbose( CALL_INFO, 2, 0, "Creating new thread with PC = 0x%" PRIx64 "\n", firstPC );
-  uint32_t ParentThreadID                      = Harts.at( HartToExecID )->GetAssignedThreadID();
+  uint32_t ParentThreadID                  = Harts.at( HartToExecID )->GetAssignedThreadID();
 
   // Create the new thread's memory
-  std::shared_ptr<MemSegment> NewThreadMem     = mem->AddThreadMem();
+  std::shared_ptr<MemSegment> NewThreadMem = mem->AddThreadMem();
 
   // TODO: Copy TLS into new memory
 
   // Create new register file
-  std::unique_ptr<RevRegFile> NewThreadRegFile = std::make_unique<RevRegFile>( feature );
+  auto NewThreadRegFile                    = std::make_unique<RevRegFile>( this );
 
   // Copy the arg to the new threads a0 register
   NewThreadRegFile->SetX( RevReg::a0, reinterpret_cast<uintptr_t>( arg ) );
 
+  // Set the stack and thread pointer
+  // The thread local storage is accessed with a nonnegative offset from tp,
+  // and the stack grows down with sp being subtracted from before storing.
+  uint64_t sp = ( NewThreadMem->getTopAddr() - mem->GetTLSSize() ) & ~uint64_t{ 15 };
+  NewThreadRegFile->SetX( RevReg::tp, sp );
+  NewThreadRegFile->SetX( RevReg::sp, sp );
+
   // Set the global pointer
-  // TODO: Cleanup
-  NewThreadRegFile->SetX( RevReg::tp, NewThreadMem->getTopAddr() );
-  NewThreadRegFile->SetX( RevReg::sp, NewThreadMem->getTopAddr() - mem->GetTLSSize() );
-  NewThreadRegFile->SetX( RevReg::gp, loader->GetSymbolAddr( "__global_pointer$" ) );
-  NewThreadRegFile->SetX( 8, loader->GetSymbolAddr( "__global_pointer$" ) );
+  auto gp = loader->GetSymbolAddr( "__global_pointer$" );
+  NewThreadRegFile->SetX( RevReg::gp, gp );
+  NewThreadRegFile->SetX( RevReg::fp, gp );  // frame pointer register
   NewThreadRegFile->SetPC( firstPC );
 
   // Create a new RevThread Object
@@ -2019,8 +2001,6 @@ void RevCore::CreateThread( uint32_t NewTID, uint64_t firstPC, void* arg ) {
 
   // Add new thread to this vector so the RevCPU will add and schedule it
   AddThreadsThatChangedState( std::move( NewThread ) );
-
-  return;
 }
 
 //
@@ -2080,8 +2060,8 @@ void RevCore::AssignThread( std::unique_ptr<RevThread> Thread ) {
       1,
       "Attempted to assign a thread to a hart but no available harts were "
       "found.\n"
-      "We should never have tried to assign a thread to this Proc if it had no "
-      "harts available (ie. Proc->NumIdleHarts() == 0 ).\n"
+      "We should never have tried to assign a thread to this Core if it had no "
+      "harts available (ie. Core->NumIdleHarts() == 0 ).\n"
       "This is a bug\n"
     );
   }

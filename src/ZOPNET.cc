@@ -388,7 +388,6 @@ void zopNIC::send( zopEvent* ev, zopCompID dest, zopPrecID zone, unsigned prec )
       realDest = i.first;
     }
   }
-
   ev->encodeEvent();
   req->dest = realDest;  // FIXME - what needs fixed here?
   req->src  = getAddress();

@@ -19,23 +19,18 @@ namespace SST::RevCPU {
 
 using MemSegment        = RevMem::MemSegment;
 
-const char splash_msg[] = "\
-\n\
-*******                   \n\
-/**////**                  \n\
-/**   /**   *****  **    **\n\
-/*******   **///**/**   /**\n\
-/**///**  /*******//** /** \n\
-/**  //** /**////  //****  \n\
-/**   //**//******  //**   \n\
-//     //  //////    //    \n\
-\n\
-";
+const char splash_msg[] = R"(
+*******
+/**////**
+/**   /**   *****  **    **
+/*******   **///**/**   /**
+/**///**  /*******//** /**
+/**  //** /**////  //****
+/**   //**//******  //**
+//     //  //////    //
+)";
 
-RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params )
-  : SST::Component( id ), testStage( 0 ), PrivTag( 0 ), address( -1 ), EnableNIC( false ), EnableMemH( false ),
-    EnableCoProc( false ), EnableRZA( false ), EnableZopNIC( false ), EnableForzaSecurity( false ), DisableCoprocClock( false ),
-    Precinct( 0 ), Zone( 0 ), zNic( nullptr ), zNicMsgIds( nullptr ), Nic( nullptr ), Ctrl( nullptr ), ClockHandler( nullptr ) {
+RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params ) : SST::Component( id ) {
 
   const int Verbosity = params.find<int>( "verbose", 0 );
 
@@ -59,27 +54,25 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params )
   // printf("given Txt files : %s\n",txtFile.c_str());
   // Derive the simulation parameters
   // We must always derive the number of cores before initializing the options
-  numCores = params.find<unsigned>( "numCores", "1" );
-  numHarts = params.find<uint16_t>( "numHarts", "1" );
+  numCores = params.find<uint32_t>( "numCores", "1" );
+  numHarts = params.find<uint32_t>( "numHarts", "1" );
 
-  // Make sure someone isn't trying to have more than 65536 harts per core
+  // Make sure someone isn't trying to have more than _MAX_HARTS_ harts per core
   if( numHarts > _MAX_HARTS_ ) {
-    output.fatal( CALL_INFO, -1, "Error: number of harts must be <= %" PRIu32 "\n", _MAX_HARTS_ );
+    output.fatal( CALL_INFO, -1, "Error: number of harts must be <= %" PRIu32 "\n", uint32_t{ _MAX_HARTS_ } );
   }
   output.verbose(
     CALL_INFO, 1, 0, "Building Rev with %" PRIu32 " cores and %" PRIu32 " hart(s) on each core \n", numCores, numHarts
   );
 
   // read the binary executable name
-  Exe  = params.find<std::string>( "program", "a.out" );
-
-  // read the program arguments
-  Args = params.find<std::string>( "args", "" );
+  auto Exe = params.find<std::string>( "program", "a.out" );
 
   // Create the options object
-  Opts = new( std::nothrow ) RevOpts( numCores, numHarts, Verbosity );
-  if( !Opts )
-    output.fatal( CALL_INFO, -1, "Error: failed to initialize the RevOpts object\n" );
+  Opts     = std::make_unique<RevOpts>( numCores, numHarts, Verbosity );
+
+  // Program arguments
+  Opts->SetArgs( params );
 
   // Initialize the remaining options
   for( auto [ParamName, InitFunc] : {
@@ -92,7 +85,7 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params )
        } ) {
     std::vector<std::string> optList;
     params.find_array( ParamName, optList );
-    if( !( Opts->*InitFunc )( optList ) )
+    if( !( Opts.get()->*InitFunc )( optList ) )
       output.fatal( CALL_INFO, -1, "Error: failed to initialize %s\n", ParamName );
   }
 
@@ -141,28 +134,91 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params )
   }
 
   if( !EnableMemH ) {
-    // TODO: Use std::nothrow to return null instead of throwing std::bad_alloc
-    Mem = new RevMem( memSize, Opts, &output );
-    if( !Mem )
-      output.fatal( CALL_INFO, -1, "Error: failed to initialize the memory object\n" );
+    Mem = std::make_unique<RevMem>( memSize, Opts.get(), &output );
   } else {
-    Ctrl = loadUserSubComponent<RevMemCtrl>( "memory" );
+    Ctrl = std::unique_ptr<RevMemCtrl>( loadUserSubComponent<RevMemCtrl>( "memory" ) );
     if( !Ctrl )
       output.fatal( CALL_INFO, -1, "Error : failed to inintialize the memory controller subcomponent\n" );
-
-    // TODO: Use std::nothrow to return null instead of throwing std::bad_alloc
-    Mem = new RevMem( memSize, Opts, Ctrl, &output );
-    if( !Mem )
-      output.fatal( CALL_INFO, -1, "Error : failed to initialize the memory object\n" );
+    Mem = std::make_unique<RevMem>( memSize, Opts.get(), Ctrl.get(), &output );
 
     if( EnableFaults )
-      output.verbose(
-        CALL_INFO,
-        1,
-        0,
-        "Warning: memory faults cannot be enabled with "
-        "memHierarchy support\n"
-      );
+      output.verbose( CALL_INFO, 1, 0, "Warning: memory faults cannot be enabled with memHierarchy support\n" );
+  }
+
+  // if the forza security models are enabled, inform RevMem that logging as been enabled
+  if( EnableForzaSecurity ) {
+    if( memTrafficInput != "nil" ) {
+      output.verbose( CALL_INFO, 1, 0, "Enabling MemTrafficInput : %s\n", memTrafficInput.c_str() );
+      Mem->updatePhysHistoryfromInput( memTrafficInput );
+    }
+    if( memTrafficOutput != "nil" ) {
+      output.verbose( CALL_INFO, 1, 0, "Enabling MemTrafficOutput : %s\n", memTrafficOutput.c_str() );
+      Mem->setOutputFile( memTrafficOutput );
+      Mem->enablePhysHistoryLogging();
+    }
+  }
+
+  // FORZA: initialize scratchpad
+  Mem->InitScratchpad( id, _SCRATCHPAD_SIZE_, _CHUNK_SIZE_ );
+
+  // FORZA: initialize the network
+  // setup the FORZA NoC NIC endpoint for the Zone
+  // Note that this must occur AFTER memory initialization
+  EnableZopNIC = params.find<bool>( "enableZoneNIC", 0 );
+  if( EnableZopNIC ) {
+    output.verbose( CALL_INFO, 4, 0, "[FORZA] Enabling zone NIC on device=%s\n", getName().c_str() );
+    Precinct = params.find<unsigned>( "precinctId", 0 );
+    Zone     = params.find<unsigned>( "zoneId", 0 );
+    zNic     = loadUserSubComponent<Forza::zopAPI>( "zone_nic" );
+    if( !zNic ) {
+      output.fatal( CALL_INFO, -1, "Error: no ZONE NIC object loaded into RevCPU\n" );
+    }
+    Mem->setZNic( zNic );
+    zNic->setNumHarts( numHarts );
+    zNic->setPrecinctID( Precinct );
+    zNic->setZoneID( Zone );
+
+    // set the message handler for the NoC interface
+    zNic->setMsgHandler( new Event::Handler<RevCPU>( this, &RevCPU::handleZOPMessage ) );
+
+    // set the message id generator
+    zNicMsgIds = new Forza::zopMsgID();
+
+    // now that the NIC has been loaded, we need to ensure that the NIC knows
+    // what type of endpoint it is
+    if( EnableRZA ) {
+      // This Rev instance is an RZA
+      if( !EnableMemH ) {
+        output.fatal(
+          CALL_INFO,
+          -1,
+          "Error : memHierarchy is required if the respective Rev "
+          "instance is an RZA\n"
+        );
+      }
+      zNic->setEndpointType( Forza::zopCompID::Z_RZA );
+      output.verbose( CALL_INFO, 4, 0, "[FORZA] device=%s initialized as RZA device\n", getName().c_str() );
+      // ensure the memory controller knows that it is an RZA device
+      Mem->setRZA();
+    } else {
+      // This Rev instance is a ZAP
+      Mem->unsetRZA();
+      unsigned         zap   = params.find<unsigned>( "zapId", 0 );
+      Forza::zopCompID zapId = Forza::zopCompID::Z_ZAP0;
+      switch( zap ) {
+      case 0: zapId = Forza::zopCompID::Z_ZAP0; break;
+      case 1: zapId = Forza::zopCompID::Z_ZAP1; break;
+      case 2: zapId = Forza::zopCompID::Z_ZAP2; break;
+      case 3: zapId = Forza::zopCompID::Z_ZAP3; break;
+      case 4: zapId = Forza::zopCompID::Z_ZAP4; break;
+      case 5: zapId = Forza::zopCompID::Z_ZAP5; break;
+      case 6: zapId = Forza::zopCompID::Z_ZAP6; break;
+      case 7: zapId = Forza::zopCompID::Z_ZAP7; break;
+      default: output.fatal( CALL_INFO, -1, "Error: zapId is out of range [0-7]\n" ); break;
+      }
+      zNic->setEndpointType( zapId );
+      output.verbose( CALL_INFO, 4, 0, "[FORZA] device=%s initialized as ZAP device: ZAP%d\n", getName().c_str(), zap );
+    }
   }
 
   // if the forza security models are enabled, inform RevMem that logging as been enabled
@@ -260,20 +316,7 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params )
   Mem->SetMaxHeapSize( maxHeapSize );
 
   // Load the binary into memory
-  // TODO: Use std::nothrow to return null instead of throwing std::bad_alloc
-  if( EnableZopNIC ) {
-    Loader = new RevLoader( Exe, Args, Mem, &output, EnableRZA );
-    if( !Loader ) {
-      output.fatal( CALL_INFO, -1, "Error: failed to initialize the RISC-V loader\n" );
-    }
-  } else {
-    Loader = new RevLoader( Exe, Args, Mem, &output, true );
-    if( !Loader ) {
-      output.fatal( CALL_INFO, -1, "Error: failed to initialize the RISC-V loader\n" );
-    }
-  }
-
-  Opts->SetArgs( Loader->GetArgv() );
+  Loader       = std::make_unique<RevLoader>( Exe, Opts->GetArgv(), Mem.get(), &output, !EnableZopNIC || EnableRZA );
 
   EnableCoProc = params.find<bool>( "enableCoProc", 0 );
   if( EnableCoProc ) {
@@ -281,18 +324,18 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params )
     // Create the processor objects
     Procs.reserve( Procs.size() + numCores );
     for( unsigned i = 0; i < numCores; i++ ) {
-      RevCore* tmpNewRevCore = new RevCore( i, Opts, numHarts, Mem, Loader, this->GetNewTID(), &output );
+      RevCore* tmpNewRevCore = new RevCore( i, Opts.get(), numHarts, Mem.get(), Loader.get(), this->GetNewTID(), &output );
       tmpNewRevCore->setZNic( zNic );
-      Procs.push_back( tmpNewRevCore );
+      Procs.push_back( std::unique_ptr<RevCore>( tmpNewRevCore ) );
     }
     // Create the co-processor objects
     for( unsigned i = 0; i < numCores; i++ ) {
-      RevCoProc* CoProc = loadUserSubComponent<RevCoProc>( "co_proc", SST::ComponentInfo::SHARE_NONE, Procs[i] );
+      RevCoProc* CoProc = loadUserSubComponent<RevCoProc>( "co_proc", SST::ComponentInfo::SHARE_NONE, Procs[i].get() );
       if( !CoProc ) {
         output.fatal( CALL_INFO, -1, "Error : failed to inintialize the co-processor subcomponent\n" );
       }
-      CoProcs.push_back( CoProc );
       Procs[i]->SetCoProc( CoProc );
+      CoProcs.push_back( std::unique_ptr<RevCoProc>( CoProc ) );
     }
   } else if( EnableRZA ) {
     // retrieve each of the RZA pipeline models
@@ -308,38 +351,41 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params )
 
     Procs.reserve( Procs.size() + numCores );
     for( unsigned i = 0; i < numCores; i++ ) {
-      RevCore* tmpNewRevCore = new RevCore( i, Opts, numHarts, Mem, Loader, this->GetNewTID(), &output );
+      auto tmpNewRevCore =
+        std::make_unique<RevCore>( i, Opts.get(), numHarts, Mem.get(), Loader.get(), this->GetNewTID(), &output );
       tmpNewRevCore->setZNic( zNic );
-      Procs.push_back( tmpNewRevCore );
+      Procs.push_back( std::move( tmpNewRevCore ) );
     }
 
-    RevCoProc* LSProc = loadUserSubComponent<RevCoProc>( "rza_ls", SST::ComponentInfo::SHARE_NONE, Procs[Z_MZOP_PIPE_HART] );
+    RevCoProc* LSProc = loadUserSubComponent<RevCoProc>( "rza_ls", SST::ComponentInfo::SHARE_NONE, Procs[Z_MZOP_PIPE_HART].get() );
     if( !LSProc ) {
       output.fatal( CALL_INFO, -1, "Error : failed to initialize the RZA LS pipeline\n" );
     }
-    LSProc->setMem( Mem );
+    LSProc->setMem( Mem.get() );
     LSProc->setZNic( zNic );
 
-    RevCoProc* AMOProc = loadUserSubComponent<RevCoProc>( "rza_amo", SST::ComponentInfo::SHARE_NONE, Procs[Z_HZOP_PIPE_HART] );
+    RevCoProc* AMOProc =
+      loadUserSubComponent<RevCoProc>( "rza_amo", SST::ComponentInfo::SHARE_NONE, Procs[Z_HZOP_PIPE_HART].get() );
     if( !AMOProc ) {
       output.fatal( CALL_INFO, -1, "Error : failed to initialize the RZA AMO pipeline\n" );
     }
-    AMOProc->setMem( Mem );
+    AMOProc->setMem( Mem.get() );
     AMOProc->setZNic( zNic );
 
-    CoProcs.push_back( LSProc );
-    CoProcs.push_back( AMOProc );
+    CoProcs.push_back( std::unique_ptr<RevCoProc>( LSProc ) );
+    CoProcs.push_back( std::unique_ptr<RevCoProc>( AMOProc ) );
     Procs[Z_MZOP_PIPE_HART]->SetCoProc( LSProc );
     Procs[Z_HZOP_PIPE_HART]->SetCoProc( AMOProc );
   } else {
     // Create the processor objects
     Procs.reserve( Procs.size() + numCores );
     for( unsigned i = 0; i < numCores; i++ ) {
-      RevCore* tmpNewRevCore = new RevCore( i, Opts, numHarts, Mem, Loader, this->GetNewTID(), &output );
+      auto tmpNewRevCore =
+        std::make_unique<RevCore>( i, Opts.get(), numHarts, Mem.get(), Loader.get(), this->GetNewTID(), &output );
       tmpNewRevCore->setZNic( zNic );
       tmpNewRevCore->setZNicMsgIds( zNicMsgIds );
       tmpNewRevCore->setZRing( zoneRing );
-      Procs.push_back( tmpNewRevCore );
+      Procs.push_back( std::move( tmpNewRevCore ) );
     }
   }
 
@@ -496,7 +542,7 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params )
   DisableCoprocClock    = params.find<bool>( "independentCoprocClock", 0 );
 
   // Create the completion array
-  Enabled               = new bool[numCores]{ false };
+  Enabled               = std::vector<bool>( numCores );
 
   const unsigned Splash = params.find<bool>( "splash", 0 );
 
@@ -511,32 +557,6 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params )
     std::ofstream dumpFile( Name + ".dump.init", std::ios::binary );
     Mem->DumpMemSeg( Seg, 16, dumpFile );
   }
-}
-
-RevCPU::~RevCPU() {
-  // delete the competion array
-  delete[] Enabled;
-
-  // delete the processors objects
-  for( size_t i = 0; i < Procs.size(); i++ ) {
-    delete Procs[i];
-  }
-
-  for( size_t i = 0; i < CoProcs.size(); i++ ) {
-    delete CoProcs[i];
-  }
-
-  // delete the memory controller if present
-  delete Ctrl;
-
-  // delete the memory object
-  delete Mem;
-
-  // delete the loader object
-  delete Loader;
-
-  // delete the options object
-  delete Opts;
 }
 
 void RevCPU::DecodeFaultWidth( const std::string& width ) {
@@ -1354,10 +1374,12 @@ bool RevCPU::clockTick( SST::Cycle_t currentCycle ) {
 void RevCPU::InitThread( std::unique_ptr<RevThread>&& ThreadToInit ) {
   // Get a pointer to the register state for this thread
   std::unique_ptr<RevRegFile> RegState = ThreadToInit->TransferVirtRegState();
+
   // Set the global pointer register and the frame pointer register
   auto gp                              = Loader->GetSymbolAddr( "__global_pointer$" );
   RegState->SetX( RevReg::gp, gp );
-  RegState->SetX( RevReg::s0, gp );  // s0 = x8 = frame pointer register
+  RegState->SetX( RevReg::fp, gp );
+
   // Set state to Ready
   ThreadToInit->SetState( ThreadState::READY );
   output.verbose( CALL_INFO, 4, 0, "Initializing Thread %" PRIu32 "\n", ThreadToInit->GetID() );
@@ -1414,21 +1436,6 @@ void RevCPU::CheckBlockedThreads() {
   return;
 }
 
-// ----------------------------------
-// We need to initialize the x10 register to include the value of ARGC
-// This is >= 1 (the executable name is always included)
-// We also need to initialize the ARGV pointer to the value
-// of the ARGV base pointer in memory which is currently set to the
-// program header region.  When we come out of reset, this is StackTop+60 bytes
-// ----------------------------------
-void RevCPU::SetupArgs( const std::unique_ptr<RevRegFile>& RegFile ) {
-  auto Argv = Opts->GetArgv();
-  // setup argc
-  RegFile->SetX( RevReg::a0, Argv.size() );
-  RegFile->SetX( RevReg::a1, Mem->GetStackTop() + 60 );
-  return;
-}
-
 // Checks core 'i' to see if it has any available harts to assign work to
 // if it does and there is work to assign (ie. ReadyThreads is not empty)
 // assign it and enable the processor if not already enabled.
@@ -1471,6 +1478,9 @@ void RevCPU::HandleThreadStateChangesForProc( uint32_t ProcID ) {
     case ThreadState::DONE:
       // This thread has completed execution
       output.verbose( CALL_INFO, 8, 0, "Thread %" PRIu32 " on Core %" PRIu32 " is DONE\n", ThreadID, ProcID );
+      if( zNic ) {
+        sendZQMThreadComplete( ThreadID, Procs[ProcID]->GetHartFromThreadID( ThreadID ) );
+      }
       CompletedThreads.emplace( ThreadID, std::move( Thread ) );
       break;
 
@@ -1529,14 +1539,35 @@ void RevCPU::HandleThreadStateChangesForProc( uint32_t ProcID ) {
 }
 
 void RevCPU::InitMainThread( uint32_t MainThreadID, const uint64_t StartAddr ) {
-  // @Lee: Is there a better way to get the feature info?
-  std::unique_ptr<RevRegFile> MainThreadRegState = std::make_unique<RevRegFile>( Procs[0]->GetRevFeature() );
+  auto MainThreadRegState = std::make_unique<RevRegFile>( Procs[0].get() );
+
+  // The Program Counter gets set to the start address
   MainThreadRegState->SetPC( StartAddr );
-  MainThreadRegState->SetX( RevReg::tp, Mem->GetThreadMemSegs().front()->getTopAddr() );
-  MainThreadRegState->SetX( RevReg::sp, Mem->GetThreadMemSegs().front()->getTopAddr() - Mem->GetTLSSize() );
-  MainThreadRegState->SetX( RevReg::gp, Loader->GetSymbolAddr( "__global_pointer$" ) );
-  MainThreadRegState->SetX( 8, Loader->GetSymbolAddr( "__global_pointer$" ) );
-  SetupArgs( MainThreadRegState );
+
+  // We need to initialize the a0 register to the value of ARGC.
+  // This is >= 1 (the executable name is always included).
+  // We also need to initialize the a1 register to the ARGV pointer
+  // of the ARGV base pointer in memory which is currently set to
+  // the top of stack.
+  uint64_t stackTop = Mem->GetStackTop();
+  MainThreadRegState->SetX( RevReg::a0, Opts->GetArgv().size() + 1 );
+  MainThreadRegState->SetX( RevReg::a1, stackTop );
+
+  // We subtract Mem->GetTLSSize() bytes from the current stack top, and
+  // round down to a multiple of 16 bytes. We set it as the new top of stack.
+  stackTop = ( stackTop - Mem->GetTLSSize() ) & ~uint64_t{ 15 };
+  Mem->SetStackTop( stackTop );
+
+  // We set the stack pointer and the thread pointer to the new stack top
+  // The thread local storage is accessed with a nonnegative offset from tp,
+  // and the stack grows down with sp being subtracted from before storing.
+  MainThreadRegState->SetX( RevReg::sp, stackTop );
+  MainThreadRegState->SetX( RevReg::tp, stackTop );
+
+  auto gp = Loader->GetSymbolAddr( "__global_pointer$" );
+  MainThreadRegState->SetX( RevReg::gp, gp );
+  MainThreadRegState->SetX( RevReg::fp, gp );
+
   std::unique_ptr<RevThread> MainThread = std::make_unique<RevThread>(
     MainThreadID,
     _INVALID_TID_,  // No Parent Thread ID

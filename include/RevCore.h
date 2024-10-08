@@ -37,7 +37,6 @@
 #include <vector>
 
 // -- RevCPU Headers
-#include "AllRevInstTables.h"
 #include "RevCoProc.h"
 #include "RevCorePasskey.h"
 #include "RevFeature.h"
@@ -57,6 +56,8 @@
 #include "../common/include/RevCommon.h"
 #include "../common/syscalls/syscalls.h"
 
+#include "AllRevInstTables.h"
+
 namespace SST::RevCPU {
 class RevCoProc;
 
@@ -64,13 +65,13 @@ class RevCore {
 public:
   /// RevCore: standard constructor
   RevCore(
-    unsigned                  Id,
-    RevOpts*                  Opts,
-    unsigned                  NumHarts,
-    RevMem*                   Mem,
-    RevLoader*                Loader,
+    unsigned                  id,
+    RevOpts*                  opts,
+    unsigned                  numHarts,
+    RevMem*                   mem,
+    RevLoader*                loader,
     std::function<uint32_t()> GetNewThreadID,
-    SST::Output*              Output
+    SST::Output*              output
   );
 
   /// RevCore: standard destructor
@@ -160,7 +161,9 @@ public:
 
   RevMem& GetMem() const { return *mem; }
 
-  ///< RevCore: Called by RevCPU to handle the state changes threads may have happened during this Proc's ClockTick
+  uint64_t GetCurrentSimCycle() const { return currentSimCycle; }
+
+  ///< RevCore: Called by RevCPU to handle the state changes threads may have happened during this Core's ClockTick
   auto TransferThreadsThatChangedState() { return std::move( ThreadsThatChangedState ); }
 
   ///< RevCore: Add
@@ -174,8 +177,8 @@ public:
   ///< RevCore: Returns the current HartToExecID active pid
   uint32_t GetActiveThreadID() { return Harts.at( HartToDecodeID )->GetAssignedThreadID(); }
 
-  ///< RevCore: Get this Proc's feature
-  RevFeature* GetRevFeature() const { return feature; }
+  ///< RevCore: Get this Core's feature
+  const RevFeature* GetRevFeature() const { return feature; }
 
   ///< RevCore: Mark a current request as complete
   void MarkLoadComplete( const MemReq& req );
@@ -285,7 +288,7 @@ public:
   ///< RevCore: Returns the id of an idle hart (or _INVALID_HART_ID_ if none are idle)
   unsigned FindIdleHartID() const;
 
-  ///< RevCore: Returns true if all harts are available (ie. There is nothing executing on this Proc)
+  ///< RevCore: Returns true if all harts are available (ie. There is nothing executing on this Core)
   bool HasNoBusyHarts() const { return IdleHarts == ValidHarts; }
 
   ///< RevCore: Used by RevCPU to determine if it can disable this proc
@@ -299,6 +302,9 @@ public:
   ///< RevCore: FORZA - Request a thread from the ZQM if HART available
   void ReqThreadFromZqm();
 
+  ///< RevCore: Returns the number of cycles executed so far
+  uint64_t GetCycles() const { return cycles; }
+
 private:
   bool           Halted      = false;  ///< RevCore: determines if the core is halted
   bool           Stalled     = false;  ///< RevCore: determines if the core is stalled on instruction fetch
@@ -307,9 +313,10 @@ private:
   bool           ALUFault    = false;  ///< RevCore: determines if we need to handle an ALU fault
   unsigned       fault_width = 0;      ///< RevCore: the width of the target fault
   unsigned const id;                   ///< RevCore: processor id
-  uint64_t       ExecPC         = 0;   ///< RevCore: executing PC
-  unsigned       HartToDecodeID = 0;   ///< RevCore: Current executing ThreadID
-  unsigned       HartToExecID   = 0;   ///< RevCore: Thread to dispatch instruction
+  uint64_t       ExecPC          = 0;  ///< RevCore: executing PC
+  unsigned       HartToDecodeID  = 0;  ///< RevCore: Current executing ThreadID
+  unsigned       HartToExecID    = 0;  ///< RevCore: Thread to dispatch instruction
+  uint64_t       currentSimCycle = 0;  ///< RevCore: Current simulation cycle
 
   std::vector<std::shared_ptr<RevHart>> Harts{};                ///< RevCore: vector of Harts without a thread assigned to them
   std::bitset<_MAX_HARTS_>              IdleHarts{};            ///< RevCore: bitset of Harts with no thread assigned
@@ -328,7 +335,7 @@ private:
   RevLoader*         loader{};      ///< RevCore: loader object
 
   // Function pointer to the GetNewThreadID function in RevCPU (monotonically increasing thread ID counter)
-  std::function<uint32_t()> GetNewThreadID;
+  std::function<uint32_t()> const GetNewThreadID;
 
   // If a given assigned thread experiences a change of state, it sets the corresponding bit
   std::vector<std::unique_ptr<RevThread>> ThreadsThatChangedState{
@@ -350,6 +357,8 @@ private:
   RevTracer*  Tracer         = nullptr;        ///< RevCore: Tracer object
 
   std::bitset<_MAX_HARTS_> CoProcStallReq{};
+
+  uint64_t cycles{};  ///< RevCore: The number of cycles executed
 
   ///< RevCore: Utility function for system calls that involve reading a string from memory
   EcallStatus EcallLoadAndParseString( uint64_t straddr, std::function<void()> );
@@ -727,22 +736,19 @@ private:
   //std::vector<std::tuple<uint16_t, RevInst, bool>>  Pipeline; ///< RevCore: pipeline of instructions
   std::deque<std::pair<uint16_t, RevInst>>    Pipeline{};     ///< RevCore: pipeline of instructions
   std::unordered_map<std::string, unsigned>   NameToEntry{};  ///< RevCore: instruction mnemonic to table entry mapping
-  std::unordered_multimap<uint32_t, unsigned> EncToEntry{};   ///< RevCore: instruction encoding to table entry mapping
-  std::unordered_multimap<uint32_t, unsigned> CEncToEntry{};  ///< RevCore: compressed instruction encoding to table entry mapping
+  std::unordered_multimap<uint64_t, unsigned> EncToEntry{};   ///< RevCore: instruction encoding to table entry mapping
+  std::unordered_multimap<uint64_t, unsigned> CEncToEntry{};  ///< RevCore: compressed instruction encoding to table entry mapping
   std::unordered_map<unsigned, std::pair<unsigned, unsigned>> EntryToExt{};  ///< RevCore: instruction entry to extension mapping
   ///           first = Master table entry number
   ///           second = pair<Extension Index, Extension Entry>
 
   /// RevCore: finds an entry which matches an encoding whose predicate is true
   auto matchInst(
-    const std::unordered_multimap<uint32_t, unsigned>& map,
-    uint32_t                                           encoding,
+    const std::unordered_multimap<uint64_t, unsigned>& map,
+    uint64_t                                           encoding,
     const std::vector<RevInstEntry>&                   InstTable,
     uint32_t                                           Inst
   ) const;
-
-  /// RevCore: splits a string into tokens
-  void splitStr( const std::string& s, char c, std::vector<std::string>& v );
 
   /// RevCore: parses the feature string for the target core
   bool ParseFeatureStr( std::string Feature );
@@ -754,7 +760,7 @@ private:
   bool SeedInstTable();
 
   /// RevCore: enable the target extension by merging its instruction table with the master
-  bool EnableExt( RevExt* Ext, bool Opt );
+  bool EnableExt( RevExt* Ext );
 
   /// RevCore: initializes the internal mapping tables
   bool InitTableMapping();
@@ -763,13 +769,13 @@ private:
   bool ReadOverrideTables();
 
   /// RevCore: compresses the encoding structure to a single value
-  uint32_t CompressEncoding( RevInstEntry Entry );
+  uint64_t CompressEncoding( const RevInstEntry& Entry );
 
   /// RevCore: compressed the compressed encoding structure to a single value
-  uint32_t CompressCEncoding( RevInstEntry Entry );
+  uint32_t CompressCEncoding( const RevInstEntry& Entry );
 
   /// RevCore: extracts the instruction mnemonic from the table entry
-  std::string ExtractMnemonic( RevInstEntry Entry );
+  std::string ExtractMnemonic( const RevInstEntry& Entry );
 
   /// RevCore: reset the core and its associated features
   bool Reset();

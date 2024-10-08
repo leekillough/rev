@@ -52,7 +52,7 @@ public:
   RevCPU( SST::ComponentId_t id, const SST::Params& params );
 
   /// RevCPU: top-level SST component destructor
-  ~RevCPU();
+  ~RevCPU()                          = default;
 
   /// RevCPU: disallow copying and assignment
   RevCPU( const RevCPU& )            = delete;
@@ -227,19 +227,17 @@ public:
   }
 
 private:
-  unsigned              numCores{};      ///< RevCPU: number of RISC-V cores
-  unsigned              numHarts{};      ///< RevCPU: number of RISC-V cores
-  unsigned              msgPerCycle{};   ///< RevCPU: number of messages to send per cycle
-  unsigned              RDMAPerCycle{};  ///< RevCPU: number of RDMA messages per cycle to inject into PAN network
-  unsigned              testStage{};     ///< RevCPU: controls the PAN Test harness staging
-  unsigned              testIters{};     ///< RevCPU: the number of message iters for each PAN Test
-  std::string           Exe{};           ///< RevCPU: binary executable
-  std::string           Args{};          ///< RevCPU: argument list
-  RevOpts*              Opts{};          ///< RevCPU: Simulation options object
-  RevMem*               Mem{};           ///< RevCPU: RISC-V main memory object
-  RevLoader*            Loader{};        ///< RevCPU: RISC-V loader
-  std::vector<RevCore*> Procs{};         ///< RevCPU: RISC-V processor objects
-  bool*                 Enabled{};       ///< RevCPU: Completion structure
+  uint32_t numCores{};     ///< RevCPU: number of RISC-V cores
+  uint32_t numHarts{};     ///< RevCPU: number of RISC-V cores
+  unsigned msgPerCycle{};  ///< RevCPU: number of messages to send per cycle
+  //  unsigned          RDMAPerCycle{};  ///< RevCPU: number of RDMA messages per cycle to inject into PAN network
+  //  unsigned          testStage{};     ///< RevCPU: controls the PAN Test harness staging
+  //  unsigned          testIters{};     ///< RevCPU: the number of message iters for each PAN Test
+  std::unique_ptr<RevOpts>              Opts;     ///< RevCPU: Simulation options object
+  std::unique_ptr<RevMem>               Mem;      ///< RevCPU: RISC-V main memory object
+  std::unique_ptr<RevLoader>            Loader;   ///< RevCPU: RISC-V loader
+  std::vector<std::unique_ptr<RevCore>> Procs;    ///< RevCPU: RISC-V processor objects
+  std::vector<bool>                     Enabled;  ///< RevCPU: Completion structure
 
   // Initializes a RevThread object.
   // - Adds it's ThreadID to the ThreadQueue to be scheduled
@@ -251,9 +249,6 @@ private:
   // Adds Thread with ThreadID to AssignedThreads vector for ProcID
   // - Handles updating LSQueue & MarkLoadComplete function pointers
   void AssignThread( std::unique_ptr<RevThread>&& ThreadToAssign, unsigned ProcID );
-
-  // Sets up arguments for a thread with a given ID and feature set.
-  void SetupArgs( const std::unique_ptr<RevRegFile>& RegFile );
 
   // Checks the status of ALL threads that are currently blocked.
   void CheckBlockedThreads();
@@ -283,26 +278,25 @@ private:
   // Generates a new Thread ID using the RNG.
   uint32_t GetNewThreadID() { return RevRand( 0, UINT32_MAX ); }
 
-  uint8_t  PrivTag{};  ///< RevCPU: private tag locator
-  uint32_t LToken{};   ///< RevCPU: token identifier for PAN Test
-
-  int address{};  ///< RevCPU: local network address
+  uint8_t PrivTag{};  ///< RevCPU: private tag locator
+  //  uint32_t LToken{};   ///< RevCPU: token identifier for PAN Test
+  int address{ -1 };  ///< RevCPU: local network address
 
   unsigned fault_width{};  ///< RevCPU: the width (in bits) for target faults
-  int64_t  fault_range{};  ///< RevCPU: the range of cycles to inject the fault
-  int64_t  FaultCntr{};    ///< RevCPU: the fault counter
+  // int64_t  fault_range{};  ///< RevCPU: the range of cycles to inject the fault
+  int64_t FaultCntr{};  ///< RevCPU: the fault counter
 
-  uint64_t PrevAddr{};  ///< RevCPU: previous address for handling PAN messages
+  // uint64_t PrevAddr{};  ///< RevCPU: previous address for handling PAN messages
 
   bool EnableNIC{};     ///< RevCPU: Flag for enabling the NIC
   bool EnableMemH{};    ///< RevCPU: Enable memHierarchy
   bool EnableCoProc{};  ///< RevCPU: Enable a co-processor attached to all cores
 
-  bool        EnableRZA;            ///< RevCPU: Enables the RZA functionality
-  bool        EnableZopNIC;         ///< RevCPU: Enables the ZONE/ZOP NIC functionality
-  bool        EnableForzaSecurity;  ///< RevCPU: Enables the FORZA memory security
-  std::string memTrafficInput;      ///< RevCPU: Memory traffic input
-  std::string memTrafficOutput;     ///< RevCPU: Memory traffic output
+  bool        EnableRZA{};            ///< RevCPU: Enables the RZA functionality
+  bool        EnableZopNIC{};         ///< RevCPU: Enables the ZONE/ZOP NIC functionality
+  bool        EnableForzaSecurity{};  ///< RevCPU: Enables the FORZA memory security
+  std::string memTrafficInput{};      ///< RevCPU: Memory traffic input
+  std::string memTrafficOutput{};     ///< RevCPU: Memory traffic output
 
   bool EnableFaults{};       ///< RevCPU: Enable fault injection logic
   bool EnableCrackFaults{};  ///< RevCPU: Enable Crack+Decode Faults
@@ -312,8 +306,8 @@ private:
 
   bool DisableCoprocClock{};  ///< RevCPU: Disables manual coproc clocking
 
-  unsigned Precinct;  ///< RevCPU: FORZA precinct ID
-  unsigned Zone;      ///< RevCPU: FORZA zone ID
+  unsigned Precinct{};  ///< RevCPU: FORZA precinct ID
+  unsigned Zone{};      ///< RevCPU: FORZA zone ID
 
   Forza::zopAPI*     zNic;             ///< RevCPU: FORZA ZOP NIC
   Forza::zopMsgID*   zNicMsgIds;       ///< RevCPU: FORZA ZOP NIC Message ID handler
@@ -321,10 +315,15 @@ private:
   TimeConverter*     timeConverter{};  ///< RevCPU: SST time conversion handler
   SST::Output        output{};         ///< RevCPU: SST output handler
 
-  nicAPI*     Nic{};   ///< RevCPU: Network interface controller
-  RevMemCtrl* Ctrl{};  ///< RevCPU: Rev memory controller
+  Forza::zopAPI*   zNic{};           ///< RevCPU: FORZA ZOP NIC
+  Forza::zopMsgID* zNicMsgIds{};     ///< RevCPU: FORZA ZOP NIC Message ID handler
+  TimeConverter*   timeConverter{};  ///< RevCPU: SST time conversion handler
+  SST::Output      output{};         ///< RevCPU: SST output handler
 
-  std::vector<RevCoProc*> CoProcs{};  ///< RevCPU: CoProcessor attached to Rev
+  nicAPI*                     Nic{};  ///< RevCPU: Network interface controller
+  std::unique_ptr<RevMemCtrl> Ctrl;   ///< RevCPU: Rev memory controller
+
+  std::vector<std::unique_ptr<RevCoProc>> CoProcs;  ///< RevCPU: CoProcessor attached to Rev
 
   SST::Clock::Handler<RevCPU>* ClockHandler{};  ///< RevCPU: Clock Handler
 

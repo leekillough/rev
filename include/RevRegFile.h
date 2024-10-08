@@ -31,12 +31,68 @@ namespace SST::RevCPU {
 
 struct RevInst;
 
-/// BoxNaN: Store a boxed float inside a double
-inline void BoxNaN( double* dest, const void* value ) {
-  uint32_t i32;
-  memcpy( &i32, value, sizeof( float ) );                 // The FP32 value
-  uint64_t i64 = uint64_t{ i32 } | ~uint64_t{ 0 } << 32;  // Boxed NaN value
-  memcpy( dest, &i64, sizeof( double ) );                 // Store in FP64 register
+// Mappings from floating point to same-sized integer types
+template<typename T>
+struct uint_type {};
+
+template<>
+struct uint_type<double> {
+  using type = uint64_t;
+  static_assert( sizeof( type ) == sizeof( double ) );
+};
+
+template<>
+struct uint_type<float> {
+  using type = uint32_t;
+  static_assert( sizeof( type ) == sizeof( float ) );
+};
+
+#if 0
+template<>
+struct uint_type<float16> {
+  using type = uint16_t;
+  static_assert( sizeof( type ) == sizeof( float16 ) );
+};
+#endif
+
+template<typename T>
+using uint_type_t = typename uint_type<T>::type;
+
+/// BoxNaN: Store a boxed floating point value inside a possibly larger one
+template<typename T, typename U, typename = std::enable_if_t<sizeof( T ) >= sizeof( U )>>
+inline void BoxNaN( T* dest, const U* value ) {
+  if constexpr( sizeof( T ) == sizeof( U ) ) {
+    *dest = *value;
+  } else {
+    uint_type_t<U> i;
+    memcpy( &i, value, sizeof( i ) );                                                    // The value
+    uint_type_t<T> box = uint_type_t<T>{ i } | ~uint_type_t<T>{ 0 } << sizeof( U ) * 8;  // Boxed NaN value
+    memcpy( dest, &box, sizeof( box ) );                                                 // Store in larger register
+    static_assert( sizeof( i ) == sizeof( U ) && sizeof( box ) == sizeof( T ) );
+  }
+}
+
+/// UnBoxNaN: Unbox a floating point value into a possibly smaller one
+// The second argument indicates whether it is a FMV/FS move/store
+// instruction which just transfers bits and not care about NaN-Boxing.
+template<typename T, bool FMV_FS = false, typename U, typename = std::enable_if_t<sizeof( T ) <= sizeof( U )>>
+inline T UnBoxNaN( const U* val ) {
+  if constexpr( sizeof( T ) == sizeof( U ) ) {
+    return *val;
+  } else {
+    uint_type_t<U> i;
+    memcpy( &i, val, sizeof( i ) );
+    static_assert( sizeof( i ) == sizeof( val ) );
+    T fp;
+    if( !FMV_FS && ~i >> sizeof( T ) * 8 ) {
+      fp = std::numeric_limits<T>::quiet_NaN();
+    } else {
+      auto ifp = static_cast<uint_type_t<T>>( i );
+      memcpy( &fp, &ifp, sizeof( fp ) );
+      static_assert( sizeof( ifp ) == sizeof( fp ) );
+    }
+    return fp;
+  }
 }
 
 /// RISC-V Register Mneumonics
@@ -44,6 +100,7 @@ inline void BoxNaN( double* dest, const void* value ) {
 enum class RevReg : uint16_t {
   zero =  0, ra  =  1, sp   =  2, gp   =  3, tp  =  4, t0  =  5, t1   =  6, t2   =  7,
   s0   =  8, s1  =  9, a0   = 10, a1   = 11, a2  = 12, a3  = 13, a4   = 14, a5   = 15,
+  fp   =  8,
   a6   = 16, a7  = 17, s2   = 18, s3   = 19, s4  = 20, s5  = 21, s6   = 22, s7   = 23,
   s8   = 24, s9  = 25, s10  = 26, s11  = 27, t3  = 28, t4  = 29, t5   = 30, t6   = 31,
   ft0  =  0, ft1 =  1, ft2  =  2, ft3  =  3, ft4 =  4, ft5 =  5, ft6  =  6, ft7  =  7,
@@ -53,7 +110,7 @@ enum class RevReg : uint16_t {
 };
 
 /// Floating-Point Rounding Mode
-enum class FRMode : uint8_t {
+enum class FRMode : uint32_t {
   None = 0xff,
   RNE = 0,   // Round to Nearest, ties to Even
   RTZ = 1,   // Round towards Zero
@@ -64,16 +121,15 @@ enum class FRMode : uint8_t {
 };
 
 /// Floating-point control register
-// fcsr.NX, fcsr.UF, fcsr.OF, fcsr.DZ, fcsr.NV, fcsr.frm
-struct FCSR{
-  uint32_t NX  : 1;
-  uint32_t UF  : 1;
-  uint32_t OF  : 1;
-  uint32_t DZ  : 1;
-  uint32_t NV  : 1;
-  uint32_t frm : 3;
-  uint32_t     : 24;
+enum class FCSR : uint32_t {
+  NX = 1,
+  UF = 2,
+  OF = 4,
+  DZ = 8,
+  NV = 16,
 };
+
+#define CSR_LIMIT 0x1000
 
 // Ref: RISC-V Privileged Spec (pg. 39)
 enum class RevExceptionCause : int32_t {
@@ -99,10 +155,13 @@ enum class RevExceptionCause : int32_t {
 
 // clang-format on
 
+class RevCore;
+
 class RevRegFile {
 public:
-  const bool IsRV32;  ///< RevRegFile: Cached copy of Features->IsRV32()
-  const bool HasD;    ///< RevRegFile: Cached copy of Features->HasD()
+  RevCore* const Core;    ///< RevRegFile: Owning core of this register file's hart
+  const bool     IsRV32;  ///< RevRegFile: Cached copy of Features->IsRV32()
+  const bool     HasD;    ///< RevRegFile: Cached copy of Features->HasD()
 
 private:
   bool       trigger{};         ///< RevRegFile: Has the instruction been triggered?
@@ -115,8 +174,6 @@ private:
     uint32_t RV32_PC;    ///< RevRegFile: RV32 PC
     uint64_t RV64_PC{};  ///< RevRegFile: RV64 PC
   };
-
-  FCSR fcsr{};  ///< RevRegFile: FCSR
 
   std::shared_ptr<std::unordered_multimap<uint64_t, MemReq>> LSQueue{};
   std::function<void( const MemReq& )>                       MarkLoadCompleteFunc{};
@@ -135,12 +192,13 @@ private:
   std::bitset<_REV_NUM_REGS_> FP_Scoreboard{};  ///< RevRegFile: Scoreboard for SPF/DPF RF to manage pipeline hazard
 
   // Supervisor Mode CSRs
-#if 0  // not used
-  union{  // Anonymous union. We zero-initialize the largest member
-    uint64_t RV64_SSTATUS{}; // During ecall, previous priviledge mode is saved in this register (Incomplete)
-    uint32_t RV32_SSTATUS;
-  };
-#endif
+  uint64_t CSR[CSR_LIMIT]{};
+
+  // Floating-point CSR
+  FCSR fcsr{};
+
+  // Number of instructions retired
+  uint64_t InstRet{};
 
   union {                  // Anonymous union. We zero-initialize the largest member
     uint64_t RV64_SEPC{};  // Holds address of instruction that caused the exception (ie. ECALL)
@@ -162,8 +220,10 @@ private:
 #endif
 
 public:
-  // Constructor which takes a RevFeature
-  explicit RevRegFile( const RevFeature* feature ) : IsRV32( feature->IsRV32() ), HasD( feature->HasD() ) {}
+  // Constructor which takes a RevCore to indicate its hart's parent core
+  // Template is to prevent circular dependencies by not requiring RevCore to be a complete type now
+  template<typename T, typename = std::enable_if_t<std::is_same_v<T, RevCore>>>
+  explicit RevRegFile( T* core ) : Core( core ), IsRV32( core->GetRevFeature()->IsRV32() ), HasD( core->GetRevFeature()->HasD() ) {}
 
   /// RevRegFile: disallow copying and assignment
   RevRegFile( const RevRegFile& )            = delete;
@@ -208,9 +268,6 @@ public:
 
   /// Invoke the MarkLoadComplete function
   void MarkLoadComplete( const MemReq& req ) const { MarkLoadCompleteFunc( req ); }
-
-  /// Return the Floating-Point Rounding Mode
-  FRMode GetFPRound() const { return static_cast<FRMode>( fcsr.frm ); }
 
   /// Capture the PC of current instruction which raised exception
   void SetSEPC() {
@@ -305,23 +362,11 @@ public:
   template<typename T, bool FMV_FS = false, typename U>
   T GetFP( U rs ) const {
     if constexpr( std::is_same_v<T, double> ) {
-      return DPF[size_t( rs )];  // The FP64 register's value
+      return DPF[size_t( rs )];
+    } else if( HasD ) {
+      return UnBoxNaN<T, FMV_FS>( &DPF[size_t( rs )] );
     } else {
-      float fp32;
-      if( !HasD ) {
-        fp32 = SPF[size_t( rs )];  // The FP32 register's value
-      } else {
-        uint64_t i64;
-        memcpy( &i64, &DPF[size_t( rs )],
-                sizeof( i64 ) );       // The FP64 register's value
-        if( !FMV_FS && ~i64 >> 32 ) {  // Check for boxed NaN unless FMV/FS
-          fp32 = NAN;                  // Return NaN if it's not boxed
-        } else {
-          auto i32 = static_cast<uint32_t>( i64 );  // For endian independence on host
-          memcpy( &fp32, &i32, sizeof( fp32 ) );    // The bottom half of FP64
-        }
-      }
-      return fp32;  // Reinterpreted as FP32
+      return UnBoxNaN<T, FMV_FS>( &SPF[size_t( rs )] );
     }
   }
 
@@ -329,22 +374,111 @@ public:
   template<typename T, typename U>
   void SetFP( U rd, T value ) {
     if constexpr( std::is_same_v<T, double> ) {
-      DPF[size_t( rd )] = value;  // Store in FP64 register
+      DPF[size_t( rd )] = value;
     } else if( HasD ) {
-      BoxNaN( &DPF[size_t( rd )],
-              &value );  // Store NaN-boxed float in FP64 register
+      BoxNaN( &DPF[size_t( rd )], &value );
     } else {
-      SPF[size_t( rd )] = value;  // Store in FP32 register
+      BoxNaN( &SPF[size_t( rd )], &value );
     }
   }
 
   uint32_t GetThreadID() const { return ThreadID; }
 
+private:
+  // Performance counters
+
+  // Template is used to break circular dependencies between RevCore and RevRegFile
+  template<typename CORE, typename = std::enable_if_t<std::is_same_v<CORE, RevCore>>>
+  uint64_t rdcycle( CORE* core ) const {
+    return core->GetCycles();
+  }
+
+  template<typename CORE, typename = std::enable_if_t<std::is_same_v<CORE, RevCore>>>
+  uint64_t rdtime( CORE* core ) const {
+    return core->GetCurrentSimCycle();
+  }
+
+  template<typename CORE, typename = std::enable_if_t<std::is_same_v<CORE, RevCore>>>
+  uint64_t rdinstret( CORE* ) const {
+    return InstRet;
+  }
+
+  enum class Half { Lo, Hi };
+
+  /// Performance Counter template
+  // Passed a function which gets the 64-bit value of a performance counter
+  template<typename T, Half HALF, uint64_t ( RevRegFile::*COUNTER )( RevCore* ) const>
+  T GetPerfCounter() const {
+    if constexpr( sizeof( T ) == sizeof( uint32_t ) ) {
+      // clang-format off
+      if constexpr( HALF == Half::Lo ) {
+        return static_cast<T>( ( this->*COUNTER )( Core ) & 0xffffffff );
+      } else {
+        return static_cast<T>( ( this->*COUNTER )( Core ) >> 32 );
+      }
+      // clang-format on
+    } else {
+      if constexpr( HALF == Half::Lo ) {
+        return ( this->*COUNTER )( Core );
+      } else {
+        return 0;  // Hi half is not available on RV64
+      }
+    }
+  }
+
+public:
+  /// Get a CSR register
+  template<typename T>
+  T GetCSR( size_t csr ) const {
+    // clang-format off
+    switch( csr ) {
+    default: return static_cast<T>( CSR[csr] );
+
+    // We store fcsr separately from the global CSR
+    case 1: return static_cast<uint32_t>( fcsr ) >> 0 & 0b00011111u;
+    case 2: return static_cast<uint32_t>( fcsr ) >> 5 & 0b00000111u;
+    case 3: return static_cast<uint32_t>( fcsr ) >> 0 & 0b11111111u;
+
+      // Performance Counters
+    case 0xc00: return GetPerfCounter<T, Half::Lo, &RevRegFile::rdcycle>();
+    case 0xc80: return GetPerfCounter<T, Half::Hi, &RevRegFile::rdcycle>();
+    case 0xc01: return GetPerfCounter<T, Half::Lo, &RevRegFile::rdtime>();
+    case 0xc81: return GetPerfCounter<T, Half::Hi, &RevRegFile::rdtime>();
+    case 0xc02: return GetPerfCounter<T, Half::Lo, &RevRegFile::rdinstret>();
+    case 0xc82: return GetPerfCounter<T, Half::Hi, &RevRegFile::rdinstret>();
+    }
+    // clang-format on
+  }
+
+  /// Set a CSR register
+  template<typename T>
+  void SetCSR( size_t csr, T val ) {
+    // We store fcsr separately from the global CSR
+    switch( csr ) {
+    case 1:
+      fcsr = FCSR{ ( static_cast<uint32_t>( fcsr ) & ~uint32_t{ 0b00011111u } ) | static_cast<uint32_t>( val & 0b00011111u ) };
+      break;
+    case 2:
+      fcsr = FCSR{ ( static_cast<uint32_t>( fcsr ) & ~uint32_t{ 0b11100000u } ) | static_cast<uint32_t>( val & 0b00000111u ) << 5 };
+      break;
+    case 3:
+      fcsr = FCSR{ ( static_cast<uint32_t>( fcsr ) & ~uint32_t{ 0b11111111u } ) | static_cast<uint32_t>( val & 0b11111111u ) };
+      break;
+    default: CSR[csr] = val;
+    }
+  }
+
+  /// Get the Floating-Point Rounding Mode
+  FRMode GetFRM() const { return FRMode{ ( static_cast<uint32_t>( fcsr ) >> 5 ) & 0x3u }; }
+
   void SetThreadID( uint32_t tid ) { ThreadID = tid; }
 
+  /// Return the Floating-Point Status Register
+  FCSR& GetFCSR() { return fcsr; }
+
   // Friend functions and classes to access internal register state
-  template<typename FP, typename INT>
-  friend bool CvtFpToInt( RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst );
+  template<typename INT, typename FP>
+  friend bool fcvtif( RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst );
 
   template<typename T>
   friend bool load( RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst );

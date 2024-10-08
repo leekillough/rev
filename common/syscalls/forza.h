@@ -19,7 +19,6 @@ FORZA_SYSCALL( 4003, int forza_send_word( uint64_t data, bool is_control_wd ) );
 FORZA_SYSCALL( 4004, int forza_receive_word( uint64_t mbox_id ) );
 FORZA_SYSCALL( 4005, uint64_t forza_zen_get_cntrs() );
 FORZA_SYSCALL( 4006, int forza_zqm_setup( uint64_t logical_pe, uint64_t n_mailboxes ) );
-
 FORZA_SYSCALL( 4007, int forza_get_harts_per_zap() );
 FORZA_SYSCALL( 4008, int forza_get_zaps_per_zone() );
 FORZA_SYSCALL( 4009, int forza_get_zones_per_precinct() );
