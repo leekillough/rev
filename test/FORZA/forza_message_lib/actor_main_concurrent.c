@@ -216,10 +216,20 @@ int receive_response_messages( struct ForzaThreadArgs_* fargs, int* recv_count, 
     msg[66]      = '0' + *sum;
     rev_write( STDOUT_FILENO, msg, sizeof( msg ) );
   }
+  {
+    char msg[70] = "\ndebug:PEX: receive_response_message: EXPECTED msgcount = X sum = Y\n";
+    msg[9]       = '0' + fargs->local_pe;
+    msg[58]      = '0' + fargs->n_sends;
+    msg[66]      = '0' + ( fargs->n_sends * ( fargs->local_pe + 1 ) );
+    rev_write( STDOUT_FILENO, msg, sizeof( msg ) );
+  }
 
   // Check Results
-  assert( *recv_count == fargs->n_sends );
-  assert( *sum == ( NSENDS * ( fargs->local_pe + 1 ) ) );
+  int expected_sum = fargs->n_sends * ( fargs->local_pe + 1 );
+  if( *recv_count != fargs->n_sends )
+    assert( 0 );
+  if( *sum != expected_sum )
+    assert( 0 );
 
   return DONE_MSG;
 }
