@@ -132,7 +132,7 @@ uint64_t RingNetNIC::getNextAddress() {
     CALL_INFO,
     11,
     0,
-    "RingNet: my_addr=%lu, num_endpts=%u, lastAddr=%lu\n",
+    "RingNet: my_addr=%llu, num_endpts=%lu, lastAddr=%llu\n",
     myAddr,
     endPoints.size(),
     endPoints[( endPoints.size() - 1 )]
@@ -160,6 +160,7 @@ uint64_t RingNetNIC::getNextAddress() {
   return 0;
 #endif
   output.fatal( CALL_INFO, -1, "Failed to find a valid endPoint\n" );
+  return 0;
 }
 
 bool RingNetNIC::clockTick( Cycle_t cycle ) {

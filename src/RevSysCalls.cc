@@ -3865,7 +3865,7 @@ EcallStatus RevCore::ECALL_forza_send_word() {
       (uint8_t) ring_ev->getOp()
     );
     zoneRing->send( ring_ev, next_dest );
-    output->verbose( CALL_INFO, 5, 0, "SENDING RING MESSAGE, next addr = %lu\n", next_dest );
+    output->verbose( CALL_INFO, 5, 0, "SENDING RING MESSAGE, next addr = %llu\n", next_dest );
   } else {
     output->verbose( CALL_INFO, 5, 0, "[ERROR] NO RING NETWORK\n" );
     delete ring_ev;
@@ -4152,7 +4152,6 @@ EcallStatus RevCore::ECALL_forza_zqm_setup() {
   uint64_t mboxs_used = (uint64_t) RegFile->GetX<uint64_t>( RevReg::a1 );
 
   uint8_t  zap        = (uint8_t) zNic->getEndpointType();
-  uint16_t hart       = HartToExecID;
   uint64_t aid        = 0;  // FIXME
 
   uint64_t mbox_mask  = 0;
@@ -4170,7 +4169,7 @@ EcallStatus RevCore::ECALL_forza_zqm_setup() {
 #endif
 
   output->verbose(
-    CALL_INFO, 5, 0, "Arguments: mbox_mask=0x%lx; logical_pe=0x%lx, data value=0x%" PRIx64 "\n", mbox_mask, logical_pe, outreg
+    CALL_INFO, 5, 0, "Arguments: mbox_mask=0x%llx; logical_pe=0x%llx, data value=0x%" PRIx64 "\n", mbox_mask, logical_pe, outreg
   );
 
   SST::Forza::ringEvent* ring_ev = new SST::Forza::ringEvent(
@@ -4189,7 +4188,7 @@ EcallStatus RevCore::ECALL_forza_zqm_setup() {
       (uint8_t) ring_ev->getOp()
     );
     zoneRing->send( ring_ev, next_dest );
-    output->verbose( CALL_INFO, 5, 0, "SENDING RING MESSAGE, next addr = %lu\n", next_dest );
+    output->verbose( CALL_INFO, 5, 0, "SENDING RING MESSAGE, next addr = %llu\n", next_dest );
   } else {
     output->verbose( CALL_INFO, 5, 0, "[ERROR] NO RING NETWORK\n" );
     delete ring_ev;

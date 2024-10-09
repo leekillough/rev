@@ -296,7 +296,7 @@ uint64_t RevMem::CalcPhysAddr( uint64_t pageNum, uint64_t vAddr ) {
         if( PhysAddrCheck ) {
           auto [validate, reason] = validatePhysAddr( physAddr, 0 );
           if( !validate ) {
-            output->fatal( CALL_INFO, -1, "Invalid Physical Address Access %lu Reason %s\n", physAddr, reason.c_str() );
+            output->fatal( CALL_INFO, -1, "Invalid Physical Address Access %llu Reason %s\n", physAddr, reason.c_str() );
           }
         }
       } else {
@@ -540,10 +540,10 @@ uint64_t RevMem::AllocMemAt( const uint64_t& BaseAddr, const uint64_t& SegSize )
         output->fatal(
           CALL_INFO,
           11,
-          "Error: Attempting to allocate memory at address 0x%lx "
-          "of size 0x%lx which contains memory that is"
-          "already allocated in the segment with BaseAddr = 0x%lx "
-          "and Size 0x%lx\n",
+          "Error: Attempting to allocate memory at address 0x%llx "
+          "of size 0x%llx which contains memory that is"
+          "already allocated in the segment with BaseAddr = 0x%llx "
+          "and Size 0x%llx\n",
           BaseAddr,
           SegSize,
           Seg->getBaseAddr(),
@@ -963,7 +963,7 @@ bool RevMem::CleanLine( unsigned Hart, uint64_t Addr ) {
 // 3. Deallocating memory that hasn't been allocated
 // - |---- FreeSeg ----| ==> SegFault :/
 uint64_t RevMem::DeallocMem( uint64_t BaseAddr, uint64_t Size ) {
-  output->verbose( CALL_INFO, 10, 99, "Attempting to deallocate %lul bytes starting at BaseAddr = 0x%lx\n", Size, BaseAddr );
+  output->verbose( CALL_INFO, 10, 99, "Attempting to deallocate %llu bytes starting at BaseAddr = 0x%llx\n", Size, BaseAddr );
 
   int ret = -1;
   // Search through allocated segments for the segment that begins on the baseAddr
@@ -981,8 +981,8 @@ uint64_t RevMem::DeallocMem( uint64_t BaseAddr, uint64_t Size ) {
           CALL_INFO,
           11,
           "Dealloc Error: Cannot free beyond the segment bounds. Attempted to"
-          "free from 0x%lx to 0x%lx however the highest address in the segment "
-          "is 0x%lx",
+          "free from 0x%llx to 0x%llx however the highest address in the segment "
+          "is 0x%llx",
           BaseAddr,
           BaseAddr + Size,
           AllocedSeg->getTopAddr()
@@ -1057,7 +1057,7 @@ void RevMem::InitHeap( const uint64_t& EndOfStaticData ) {
       7,
       "The loader was unable"
       "to find a .text section in your executable. This is a bug."
-      "EndOfStaticData = 0x%lx which is less than or equal to 0",
+      "EndOfStaticData = 0x%llx which is less than or equal to 0",
       EndOfStaticData
     );
   } else {

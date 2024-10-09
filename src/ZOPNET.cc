@@ -8,7 +8,7 @@
 // See LICENSE in the top level directory for licensing details
 //
 
-#include "../include/ZOPNET.h"
+#include "ZOPNET.h"
 
 namespace SST::Forza {
 
