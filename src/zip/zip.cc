@@ -111,8 +111,21 @@ void ZIP::finish() {
   if (t_c3) output.verbose(CALL_INFO, 1, 1, "[TEST ZIP_C3] pass\n");
   if (t_c4) output.verbose(CALL_INFO, 1, 1, "[TEST ZIP_C4] pass\n");
   if (t_c5) output.verbose(CALL_INFO, 1, 1, "[TEST ZIP_C5] pass\n");
-  if (dynamic_cast<AccumulatorStatistic<uint64_t>*>(s_numPackets)->getSum() > 0) output.verbose(CALL_INFO, 1, 1, "[TEST ZIP_P1] %f%%\n", 100.0*dynamic_cast<AccumulatorStatistic<uint64_t>*>(s_numStalls)->getSum()/dynamic_cast<AccumulatorStatistic<uint64_t>*>(s_numPackets)->getSum());
-  if (dynamic_cast<AccumulatorStatistic<uint64_t>*>(s_numSentPackets)->getSum() > 0) output.verbose(CALL_INFO, 1, 1, "[TEST ZIP_P{2,3,4}] %f cycles/packet\n", 1.0*dynamic_cast<AccumulatorStatistic<uint64_t>*>(s_numWaitCycles)->getSum()/dynamic_cast<AccumulatorStatistic<uint64_t>*>(s_numSentPackets)->getSum());
+  AccumulatorStatistic<uint64_t> * pkts_check = dynamic_cast<AccumulatorStatistic<uint64_t>*>(s_numPackets);
+  if (pkts_check) {
+    if (pkts_check->getSum() > 0) 
+      output.verbose(CALL_INFO, 1, 1, "[TEST ZIP_P1] %f%%\n", 100.0*dynamic_cast<AccumulatorStatistic<uint64_t>*>(s_numStalls)->getSum()/dynamic_cast<AccumulatorStatistic<uint64_t>*>(s_numPackets)->getSum());
+  } else {
+    output.verbose(CALL_INFO, 1, 1, "[TEST ZIP_P1] WARNING: cannot access numPackets statistic");
+  }
+  AccumulatorStatistic<uint64_t> * sent_check = dynamic_cast<AccumulatorStatistic<uint64_t>*>(s_numSentPackets);
+  output.verbose(CALL_INFO, 1, 1, "[TEST ZIP_P1] numSentPackets accumulator stat is %p", sent_check);
+  if (sent_check) {
+    if (sent_check->getSum() > 0)
+      output.verbose(CALL_INFO, 1, 1, "[TEST ZIP_P{2,3,4}] %f cycles/packet\n", 1.0*dynamic_cast<AccumulatorStatistic<uint64_t>*>(s_numWaitCycles)->getSum()/dynamic_cast<AccumulatorStatistic<uint64_t>*>(s_numSentPackets)->getSum());
+  } else {
+    output.verbose(CALL_INFO, 1, 1, "[TEST ZIP_P{2,3,4}] WARNING: cannot access numSentPackets statistic");
+  }
 }
 
 // void ZIP::emergencyShutdown(SST::Output& out) {
