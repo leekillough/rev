@@ -11,9 +11,15 @@
   while( 0 )
 
 int main( int argc, char** argv ) {
-  uint64_t TID        = forza_get_my_zap();
+  uint64_t TID = forza_get_my_zap();
   //if (TID != 0)
   //  return 0;
+
+  if( forza_get_my_zone() != 0 )
+    return 0;
+
+  if( forza_get_my_zap() >= 2 )
+    return 0;
 
   uint64_t abba       = forza_read_zen_status();
 
@@ -29,7 +35,7 @@ int main( int argc, char** argv ) {
   // forza_zqm_setup( logical_pe, n_mailboxes );
   forza_zqm_setup( logical_pe, 6 );
 
-  forza_zone_barrier( forza_get_zaps_per_zone() );
+  //forza_zone_barrier( forza_get_zaps_per_zone() );
 
   if( TID == 0 ) {
     forza_send_word( 0xa1UL, false );
