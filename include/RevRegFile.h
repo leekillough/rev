@@ -134,13 +134,14 @@ class RevCore;
 class RevTracer;
 
 class RevRegFile : public RevCSR {
-  RevCore* const Core;       ///< RevRegFile: Owning core of this register file's hart
-  const bool     IsRV64_v;   ///< RevRegFile: Cached copy of Features->IsRV64()
-  const bool     HasD_v;     ///< RevRegFile: Cached copy of Features->HasD()
-  bool           trigger{};  ///< RevRegFile: Has the instruction been triggered?
-  unsigned       Entry{};    ///< RevRegFile: Instruction entry
-  uint32_t       cost{};     ///< RevRegFile: Cost of the instruction
-  RevTracer*     Tracer{};   ///< RegRegFile: Tracer object
+  RevCore* const Core;        ///< RevRegFile: Owning core of this register file's hart
+  const bool     IsRV64_v;    ///< RevRegFile: Cached copy of Features->IsRV64()
+  const bool     HasD_v;      ///< RevRegFile: Cached copy of Features->HasD()
+  bool           trigger{};   ///< RevRegFile: Has the instruction been triggered?
+  unsigned       Entry{};     ///< RevRegFile: Instruction entry
+  uint32_t       cost{};      ///< RevRegFile: Cost of the instruction
+  uint32_t       ThreadID{};  ///< RevRegFile: Thread ID
+  RevTracer*     Tracer{};    ///< RegRegFile: Tracer object
 
   union {                // Anonymous union. We zero-initialize the largest member
     uint32_t RV32_PC;    ///< RevRegFile: RV32 PC

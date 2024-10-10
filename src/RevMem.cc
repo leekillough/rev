@@ -655,41 +655,34 @@ bool RevMem::WriteMem( unsigned Hart, uint64_t Addr, size_t Len, const void* Dat
         std::cout << "Warning: Writing off end of page... " << std::endl;
 #endif
         if( ctrl ) {
-          ctrl->sendWRITERequest( Hart, Addr, (uint64_t) ( BaseMem ), Len, DataMem, flags );
+          ctrl->sendWRITERequest( Hart, Addr, 0, Len, DataMem, flags );
         } else if( zNic && !isRZA ) {
           ZOP_WRITEMem( Hart, Addr, Len, DataMem, flags );
         } else {
-          for( unsigned i = 0; i < ( Len - span ); i++ ) {
-            BaseMem[i] = DataMem[i];
-          }
+          memcpy( BaseMem, DataMem, Len - span );
         }
         BaseMem = &physMem[adjPhysAddr];
         if( ctrl ) {
           // write the memory using RevMemCtrl
           unsigned Cur = ( Len - span );
-          ctrl->sendWRITERequest( Hart, Addr, (uint64_t) ( BaseMem ), Len, &( DataMem[Cur] ), flags );
+          ctrl->sendWRITERequest( Hart, Addr, 0, Len, &DataMem[Cur], flags );
         } else if( zNic && !isRZA ) {
           unsigned Cur = ( Len - span );
-          ZOP_WRITEMem( Hart, Addr, Len, &( DataMem[Cur] ), flags );
+          ZOP_WRITEMem( Hart, Addr, Len, &DataMem[Cur], flags );
         } else {
           // write the memory using the internal RevMem model
           unsigned Cur = ( Len - span );
-          for( unsigned i = 0; i < span; i++ ) {
-            BaseMem[i] = DataMem[Cur];
-            Cur++;
-          }
+          memcpy( BaseMem, DataMem + Cur, span );
         }
       } else {
         if( ctrl ) {
           // write the memory using RevMemCtrl
-          ctrl->sendWRITERequest( Hart, Addr, (uint64_t) ( BaseMem ), Len, DataMem, flags );
+          ctrl->sendWRITERequest( Hart, Addr, 0, Len, DataMem, flags );
         } else if( zNic && !isRZA ) {
           ZOP_WRITEMem( Hart, Addr, Len, DataMem, flags );
         } else {
           // write the memory using the internal RevMem model
-          for( unsigned i = 0; i < Len; i++ ) {
-            BaseMem[i] = DataMem[i];
-          }
+          memcpy( BaseMem, DataMem, Len );
         }
       }
     }
