@@ -553,8 +553,8 @@ class FORZA:
                   "clockFreq" : self.clock,
                   "precinctId" : i,
                   "zoneId" : j,
-                  "numHarts" : 1,
-                  "numCores" : 1
+                  "numHarts" : self.hartsPerZap,
+                  "numCores" : self.zapsPerZone
                 })
                 zqm_nic = zqm.setSubComponent("zone_nic", "forza.zopNIC")
                 zqm_iface = zqm_nic.setSubComponent("iface", "merlin.linkcontrol")
