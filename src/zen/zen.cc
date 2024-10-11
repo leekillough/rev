@@ -231,7 +231,7 @@ void ZEN::handleRingEqCtrl( SST::Forza::ringEvent *ev )
   else if ( regs.mbox_cntrs[dest_mbox] == (UINT8_MAX-1) )
     regs.status |= ( 1UL << dest_mbox ); //if we're about to saturate the mbox counter, we have to set the status bit
   regs.mbox_cntrs[dest_mbox]++;
-  output.verbose(CALL_INFO, 7, 0, "[ZEN] %s ZENEqCtrl src[Zap:Hart]=[%u:%u], data=0x%llx\n", 
+  output.verbose(CALL_INFO, 5, 0, "[ZEN] %s ZENEqCtrl src[Zap:Hart]=[%u:%u], data=0x%llx\n", 
                  getName().c_str(), ev->getSrcZap(), ev->getHart(), ev->getDatum());
   // TODO: DOES THIS NEED A RING RESPONSE?
 
@@ -334,7 +334,7 @@ void ZEN::sendMsgZop(OutgoingMessage* msg, bool is_msg, uint16_t zop_msg_id)
   }
   zop->setPayload(payload);
   zop->encodeEvent();
-  output.verbose(CALL_INFO, 9, 0, "ZEN[%s]: Send msg from %s to %s\n", getName().c_str(),
+  output.verbose(CALL_INFO, 5, 0, "ZEN[%s]: Send msg from %s to %s\n", getName().c_str(),
                  zop->getSrcString().c_str(), zop->getDestString().c_str());
   if ( (zop->getDestPrec() == Precinct ) && ( zop->getDestPCID() == Zone ) )  
     zone_nic->send(zop, zopCompID::Z_ZQM);
@@ -536,8 +536,9 @@ void ZEN::ExecSpawns()
 
 void ZEN::handleIncomingPrecZOP(SST::Event *event) {
   SST::Forza::zopEvent* ev = static_cast<SST::Forza::zopEvent*>(event);
+  ev->decodeEvent();
 
-  output.verbose(CALL_INFO, 9, 0, "ZEN[%s] PrecinctNOC received zop from %s to %s\n",
+  output.verbose(CALL_INFO, 7, 0, "ZEN[%s] PrecinctNOC received zop from %s to %s\n",
                  getName().c_str(),
                  ev->getSrcString().c_str(),
                  ev->getDestString().c_str());
@@ -681,9 +682,11 @@ void ZEN::helper_handleMsgZop(SST::Forza::zopEvent *ev)
     
     case SST::Forza::zopOpc::Z_MSG_SENDP:
       output.verbose( CALL_INFO, 9, 0, "ZEN %s: received a MSG_SENDP\n", getName().c_str() );
-      if ( (ev->getSrcPrec() == Precinct ) && ( ev->getSrcZCID() == Zone ) )
-        output.fatal(CALL_INFO, -1, "ZEN[%s]: received an messaging packet from this zone Packet %s to %s\n",
-                     getName().c_str(), ev->getSrcString().c_str(), ev->getDestString().c_str());
+      if ( (ev->getSrcPrec() == Precinct ) && ( ev->getSrcPCID() == Zone ) )
+        output.fatal(CALL_INFO, -1, "ZEN[%s]: received a messaging packet from this [Prec:Zone]=[%u:%u]; dest[%u:%u]; Packet %s to %s\n",
+                     getName().c_str(), Precinct, Zone,
+                     (unsigned)ev->getSrcPrec(), (unsigned)ev->getSrcPCID(),
+                     ev->getSrcString().c_str(), ev->getDestString().c_str());
       zone_nic->send(ev, SST::Forza::zopCompID::Z_ZQM);
       break;
 
