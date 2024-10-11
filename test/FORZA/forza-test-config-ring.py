@@ -507,7 +507,9 @@ class FORZA:
             zipNIC.addParams({
               "verbose" : self.verbose,
               "clock" : self.clock,
-              "req_per_cycle" : self.reqPerCycle
+              "req_per_cycle" : self.reqPerCycle,
+              "numZones" : self.zones,
+              "numPrecincts" : self.precincts
             })
             zipNIC_lc.addParams({
               "input_buf_size" : self.inputBufSize,
@@ -574,7 +576,9 @@ class FORZA:
                 zqm_nic.addParams({
                   "verbose" : self.verbose,
                   "clock" : self.clock,
-                  "req_per_cycle" : self.reqPerCycle
+                  "req_per_cycle" : self.reqPerCycle,
+                  "numZones" : self.zones,
+                  "numPrecincts" : self.precincts
                 })
                 zqm_iface.addParams({
                   "input_buf_size" : self.inputBufSize,
@@ -606,7 +610,7 @@ class FORZA:
                 #-- create the ZEN
                 zen = sst.Component("zen_"+str(i)+"_"+str(j), "forzazen.ZEN")
                 zen.addParams({
-                  "verbose" : self.verbose,
+                  "verbose" : 7, #self.verbose,
                   "clockFreq" : self.clock,
                   "precinctId" : i,
                   "zoneId" : j,
@@ -623,7 +627,9 @@ class FORZA:
                 zen_nic.addParams({
                   "verbose" : self.verbose,
                   "clock" : self.clock,
-                  "req_per_cycle" : self.reqPerCycle
+                  "req_per_cycle" : self.reqPerCycle,
+                  "numZones" : self.zones,
+                  "numPrecincts" : self.precincts
                 })
                 zen_iface.addParams({
                   "input_buf_size" : self.inputBufSize,
@@ -740,7 +746,9 @@ class FORZA:
                 rza_nic.addParams({
                   "verbose" : self.verbose,
                   "clock" : self.clock,
-                  "req_per_cycle" : self.reqPerCycle
+                  "req_per_cycle" : self.reqPerCycle,
+                  "numZones" : self.zones,
+                  "numPrecincts" : self.precincts
                 })
                 rza_iface.addParams({
                   "input_buf_size" : self.inputBufSize,
@@ -784,7 +792,9 @@ class FORZA:
                     zap_nic.addParams({
                       "verbose" : self.verbose,
                       "clock" : self.clock,
-                      "req_per_cycle" : self.reqPerCycle
+                      "req_per_cycle" : self.reqPerCycle,
+                      "numZones" : self.zones,
+                      "numPrecincts" : self.precincts
                     })
                     zap_iface.addParams({
                       "input_buf_size" : self.inputBufSize,
