@@ -21,7 +21,7 @@ comp_cpu.addParams({
     "startAddr": "[0:0x00000000]",               # Starting address for core 0
     "memCost": "[0:1:10]",                       # Memory loads required 1-10 cycles
     "program": "scratchpad-overflow.exe",        # Target executable
-    "enable_memH": 1,                            # Enable memHierarchy support
+    "enableMemH": 1,                            # Enable memHierarchy support
     "splash": 1                                  # Display the splash message
 })
 comp_cpu.enableAllStatistics()

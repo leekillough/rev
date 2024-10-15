@@ -234,7 +234,7 @@ rza0.addParams({
         "enableRZA": 1,                              # [FORZA] Enable RZA functionality
         "precinctId": 0,                             # [FORZA] precinct ID
         "zoneId": 0,                                 # [FORZA] zone ID
-        "enable_memH": 1,                            # Enable memHierarchy support
+        "enableMemH": 1,                            # Enable memHierarchy support
         "splash": 0,                                 # Display the splash message
 })
 
@@ -302,7 +302,7 @@ rza1.addParams({
         "enableRZA": 1,                              # [FORZA] Enable RZA functionality
         "precinctId": 0,                             # [FORZA] precinct ID
         "zoneId": 1,                                 # [FORZA] zone ID
-        "enable_memH": 1,                            # Enable memHierarchy support
+        "enableMemH": 1,                            # Enable memHierarchy support
         "splash": 0,                                 # Display the splash message
 })
 
