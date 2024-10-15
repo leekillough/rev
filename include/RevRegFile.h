@@ -23,13 +23,11 @@
 #include <unordered_map>
 #include <utility>
 
-#include "../common/include/RevCommon.h"
-#include "RevFeature.h"
-#include "RevMem.h"
+#include "RevCSR.h"
+#include "RevCommon.h"
+#include "RevTracer.h"
 
 namespace SST::RevCPU {
-
-struct RevInst;
 
 // Mappings from floating point to same-sized integer types
 template<typename T>
@@ -108,28 +106,7 @@ enum class RevReg : uint16_t {
   fa6  = 16, fa7 = 17, fs2  = 18, fs3  = 19, fs4 = 20, fs5 = 21, fs6  = 22, fs7  = 23,
   fs8  = 24, fs9 = 25, fs10 = 26, fs11 = 27, ft8 = 28, ft9 = 29, ft10 = 30, ft11 = 31,
 };
-
-/// Floating-Point Rounding Mode
-enum class FRMode : uint32_t {
-  None = 0xff,
-  RNE = 0,   // Round to Nearest, ties to Even
-  RTZ = 1,   // Round towards Zero
-  RDN = 2,   // Round Down (towards -Inf)
-  RUP = 3,   // Round Up (towards +Inf)
-  RMM = 4,   // Round to Nearest, ties to Max Magnitude
-  DYN = 7,   // In instruction's rm field, selects dynamic rounding mode; invalid in FCSR
-};
-
-/// Floating-point control register
-enum class FCSR : uint32_t {
-  NX = 1,
-  UF = 2,
-  OF = 4,
-  DZ = 8,
-  NV = 16,
-};
-
-#define CSR_LIMIT 0x1000
+// clang-format on
 
 // Ref: RISC-V Privileged Spec (pg. 39)
 enum class RevExceptionCause : int32_t {
@@ -153,22 +130,18 @@ enum class RevExceptionCause : int32_t {
   THREAD_MIGRATED           = 999,
 };
 
-// clang-format on
-
 class RevCore;
+class RevTracer;
 
-class RevRegFile {
-public:
-  RevCore* const Core;    ///< RevRegFile: Owning core of this register file's hart
-  const bool     IsRV32;  ///< RevRegFile: Cached copy of Features->IsRV32()
-  const bool     HasD;    ///< RevRegFile: Cached copy of Features->HasD()
-
-private:
-  bool       trigger{};         ///< RevRegFile: Has the instruction been triggered?
-  unsigned   Entry{};           ///< RevRegFile: Instruction entry
-  uint32_t   cost{};            ///< RevRegFile: Cost of the instruction
-  uint32_t   ThreadID{};        ///< RevRegFile: Thread ID
-  RevTracer* Tracer = nullptr;  ///< RegRegFile: Tracer object
+class RevRegFile : public RevCSR {
+  RevCore* const Core;        ///< RevRegFile: Owning core of this register file's hart
+  const bool     IsRV64_v;    ///< RevRegFile: Cached copy of Features->IsRV64()
+  const bool     HasD_v;      ///< RevRegFile: Cached copy of Features->HasD()
+  bool           trigger{};   ///< RevRegFile: Has the instruction been triggered?
+  unsigned       Entry{};     ///< RevRegFile: Instruction entry
+  uint32_t       cost{};      ///< RevRegFile: Cost of the instruction
+  uint32_t       ThreadID{};  ///< RevRegFile: Thread ID
+  RevTracer*     Tracer{};    ///< RegRegFile: Tracer object
 
   union {                // Anonymous union. We zero-initialize the largest member
     uint32_t RV32_PC;    ///< RevRegFile: RV32 PC
@@ -191,15 +164,6 @@ private:
   std::bitset<_REV_NUM_REGS_> RV_Scoreboard{};  ///< RevRegFile: Scoreboard for RV32/RV64 RF to manage pipeline hazard
   std::bitset<_REV_NUM_REGS_> FP_Scoreboard{};  ///< RevRegFile: Scoreboard for SPF/DPF RF to manage pipeline hazard
 
-  // Supervisor Mode CSRs
-  uint64_t CSR[CSR_LIMIT]{};
-
-  // Floating-point CSR
-  FCSR fcsr{};
-
-  // Number of instructions retired
-  uint64_t InstRet{};
-
   union {                  // Anonymous union. We zero-initialize the largest member
     uint64_t RV64_SEPC{};  // Holds address of instruction that caused the exception (ie. ECALL)
     uint32_t RV32_SEPC;
@@ -221,16 +185,30 @@ private:
 
 public:
   // Constructor which takes a RevCore to indicate its hart's parent core
-  // Template is to prevent circular dependencies by not requiring RevCore to be a complete type now
-  template<typename T, typename = std::enable_if_t<std::is_same_v<T, RevCore>>>
-  explicit RevRegFile( T* core ) : Core( core ), IsRV32( core->GetRevFeature()->IsRV32() ), HasD( core->GetRevFeature()->HasD() ) {}
+  // Template allows RevCore to be an incomplete type now
+  // std::enable_if_t<...> makes the constructor only match CORE == RevCore
+  template<typename CORE, typename = std::enable_if_t<std::is_same_v<CORE, RevCore>>>
+  explicit RevRegFile( CORE* Core )
+    : Core( Core ), IsRV64_v( Core->GetRevFeature()->IsRV64() ), HasD_v( Core->GetRevFeature()->HasD() ) {}
 
   /// RevRegFile: disallow copying and assignment
   RevRegFile( const RevRegFile& )            = delete;
   RevRegFile& operator=( const RevRegFile& ) = delete;
 
-  // Getters/Setters
+  /// RevRegFile: standard destructor
+  ~RevRegFile()                              = default;
 
+  ///< RevRegFile: Return the core owning this hart
+  RevCore* GetCore() const { return Core; }
+
+  // Feature tests
+  ///< RevRegFile: Whether it is RV64
+  bool IsRV64() const { return IsRV64_v; }
+
+  ///< RevRegFile: Whenter it is D
+  bool HasD() const { return HasD_v; }
+
+  // Getters/Setters
   /// Get cost of the instruction
   const uint32_t& GetCost() const { return cost; }
 
@@ -271,10 +249,10 @@ public:
 
   /// Capture the PC of current instruction which raised exception
   void SetSEPC() {
-    if( IsRV32 ) {
-      RV32_SEPC = RV32_PC;
-    } else {
+    if( IsRV64() ) {
       RV64_SEPC = RV64_PC;
+    } else {
+      RV32_SEPC = RV32_PC;
     }
   }
 
@@ -282,10 +260,10 @@ public:
   /// (ECALL doesn't use it and sets it to 0)
   template<typename T>
   void SetSTVAL( T val ) {
-    if( IsRV32 ) {
-      RV32_STVAL = val;
-    } else {
+    if( IsRV64() ) {
       RV64_STVAL = val;
+    } else {
+      RV32_STVAL = val;
     }
   }
 
@@ -299,12 +277,12 @@ public:
   template<typename T, typename U>
   T GetX( U rs ) const {
     T res;
-    if( IsRV32 ) {
-      res = RevReg( rs ) != RevReg::zero ? T( RV32[size_t( rs )] ) : 0;
-      TRACE_REG_READ( size_t( rs ), uint32_t( res ) );
-    } else {
+    if( IsRV64() ) {
       res = RevReg( rs ) != RevReg::zero ? T( RV64[size_t( rs )] ) : 0;
       TRACE_REG_READ( size_t( rs ), uint64_t( res ) );
+    } else {
+      res = RevReg( rs ) != RevReg::zero ? T( RV32[size_t( rs )] ) : 0;
+      TRACE_REG_READ( size_t( rs ), uint32_t( res ) );
     }
     return res;
   }
@@ -313,35 +291,35 @@ public:
   template<typename T, typename U>
   void SetX( U rd, T val ) {
     T res;
-    if( IsRV32 ) {
-      res                = RevReg( rd ) != RevReg::zero ? uint32_t( val ) : 0;
-      RV32[size_t( rd )] = res;
-      TRACE_REG_WRITE( size_t( rd ), uint32_t( res ) );
-    } else {
+    if( IsRV64() ) {
       res                = RevReg( rd ) != RevReg::zero ? uint64_t( val ) : 0;
       RV64[size_t( rd )] = res;
       TRACE_REG_WRITE( size_t( rd ), uint64_t( res ) );
+    } else {
+      res                = RevReg( rd ) != RevReg::zero ? uint32_t( val ) : 0;
+      RV32[size_t( rd )] = res;
+      TRACE_REG_WRITE( size_t( rd ), uint32_t( res ) );
     }
   }
 
   /// GetPC: Get the Program Counter
   uint64_t GetPC() const {
-    if( IsRV32 ) {
-      return RV32_PC;
-    } else {
+    if( IsRV64() ) {
       return RV64_PC;
+    } else {
+      return RV32_PC;
     }
   }
 
   /// SetPC: Set the Program Counter to a specific value
   template<typename T>
   void SetPC( T val ) {
-    if( IsRV32 ) {
-      RV32_PC = static_cast<uint32_t>( val );
-      TRACE_PC_WRITE( RV32_PC );
-    } else {
+    if( IsRV64() ) {
       RV64_PC = static_cast<uint64_t>( val );
       TRACE_PC_WRITE( RV64_PC );
+    } else {
+      RV32_PC = static_cast<uint32_t>( val );
+      TRACE_PC_WRITE( RV32_PC );
     }
   }
 
@@ -349,10 +327,10 @@ public:
   // Note: This does not create tracer events like SetPC() does
   template<typename T>  // Used to allow RevInst to be incomplete type right now
   void AdvancePC( const T& Inst ) {
-    if( IsRV32 ) {
-      RV32_PC += Inst.instSize;
-    } else {
+    if( IsRV64() ) {
       RV64_PC += Inst.instSize;
+    } else {
+      RV32_PC += Inst.instSize;
     }
   }
 
@@ -363,7 +341,7 @@ public:
   T GetFP( U rs ) const {
     if constexpr( std::is_same_v<T, double> ) {
       return DPF[size_t( rs )];
-    } else if( HasD ) {
+    } else if( HasD() ) {
       return UnBoxNaN<T, FMV_FS>( &DPF[size_t( rs )] );
     } else {
       return UnBoxNaN<T, FMV_FS>( &SPF[size_t( rs )] );
@@ -375,7 +353,7 @@ public:
   void SetFP( U rd, T value ) {
     if constexpr( std::is_same_v<T, double> ) {
       DPF[size_t( rd )] = value;
-    } else if( HasD ) {
+    } else if( HasD() ) {
       BoxNaN( &DPF[size_t( rd )], &value );
     } else {
       BoxNaN( &SPF[size_t( rd )], &value );
@@ -384,125 +362,35 @@ public:
 
   uint32_t GetThreadID() const { return ThreadID; }
 
-private:
-  // Performance counters
-
-  // Template is used to break circular dependencies between RevCore and RevRegFile
-  template<typename CORE, typename = std::enable_if_t<std::is_same_v<CORE, RevCore>>>
-  uint64_t rdcycle( CORE* core ) const {
-    return core->GetCycles();
-  }
-
-  template<typename CORE, typename = std::enable_if_t<std::is_same_v<CORE, RevCore>>>
-  uint64_t rdtime( CORE* core ) const {
-    return core->GetCurrentSimCycle();
-  }
-
-  template<typename CORE, typename = std::enable_if_t<std::is_same_v<CORE, RevCore>>>
-  uint64_t rdinstret( CORE* ) const {
-    return InstRet;
-  }
-
-  enum class Half { Lo, Hi };
-
-  /// Performance Counter template
-  // Passed a function which gets the 64-bit value of a performance counter
-  template<typename T, Half HALF, uint64_t ( RevRegFile::*COUNTER )( RevCore* ) const>
-  T GetPerfCounter() const {
-    if constexpr( sizeof( T ) == sizeof( uint32_t ) ) {
-      // clang-format off
-      if constexpr( HALF == Half::Lo ) {
-        return static_cast<T>( ( this->*COUNTER )( Core ) & 0xffffffff );
-      } else {
-        return static_cast<T>( ( this->*COUNTER )( Core ) >> 32 );
-      }
-      // clang-format on
-    } else {
-      if constexpr( HALF == Half::Lo ) {
-        return ( this->*COUNTER )( Core );
-      } else {
-        return 0;  // Hi half is not available on RV64
-      }
-    }
-  }
-
-public:
-  /// Get a CSR register
-  template<typename T>
-  T GetCSR( size_t csr ) const {
-    // clang-format off
-    switch( csr ) {
-    default: return static_cast<T>( CSR[csr] );
-
-    // We store fcsr separately from the global CSR
-    case 1: return static_cast<uint32_t>( fcsr ) >> 0 & 0b00011111u;
-    case 2: return static_cast<uint32_t>( fcsr ) >> 5 & 0b00000111u;
-    case 3: return static_cast<uint32_t>( fcsr ) >> 0 & 0b11111111u;
-
-      // Performance Counters
-    case 0xc00: return GetPerfCounter<T, Half::Lo, &RevRegFile::rdcycle>();
-    case 0xc80: return GetPerfCounter<T, Half::Hi, &RevRegFile::rdcycle>();
-    case 0xc01: return GetPerfCounter<T, Half::Lo, &RevRegFile::rdtime>();
-    case 0xc81: return GetPerfCounter<T, Half::Hi, &RevRegFile::rdtime>();
-    case 0xc02: return GetPerfCounter<T, Half::Lo, &RevRegFile::rdinstret>();
-    case 0xc82: return GetPerfCounter<T, Half::Hi, &RevRegFile::rdinstret>();
-    }
-    // clang-format on
-  }
-
-  /// Set a CSR register
-  template<typename T>
-  void SetCSR( size_t csr, T val ) {
-    // We store fcsr separately from the global CSR
-    switch( csr ) {
-    case 1:
-      fcsr = FCSR{ ( static_cast<uint32_t>( fcsr ) & ~uint32_t{ 0b00011111u } ) | static_cast<uint32_t>( val & 0b00011111u ) };
-      break;
-    case 2:
-      fcsr = FCSR{ ( static_cast<uint32_t>( fcsr ) & ~uint32_t{ 0b11100000u } ) | static_cast<uint32_t>( val & 0b00000111u ) << 5 };
-      break;
-    case 3:
-      fcsr = FCSR{ ( static_cast<uint32_t>( fcsr ) & ~uint32_t{ 0b11111111u } ) | static_cast<uint32_t>( val & 0b11111111u ) };
-      break;
-    default: CSR[csr] = val;
-    }
-  }
-
-  /// Get the Floating-Point Rounding Mode
-  FRMode GetFRM() const { return FRMode{ ( static_cast<uint32_t>( fcsr ) >> 5 ) & 0x3u }; }
-
   void SetThreadID( uint32_t tid ) { ThreadID = tid; }
-
-  /// Return the Floating-Point Status Register
-  FCSR& GetFCSR() { return fcsr; }
 
   // Friend functions and classes to access internal register state
   template<typename INT, typename FP>
-  friend bool fcvtif( RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst );
+  friend bool fcvtif( const class RevFeature* F, RevRegFile* R, class RevMem* M, const class RevInst& Inst );
 
   template<typename T>
-  friend bool load( RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst );
+  friend bool load( const class RevFeature* F, RevRegFile* R, class RevMem* M, const class RevInst& Inst );
 
   template<typename T>
-  friend bool store( RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst );
+  friend bool store( const class RevFeature* F, RevRegFile* R, class RevMem* M, const class RevInst& Inst );
 
   template<typename T>
-  friend bool fload( RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst );
+  friend bool fload( const class RevFeature* F, RevRegFile* R, class RevMem* M, const class RevInst& Inst );
 
   template<typename T>
-  friend bool fstore( RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst );
+  friend bool fstore( const class RevFeature* F, RevRegFile* R, class RevMem* M, const class RevInst& Inst );
 
   template<typename T, template<class> class OP>
-  friend bool foper( RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst );
+  friend bool foper( const class RevFeature* F, RevRegFile* R, class RevMem* M, const class RevInst& Inst );
 
   template<typename T, template<class> class OP>
-  friend bool fcondop( RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst );
+  friend bool fcondop( const class RevFeature* F, RevRegFile* R, class RevMem* M, const class RevInst& Inst );
 
   friend std::ostream& operator<<( std::ostream& os, const RevRegFile& regFile );
 
   friend class RevCore;
-  friend class RV32A;
-  friend class RV64A;
+  friend class Zaamo;
+  friend class Zalrsc;
 };  // class RevRegFile
 
 }  // namespace SST::RevCPU

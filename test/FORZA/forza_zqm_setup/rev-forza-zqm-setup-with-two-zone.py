@@ -29,31 +29,31 @@ MEM_SIZE = 1024*1024*1024-1
 # --------------------------
 zen0 = sst.Component("zen0", "forzazen.ZEN")
 zen0.addParams({
-  "verbose" : 7,              # Verbosity
-  "clockFreq" : "1.0GHz",     # Clock Frequency
-  "precinctId" : 0,           # precinct Id
-  "zoneId" : 0,               # zone Id
-  "numHarts" : 4,             # number of harts
-  "numZaps" : 4,              # number of zaps
-  "numZones" : 2,             # number of zones
-  "numPrecincts" : 1,         # number of precincts
-  "enableDMA" : 0,            # enable the DMA?
-  "zenQSizeLimit" : 100000,   # zenQ size limit
-  "processPerCycle" : 100000  # messages per cycle
+  "verbose": 7,              # Verbosity
+  "clockFreq": "1.0GHz",     # Clock Frequency
+  "precinctId": 0,           # precinct Id
+  "zoneId": 0,               # zone Id
+  "numHarts": 4,             # number of harts
+  "numZaps": 4,              # number of zaps
+  "numZones": 2,             # number of zones
+  "numPrecincts": 1,         # number of precincts
+  "enableDMA": 0,            # enable the DMA?
+  "zenQSizeLimit": 100000,   # zenQ size limit
+  "processPerCycle": 100000  # messages per cycle
 })
 zen1 = sst.Component("zen1", "forzazen.ZEN")
 zen1.addParams({
-  "verbose" : 7,              # Verbosity
-  "clockFreq" : "1.0GHz",     # Clock Frequency
-  "precinctId" : 0,           # precinct Id
-  "zoneId" : 1,               # zone Id
-  "numHarts" : 4,             # number of harts
-  "numZaps" : 4,              # number of zaps
-  "numZones" : 2,             # number of zones
-  "numPrecincts" : 1,         # number of precincts
-  "enableDMA" : 0,            # enable the DMA?
-  "zenQSizeLimit" : 100000,   # zenQ size limit
-  "processPerCycle" : 100000  # messages per cycle
+  "verbose": 7,              # Verbosity
+  "clockFreq": "1.0GHz",     # Clock Frequency
+  "precinctId": 0,           # precinct Id
+  "zoneId": 1,               # zone Id
+  "numHarts": 4,             # number of harts
+  "numZaps": 4,              # number of zaps
+  "numZones": 2,             # number of zones
+  "numPrecincts": 1,         # number of precincts
+  "enableDMA": 0,            # enable the DMA?
+  "zenQSizeLimit": 100000,   # zenQ size limit
+  "processPerCycle": 100000  # messages per cycle
 })
 
 
@@ -62,21 +62,21 @@ zen1.addParams({
 # --------------------------
 zqm0 = sst.Component("zqm0", "forzazqm.ZQM")
 zqm0.addParams({
-  "verbose" : 7,              # Verbosity
-  "clockFreq" : "1.0GHz",     # Clock Frequency
-  "precinctId" : 0,           # precinct Id
-  "zoneId" : 0,               # zone Id
-  "numHarts" : 4,             # number of harts
-  "numCores" : 4,             # number of cores
+  "verbose": 7,              # Verbosity
+  "clockFreq": "1.0GHz",     # Clock Frequency
+  "precinctId": 0,           # precinct Id
+  "zoneId": 0,               # zone Id
+  "numHarts": 4,             # number of harts
+  "numCores": 4,             # number of cores
 })
 zqm1 = sst.Component("zqm1", "forzazqm.ZQM")
 zqm1.addParams({
-  "verbose" : 7,              # Verbosity
-  "clockFreq" : "1.0GHz",     # Clock Frequency
-  "precinctId" : 0,           # precinct Id
-  "zoneId" : 1,               # zone Id
-  "numHarts" : 4,             # number of harts
-  "numCores" : 4,             # number of cores
+  "verbose": 7,              # Verbosity
+  "clockFreq": "1.0GHz",     # Clock Frequency
+  "precinctId": 0,           # precinct Id
+  "zoneId": 1,               # zone Id
+  "numHarts": 4,             # number of harts
+  "numCores": 4,             # number of cores
 })
 
 
@@ -85,74 +85,74 @@ zqm1.addParams({
 # --------------------------
 zap_cpu0_0 = sst.Component("zap0_0", "revcpu.RevCPU")
 zap_cpu0_0.addParams({
-        "verbose" : 5,                                # Verbosity
-        "numCores" : 1,                               # Number of cores
-        "numHarts" : 4,
-        "clock" : "1.0GHz",                           # Clock
-        "memSize" : 1024*1024*1024,                   # Memory size in bytes
-        "machine" : "[0:RV64GC]",                     # Core:Config; RV64I for core 0
-        "startAddr" : "[0:0x00000000]",               # Starting address for core 0
-        "memCost" : "[0:1:10]",                       # Memory loads required 1-10 cycles
-        "program" : os.getenv("REV_EXE", "forza_zqm_setup.exe"),  # Target executable
-        "enableZoneNIC" : 1,                          # [FORZA] Enable the zone NIC
-        "precinctId" : 0,                             # [FORZA] precinct ID
-        "zoneId" : 0,                                 # [FORZA] zone ID
-        "zapId" : 0,                                  # [FORZA] zap ID
-        "splash" : 0                                  # Display the splash message
+        "verbose": 5,                                # Verbosity
+        "numCores": 1,                               # Number of cores
+        "numHarts": 4,
+        "clock": "1.0GHz",                           # Clock
+        "memSize": 1024*1024*1024,                   # Memory size in bytes
+        "machine": "[0:RV64GC]",                     # Core:Config; RV64I for core 0
+        "startAddr": "[0:0x00000000]",               # Starting address for core 0
+        "memCost": "[0:1:10]",                       # Memory loads required 1-10 cycles
+        "program": os.getenv("REV_EXE", "forza_zqm_setup.exe"),  # Target executable
+        "enableZoneNIC": 1,                          # [FORZA] Enable the zone NIC
+        "precinctId": 0,                             # [FORZA] precinct ID
+        "zoneId": 0,                                 # [FORZA] zone ID
+        "zapId": 0,                                  # [FORZA] zap ID
+        "splash": 0                                  # Display the splash message
 })
 
 zap_cpu0_1 = sst.Component("zap0_1", "revcpu.RevCPU")
 zap_cpu0_1.addParams({
-        "verbose" : 5,                                # Verbosity
-        "numCores" : 1,                               # Number of cores
-        "numHarts" : 4,
-        "clock" : "1.0GHz",                           # Clock
-        "memSize" : 1024*1024*1024,                   # Memory size in bytes
-        "machine" : "[0:RV64GC]",                     # Core:Config; RV64I for core 0
-        "startAddr" : "[0:0x00000000]",               # Starting address for core 0
-        "memCost" : "[0:1:10]",                       # Memory loads required 1-10 cycles
-        "program" : os.getenv("REV_EXE", "forza_zqm_setup.exe"),  # Target executable
-        "enableZoneNIC" : 1,                          # [FORZA] Enable the zone NIC
-        "precinctId" : 0,                             # [FORZA] precinct ID
-        "zoneId" : 0,                                 # [FORZA] zone ID
-        "zapId" : 1,                                  # [FORZA] zap ID
-        "splash" : 0                                  # Display the splash message
+        "verbose": 5,                                # Verbosity
+        "numCores": 1,                               # Number of cores
+        "numHarts": 4,
+        "clock": "1.0GHz",                           # Clock
+        "memSize": 1024*1024*1024,                   # Memory size in bytes
+        "machine": "[0:RV64GC]",                     # Core:Config; RV64I for core 0
+        "startAddr": "[0:0x00000000]",               # Starting address for core 0
+        "memCost": "[0:1:10]",                       # Memory loads required 1-10 cycles
+        "program": os.getenv("REV_EXE", "forza_zqm_setup.exe"),  # Target executable
+        "enableZoneNIC": 1,                          # [FORZA] Enable the zone NIC
+        "precinctId": 0,                             # [FORZA] precinct ID
+        "zoneId": 0,                                 # [FORZA] zone ID
+        "zapId": 1,                                  # [FORZA] zap ID
+        "splash": 0                                  # Display the splash message
 })
 
 zap_cpu0_2 = sst.Component("zap0_2", "revcpu.RevCPU")
 zap_cpu0_2.addParams({
-        "verbose" : 5,                                # Verbosity
-        "numCores" : 1,                               # Number of cores
-        "numHarts" : 4,
-        "clock" : "1.0GHz",                           # Clock
-        "memSize" : 1024*1024*1024,                   # Memory size in bytes
-        "machine" : "[0:RV64GC]",                     # Core:Config; RV64I for core 0
-        "startAddr" : "[0:0x00000000]",               # Starting address for core 0
-        "memCost" : "[0:1:10]",                       # Memory loads required 1-10 cycles
-        "program" : os.getenv("REV_EXE", "forza_zqm_setup.exe"),  # Target executable
-        "enableZoneNIC" : 1,                          # [FORZA] Enable the zone NIC
-        "precinctId" : 0,                             # [FORZA] precinct ID
-        "zoneId" : 0,                                 # [FORZA] zone ID
-        "zapId" : 2,                                  # [FORZA] zap ID
-        "splash" : 0                                  # Display the splash message
+        "verbose": 5,                                # Verbosity
+        "numCores": 1,                               # Number of cores
+        "numHarts": 4,
+        "clock": "1.0GHz",                           # Clock
+        "memSize": 1024*1024*1024,                   # Memory size in bytes
+        "machine": "[0:RV64GC]",                     # Core:Config; RV64I for core 0
+        "startAddr": "[0:0x00000000]",               # Starting address for core 0
+        "memCost": "[0:1:10]",                       # Memory loads required 1-10 cycles
+        "program": os.getenv("REV_EXE", "forza_zqm_setup.exe"),  # Target executable
+        "enableZoneNIC": 1,                          # [FORZA] Enable the zone NIC
+        "precinctId": 0,                             # [FORZA] precinct ID
+        "zoneId": 0,                                 # [FORZA] zone ID
+        "zapId": 2,                                  # [FORZA] zap ID
+        "splash": 0                                  # Display the splash message
 })
 
 zap_cpu0_3 = sst.Component("zap0_3", "revcpu.RevCPU")
 zap_cpu0_3.addParams({
-        "verbose" : 5,                                # Verbosity
-        "numCores" : 1,                               # Number of cores
-        "numHarts" : 4,
-        "clock" : "1.0GHz",                           # Clock
-        "memSize" : 1024*1024*1024,                   # Memory size in bytes
-        "machine" : "[0:RV64GC]",                     # Core:Config; RV64I for core 0
-        "startAddr" : "[0:0x00000000]",               # Starting address for core 0
-        "memCost" : "[0:1:10]",                       # Memory loads required 1-10 cycles
-        "program" : os.getenv("REV_EXE", "forza_zqm_setup.exe"),  # Target executable
-        "enableZoneNIC" : 1,                          # [FORZA] Enable the zone NIC
-        "precinctId" : 0,                             # [FORZA] precinct ID
-        "zoneId" : 0,                                 # [FORZA] zone ID
-        "zapId" : 3,                                  # [FORZA] zap ID
-        "splash" : 0                                  # Display the splash message
+        "verbose": 5,                                # Verbosity
+        "numCores": 1,                               # Number of cores
+        "numHarts": 4,
+        "clock": "1.0GHz",                           # Clock
+        "memSize": 1024*1024*1024,                   # Memory size in bytes
+        "machine": "[0:RV64GC]",                     # Core:Config; RV64I for core 0
+        "startAddr": "[0:0x00000000]",               # Starting address for core 0
+        "memCost": "[0:1:10]",                       # Memory loads required 1-10 cycles
+        "program": os.getenv("REV_EXE", "forza_zqm_setup.exe"),  # Target executable
+        "enableZoneNIC": 1,                          # [FORZA] Enable the zone NIC
+        "precinctId": 0,                             # [FORZA] precinct ID
+        "zoneId": 0,                                 # [FORZA] zone ID
+        "zapId": 3,                                  # [FORZA] zap ID
+        "splash": 0                                  # Display the splash message
 })
 
 # --------------------------
@@ -160,144 +160,142 @@ zap_cpu0_3.addParams({
 # --------------------------
 zap_cpu1_0 = sst.Component("zap1_0", "revcpu.RevCPU")
 zap_cpu1_0.addParams({
-        "verbose" : 5,                                # Verbosity
-        "numCores" : 1,                               # Number of cores
-        "numHarts" : 4,
-        "clock" : "1.0GHz",                           # Clock
-        "memSize" : 1024*1024*1024,                   # Memory size in bytes
-        "machine" : "[0:RV64GC]",                     # Core:Config; RV64I for core 0
-        "startAddr" : "[0:0x00000000]",               # Starting address for core 0
-        "memCost" : "[0:1:10]",                       # Memory loads required 1-10 cycles
-        "program" : os.getenv("REV_EXE", "forza_zqm_setup.exe"),  # Target executable
-        "enableZoneNIC" : 1,                          # [FORZA] Enable the zone NIC
-        "precinctId" : 0,                             # [FORZA] precinct ID
-        "zoneId" : 1,                                 # [FORZA] zone ID
-        "zapId" : 0,                                  # [FORZA] zap ID
-        "splash" : 0                                  # Display the splash message
+        "verbose": 5,                                # Verbosity
+        "numCores": 1,                               # Number of cores
+        "numHarts": 4,
+        "clock": "1.0GHz",                           # Clock
+        "memSize": 1024*1024*1024,                   # Memory size in bytes
+        "machine": "[0:RV64GC]",                     # Core:Config; RV64I for core 0
+        "startAddr": "[0:0x00000000]",               # Starting address for core 0
+        "memCost": "[0:1:10]",                       # Memory loads required 1-10 cycles
+        "program": os.getenv("REV_EXE", "forza_zqm_setup.exe"),  # Target executable
+        "enableZoneNIC": 1,                          # [FORZA] Enable the zone NIC
+        "precinctId": 0,                             # [FORZA] precinct ID
+        "zoneId": 1,                                 # [FORZA] zone ID
+        "zapId": 0,                                  # [FORZA] zap ID
+        "splash": 0                                  # Display the splash message
 })
 
 zap_cpu1_1 = sst.Component("zap1_1", "revcpu.RevCPU")
 zap_cpu1_1.addParams({
-        "verbose" : 5,                                # Verbosity
-        "numCores" : 1,                               # Number of cores
-        "numHarts" : 4,
-        "clock" : "1.0GHz",                           # Clock
-        "memSize" : 1024*1024*1024,                   # Memory size in bytes
-        "machine" : "[0:RV64GC]",                     # Core:Config; RV64I for core 0
-        "startAddr" : "[0:0x00000000]",               # Starting address for core 0
-        "memCost" : "[0:1:10]",                       # Memory loads required 1-10 cycles
-        "program" : os.getenv("REV_EXE", "forza_zqm_setup.exe"),  # Target executable
-        "enableZoneNIC" : 1,                          # [FORZA] Enable the zone NIC
-        "precinctId" : 0,                             # [FORZA] precinct ID
-        "zoneId" : 1,                                 # [FORZA] zone ID
-        "zapId" : 1,                                  # [FORZA] zap ID
-        "splash" : 0                                  # Display the splash message
+        "verbose": 5,                                # Verbosity
+        "numCores": 1,                               # Number of cores
+        "numHarts": 4,
+        "clock": "1.0GHz",                           # Clock
+        "memSize": 1024*1024*1024,                   # Memory size in bytes
+        "machine": "[0:RV64GC]",                     # Core:Config; RV64I for core 0
+        "startAddr": "[0:0x00000000]",               # Starting address for core 0
+        "memCost": "[0:1:10]",                       # Memory loads required 1-10 cycles
+        "program": os.getenv("REV_EXE", "forza_zqm_setup.exe"),  # Target executable
+        "enableZoneNIC": 1,                          # [FORZA] Enable the zone NIC
+        "precinctId": 0,                             # [FORZA] precinct ID
+        "zoneId": 1,                                 # [FORZA] zone ID
+        "zapId": 1,                                  # [FORZA] zap ID
+        "splash": 0                                  # Display the splash message
 })
 
 zap_cpu1_2 = sst.Component("zap1_2", "revcpu.RevCPU")
 zap_cpu1_2.addParams({
-        "verbose" : 5,                                # Verbosity
-        "numCores" : 1,                               # Number of cores
-        "numHarts" : 4,
-        "clock" : "1.0GHz",                           # Clock
-        "memSize" : 1024*1024*1024,                   # Memory size in bytes
-        "machine" : "[0:RV64GC]",                     # Core:Config; RV64I for core 0
-        "startAddr" : "[0:0x00000000]",               # Starting address for core 0
-        "memCost" : "[0:1:10]",                       # Memory loads required 1-10 cycles
-        "program" : os.getenv("REV_EXE", "forza_zqm_setup.exe"),  # Target executable
-        "enableZoneNIC" : 1,                          # [FORZA] Enable the zone NIC
-        "precinctId" : 0,                             # [FORZA] precinct ID
-        "zoneId" : 1,                                 # [FORZA] zone ID
-        "zapId" : 2,                                  # [FORZA] zap ID
-        "splash" : 0                                  # Display the splash message
+        "verbose": 5,                                # Verbosity
+        "numCores": 1,                               # Number of cores
+        "numHarts": 4,
+        "clock": "1.0GHz",                           # Clock
+        "memSize": 1024*1024*1024,                   # Memory size in bytes
+        "machine": "[0:RV64GC]",                     # Core:Config; RV64I for core 0
+        "startAddr": "[0:0x00000000]",               # Starting address for core 0
+        "memCost": "[0:1:10]",                       # Memory loads required 1-10 cycles
+        "program": os.getenv("REV_EXE", "forza_zqm_setup.exe"),  # Target executable
+        "enableZoneNIC": 1,                          # [FORZA] Enable the zone NIC
+        "precinctId": 0,                             # [FORZA] precinct ID
+        "zoneId": 1,                                 # [FORZA] zone ID
+        "zapId": 2,                                  # [FORZA] zap ID
+        "splash": 0                                  # Display the splash message
 })
 
 zap_cpu1_3 = sst.Component("zap1_3", "revcpu.RevCPU")
 zap_cpu1_3.addParams({
-        "verbose" : 5,                                # Verbosity
-        "numCores" : 1,                               # Number of cores
-        "numHarts" : 4,
-        "clock" : "1.0GHz",                           # Clock
-        "memSize" : 1024*1024*1024,                   # Memory size in bytes
-        "machine" : "[0:RV64GC]",                     # Core:Config; RV64I for core 0
-        "startAddr" : "[0:0x00000000]",               # Starting address for core 0
-        "memCost" : "[0:1:10]",                       # Memory loads required 1-10 cycles
-        "program" : os.getenv("REV_EXE", "forza_zqm_setup.exe"),  # Target executable
-        "enableZoneNIC" : 1,                          # [FORZA] Enable the zone NIC
-        "precinctId" : 0,                             # [FORZA] precinct ID
-        "zoneId" : 1,                                 # [FORZA] zone ID
-        "zapId" : 3,                                  # [FORZA] zap ID
-        "splash" : 0                                  # Display the splash message
+        "verbose": 5,                                # Verbosity
+        "numCores": 1,                               # Number of cores
+        "numHarts": 4,
+        "clock": "1.0GHz",                           # Clock
+        "memSize": 1024*1024*1024,                   # Memory size in bytes
+        "machine": "[0:RV64GC]",                     # Core:Config; RV64I for core 0
+        "startAddr": "[0:0x00000000]",               # Starting address for core 0
+        "memCost": "[0:1:10]",                       # Memory loads required 1-10 cycles
+        "program": os.getenv("REV_EXE", "forza_zqm_setup.exe"),  # Target executable
+        "enableZoneNIC": 1,                          # [FORZA] Enable the zone NIC
+        "precinctId": 0,                             # [FORZA] precinct ID
+        "zoneId": 1,                                 # [FORZA] zone ID
+        "zapId": 3,                                  # [FORZA] zap ID
+        "splash": 0                                  # Display the splash message
 })
-
-
 
 # --------------------------
 # SETUP THE ZONE0 RZA
 # --------------------------
 rza0 = sst.Component("rza0", "revcpu.RevCPU")
 rza0.addParams({
-        "verbose" : 5,                                # Verbosity
-        "numCores" : 2,                               # Number of cores
-        "clock" : "1.0GHz",                           # Clock
-        "memSize" : 1024*1024*1024,                   # Memory size in bytes
-        "machine" : "[CORES:RV64G]",                  # Core:Config; RV64I for core 0
-        "startAddr" : "[CORES:0x00000000]",           # Starting address for core 0
-        "program" : os.getenv("REV_EXE", "forza_zqm_setup.exe"),  # Target executable
-        "enableZoneNIC" : 1,                          # [FORZA] Enable the zone NIC
-        "enableRZA" : 1,                              # [FORZA] Enable RZA functionality
-        "precinctId" : 0,                             # [FORZA] precinct ID
-        "zoneId" : 0,                                 # [FORZA] zone ID
-        "enable_memH" : 1,                            # Enable memHierarchy support
-        "splash" : 0,                                 # Display the splash message
+        "verbose": 5,                                # Verbosity
+        "numCores": 2,                               # Number of cores
+        "clock": "1.0GHz",                           # Clock
+        "memSize": 1024*1024*1024,                   # Memory size in bytes
+        "machine": "[CORES:RV64G]",                  # Core:Config; RV64I for core 0
+        "startAddr": "[CORES:0x00000000]",           # Starting address for core 0
+        "program": os.getenv("REV_EXE", "forza_zqm_setup.exe"),  # Target executable
+        "enableZoneNIC": 1,                          # [FORZA] Enable the zone NIC
+        "enableRZA": 1,                              # [FORZA] Enable RZA functionality
+        "precinctId": 0,                             # [FORZA] precinct ID
+        "zoneId": 0,                                 # [FORZA] zone ID
+        "enableMemH": 1,                            # Enable memHierarchy support
+        "splash": 0,                                 # Display the splash message
 })
 
-rza0_lspipe = rza0.setSubComponent("rza_ls","revcpu.RZALSCoProc")
+rza0_lspipe = rza0.setSubComponent("rza_ls", "revcpu.RZALSCoProc")
 rza0_lspipe.addParams({
-  "clock" : "1.0GHz",
-  "verbose" : 9,
+  "clock": "1.0GHz",
+  "verbose": 9,
 })
 
-rza0_amopipe = rza0.setSubComponent("rza_amo","revcpu.RZAAMOCoProc")
+rza0_amopipe = rza0.setSubComponent("rza_amo", "revcpu.RZAAMOCoProc")
 rza0_amopipe.addParams({
-  "clock" : "1.0GHz",
-  "verbose" : 9,
+  "clock": "1.0GHz",
+  "verbose": 9,
 })
 
-rza0_lsq = rza0.setSubComponent("memory", "revcpu.RevBasicMemCtrl");
+rza0_lsq = rza0.setSubComponent("memory", "revcpu.RevBasicMemCtrl")
 rza0_lsq.addParams({
-      "verbose"         : "9",
-      "clock"           : "2.0Ghz",
-      "max_loads"       : 16,
-      "max_stores"      : 16,
-      "max_flush"       : 16,
-      "max_llsc"        : 16,
-      "max_readlock"    : 16,
-      "max_writeunlock" : 16,
-      "max_custom"      : 16,
-      "ops_per_cycle"   : 16
+      "verbose": "9",
+      "clock": "2.0Ghz",
+      "max_loads": 16,
+      "max_stores": 16,
+      "max_flush": 16,
+      "max_llsc": 16,
+      "max_readlock": 16,
+      "max_writeunlock": 16,
+      "max_custom": 16,
+      "ops_per_cycle": 16
 })
 
 iface0 = rza0_lsq.setSubComponent("memIface", "memHierarchy.standardInterface")
 iface0.addParams({
-      "verbose" : VERBOSE
+      "verbose": VERBOSE
 })
 
 memctrl0 = sst.Component("memory0", "memHierarchy.MemController")
 memctrl0.addParams({
-    "debug" : DEBUG_MEM,
-    "debug_level" : DEBUG_LEVEL,
-    "clock" : "2GHz",
-    "verbose" : VERBOSE,
-    "addr_range_start" : 0,
-    "addr_range_end" : MEM_SIZE,
-    "backing" : "malloc"
+    "debug": DEBUG_MEM,
+    "debug_level": DEBUG_LEVEL,
+    "clock": "2GHz",
+    "verbose": VERBOSE,
+    "addr_range_start": 0,
+    "addr_range_end": MEM_SIZE,
+    "backing": "malloc"
 })
 
 memory0 = memctrl0.setSubComponent("backend", "memHierarchy.simpleMem")
 memory0.addParams({
-    "access_time" : "100ns",
-    "mem_size" : "8GB"
+    "access_time": "100ns",
+    "mem_size": "8GB"
 })
 
 # --------------------------
@@ -305,89 +303,87 @@ memory0.addParams({
 # --------------------------
 rza1 = sst.Component("rza1", "revcpu.RevCPU")
 rza1.addParams({
-        "verbose" : 5,                                # Verbosity
-        "numCores" : 2,                               # Number of cores
-        "clock" : "1.0GHz",                           # Clock
-        "memSize" : 1024*1024*1024,                   # Memory size in bytes
-        "machine" : "[CORES:RV64G]",                  # Core:Config; RV64I for core 0
-        "startAddr" : "[CORES:0x00000000]",           # Starting address for core 0
-        "program" : os.getenv("REV_EXE", "forza_zqm_setup.exe"),  # Target executable
-        "enableZoneNIC" : 1,                          # [FORZA] Enable the zone NIC
-        "enableRZA" : 1,                              # [FORZA] Enable RZA functionality
-        "precinctId" : 0,                             # [FORZA] precinct ID
-        "zoneId" : 1,                                 # [FORZA] zone ID
-        "enable_memH" : 1,                            # Enable memHierarchy support
-        "splash" : 0,                                 # Display the splash message
+        "verbose": 5,                                # Verbosity
+        "numCores": 2,                               # Number of cores
+        "clock": "1.0GHz",                           # Clock
+        "memSize": 1024*1024*1024,                   # Memory size in bytes
+        "machine": "[CORES:RV64G]",                  # Core:Config; RV64I for core 0
+        "startAddr": "[CORES:0x00000000]",           # Starting address for core 0
+        "program": os.getenv("REV_EXE", "forza_zqm_setup.exe"),  # Target executable
+        "enableZoneNIC": 1,                          # [FORZA] Enable the zone NIC
+        "enableRZA": 1,                              # [FORZA] Enable RZA functionality
+        "precinctId": 0,                             # [FORZA] precinct ID
+        "zoneId": 1,                                 # [FORZA] zone ID
+        "enableMemH": 1,                            # Enable memHierarchy support
+        "splash": 0,                                 # Display the splash message
 })
 
-rza1_lspipe = rza1.setSubComponent("rza_ls","revcpu.RZALSCoProc")
+rza1_lspipe = rza1.setSubComponent("rza_ls", "revcpu.RZALSCoProc")
 rza1_lspipe.addParams({
-  "clock" : "1.0GHz",
-  "verbose" : 9,
+  "clock": "1.0GHz",
+  "verbose": 9,
 })
 
-rza1_amopipe = rza1.setSubComponent("rza_amo","revcpu.RZAAMOCoProc")
+rza1_amopipe = rza1.setSubComponent("rza_amo", "revcpu.RZAAMOCoProc")
 rza1_amopipe.addParams({
-  "clock" : "1.0GHz",
-  "verbose" : 9,
+  "clock": "1.0GHz",
+  "verbose": 9,
 })
 
-rza1_lsq = rza1.setSubComponent("memory", "revcpu.RevBasicMemCtrl");
+rza1_lsq = rza1.setSubComponent("memory", "revcpu.RevBasicMemCtrl")
 rza1_lsq.addParams({
-      "verbose"         : "9",
-      "clock"           : "2.0Ghz",
-      "max_loads"       : 16,
-      "max_stores"      : 16,
-      "max_flush"       : 16,
-      "max_llsc"        : 16,
-      "max_readlock"    : 16,
-      "max_writeunlock" : 16,
-      "max_custom"      : 16,
-      "ops_per_cycle"   : 16
+      "verbose": "9",
+      "clock": "2.0Ghz",
+      "max_loads": 16,
+      "max_stores": 16,
+      "max_flush": 16,
+      "max_llsc": 16,
+      "max_readlock": 16,
+      "max_writeunlock": 16,
+      "max_custom": 16,
+      "ops_per_cycle": 16
 })
 
 iface1 = rza1_lsq.setSubComponent("memIface", "memHierarchy.standardInterface")
 iface1.addParams({
-      "verbose" : VERBOSE
+      "verbose": VERBOSE
 })
 
 memctrl1 = sst.Component("memory1", "memHierarchy.MemController")
 memctrl1.addParams({
-    "debug" : DEBUG_MEM,
-    "debug_level" : DEBUG_LEVEL,
-    "clock" : "2GHz",
-    "verbose" : VERBOSE,
-    "addr_range_start" : 0,
-    "addr_range_end" : MEM_SIZE,
-    "backing" : "malloc"
+    "debug": DEBUG_MEM,
+    "debug_level": DEBUG_LEVEL,
+    "clock": "2GHz",
+    "verbose": VERBOSE,
+    "addr_range_start": 0,
+    "addr_range_end": MEM_SIZE,
+    "backing": "malloc"
 })
 
 memory1 = memctrl1.setSubComponent("backend", "memHierarchy.simpleMem")
 memory1.addParams({
-    "access_time" : "100ns",
-    "mem_size" : "8GB"
+    "access_time": "100ns",
+    "mem_size": "8GB"
 })
-
-
 
 # --------------------------
 # SETUP THE ZONE0 NOC
 # --------------------------
 nic_params = {
-  "verbose" : 9,
-  "clock" : "1GHz",
-  "req_per_cycle" : 1
+  "verbose": 9,
+  "clock": "1GHz",
+  "req_per_cycle": 1
 }
 net_params = {
-  "input_buf_size" : "2048B",
-  "output_buf_size" : "2048B",
-  "link_bw" : "100GB/s"
+  "input_buf_size": "2048B",
+  "output_buf_size": "2048B",
+  "link_bw": "100GB/s"
 }
 rtr_params = {
-  "xbar_bw" : "100GB/s",
-  "flit_size" : "8B",
-  "num_ports" : "7",
-  "id" : 0
+  "xbar_bw": "100GB/s",
+  "flit_size": "8B",
+  "num_ports": "7",
+  "id": 0
 }
 
 zap_nic0_0 = zap_cpu0_0.setSubComponent("zone_nic", "forza.zopNIC")
@@ -481,10 +477,10 @@ router1.addParams(rtr_params)
 # SETUP THE PRECINCT NOC
 # --------------------------
 prec_rtr_params = {
-  "xbar_bw" : "100GB/s",
-  "flit_size" : "8B",
-  "num_ports" : "2",
-  "id" : 1
+  "xbar_bw": "100GB/s",
+  "flit_size": "8B",
+  "num_ports": "2",
+  "id": 1
 }
 
 prec_nic0 = zen0.setSubComponent("precinct_nic", "forza.zopNIC")
@@ -507,60 +503,60 @@ prec0_router.addParams(prec_rtr_params)
 # --------------------------
 # -- RZA0 TO MEMORY
 link_iface_mem0 = sst.Link("link_iface_mem0")
-link_iface_mem0.connect( (iface0, "port", "50ps"), (memctrl0, "direct_link", "50ps") )
+link_iface_mem0.connect((iface0, "port", "50ps"), (memctrl0, "direct_link", "50ps"))
 
 # -- RZA1 TO MEMORY
 link_iface_mem1 = sst.Link("link_iface_mem1")
-link_iface_mem1.connect( (iface1, "port", "50ps"), (memctrl1, "direct_link", "50ps") )
+link_iface_mem1.connect((iface1, "port", "50ps"), (memctrl1, "direct_link", "50ps"))
 
-#-- ZONE0 NOC
+# -- ZONE0 NOC
 zap_link0_0 = sst.Link("zap_link0_0")
-zap_link0_0.connect( (zap_iface0_0, "rtr_port", "1us"), (router0, "port0", "1us") )
+zap_link0_0.connect((zap_iface0_0, "rtr_port", "1us"), (router0, "port0", "1us"))
 
 zap_link0_1 = sst.Link("zap_link0_1")
-zap_link0_1.connect( (zap_iface0_1, "rtr_port", "1us"), (router0, "port1", "1us") )
+zap_link0_1.connect((zap_iface0_1, "rtr_port", "1us"), (router0, "port1", "1us"))
 
 zap_link0_2 = sst.Link("zap_link0_2")
-zap_link0_2.connect( (zap_iface0_2, "rtr_port", "1us"), (router0, "port2", "1us") )
+zap_link0_2.connect((zap_iface0_2, "rtr_port", "1us"), (router0, "port2", "1us"))
 
 zap_link0_3 = sst.Link("zap_link0_3")
-zap_link0_3.connect( (zap_iface0_3, "rtr_port", "1us"), (router0, "port3", "1us") )
+zap_link0_3.connect((zap_iface0_3, "rtr_port", "1us"), (router0, "port3", "1us"))
 
 rza_link0 = sst.Link("rza_link0")
-rza_link0.connect( (rza_iface0, "rtr_port", "1us"), (router0, "port4", "1us") )
+rza_link0.connect((rza_iface0, "rtr_port", "1us"), (router0, "port4", "1us"))
 
 zen_link0 = sst.Link("zen_link0")
-zen_link0.connect( (zen_iface0, "rtr_port", "1us"), (router0, "port5", "1us") )
+zen_link0.connect((zen_iface0, "rtr_port", "1us"), (router0, "port5", "1us"))
 
 zqm_link0 = sst.Link("zqm_link0")
-zqm_link0.connect( (zqm_iface0, "rtr_port", "1us"), (router0, "port6", "1us") )
+zqm_link0.connect((zqm_iface0, "rtr_port", "1us"), (router0, "port6", "1us"))
 
-#-- ZONE1 NOC
+# -- ZONE1 NOC
 zap_link1_0 = sst.Link("zap_link1_0")
-zap_link1_0.connect( (zap_iface1_0, "rtr_port", "1us"), (router1, "port0", "1us") )
+zap_link1_0.connect((zap_iface1_0, "rtr_port", "1us"), (router1, "port0", "1us"))
 
 zap_link1_1 = sst.Link("zap_link1_1")
-zap_link1_1.connect( (zap_iface1_1, "rtr_port", "1us"), (router1, "port1", "1us") )
+zap_link1_1.connect((zap_iface1_1, "rtr_port", "1us"), (router1, "port1", "1us"))
 
 zap_link1_2 = sst.Link("zap_link1_2")
-zap_link1_2.connect( (zap_iface1_2, "rtr_port", "1us"), (router1, "port2", "1us") )
+zap_link1_2.connect((zap_iface1_2, "rtr_port", "1us"), (router1, "port2", "1us"))
 
 zap_link1_3 = sst.Link("zap_link1_3")
-zap_link1_3.connect( (zap_iface1_3, "rtr_port", "1us"), (router1, "port3", "1us") )
+zap_link1_3.connect((zap_iface1_3, "rtr_port", "1us"), (router1, "port3", "1us"))
 
 rza_link1 = sst.Link("rza_link1")
-rza_link1.connect( (rza_iface1, "rtr_port", "1us"), (router1, "port4", "1us") )
+rza_link1.connect((rza_iface1, "rtr_port", "1us"), (router1, "port4", "1us"))
 
 zen_link1 = sst.Link("zen_link1")
-zen_link1.connect( (zen_iface1, "rtr_port", "1us"), (router1, "port5", "1us") )
+zen_link1.connect((zen_iface1, "rtr_port", "1us"), (router1, "port5", "1us"))
 
 zqm_link1 = sst.Link("zqm_link1")
-zqm_link1.connect( (zqm_iface1, "rtr_port", "1us"), (router1, "port6", "1us") )
+zqm_link1.connect((zqm_iface1, "rtr_port", "1us"), (router1, "port6", "1us"))
 
-#-- PRECINCT NOC
+# -- PRECINCT NOC
 zen_prec_link0 = sst.Link("zen_prec_link0")
-zen_prec_link0.connect( (prec_iface0, "rtr_port", "1us"), (prec0_router, "port0", "1us") )
+zen_prec_link0.connect((prec_iface0, "rtr_port", "1us"), (prec0_router, "port0", "1us"))
 zen_prec_link1 = sst.Link("zen_prec_link1")
-zen_prec_link1.connect( (prec_iface1, "rtr_port", "1us"), (prec0_router, "port1", "1us") )
+zen_prec_link1.connect((prec_iface1, "rtr_port", "1us"), (prec0_router, "port1", "1us"))
 
 # EOF

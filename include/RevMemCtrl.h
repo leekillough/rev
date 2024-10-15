@@ -29,7 +29,7 @@
 #include "SST.h"
 
 // -- RevCPU Headers
-#include "../common/include/RevCommon.h"
+#include "RevCommon.h"
 #include "RevOpts.h"
 #include "RevTracer.h"
 
@@ -68,6 +68,10 @@ static_assert( std::is_same_v<StandardMem::Request::flags_t, std::underlying_typ
 /// RevFlag: determine if the request is an AMO
 constexpr bool RevFlagHas( RevFlag flag, RevFlag has ) {
   return ( static_cast<uint32_t>( flag ) & static_cast<uint32_t>( has ) ) != 0;
+}
+
+inline void RevFlagSet( RevFlag& flag, RevFlag set ) {
+  flag = RevFlag{ uint32_t( flag ) | uint32_t( set ) };
 }
 
 /// RevFlag: Handle flag response
