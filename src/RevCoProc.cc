@@ -213,7 +213,7 @@ void RZALSCoProc::recordStat( RZALSCoProc::mzopStats Stat, uint64_t Data ) {
   }
 }
 
-bool RZALSCoProc::IssueInst( RevFeature* F, RevRegFile* R, RevMem* M, uint32_t Inst ) {
+bool RZALSCoProc::IssueInst( const RevFeature* F, RevRegFile* R, RevMem* M, uint32_t Inst ) {
   return true;
 }
 
@@ -579,7 +579,7 @@ void RZAAMOCoProc::recordStat( RZAAMOCoProc::hzopStats Stat, uint64_t Data ) {
   }
 }
 
-bool RZAAMOCoProc::IssueInst( RevFeature* F, RevRegFile* R, RevMem* M, uint32_t Inst ) {
+bool RZAAMOCoProc::IssueInst( const RevFeature* F, RevRegFile* R, RevMem* M, uint32_t Inst ) {
   return true;
 }
 

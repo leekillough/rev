@@ -110,102 +110,62 @@ bool RevMem::StatusFuture( uint64_t Addr ) {
   return false;
 }
 
-bool RevMem::LRBase(
-  unsigned Hart, uint64_t Addr, size_t Len, void* Target, uint8_t aq, uint8_t rl, const MemReq& req, RevFlag flags
-) {
-  for( auto it = LRSC.begin(); it != LRSC.end(); ++it ) {
-    if( ( Hart == std::get<LRSC_HART>( *it ) ) && ( Addr == std::get<LRSC_ADDR>( *it ) ) ) {
-      // existing reservation; return w/ error
-      uint32_t* Tmp = reinterpret_cast<uint32_t*>( Target );
-      Tmp[0]        = 0x01ul;
-      return false;
-    } else if( ( Hart != std::get<LRSC_HART>( *it ) ) && ( Addr == std::get<LRSC_ADDR>( *it ) ) ) {
-      // existing reservation; return w/ error
-      uint32_t* Tmp = reinterpret_cast<uint32_t*>( Target );
-      Tmp[0]        = 0x01ul;
-      return false;
-    }
-  }
-
-  // didn't find a colliding object; add it
-  LRSC.push_back( std::tuple<unsigned, uint64_t, unsigned, uint64_t*>(
-    Hart, Addr, (unsigned) ( aq | ( rl << 1 ) ), reinterpret_cast<uint64_t*>( Target )
-  ) );
+void RevMem::LR( unsigned hart, uint64_t addr, size_t len, void* target, const MemReq& req, RevFlag flags ) {
+  // Create a reservation for this hart, overwriting one if it already exists
+  // A reservation maps a hart to an (addr, len) range and is invalidated if any other hart writes to this range
+  LRSC.insert_or_assign( hart, std::pair( addr, len ) );
 
   // now handle the memory operation
-  uint64_t pageNum  = Addr >> addrShift;
-  uint64_t physAddr = CalcPhysAddr( pageNum, Addr );
-  //check to see if we're about to walk off the page....
-  // uint32_t adjPageNum = 0;
-  // uint64_t adjPhysAddr = 0;
-  // uint64_t endOfPage = (pageMap[pageNum].first << addrShift) + pageSize;
-  char* BaseMem     = &physMem[physAddr];
-  char* DataMem     = (char*) ( Target );
+  uint64_t pageNum  = addr >> addrShift;
+  uint64_t physAddr = CalcPhysAddr( pageNum, addr );
+  char*    BaseMem  = &physMem[physAddr];
 
   if( ctrl ) {
-    ctrl->sendREADLOCKRequest( Hart, Addr, (uint64_t) ( BaseMem ), Len, Target, req, flags );
+    ctrl->sendREADLOCKRequest( hart, addr, reinterpret_cast<uint64_t>( BaseMem ), len, target, req, flags );
   } else {
-    memcpy( DataMem, BaseMem, Len );
+    memcpy( target, BaseMem, len );
+    RevHandleFlagResp( target, len, flags );
     // clear the hazard
     req.MarkLoadComplete();
   }
-
-  return true;
 }
 
-bool RevMem::SCBase( unsigned Hart, uint64_t Addr, size_t Len, void* Data, void* Target, uint8_t aq, uint8_t rl, RevFlag flags ) {
-  std::vector<std::tuple<unsigned, uint64_t, unsigned, uint64_t*>>::iterator it;
+bool RevMem::InvalidateLRReservations( unsigned hart, uint64_t addr, size_t len ) {
+  bool ret = false;
+  // Loop over all active reservations
+  for( auto it = LRSC.cbegin(); it != LRSC.cend(); ) {
+    // Invalidate reservations on a different hart which contain any bytes in common with [addr, addr+len)
+    auto& [Addr, Len] = it->second;
+    if( hart != it->first && addr < Addr + Len && addr + len > Addr ) {
+      it  = LRSC.erase( it );
+      ret = true;
+    } else {
+      ++it;
+    }
+  }
+  return ret;
+}
 
-  for( it = LRSC.begin(); it != LRSC.end(); ++it ) {
-    if( ( Hart == std::get<LRSC_HART>( *it ) ) && ( Addr == std::get<LRSC_ADDR>( *it ) ) ) {
-      // existing reservation; test to see if the value matches
-      uint64_t* TmpTarget = std::get<LRSC_VAL>( *it );
-      uint64_t* TmpData   = static_cast<uint64_t*>( Data );
+bool RevMem::SC( unsigned hart, uint64_t addr, size_t len, void* data, RevFlag flags ) {
+  // Find the reservation for this hart (there can only be one active reservation per hart)
+  auto it = LRSC.find( hart );
+  if( it != LRSC.end() ) {
+    // Get the address and length of the reservation
+    auto [Addr, Len] = it->second;
 
-      if( Len == 32 ) {
-        uint32_t A = 0;
-        uint32_t B = 0;
-        for( size_t i = 0; i < Len; i++ ) {
-          A |= uint32_t( TmpTarget[i] ) << i;
-          B |= uint32_t( TmpData[i] ) << i;
-        }
-        if( ( A & B ) == 0 ) {
-          static_cast<uint32_t*>( Target )[0] = 1;
-          return false;
-        }
-      } else {
-        uint64_t A = 0;
-        uint64_t B = 0;
-        for( size_t i = 0; i < Len; i++ ) {
-          A |= TmpTarget[i] << i;
-          B |= TmpData[i] << i;
-        }
-        if( ( A & B ) == 0 ) {
-          static_cast<uint64_t*>( Target )[0] = 1;
-          return false;
-        }
-      }
+    // Invalidate the reservation for this hart unconditionally
+    LRSC.erase( it );
 
-      // everything has passed so far,
-      // write the value back to memory
-      WriteMem( Hart, Addr, Len, Data, flags );
+    // SC succeeds only if the store's address range lies totally within the reservation
+    if( addr >= Addr && addr + len <= Addr + Len ) {
+      // Write the value back to memory
+      WriteMem( hart, addr, len, data, flags );
 
-      // write zeros to target
-      for( unsigned i = 0; i < Len; i++ ) {
-        uint64_t* Tmp = reinterpret_cast<uint64_t*>( Target );
-        Tmp[i]        = 0x0;
-      }
-
-      // erase the entry
-      LRSC.erase( it );
+      // SC succeeded
       return true;
     }
   }
-
-  // failed, write a nonzero value to target
-  uint32_t* Tmp = reinterpret_cast<uint32_t*>( Target );
-  Tmp[0]        = 0x1;
-
+  // SC failed
   return false;
 }
 
@@ -1140,7 +1100,7 @@ bool RevMem::ZOP_READMem( unsigned Hart, uint64_t Addr, size_t Len, void* Target
   return true;
 }
 
-bool RevMem::ZOP_WRITEMem( unsigned Hart, uint64_t Addr, size_t Len, void* Data, RevFlag flags ) {
+bool RevMem::ZOP_WRITEMem( unsigned Hart, uint64_t Addr, size_t Len, const void* Data, RevFlag flags ) {
 #ifdef _REV_DEBUG_
   std::cout << "ZOP_WRITEMem request of " << Len << " Bytes Starting at 0x" << std::hex << Addr << std::dec << std::endl;
 #endif
@@ -1148,10 +1108,10 @@ bool RevMem::ZOP_WRITEMem( unsigned Hart, uint64_t Addr, size_t Len, void* Data,
   // check to see if this is a write request of <= 8 bytes
   if( Len <= 8 ) {
     // request is <= 8 bytes; break it up into byte-aligned chunks
-    uint64_t CurAddr      = Addr;
-    void*    CurData      = Data;
-    size_t   CurLen       = Len;
-    size_t   BytesWritten = 0;
+    uint64_t    CurAddr      = Addr;
+    const void* CurData      = Data;
+    size_t      CurLen       = Len;
+    size_t      BytesWritten = 0;
 
     if( CurLen == 8 ) {
       CurLen = 8;
@@ -1175,7 +1135,7 @@ bool RevMem::ZOP_WRITEMem( unsigned Hart, uint64_t Addr, size_t Len, void* Data,
 
       // adjust the current address, length, etc
       CurAddr += (uint64_t) ( CurLen );
-      CurData = ( static_cast<uint64_t*>( CurData ) + (uint64_t) ( CurLen ) );
+      CurData = ( static_cast<const uint64_t*>( CurData ) + (uint64_t) ( CurLen ) );
 
       CurLen  = Len - BytesWritten;
       if( CurLen == 8 ) {
@@ -1196,7 +1156,7 @@ bool RevMem::ZOP_WRITEMem( unsigned Hart, uint64_t Addr, size_t Len, void* Data,
   return true;
 }
 
-bool RevMem::__ZOP_WRITEMemLarge( unsigned Hart, uint64_t Addr, size_t Len, void* Data, RevFlag flags ) {
+bool RevMem::__ZOP_WRITEMemLarge( unsigned Hart, uint64_t Addr, size_t Len, const void* Data, RevFlag flags ) {
 #ifdef _REV_DEBUG_
   std::cout << "ZOP_WRITE_LARGE of " << Len << " Bytes Starting at 0x" << std::hex << Addr << std::dec << std::endl;
 #endif
@@ -1252,7 +1212,9 @@ bool RevMem::__ZOP_WRITEMemLarge( unsigned Hart, uint64_t Addr, size_t Len, void
 //       such as the RevLoader, initiate cache line writes.  Since FORZA does
 //       not support cache line writes, the user-facing ZOP_WRITEMem method
 //       should be used to break cache lines into individual <= 8byte operations.
-bool RevMem::__ZOP_WRITEMemBase( unsigned Hart, uint64_t Addr, size_t Len, void* Data, RevFlag flags, SST::Forza::zopOpc opc ) {
+bool RevMem::__ZOP_WRITEMemBase(
+  unsigned Hart, uint64_t Addr, size_t Len, const void* Data, RevFlag flags, SST::Forza::zopOpc opc
+) {
 #ifdef _REV_DEBUG_
   std::cout << "ZOP_WRITEMemBase of " << Len << " Bytes Starting at 0x" << std::hex << Addr << std::dec
             << " with opc=" << (unsigned) ( opc ) << std::endl;
@@ -1287,38 +1249,38 @@ bool RevMem::__ZOP_WRITEMemBase( unsigned Hart, uint64_t Addr, size_t Len, void*
 
   // build the payload
   if( Len == 1 ) {
-    // standard write
-    uint8_t* Tmp = reinterpret_cast<uint8_t*>( Data );
-    //std::cout << "1-Byte = 0x" << std::hex << Tmp[0] << std::dec << std::endl;
-    payload.push_back( (uint64_t) ( Tmp[0] ) );
+    uint8_t data;
+    memcpy( &data, Data, sizeof( data ) );
+    payload.push_back( data );
   } else if( Len == 2 ) {
-    uint16_t* Tmp = reinterpret_cast<uint16_t*>( Data );
-    //std::cout << "2-Byte = 0x" << std::hex << Tmp[0] << std::dec << std::endl;
-    payload.push_back( (uint64_t) ( Tmp[0] ) );
+    uint16_t data;
+    memcpy( &data, Data, sizeof( data ) );
+    payload.push_back( data );
   } else if( Len == 4 ) {
-    uint32_t* Tmp = reinterpret_cast<uint32_t*>( Data );
-    //std::cout << "4-Byte = 0x" << std::hex << Tmp[0] << std::dec << std::endl;
-    payload.push_back( (uint64_t) ( Tmp[0] ) );
+    uint32_t data;
+    memcpy( &data, Data, sizeof( data ) );
+    payload.push_back( data );
   } else if( Len == 8 ) {
-    uint64_t* Tmp = reinterpret_cast<uint64_t*>( Data );
-    //std::cout << "8-Byte = 0x" << std::hex << Tmp[0] << std::dec << std::endl;
-    payload.push_back( Tmp[0] );
+    uint64_t data;
+    memcpy( &data, Data, sizeof( data ) );
+    payload.push_back( data );
   } else {
     // large write
-    uint64_t* Tmp = reinterpret_cast<uint64_t*>( Data );
 
 #ifdef _REV_DEBUG_
     std::cout << "DMA Payload @ 0x" << std::hex << Addr << std::dec << std::endl;
 #endif
-    for( unsigned i = 0; i < ( Len / 8 ); i++ ) {
-#ifdef _REV_DEBUG_
-      std::cout << "DMA TmpPayload @ 0x " << std::hex << Tmp << std::dec << " = 0x" << std::hex << Tmp[0] << std::endl;
-#endif
-      payload.push_back( Tmp[0] );
-      Tmp += 1ull;
+
+    uint64_t data;
+    size_t   rem = Len;
+    for( unsigned i = 0; i < Len / sizeof( data ); i++ ) {
+      memcpy( &data, static_cast<const decltype( data )*>( Data ) + i, rem > sizeof( data ) ? sizeof( data ) : rem );
+      rem -= sizeof( data );
+      payload.push_back( data );
     }
+
 #ifdef _REV_DEBUG_
-    // print and igbore the ACS and Address
+    // print and ignore the ACS and Address
     for( unsigned i = 2; i < payload.size(); i++ ) {
       std::cout << "DMA Payload[" << i << "] = @Addr= 0x" << std::hex << Addr + ( ( i - 2 ) * 8 ) << std::dec << " = " << std::hex
                 << payload[i] << std::dec << std::endl;

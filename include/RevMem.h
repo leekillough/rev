@@ -459,13 +459,13 @@ private:
   bool ZOP_READMem( unsigned Hart, uint64_t Addr, size_t Len, void* Target, const MemReq& req, RevFlag flags );
 
   /// FORZA: send a WRITE request
-  bool ZOP_WRITEMem( unsigned Hart, uint64_t Addr, size_t Len, void* Data, RevFlag flags );
+  bool ZOP_WRITEMem( unsigned Hart, uint64_t Addr, size_t Len, const void* Data, RevFlag flags );
 
   /// FORZA: send a large raw WRITE request: DO NOT USE
-  bool __ZOP_WRITEMemLarge( unsigned Hart, uint64_t Addr, size_t Len, void* Data, RevFlag flags );
+  bool __ZOP_WRITEMemLarge( unsigned Hart, uint64_t Addr, size_t Len, const void* Data, RevFlag flags );
 
   /// FORZA: send a WRITE request using the target opcode: DO NOT USE
-  bool __ZOP_WRITEMemBase( unsigned Hart, uint64_t Addr, size_t Len, void* Data, RevFlag flags, SST::Forza::zopOpc opc );
+  bool __ZOP_WRITEMemBase( unsigned Hart, uint64_t Addr, size_t Len, const void* Data, RevFlag flags, SST::Forza::zopOpc opc );
 
   /// FORZA: send a HART fence request
   bool __ZOP_FENCEHart( unsigned Hart );

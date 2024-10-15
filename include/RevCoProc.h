@@ -471,7 +471,7 @@ public:
   virtual bool ClockTick( SST::Cycle_t cycle ) override;
 
   /// RZALSCoProc: Enqueue a new instruction
-  virtual bool IssueInst( RevFeature* F, RevRegFile* R, RevMem* M, uint32_t Inst ) override;
+  virtual bool IssueInst( const RevFeature* F, RevRegFile* R, RevMem* M, uint32_t Inst ) override;
 
   /// RZALSCoProc: reset the coproc
   virtual bool Reset() override;
@@ -770,7 +770,7 @@ public:
   virtual bool ClockTick( SST::Cycle_t cycle ) override;
 
   /// RZAAMOCoProc: Enqueue a new instruction
-  virtual bool IssueInst( RevFeature* F, RevRegFile* R, RevMem* M, uint32_t Inst ) override;
+  virtual bool IssueInst( const RevFeature* F, RevRegFile* R, RevMem* M, uint32_t Inst ) override;
 
   /// RZAAMOCoProc: reset the coproc
   virtual bool Reset() override;
