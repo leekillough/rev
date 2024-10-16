@@ -7,11 +7,11 @@
 import sst
 import argparse
 # import array as arr
-from sst.merlin.base import *
-from sst.merlin.endpoint import *
-from sst.merlin.topology import *
-from sst.merlin.interface import *
-from sst.merlin.router import *
+# from sst.merlin.base import *
+# from sst.merlin.endpoint import *
+# from sst.merlin.topology import *
+# from sst.merlin.interface import *
+# from sst.merlin.router import *
 
 # Configurable Simulation Parameters
 # Full Scale FORZA - 4608 Precincts
