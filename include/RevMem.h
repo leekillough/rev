@@ -42,7 +42,6 @@
 #include "RevTracer.h"
 
 // -- FORZA Headers
-#include "RevScratchpad.h"
 #include "ZOPNET.h"
 
 #ifndef _REVMEM_BASE_
@@ -371,18 +370,6 @@ public:
   // ----------------------------------------------------
   // ---- FORZA Interfaces
   // ----------------------------------------------------
-  /// FORZA: Checks if address is in scratchpad (ie. bits 56 & 57 are set)
-  inline bool IsAddrInScratchpad( const uint64_t& Addr );
-
-  /// FORZA: Init Scratchpad
-  void InitScratchpad( const unsigned ZapNum, const size_t Size, const size_t ChunkSize );
-
-  /// FORZA: Interface for allocating in the Scratchpad
-  uint64_t ScratchpadAlloc( size_t numBytes );
-
-  /// FORZA: Interface for freeing from Scratchpad
-  void ScratchpadFree( uint64_t Addr, size_t size );
-
   /// FORZA: set the ZOP NIC object
   void setZNic( Forza::zopAPI* Z ) { zNic = Z; }
 
@@ -486,9 +473,8 @@ private:
   RevMemCtrl*         ctrl{};      ///< RevMem: memory controller object
   SST::Output*        output{};    ///< RevMem: output handler
 
-  std::shared_ptr<RevScratchpad> scratchpad;  ///< FORZA: Scratchpad
-  Forza::zopAPI*                 zNic{};      ///< RevMem: FORZA ZOP NIC
-  bool                           isRZA;       ///< RevMem: FORZA RZA flag; true if this device is an RZA
+  Forza::zopAPI* zNic{};  ///< RevMem: FORZA ZOP NIC
+  bool           isRZA;   ///< RevMem: FORZA RZA flag; true if this device is an RZA
 
   std::vector<std::shared_ptr<MemSegment>> MemSegs{};        // Currently Allocated MemSegs
   std::vector<std::shared_ptr<MemSegment>> FreeMemSegs{};    // MemSegs that have been unallocated
