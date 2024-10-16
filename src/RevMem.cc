@@ -110,102 +110,62 @@ bool RevMem::StatusFuture( uint64_t Addr ) {
   return false;
 }
 
-bool RevMem::LRBase(
-  unsigned Hart, uint64_t Addr, size_t Len, void* Target, uint8_t aq, uint8_t rl, const MemReq& req, RevFlag flags
-) {
-  for( auto it = LRSC.begin(); it != LRSC.end(); ++it ) {
-    if( ( Hart == std::get<LRSC_HART>( *it ) ) && ( Addr == std::get<LRSC_ADDR>( *it ) ) ) {
-      // existing reservation; return w/ error
-      uint32_t* Tmp = reinterpret_cast<uint32_t*>( Target );
-      Tmp[0]        = 0x01ul;
-      return false;
-    } else if( ( Hart != std::get<LRSC_HART>( *it ) ) && ( Addr == std::get<LRSC_ADDR>( *it ) ) ) {
-      // existing reservation; return w/ error
-      uint32_t* Tmp = reinterpret_cast<uint32_t*>( Target );
-      Tmp[0]        = 0x01ul;
-      return false;
-    }
-  }
-
-  // didn't find a colliding object; add it
-  LRSC.push_back( std::tuple<unsigned, uint64_t, unsigned, uint64_t*>(
-    Hart, Addr, (unsigned) ( aq | ( rl << 1 ) ), reinterpret_cast<uint64_t*>( Target )
-  ) );
+void RevMem::LR( unsigned hart, uint64_t addr, size_t len, void* target, const MemReq& req, RevFlag flags ) {
+  // Create a reservation for this hart, overwriting one if it already exists
+  // A reservation maps a hart to an (addr, len) range and is invalidated if any other hart writes to this range
+  LRSC.insert_or_assign( hart, std::pair( addr, len ) );
 
   // now handle the memory operation
-  uint64_t pageNum  = Addr >> addrShift;
-  uint64_t physAddr = CalcPhysAddr( pageNum, Addr );
-  //check to see if we're about to walk off the page....
-  // uint32_t adjPageNum = 0;
-  // uint64_t adjPhysAddr = 0;
-  // uint64_t endOfPage = (pageMap[pageNum].first << addrShift) + pageSize;
-  char* BaseMem     = &physMem[physAddr];
-  char* DataMem     = (char*) ( Target );
+  uint64_t pageNum  = addr >> addrShift;
+  uint64_t physAddr = CalcPhysAddr( pageNum, addr );
+  char*    BaseMem  = &physMem[physAddr];
 
   if( ctrl ) {
-    ctrl->sendREADLOCKRequest( Hart, Addr, (uint64_t) ( BaseMem ), Len, Target, req, flags );
+    ctrl->sendREADLOCKRequest( hart, addr, reinterpret_cast<uint64_t>( BaseMem ), len, target, req, flags );
   } else {
-    memcpy( DataMem, BaseMem, Len );
+    memcpy( target, BaseMem, len );
+    RevHandleFlagResp( target, len, flags );
     // clear the hazard
     req.MarkLoadComplete();
   }
-
-  return true;
 }
 
-bool RevMem::SCBase( unsigned Hart, uint64_t Addr, size_t Len, void* Data, void* Target, uint8_t aq, uint8_t rl, RevFlag flags ) {
-  std::vector<std::tuple<unsigned, uint64_t, unsigned, uint64_t*>>::iterator it;
+bool RevMem::InvalidateLRReservations( unsigned hart, uint64_t addr, size_t len ) {
+  bool ret = false;
+  // Loop over all active reservations
+  for( auto it = LRSC.cbegin(); it != LRSC.cend(); ) {
+    // Invalidate reservations on a different hart which contain any bytes in common with [addr, addr+len)
+    auto& [Addr, Len] = it->second;
+    if( hart != it->first && addr < Addr + Len && addr + len > Addr ) {
+      it  = LRSC.erase( it );
+      ret = true;
+    } else {
+      ++it;
+    }
+  }
+  return ret;
+}
 
-  for( it = LRSC.begin(); it != LRSC.end(); ++it ) {
-    if( ( Hart == std::get<LRSC_HART>( *it ) ) && ( Addr == std::get<LRSC_ADDR>( *it ) ) ) {
-      // existing reservation; test to see if the value matches
-      uint64_t* TmpTarget = std::get<LRSC_VAL>( *it );
-      uint64_t* TmpData   = static_cast<uint64_t*>( Data );
+bool RevMem::SC( unsigned hart, uint64_t addr, size_t len, void* data, RevFlag flags ) {
+  // Find the reservation for this hart (there can only be one active reservation per hart)
+  auto it = LRSC.find( hart );
+  if( it != LRSC.end() ) {
+    // Get the address and length of the reservation
+    auto [Addr, Len] = it->second;
 
-      if( Len == 32 ) {
-        uint32_t A = 0;
-        uint32_t B = 0;
-        for( size_t i = 0; i < Len; i++ ) {
-          A |= uint32_t( TmpTarget[i] ) << i;
-          B |= uint32_t( TmpData[i] ) << i;
-        }
-        if( ( A & B ) == 0 ) {
-          static_cast<uint32_t*>( Target )[0] = 1;
-          return false;
-        }
-      } else {
-        uint64_t A = 0;
-        uint64_t B = 0;
-        for( size_t i = 0; i < Len; i++ ) {
-          A |= TmpTarget[i] << i;
-          B |= TmpData[i] << i;
-        }
-        if( ( A & B ) == 0 ) {
-          static_cast<uint64_t*>( Target )[0] = 1;
-          return false;
-        }
-      }
+    // Invalidate the reservation for this hart unconditionally
+    LRSC.erase( it );
 
-      // everything has passed so far,
-      // write the value back to memory
-      WriteMem( Hart, Addr, Len, Data, flags );
+    // SC succeeds only if the store's address range lies totally within the reservation
+    if( addr >= Addr && addr + len <= Addr + Len ) {
+      // Write the value back to memory
+      WriteMem( hart, addr, len, data, flags );
 
-      // write zeros to target
-      for( unsigned i = 0; i < Len; i++ ) {
-        uint64_t* Tmp = reinterpret_cast<uint64_t*>( Target );
-        Tmp[i]        = 0x0;
-      }
-
-      // erase the entry
-      LRSC.erase( it );
+      // SC succeeded
       return true;
     }
   }
-
-  // failed, write a nonzero value to target
-  uint32_t* Tmp = reinterpret_cast<uint32_t*>( Target );
-  Tmp[0]        = 0x1;
-
+  // SC failed
   return false;
 }
 
@@ -255,7 +215,7 @@ void RevMem::AddToTLB( uint64_t vAddr, uint64_t physAddr ) {
     // Insert the vAddr and physAddr into the TLB and LRU list
     LRUQueue.push_front( vAddr );
     TLB.insert( {
-      vAddr, { physAddr, LRUQueue.begin() }
+      vAddr, {physAddr, LRUQueue.begin()}
     } );
   }
 }
@@ -627,209 +587,54 @@ bool RevMem::WriteMem( unsigned Hart, uint64_t Addr, size_t Len, const void* Dat
   std::cout << "Writing " << Len << " Bytes Starting at 0x" << std::hex << Addr << std::dec << std::endl;
 #endif
 
-  if( IsAddrInScratchpad( Addr ) ) {
-    scratchpad->WriteMem( Hart, Addr, Len, Data );  //, flags);
-  } else {
-
-    if( Addr == 0xDEADBEEF ) {
-      std::cout << "Found special write. Val = " << std::hex << *(int*) ( Data ) << std::dec << std::endl;
-    }
-    RevokeFuture( Addr );  // revoke the future if it is present; ignore the return
-    uint64_t pageNum     = Addr >> addrShift;
-    uint64_t physAddr    = CalcPhysAddr( pageNum, Addr );
-
-    //check to see if we're about to walk off the page....
-    uint32_t adjPageNum  = 0;
-    uint64_t adjPhysAddr = 0;
-    uint64_t endOfPage   = ( pageMap[pageNum].first << addrShift ) + pageSize;
-    char*    BaseMem     = &physMem[physAddr];
-    char*    DataMem     = (char*) ( Data );
-    if( ( physAddr + Len ) > endOfPage ) {
-      uint32_t span = ( physAddr + Len ) - endOfPage;
-      adjPageNum    = ( ( Addr + Len ) - span ) >> addrShift;
-      adjPhysAddr   = CalcPhysAddr( adjPageNum, ( ( Addr + Len ) - span ) );
-#ifdef _REV_DEBUG_
-      std::cout << "Warning: Writing off end of page... " << std::endl;
-#endif
-      if( ctrl ) {
-        ctrl->sendWRITERequest( Hart, Addr, (uint64_t) ( BaseMem ), Len, DataMem, flags );
-      } else if( zNic && !isRZA ) {
-        ZOP_WRITEMem( Hart, Addr, Len, DataMem, flags );
-      } else {
-        for( unsigned i = 0; i < ( Len - span ); i++ ) {
-          BaseMem[i] = DataMem[i];
-        }
-      }
-      BaseMem = &physMem[adjPhysAddr];
-      if( ctrl ) {
-        // write the memory using RevMemCtrl
-        unsigned Cur = ( Len - span );
-        ctrl->sendWRITERequest( Hart, Addr, (uint64_t) ( BaseMem ), Len, &( DataMem[Cur] ), flags );
-      } else if( zNic && !isRZA ) {
-        unsigned Cur = ( Len - span );
-        ZOP_WRITEMem( Hart, Addr, Len, &( DataMem[Cur] ), flags );
-      } else {
-        // write the memory using the internal RevMem model
-        unsigned Cur = ( Len - span );
-        for( unsigned i = 0; i < span; i++ ) {
-          BaseMem[i] = DataMem[Cur];
-          Cur++;
-        }
-      }
-    } else {
-      if( ctrl ) {
-        // write the memory using RevMemCtrl
-        ctrl->sendWRITERequest( Hart, Addr, (uint64_t) ( BaseMem ), Len, DataMem, flags );
-      } else if( zNic && !isRZA ) {
-        ZOP_WRITEMem( Hart, Addr, Len, DataMem, flags );
-      } else {
-        // write the memory using the internal RevMem model
-        for( unsigned i = 0; i < Len; i++ ) {
-          BaseMem[i] = DataMem[i];
-        }
-      }
-    }
-  }
-  memStats.bytesWritten += Len;
-  return true;
-}
-
-bool RevMem::WriteMem( unsigned Hart, uint64_t Addr, size_t Len, const void* Data ) {
-#ifdef _REV_DEBUG_
-  if( !isRZA ) {
-    std::cout << "Writing " << Len << " Bytes Starting at 0x" << std::hex << Addr << std::dec << std::endl;
-  } else {
-    std::cout << "RZA Writing " << Len << " Bytes Starting at 0x" << std::hex << Addr << std::dec << std::endl;
-    const char* bytearray = static_cast<const char*>( Data );
-    for( size_t i = 0; i < Len; i++ ) {
-      std::cout << "Byte[ " << i << "] = " << std::hex << bytearray[i] << std::dec << std::endl;
-    }
-  }
-#endif
+  InvalidateLRReservations( Hart, Addr, Len );
 
   TRACE_MEM_WRITE( Addr, Len, Data );
 
-  if( IsAddrInScratchpad( Addr ) ) {
-    scratchpad->WriteMem( Hart, Addr, Len, Data );  // , 0);
-  } else {
-    if( Addr == 0xDEADBEEF ) {
-      std::cout << "Found special write. Val = " << std::hex << *(int*) ( Data ) << std::dec << std::endl;
-    }
-    RevokeFuture( Addr );  // revoke the future if it is present; ignore the return
-    uint64_t pageNum     = Addr >> addrShift;
-    uint64_t physAddr    = CalcPhysAddr( pageNum, Addr );
-
-    //check to see if we're about to walk off the page....
-    uint32_t adjPageNum  = 0;
-    uint64_t adjPhysAddr = 0;
-    uint64_t endOfPage   = ( pageMap[pageNum].first << addrShift ) + pageSize;
-    char*    BaseMem     = &physMem[physAddr];
-    char*    DataMem     = (char*) ( Data );
-    if( ( physAddr + Len ) > endOfPage ) {
-      uint32_t span = ( physAddr + Len ) - endOfPage;
-      adjPageNum    = ( ( Addr + Len ) - span ) >> addrShift;
-      adjPhysAddr   = CalcPhysAddr( adjPageNum, ( ( Addr + Len ) - span ) );
-
-#ifdef _REV_DEBUG_
-      std::cout << "ENDOFPAGE = " << std::hex << endOfPage << std::dec << std::endl;
-      for( unsigned i = 0; i < ( Len - span ); i++ ) {
-        std::cout << "WRITE TO: " << std::hex << (uint64_t) ( &BaseMem[i] ) << std::dec << "; FROM LOGICAL PHYS=" << std::hex
-                  << physAddr + i << std::dec << "; DATA=" << std::hex << (uint8_t) ( BaseMem[i] ) << std::dec
-                  << "; VIRTUAL ADDR=" << std::hex << Addr + i << std::dec << std::endl;
-      }
-
-      std::cout << "TOTAL WRITE = " << Len << " Bytes" << std::endl;
-      std::cout << "PHYS Writing " << Len - span << " Bytes Starting at 0x" << std::hex << physAddr << std::dec
-                << "; translates to: " << std::hex << (uint64_t) ( BaseMem ) << std::dec << std::endl;
-      std::cout << "ADJ PHYS Writing " << span << " Bytes Starting at 0x" << std::hex << adjPhysAddr << std::dec
-                << "; translates to: " << std::hex << (uint64_t) ( &physMem[adjPhysAddr] ) << std::dec << std::endl;
-      std::cout << "Warning: Writing off end of page... " << std::endl;
-#endif
-      if( ctrl ) {
-        ctrl->sendWRITERequest( Hart, Addr, (uint64_t) ( BaseMem ), Len, DataMem, RevFlag::F_NONE );
-      } else if( zNic && !isRZA ) {
-        ZOP_WRITEMem( Hart, Addr, Len, DataMem, RevFlag::F_NONE );
-      } else {
-        for( unsigned i = 0; i < ( Len - span ); i++ ) {
-          BaseMem[i] = DataMem[i];
-        }
-      }
-      BaseMem = &physMem[adjPhysAddr];
-      if( ctrl ) {
-        // write the memory using RevMemCtrl
-        unsigned Cur = ( Len - span );
-        ctrl->sendWRITERequest( Hart, Addr, (uint64_t) ( BaseMem ), Len, &( DataMem[Cur] ), RevFlag::F_NONE );
-      } else if( zNic && !isRZA ) {
-        unsigned Cur = ( Len - span );
-        ZOP_WRITEMem( Hart, Addr, Len, &( DataMem[Cur] ), RevFlag::F_NONE );
-      } else {
-        // write the memory using the internal RevMem model
-        unsigned Cur = ( Len - span );
-        for( unsigned i = 0; i < span; i++ ) {
-          BaseMem[i] = DataMem[Cur];
-#ifdef _REV_DEBUG_
-          std::cout << "ADJ WRITE TO: " << std::hex << (uint64_t) ( &BaseMem[i] ) << std::dec << "; FROM LOGICAL PHYS=" << std::hex
-                    << adjPhysAddr + i << std::dec << "; DATA=" << std::hex << (uint8_t) ( BaseMem[i] ) << std::dec
-                    << "; VIRTUAL ADDR=" << std::hex << Addr + Cur << std::dec << std::endl;
-#endif
-          Cur++;
-        }
-      }
-    } else {
-      if( ctrl ) {
-        // write the memory using RevMemCtrl
-        ctrl->sendWRITERequest( Hart, Addr, (uint64_t) ( BaseMem ), Len, DataMem, RevFlag::F_NONE );
-      } else if( zNic && !isRZA ) {
-        ZOP_WRITEMem( Hart, Addr, Len, DataMem, RevFlag::F_NONE );
-      } else {
-        // write the memory using the internal RevMem model
-        for( unsigned i = 0; i < Len; i++ ) {
-          BaseMem[i] = DataMem[i];
-        }
-      }
-    }
+  if( Addr == 0xDEADBEEF ) {
+    std::cout << "Found special write. Val = " << std::hex << *(int*) ( Data ) << std::dec << std::endl;
   }
+  RevokeFuture( Addr );  // revoke the future if it is present
+  const char* DataMem = static_cast<const char*>( Data );
+
+  if( ctrl ) {
+    // write the memory using RevMemCtrl
+    ctrl->sendWRITERequest( Hart, Addr, 0, Len, const_cast<char*>( DataMem ), flags );
+  } else if( zNic && !isRZA ) {
+    ZOP_WRITEMem( Hart, Addr, Len, DataMem, flags );
+  } else {
+    // write the memory using the internal RevMem model
+    // check to see if we're about to walk off the page....
+    auto [remainder, physAddr, adjPhysAddr] = AdjPageAddr( Addr, Len );
+    memcpy( &physMem[physAddr], DataMem, remainder );
+    memcpy( &physMem[adjPhysAddr], DataMem + remainder, Len - remainder );
+  }
+
   memStats.bytesWritten += Len;
   return true;
 }
 
-// Deprecated
-bool RevMem::ReadMem( uint64_t Addr, size_t Len, void* Data ) {
-#ifdef _REV_DEBUG_
-  std::cout << "OLD READMEM: Reading " << Len << " Bytes Starting at 0x" << std::hex << Addr << std::dec << std::endl;
-#endif
-  uint64_t pageNum     = Addr >> addrShift;
-  uint64_t physAddr    = CalcPhysAddr( pageNum, Addr );
-
-  //check to see if we're about to walk off the page....
-  uint32_t adjPageNum  = 0;
-  uint64_t adjPhysAddr = 0;
-  uint64_t endOfPage   = ( pageMap[pageNum].first << addrShift ) + pageSize;
-  char*    BaseMem     = &physMem[physAddr];
-  char*    DataMem     = (char*) ( Data );
-  if( ( physAddr + Len ) > endOfPage ) {
-    uint32_t span = ( physAddr + Len ) - endOfPage;
-    adjPageNum    = ( ( Addr + Len ) - span ) >> addrShift;
-    adjPhysAddr   = CalcPhysAddr( adjPageNum, ( ( Addr + Len ) - span ) );
-    for( unsigned i = 0; i < ( Len - span ); i++ ) {
-      DataMem[i] = BaseMem[i];
-    }
-    BaseMem      = &physMem[adjPhysAddr];
-    unsigned Cur = ( Len - span );
-    for( unsigned i = 0; i < span; i++ ) {
-      DataMem[Cur] = BaseMem[i];
-    }
-#ifdef _REV_DEBUG_
-    std::cout << "Warning: Reading off end of page... " << std::endl;
-#endif
-  } else {
-    for( unsigned i = 0; i < Len; i++ ) {
-      DataMem[i] = BaseMem[i];
-    }
+// RevMem: check to see if we're about to walk off the page....
+std::tuple<uint64_t, uint64_t, uint64_t> RevMem::AdjPageAddr( uint64_t Addr, uint64_t Len ) {
+  if( Len > pageSize ) {
+    output->fatal(
+      CALL_INFO, 7, "Error: Attempting to read/write %" PRIu64 " bytes > pageSize (= %" PRIu32 " bytes)\n", Len, pageSize
+    );
   }
 
-  memStats.bytesRead += Len;
-  return true;
+  uint64_t pageNum     = Addr >> addrShift;
+  uint64_t physAddr    = CalcPhysAddr( pageNum, Addr );
+  uint64_t endOfPage   = ( pageMap[pageNum].first << addrShift ) + pageSize;
+  uint64_t remainder   = 0;
+  uint64_t adjPhysAddr = physAddr;
+
+  if( physAddr + Len > endOfPage ) {
+    remainder           = endOfPage - physAddr;
+    uint64_t adjAddr    = Addr + remainder;
+    uint64_t adjPageNum = adjAddr >> addrShift;
+    adjPhysAddr         = CalcPhysAddr( adjPageNum, adjAddr );
+  }
+  return { remainder, physAddr, adjPhysAddr };
 }
 
 bool RevMem::ReadMem( unsigned Hart, uint64_t Addr, size_t Len, void* Target, const MemReq& req, RevFlag flags ) {
@@ -837,71 +642,29 @@ bool RevMem::ReadMem( unsigned Hart, uint64_t Addr, size_t Len, void* Target, co
   std::cout << "NEW READMEM: Reading " << Len << " Bytes Starting at 0x" << std::hex << Addr << std::dec << std::endl;
 #endif
 
-  // FORZA: Check if scratchpad read
-  if( IsAddrInScratchpad( Addr ) ) {
-    scratchpad->ReadMem( Hart, Addr, Len, Target, req );  //flags);
+  char* DataMem = static_cast<char*>( Target );
+
+  TRACE_MEM_READ( Addr, Len, DataMem );
+
+  if( ctrl ) {
+    ctrl->sendREADRequest( Hart, Addr, 0, Len, Target, req, flags );
+  } else if( zNic && !isRZA ) {
+    ZOP_READMem( Hart, Addr, Len, Target, req, flags );
   } else {
-    uint64_t pageNum     = Addr >> addrShift;
-    uint64_t physAddr    = CalcPhysAddr( pageNum, Addr );
+    // read the memory using the internal RevMem model
     //check to see if we're about to walk off the page....
-    uint32_t adjPageNum  = 0;
-    uint64_t adjPhysAddr = 0;
-    uint64_t endOfPage   = ( pageMap[pageNum].first << addrShift ) + pageSize;
-    char*    BaseMem     = &physMem[physAddr];
-    char*    DataMem     = static_cast<char*>( Target );
+    auto [remainder, physAddr, adjPhysAddr] = AdjPageAddr( Addr, Len );
+    memcpy( DataMem, &physMem[physAddr], remainder );
+    memcpy( DataMem + remainder, &physMem[adjPhysAddr], Len - remainder );
 
-    if( ( physAddr + Len ) > endOfPage ) {
-      uint32_t span = ( physAddr + Len ) - endOfPage;
-      adjPageNum    = ( ( Addr + Len ) - span ) >> addrShift;
-      adjPhysAddr   = CalcPhysAddr( adjPageNum, ( ( Addr + Len ) - span ) );
-      if( ctrl ) {
-        ctrl->sendREADRequest( Hart, Addr, (uint64_t) ( BaseMem ), Len, Target, req, flags );
-      } else if( zNic && !isRZA ) {
-        ZOP_READMem( Hart, Addr, Len, Target, req, flags );
-      } else {
-        for( unsigned i = 0; i < ( Len - span ); i++ ) {
-          DataMem[i] = BaseMem[i];
-        }
-      }
+    // Handle flag response
+    RevHandleFlagResp( Target, Len, flags );
 
-      BaseMem = &physMem[adjPhysAddr];
-      if( !ctrl && !zNic ) {
-        unsigned Cur = ( Len - span );
-        for( unsigned i = 0; i < span; i++ ) {
-          DataMem[Cur] = BaseMem[i];
-          Cur++;
-        }
-
-        // Handle flag response
-        RevHandleFlagResp( Target, Len, flags );
-
-        // clear the hazard - if this was an AMO operation then we will clear outside of this function in AMOMem()
-        if( MemOp::MemOpAMO != req.ReqType ) {
-          req.MarkLoadComplete();
-        }
-      }
-
-#ifdef _REV_DEBUG_
-      std::cout << "Warning: Reading off end of page... " << std::endl;
-#endif
-    } else {
-      if( ctrl ) {
-        ctrl->sendREADRequest( Hart, Addr, (uint64_t) ( BaseMem ), Len, Target, req, flags );
-      } else if( zNic && !isRZA ) {
-        ZOP_READMem( Hart, Addr, Len, Target, req, flags );
-      } else {
-        for( unsigned i = 0; i < Len; i++ ) {
-          DataMem[i] = BaseMem[i];
-        }
-        // Handle flag response
-        RevHandleFlagResp( Target, Len, flags );
-        // clear the hazard- if this was an AMO operation then we will clear outside of this function in AMOMem()
-        if( MemOp::MemOpAMO != req.ReqType ) {
-          req.MarkLoadComplete();
-        }
-      }
-    }
+    // clear the hazard - if this was an AMO operation then we will clear outside of this function in AMOMem()
+    if( MemOp::MemOpAMO != req.ReqType )
+      req.MarkLoadComplete();
   }
+
   memStats.bytesRead += Len;
   return true;
 }
@@ -1337,7 +1100,7 @@ bool RevMem::ZOP_READMem( unsigned Hart, uint64_t Addr, size_t Len, void* Target
   return true;
 }
 
-bool RevMem::ZOP_WRITEMem( unsigned Hart, uint64_t Addr, size_t Len, void* Data, RevFlag flags ) {
+bool RevMem::ZOP_WRITEMem( unsigned Hart, uint64_t Addr, size_t Len, const void* Data, RevFlag flags ) {
 #ifdef _REV_DEBUG_
   std::cout << "ZOP_WRITEMem request of " << Len << " Bytes Starting at 0x" << std::hex << Addr << std::dec << std::endl;
 #endif
@@ -1345,10 +1108,10 @@ bool RevMem::ZOP_WRITEMem( unsigned Hart, uint64_t Addr, size_t Len, void* Data,
   // check to see if this is a write request of <= 8 bytes
   if( Len <= 8 ) {
     // request is <= 8 bytes; break it up into byte-aligned chunks
-    uint64_t CurAddr      = Addr;
-    void*    CurData      = Data;
-    size_t   CurLen       = Len;
-    size_t   BytesWritten = 0;
+    uint64_t    CurAddr      = Addr;
+    const void* CurData      = Data;
+    size_t      CurLen       = Len;
+    size_t      BytesWritten = 0;
 
     if( CurLen == 8 ) {
       CurLen = 8;
@@ -1372,7 +1135,7 @@ bool RevMem::ZOP_WRITEMem( unsigned Hart, uint64_t Addr, size_t Len, void* Data,
 
       // adjust the current address, length, etc
       CurAddr += (uint64_t) ( CurLen );
-      CurData = ( static_cast<uint64_t*>( CurData ) + (uint64_t) ( CurLen ) );
+      CurData = ( static_cast<const uint64_t*>( CurData ) + (uint64_t) ( CurLen ) );
 
       CurLen  = Len - BytesWritten;
       if( CurLen == 8 ) {
@@ -1393,7 +1156,7 @@ bool RevMem::ZOP_WRITEMem( unsigned Hart, uint64_t Addr, size_t Len, void* Data,
   return true;
 }
 
-bool RevMem::__ZOP_WRITEMemLarge( unsigned Hart, uint64_t Addr, size_t Len, void* Data, RevFlag flags ) {
+bool RevMem::__ZOP_WRITEMemLarge( unsigned Hart, uint64_t Addr, size_t Len, const void* Data, RevFlag flags ) {
 #ifdef _REV_DEBUG_
   std::cout << "ZOP_WRITE_LARGE of " << Len << " Bytes Starting at 0x" << std::hex << Addr << std::dec << std::endl;
 #endif
@@ -1449,7 +1212,9 @@ bool RevMem::__ZOP_WRITEMemLarge( unsigned Hart, uint64_t Addr, size_t Len, void
 //       such as the RevLoader, initiate cache line writes.  Since FORZA does
 //       not support cache line writes, the user-facing ZOP_WRITEMem method
 //       should be used to break cache lines into individual <= 8byte operations.
-bool RevMem::__ZOP_WRITEMemBase( unsigned Hart, uint64_t Addr, size_t Len, void* Data, RevFlag flags, SST::Forza::zopOpc opc ) {
+bool RevMem::__ZOP_WRITEMemBase(
+  unsigned Hart, uint64_t Addr, size_t Len, const void* Data, RevFlag flags, SST::Forza::zopOpc opc
+) {
 #ifdef _REV_DEBUG_
   std::cout << "ZOP_WRITEMemBase of " << Len << " Bytes Starting at 0x" << std::hex << Addr << std::dec
             << " with opc=" << (unsigned) ( opc ) << std::endl;
@@ -1484,38 +1249,38 @@ bool RevMem::__ZOP_WRITEMemBase( unsigned Hart, uint64_t Addr, size_t Len, void*
 
   // build the payload
   if( Len == 1 ) {
-    // standard write
-    uint8_t* Tmp = reinterpret_cast<uint8_t*>( Data );
-    //std::cout << "1-Byte = 0x" << std::hex << Tmp[0] << std::dec << std::endl;
-    payload.push_back( (uint64_t) ( Tmp[0] ) );
+    uint8_t data;
+    memcpy( &data, Data, sizeof( data ) );
+    payload.push_back( data );
   } else if( Len == 2 ) {
-    uint16_t* Tmp = reinterpret_cast<uint16_t*>( Data );
-    //std::cout << "2-Byte = 0x" << std::hex << Tmp[0] << std::dec << std::endl;
-    payload.push_back( (uint64_t) ( Tmp[0] ) );
+    uint16_t data;
+    memcpy( &data, Data, sizeof( data ) );
+    payload.push_back( data );
   } else if( Len == 4 ) {
-    uint32_t* Tmp = reinterpret_cast<uint32_t*>( Data );
-    //std::cout << "4-Byte = 0x" << std::hex << Tmp[0] << std::dec << std::endl;
-    payload.push_back( (uint64_t) ( Tmp[0] ) );
+    uint32_t data;
+    memcpy( &data, Data, sizeof( data ) );
+    payload.push_back( data );
   } else if( Len == 8 ) {
-    uint64_t* Tmp = reinterpret_cast<uint64_t*>( Data );
-    //std::cout << "8-Byte = 0x" << std::hex << Tmp[0] << std::dec << std::endl;
-    payload.push_back( Tmp[0] );
+    uint64_t data;
+    memcpy( &data, Data, sizeof( data ) );
+    payload.push_back( data );
   } else {
     // large write
-    uint64_t* Tmp = reinterpret_cast<uint64_t*>( Data );
 
 #ifdef _REV_DEBUG_
     std::cout << "DMA Payload @ 0x" << std::hex << Addr << std::dec << std::endl;
 #endif
-    for( unsigned i = 0; i < ( Len / 8 ); i++ ) {
-#ifdef _REV_DEBUG_
-      std::cout << "DMA TmpPayload @ 0x " << std::hex << Tmp << std::dec << " = 0x" << std::hex << Tmp[0] << std::endl;
-#endif
-      payload.push_back( Tmp[0] );
-      Tmp += 1ull;
+
+    uint64_t data;
+    size_t   rem = Len;
+    for( unsigned i = 0; i < Len / sizeof( data ); i++ ) {
+      memcpy( &data, static_cast<const decltype( data )*>( Data ) + i, rem > sizeof( data ) ? sizeof( data ) : rem );
+      rem -= sizeof( data );
+      payload.push_back( data );
     }
+
 #ifdef _REV_DEBUG_
-    // print and igbore the ACS and Address
+    // print and ignore the ACS and Address
     for( unsigned i = 2; i < payload.size(); i++ ) {
       std::cout << "DMA Payload[" << i << "] = @Addr= 0x" << std::hex << Addr + ( ( i - 2 ) * 8 ) << std::dec << " = " << std::hex
                 << payload[i] << std::dec << std::endl;

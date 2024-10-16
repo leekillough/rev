@@ -53,8 +53,8 @@
 #include "RingNet.h"
 
 #define SYSCALL_TYPES_ONLY
-#include "../common/include/RevCommon.h"
 #include "../common/syscalls/syscalls.h"
+#include "RevCommon.h"
 
 #include "AllRevInstTables.h"
 
@@ -107,9 +107,6 @@ public:
 
   /// RevCore: Debug mode write a register
   bool DebugWriteReg( unsigned Idx, uint64_t Value ) const;
-
-  /// RevCore: Is this an RV32 machine?
-  bool DebugIsRV32() { return feature->IsRV32(); }
 
   /// RevCore: Set an optional tracer
   void SetTracer( RevTracer* T ) { Tracer = T; }
@@ -207,6 +204,12 @@ public:
 
   ///< RevCore: Add a co-processor to the RevCore
   void SetCoProc( RevCoProc* coproc );
+
+  /// GetHartToExecID: Retrieve the current executing Hart
+  unsigned GetHartToExecID() const { return HartToExecID; }
+
+  /// SetHartToExecID: Set the current executing Hart
+  void SetHartToExecID( unsigned hart ) { HartToExecID = hart; }
 
   //--------------- External Interface for use with Co-Processor -------------------------
   ///< RevCore: Allow a co-processor to query the bits in scoreboard. Note the RevCorePassKey may only
@@ -338,18 +341,22 @@ private:
   std::function<uint32_t()> const GetNewThreadID;
 
   // If a given assigned thread experiences a change of state, it sets the corresponding bit
-  std::vector<std::unique_ptr<RevThread>> ThreadsThatChangedState{
-  };  ///< RevCore: used to signal to RevCPU that the thread assigned to HART has changed state
+  std::vector<std::unique_ptr<RevThread>>
+    ThreadsThatChangedState{};  ///< RevCore: used to signal to RevCPU that the thread assigned to HART has changed state
 
-  SST::Output* const             output;       ///< RevCore: output handler
-  std::unique_ptr<RevFeature>    featureUP{};  ///< RevCore: feature handler
-  RevFeature*                    feature{};
-  RevCoreStats                   Stats{};       ///< RevCore: collection of performance stats
-  RevCoreStats                   StatsTotal{};  ///< RevCore: collection of total performance stats
-  std::unique_ptr<RevPrefetcher> sfetch{};      ///< RevCore: stream instruction prefetcher
+public:
+  SST::Output* const output;  ///< RevCore: output handler
 
-  std::shared_ptr<std::unordered_multimap<uint64_t, MemReq>> LSQueue{
-  };  ///< RevCore: Load / Store queue used to track memory operations. Currently only tracks outstanding loads.
+private:
+  std::unique_ptr<RevFeature>       CreateFeature();              ///< RevCore: Create a RevFeature object
+  std::unique_ptr<RevFeature> const featureUP = CreateFeature();  ///< RevCore: feature handler
+  RevFeature* const                 feature   = featureUP.get();  ///< RevCore: raw feature pointer
+  RevCoreStats                      Stats{};                      ///< RevCore: collection of performance stats
+  RevCoreStats                      StatsTotal{};                 ///< RevCore: collection of total performance stats
+  std::unique_ptr<RevPrefetcher>    sfetch{};                     ///< RevCore: stream instruction prefetcher
+
+  std::shared_ptr<std::unordered_multimap<uint64_t, MemReq>>
+    LSQueue{};  ///< RevCore: Load / Store queue used to track memory operations. Currently only tracks outstanding loads.
   TimeConverter* timeConverter{};  ///< RevCore: Time converter for RTC
 
   RevRegFile* RegFile        = nullptr;        ///< RevCore: Initial pointer to HartToDecodeID RegFile
@@ -702,6 +709,10 @@ private:
 
   EcallStatus ECALL_dump_thread_mem();         // 9006, dump_thread_mem()
   EcallStatus ECALL_dump_thread_mem_to_file(); // 9007, dump_thread_mem_to_file(const char* outputFile)
+
+  // =============== REV print utilities
+  EcallStatus ECALL_fast_printf();             // 9010, rev_fast_printf(const char *, ...)
+
   // clang-format on
 
   /// FORZA

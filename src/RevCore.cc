@@ -16,18 +16,7 @@ namespace SST::RevCPU {
 
 using MemSegment = RevMem::MemSegment;
 
-RevCore::RevCore(
-  unsigned                  id,
-  RevOpts*                  opts,
-  unsigned                  numHarts,
-  RevMem*                   mem,
-  RevLoader*                loader,
-  std::function<uint32_t()> GetNewTID,
-  SST::Output*              output
-)
-  : id( id ), numHarts( numHarts ), opts( opts ), mem( mem ), loader( loader ), GetNewThreadID( std::move( GetNewTID ) ),
-    output( output ) {
-
+std::unique_ptr<RevFeature> RevCore::CreateFeature() {
   // initialize the machine model for the target core
   std::string Machine;
   if( !opts->GetMachineModel( id, Machine ) )
@@ -38,6 +27,21 @@ RevCore::RevCore(
 
   opts->GetMemCost( id, MinCost, MaxCost );
 
+  return std::make_unique<RevFeature>( std::move( Machine ), output, MinCost, MaxCost, id );
+}
+
+RevCore::RevCore(
+  unsigned                  id,
+  RevOpts*                  opts,
+  unsigned                  numHarts,
+  RevMem*                   mem,
+  RevLoader*                loader,
+  std::function<uint32_t()> GetNewTID,
+  SST::Output*              output
+)
+  : id( id ), numHarts( numHarts ), opts( opts ), mem( mem ), loader( loader ), GetNewThreadID( std::move( GetNewTID ) ),
+    output( output ), featureUP( CreateFeature() ) {
+
   LSQueue = std::make_shared<std::unordered_multimap<uint64_t, MemReq>>();
   LSQueue->clear();
 
@@ -46,11 +50,6 @@ RevCore::RevCore(
     Harts.emplace_back( std::make_unique<RevHart>( i, LSQueue, [=]( const MemReq& req ) { this->MarkLoadComplete( req ); } ) );
     ValidHarts.set( i, true );
   }
-
-  featureUP = std::make_unique<RevFeature>( Machine, output, MinCost, MaxCost, id );
-  feature   = featureUP.get();
-  if( !feature )
-    output->fatal( CALL_INFO, -1, "Error: failed to create the RevFeature object for core=%" PRIu32 "\n", id );
 
   unsigned Depth = 0;
   opts->GetPrefetchDepth( id, Depth );
@@ -148,7 +147,7 @@ bool RevCore::EnableExt( RevExt* Ext ) {
   return true;
 }
 
-bool RevCore::SeedInstTable() {
+bool RevCore::SeedInstTable() try {
   output->verbose(
     CALL_INFO, 6, 0, "Core %" PRIu32 " ; Seeding instruction table for machine model=%s\n", id, feature->GetMachineModel().data()
   );
@@ -169,12 +168,14 @@ bool RevCore::SeedInstTable() {
     }
   }
 
-  // A Extension
-  if( feature->IsModeEnabled( RV_A ) ) {
-    EnableExt( new RV32A( feature, mem, output ) );
-    if( feature->IsRV64() ) {
-      EnableExt( new RV64A( feature, mem, output ) );
-    }
+  // Zaamo Extension
+  if( feature->IsModeEnabled( RV_ZAAMO ) ) {
+    EnableExt( new Zaamo( feature, mem, output ) );
+  }
+
+  // Zalrsc Extension
+  if( feature->IsModeEnabled( RV_ZALRSC ) ) {
+    EnableExt( new Zalrsc( feature, mem, output ) );
   }
 
   // F Extension
@@ -214,6 +215,9 @@ bool RevCore::SeedInstTable() {
   }
 
   return true;
+} catch( ... ) {
+
+  return false;
 }
 
 uint32_t RevCore::CompressCEncoding( const RevInstEntry& Entry ) {
@@ -667,14 +671,14 @@ RevInst RevCore::DecodeCSInst( uint16_t Inst, unsigned Entry ) const {
     CompInst.imm |= ( ( Inst & 0b01110000000000 ) >> 6 );  //offset[5:3]
     CompInst.imm |= ( ( Inst & 0b01000000 ) >> 4 );        //offset[2]
   } else {
-    if( feature->IsRV32() ) {
+    if( feature->IsRV64() ) {
+      //c.sd
+      CompInst.imm = ( ( Inst & 0b01100000 ) << 1 );         //imm[7:6]
+      CompInst.imm |= ( ( Inst & 0b01110000000000 ) >> 7 );  //imm[5:3]
+    } else {
       //c.fsw
       CompInst.imm = ( ( Inst & 0b00100000 ) << 1 );         //imm[6]
       CompInst.imm = ( ( Inst & 0b01000000 ) << 4 );         //imm[2]
-      CompInst.imm |= ( ( Inst & 0b01110000000000 ) >> 7 );  //imm[5:3]
-    } else {
-      //c.sd
-      CompInst.imm = ( ( Inst & 0b01100000 ) << 1 );         //imm[7:6]
       CompInst.imm |= ( ( Inst & 0b01110000000000 ) >> 7 );  //imm[5:3]
     }
   }
@@ -994,7 +998,7 @@ RevInst RevCore::DecodeRInst( uint32_t Inst, unsigned Entry ) const {
   }
 
   // imm
-  if( ( InstTable[Entry].imm == FImm ) && ( InstTable[Entry].rs2Class == RevRegClass::RegUNKNOWN ) ) {
+  if( InstTable[Entry].imm == RevImmFunc::FImm && InstTable[Entry].rs2Class == RevRegClass::RegUNKNOWN ) {
     DInst.imm = DECODE_IMM12( Inst ) & 0b011111;
   } else {
     DInst.imm = 0x0;
@@ -1179,7 +1183,7 @@ RevInst RevCore::DecodeJInst( uint32_t Inst, unsigned Entry ) const {
 
   // immA
   DInst.imm = ( ( Inst >> 11 ) & 0b100000000000000000000 ) |  // imm[20]
-              ( ( Inst ) & 0b11111111000000000000 ) |         // imm[19:12]
+              ( (Inst) &0b11111111000000000000 ) |            // imm[19:12]
               ( ( Inst >> 9 ) & 0b100000000000 ) |            // imm[11]
               ( ( Inst >> 20 ) & 0b11111111110 );             // imm[10:1]
 
@@ -1392,9 +1396,9 @@ RevInst RevCore::DecodeInst( uint32_t Inst ) const {
     // clang-format on
   }
 
-  // Stage 5: Determine if we have an imm12 field (ECALL and EBREAK)
+  // Stage 5: Determine if we have an imm12 field (ECALL and EBREAK, CBO)
   uint32_t Imm12 = 0x00ul;
-  if( inst42 == 0b100 && inst65 == 0b11 && Funct3 == 0 ) {
+  if( ( inst42 == 0b100 && inst65 == 0b11 && Funct3 == 0b000 ) || ( inst42 == 0b011 && inst65 == 0b00 && Funct3 == 0b010 ) ) {
     Imm12 = DECODE_IMM12( Inst );
   }
 
@@ -1487,10 +1491,10 @@ void RevCore::HandleRegFault( unsigned width ) {
 
   if( !feature->HasF() || RevRand( 0, 1 ) ) {
     // X registers
-    if( feature->IsRV32() ) {
-      regFile->RV32[RegIdx] |= RevRand( 0, ~( ~uint32_t{ 0 } << width ) );
-    } else {
+    if( regFile->IsRV64() ) {
       regFile->RV64[RegIdx] |= RevRand( 0, ~( ~uint64_t{ 0 } << width ) );
+    } else {
+      regFile->RV32[RegIdx] |= RevRand( 0, ~( ~uint32_t{ 0 } << width ) );
     }
     RegPrefix = "x";
   } else {
@@ -1533,8 +1537,7 @@ bool RevCore::DependencyCheck( unsigned HartID, const RevInst* I ) const {
   // For ECALL, check for any outstanding dependencies on a0-a7
   if( I->opcode == 0b1110011 && I->imm == 0 && I->funct3 == 0 && I->rd == 0 && I->rs1 == 0 ) {
     for( RevReg reg : { RevReg::a7, RevReg::a0, RevReg::a1, RevReg::a2, RevReg::a3, RevReg::a4, RevReg::a5, RevReg::a6 } ) {
-      if( LSQCheck( HartToDecodeID, RegFile, uint16_t( reg ), RevRegClass::RegGPR ) ||
-          ScoreboardCheck( RegFile, uint16_t( reg ), RevRegClass::RegGPR ) ) {
+      if( LSQCheck( HartToDecodeID, RegFile, uint16_t( reg ), RevRegClass::RegGPR ) || ScoreboardCheck( RegFile, uint16_t( reg ), RevRegClass::RegGPR ) ) {
         return true;
       }
     }
@@ -1775,8 +1778,7 @@ bool RevCore::ClockTick( SST::Cycle_t currentCycle ) {
     // -- BEGIN new pipelining implementation
     Pipeline.emplace_back( std::make_pair( HartToExecID, Inst ) );
 
-    if( ( Ext->GetName() == "RV32F" ) || ( Ext->GetName() == "RV32D" ) || ( Ext->GetName() == "RV64F" ) ||
-        ( Ext->GetName() == "RV64D" ) ) {
+    if( ( Ext->GetName() == "RV32F" ) || ( Ext->GetName() == "RV32D" ) || ( Ext->GetName() == "RV64F" ) || ( Ext->GetName() == "RV64D" ) ) {
       Stats.floatsExec++;
     }
 
@@ -1805,18 +1807,17 @@ bool RevCore::ClockTick( SST::Cycle_t currentCycle ) {
 #endif
 
 #ifdef __REV_DEEP_TRACE__
-    if( feature->IsRV32() ) {
-      std::cout << "RDT: Executed PC = " << std::hex << ExecPC << " Inst: " << std::setw( 23 ) << InstTable[Inst.entry].mnemonic
-                << " r" << std::dec << (uint32_t) Inst.rd << "= " << std::hex << RegFile->RV32[Inst.rd] << " r" << std::dec
-                << (uint32_t) Inst.rs1 << "= " << std::hex << RegFile->RV32[Inst.rs1] << " r" << std::dec << (uint32_t) Inst.rs2
-                << "= " << std::hex << RegFile->RV32[Inst.rs2] << " imm = " << std::hex << Inst.imm << std::endl;
-
-    } else {
+    if( feature->IsRV64() ) {
       std::cout << "RDT: Executed PC = " << std::hex << ExecPC << " Inst: " << std::setw( 23 ) << InstTable[Inst.entry].mnemonic
                 << " r" << std::dec << (uint32_t) Inst.rd << "= " << std::hex << RegFile->RV64[Inst.rd] << " r" << std::dec
                 << (uint32_t) Inst.rs1 << "= " << std::hex << RegFile->RV64[Inst.rs1] << " r" << std::dec << (uint32_t) Inst.rs2
                 << "= " << std::hex << RegFile->RV64[Inst.rs2] << " imm = " << std::hex << Inst.imm << std::endl;
       std::cout << "RDT: Address of RD = 0x" << std::hex << (uint64_t*) ( &RegFile->RV64[Inst.rd] ) << std::dec << std::endl;
+    } else {
+      std::cout << "RDT: Executed PC = " << std::hex << ExecPC << " Inst: " << std::setw( 23 ) << InstTable[Inst.entry].mnemonic
+                << " r" << std::dec << (uint32_t) Inst.rd << "= " << std::hex << RegFile->RV32[Inst.rd] << " r" << std::dec
+                << (uint32_t) Inst.rs1 << "= " << std::hex << RegFile->RV32[Inst.rs1] << " r" << std::dec << (uint32_t) Inst.rs2
+                << "= " << std::hex << RegFile->RV32[Inst.rs2] << " imm = " << std::hex << Inst.imm << std::endl;
     }
 #endif
 
@@ -1863,12 +1864,10 @@ bool RevCore::ClockTick( SST::Cycle_t currentCycle ) {
       );
 #endif
       ++Stats.retired;
-      ++RegFile->InstRet;
+      RegFile->IncrementInstRet();
 
       // Only clear the dependency if there is no outstanding load
-      if( ( RegFile->GetLSQueue()->count(
-            LSQHash( Pipeline.front().second.rd, InstTable[Pipeline.front().second.entry].rdClass, HartID )
-          ) ) == 0 ) {
+      if( ( RegFile->GetLSQueue()->count( LSQHash( Pipeline.front().second.rd, InstTable[Pipeline.front().second.entry].rdClass, HartID ) ) ) == 0 ) {
         DependencyClear( HartID, &( Pipeline.front().second ) );
       }
       Pipeline.pop_front();
