@@ -326,8 +326,8 @@ private:
 
   std::queue<std::pair<uint32_t, char*>> ZeroRqst{};   ///< RevCPU: tracks incoming zero address put requests; pair<Size, Data>
   std::list<std::pair<uint8_t, int>>     TrackTags{};  ///< RevCPU: tracks the outgoing messages; pair<Tag, Dest>
-  std::vector<std::tuple<uint8_t, uint64_t, uint32_t>>
-    TrackGets{};  ///< RevCPU: tracks the outstanding get messages; tuple<Tag, Addr, Sz>
+  std::vector<std::tuple<uint8_t, uint64_t, uint32_t>> TrackGets{
+  };  ///< RevCPU: tracks the outstanding get messages; tuple<Tag, Addr, Sz>
   std::vector<std::tuple<uint8_t, uint32_t, unsigned, int, uint64_t>> ReadQueue{};  ///< RevCPU: outgoing memory read queue
   ///<         - Tag
   ///<         - Size
@@ -436,7 +436,7 @@ private:
   /// RevCPU: Handle Zone Ring Message
   void handleRingMsg( SST::Event* event );
 
-  /// RevCPU: Handle FORZA scratchpad request responses
+  /// RevCPU: Dummy mark load complete function
   void MarkLoadCompleteDummy( const MemReq& req );
 
   /// RevCPU: Creates a unique tag for this message
