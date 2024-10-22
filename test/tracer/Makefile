@@ -62,7 +62,7 @@ compile: $(EXES) $(DIASMS)
 %.exe: $(EXAMPLE).c
 	$(GCC) -g -O2 -march=$(ARCH) $(OPTS) $(INCLUDE) -o  $@ $<
 
-%.rv64.c.log %.rv64.cpp.log: ARCH=rv64g
+%.rv64.c.log %.rv64.cpp.log: ARCH=rv64gc
 %.rv32.c.log %.rv32.cpp.log: ARCH=rv32g
 
 %.log: %.exe

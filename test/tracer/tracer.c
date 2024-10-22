@@ -77,6 +77,49 @@ void* thread2() {
   return 0;
 }
 
+void check_lw_sign_ext() {
+#ifdef RV64G
+  volatile uint64_t  mem[2]   = { 0 };
+  volatile uint64_t* p        = &mem[0];
+  volatile uint64_t  badneg   = 0xbadbeef1badbeef0;
+  volatile uint64_t  checkneg = 0xffffffffbadbeef0;
+  TRACE_PUSH_ON
+lw_neq:
+  asm volatile( "ld   t3, 0(%1)   \n\t"     // t3 <- badneg
+                "ld   t4, 0(%2)   \n\t"     // t4 <- checkneg
+                "sd   t3, 4(%0)   \n\t"     // store badneg to upper half of mem[0]
+                "lw   t3, 0(%0)   \n\t"     // load mem[0]
+                "beq  t3, t4, _okneg \n\t"  // check
+                ".word 0x0 \n\t"            // fail
+                "_okneg: \n\t"
+                "sd   t3, 0(%0)  \n\t"  // store back into mem
+                : "=r"( p )
+                : "r"( &badneg ), "r"( &checkneg )
+                : "t3" );
+  printf( "neg result is 0x%llx\n", *p );
+  //assert(resneg==checkneg);
+
+  volatile uint64_t badpos   = 0x7adbeef17adbeef0;
+  volatile uint64_t checkpos = 0x07adbeef0;
+  mem[0]                     = 0;
+  mem[1]                     = 0;
+lw_pos:
+  asm volatile( "ld   t3, 0(%1)   \n\t"     // t3 <- badpos
+                "ld   t4, 0(%2)   \n\t"     // t4 <- checkpos
+                "sd   t3, 4(%0)   \n\t"     // store badpos to upper half of mem[0]
+                "lw   t3, 0(%0)   \n\t"     // load mem[0]
+                "beq  t3, t4, _okpos \n\t"  // check
+                ".word 0x0 \n\t"            // fail
+                "_okpos: \n\t"
+                "sd   t3, 0(%0)  \n\t"  // store back into mem
+                : "=r"( p )
+                : "r"( &badpos ), "r"( &checkpos )
+                : "t3" );
+  printf( "pos result is 0x%llx\n", *p );
+  TRACE_PUSH_OFF
+#endif
+}
+
 int main( int argc, char** argv ) {
 
   // Enable tracing at start to see return instruction pointer
@@ -182,7 +225,6 @@ check_tight_loop:
 
   TRACE_ON;
 
-#if 1
   // use CSR to get time
   size_t time1, time2;
   REV_TIME( time1 );
@@ -190,7 +232,8 @@ check_tight_loop:
   REV_TIME( time2 );
   assert( fubar == 80 );
   printf( "Time check: %ld\n", time2 - time1 );
-#endif
+
+  check_lw_sign_ext();
 
   printf( "tracer test completed normally\n" );
   return 0;
