@@ -5,8 +5,8 @@ CC=riscv64-unknown-elf-g++
 ARCH=rv64gc
 
 all: $(EXAMPLE).exe
-$(EXAMPLE).exe: $(EXAMPLE).cpp
-	$(CC) -march=$(ARCH) -Wall -o $(EXAMPLE).exe $(EXAMPLE).cpp app.cpp -static
+$(EXAMPLE).exe: $(EXAMPLE).cc
+	$(CC) -march=$(ARCH) -Wall -o $(EXAMPLE).exe $(EXAMPLE).cc app.cc -static
 clean:
 	rm -Rf $(EXAMPLE).exe
 

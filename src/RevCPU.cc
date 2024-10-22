@@ -123,7 +123,7 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params ) : SST::Compon
 
   // Create the memory object
   const uint64_t memSize = params.find<unsigned long>( "memSize", 1073741824 );
-  EnableMemH             = params.find<bool>( "enable_memH", 0 );
+  EnableMemH             = params.find<bool>( "enableMemH", 0 );
 
   // Added for the security test
   EnableForzaSecurity    = params.find<bool>( "enableForzaSecurity", false );
@@ -157,9 +157,6 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params ) : SST::Compon
       Mem->enablePhysHistoryLogging();
     }
   }
-
-  // FORZA: initialize scratchpad
-  Mem->InitScratchpad( id, _SCRATCHPAD_SIZE_, _CHUNK_SIZE_ );
 
   // FORZA: initialize the network
   // setup the FORZA NoC NIC endpoint for the Zone
@@ -680,6 +677,13 @@ void RevCPU::processZOPQ() {
   }
 }
 
+void RevCPU::MarkLoadCompleteDummy( const MemReq& req ) {
+  // Note: this is a placeholder MarkLoadComplete hazard
+  // function that is ONLY used for scratchpad loads
+  // These loads should return immediately.  If they don't,
+  // then the user has specified an erroneous address and YMMV
+}
+
 void RevCPU::handleZOPMessageRZA( Forza::zopEvent* zev ) {
   output.verbose( CALL_INFO, 9, 0, "[FORZA][RZA] Injecting ZOP Message into ZIQ\n" );
   if( zev == nullptr ) {
@@ -687,13 +691,6 @@ void RevCPU::handleZOPMessageRZA( Forza::zopEvent* zev ) {
   }
 
   ZIQ.push_back( zev );
-}
-
-void RevCPU::MarkLoadCompleteDummy( const MemReq& req ) {
-  // Note: this is a placeholder MarkLoadComplete hazard
-  // function that is ONLY used for scratchpad loads
-  // These loads should return immediately.  If they don't,
-  // then the user has specified an erroneous address and YMMV
 }
 
 void RevCPU::handleZOPMZOP( Forza::zopEvent* zev ) {

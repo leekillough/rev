@@ -35,14 +35,13 @@
 #include "SST.h"
 
 // -- RevCPU Headers
-#include "../common/include/RevCommon.h"
+#include "RevCommon.h"
 #include "RevMemCtrl.h"
 #include "RevOpts.h"
 #include "RevRand.h"
 #include "RevTracer.h"
 
 // -- FORZA Headers
-#include "RevScratchpad.h"
 #include "ZOPNET.h"
 
 #ifndef _REVMEM_BASE_
@@ -183,14 +182,11 @@ public:
   // ----------------------------------------------------
   // ---- Base Memory Interfaces
   // ----------------------------------------------------
-  /// RevMem: write to the target memory location
-  bool WriteMem( unsigned Hart, uint64_t Addr, size_t Len, const void* Data );
-
   /// RevMem: write to the target memory location with the target flags
-  bool WriteMem( unsigned Hart, uint64_t Addr, size_t Len, const void* Data, RevFlag flags );
+  bool WriteMem( unsigned Hart, uint64_t Addr, size_t Len, const void* Data, RevFlag flags = RevFlag::F_NONE );
 
   /// RevMem: read data from the target memory location
-  bool ReadMem( unsigned Hart, uint64_t Addr, size_t Len, void* Target, const MemReq& req, RevFlag flags );
+  bool ReadMem( unsigned Hart, uint64_t Addr, size_t Len, void* Target, const MemReq& req, RevFlag flags = RevFlag::F_NONE );
 
   /// RevMem: flush a cache line
   bool FlushLine( unsigned Hart, uint64_t Addr );
@@ -201,16 +197,6 @@ public:
   /// RevMem: clean a line
   bool CleanLine( unsigned Hart, uint64_t Addr );
 
-  /// RevMem: DEPRECATED: read data from the target memory location
-  [[deprecated( "Simple RevMem interfaces have been deprecated" )]] bool ReadMem( uint64_t Addr, size_t Len, void* Data );
-
-  [[deprecated( "ReadU* interfaces have been deprecated" )]] uint64_t ReadU64( uint64_t Addr ) {
-    uint64_t Value;
-    if( !ReadMem( Addr, sizeof( Value ), &Value ) )
-      output->fatal( CALL_INFO, -1, "Error: could not read memory (U64)\n" );
-    return Value;
-  }
-
   // ----------------------------------------------------
   // ---- Read Memory Interfaces
   // ----------------------------------------------------
@@ -220,17 +206,11 @@ public:
     return ReadMem( Hart, Addr, sizeof( T ), Target, req, flags );
   }
 
-  ///  RevMem: template LOAD RESERVE memory interface
-  template<typename T>
-  bool LR( unsigned Hart, uint64_t Addr, T* Target, uint8_t aq, uint8_t rl, const MemReq& req, RevFlag flags ) {
-    return LRBase( Hart, Addr, sizeof( T ), Target, aq, rl, req, flags );
-  }
+  ///  RevMem: LOAD RESERVE memory interface
+  void LR( unsigned hart, uint64_t addr, size_t len, void* target, const MemReq& req, RevFlag flags );
 
-  ///  RevMem: template STORE CONDITIONAL memory interface
-  template<typename T>
-  bool SC( unsigned Hart, uint64_t Addr, T* Data, T* Target, uint8_t aq, uint8_t rl, RevFlag flags ) {
-    return SCBase( Hart, Addr, sizeof( T ), Data, Target, aq, rl, flags );
-  }
+  ///  RevMem: STORE CONDITIONAL memory interface
+  bool SC( unsigned Hart, uint64_t addr, size_t len, void* data, RevFlag flags );
 
   /// RevMem: template AMO memory interface
   template<typename T>
@@ -263,14 +243,11 @@ public:
   // ----------------------------------------------------
   // ---- Atomic/Future/LRSC Interfaces
   // ----------------------------------------------------
-  /// RevMem: Add a memory reservation for the target address
-  bool LRBase( unsigned Hart, uint64_t Addr, size_t Len, void* Data, uint8_t aq, uint8_t rl, const MemReq& req, RevFlag flags );
-
-  /// RevMem: Clear a memory reservation for the target address
-  bool SCBase( unsigned Hart, uint64_t Addr, size_t Len, void* Data, void* Target, uint8_t aq, uint8_t rl, RevFlag flags );
-
   /// RevMem: Initiated an AMO request
   bool AMOMem( unsigned Hart, uint64_t Addr, size_t Len, void* Data, void* Target, const MemReq& req, RevFlag flags );
+
+  /// RevMem: Invalidate Matching LR reservations
+  bool InvalidateLRReservations( unsigned hart, uint64_t addr, size_t len );
 
   /// RevMem: Initiates a future operation [RV64P only]
   bool SetFuture( uint64_t Addr );
@@ -393,18 +370,6 @@ public:
   // ----------------------------------------------------
   // ---- FORZA Interfaces
   // ----------------------------------------------------
-  /// FORZA: Checks if address is in scratchpad (ie. bits 56 & 57 are set)
-  inline bool IsAddrInScratchpad( const uint64_t& Addr );
-
-  /// FORZA: Init Scratchpad
-  void InitScratchpad( const unsigned ZapNum, const size_t Size, const size_t ChunkSize );
-
-  /// FORZA: Interface for allocating in the Scratchpad
-  uint64_t ScratchpadAlloc( size_t numBytes );
-
-  /// FORZA: Interface for freeing from Scratchpad
-  void ScratchpadFree( uint64_t Addr, size_t size );
-
   /// FORZA: set the ZOP NIC object
   void setZNic( Forza::zopAPI* Z ) { zNic = Z; }
 
@@ -481,13 +446,13 @@ private:
   bool ZOP_READMem( unsigned Hart, uint64_t Addr, size_t Len, void* Target, const MemReq& req, RevFlag flags );
 
   /// FORZA: send a WRITE request
-  bool ZOP_WRITEMem( unsigned Hart, uint64_t Addr, size_t Len, void* Data, RevFlag flags );
+  bool ZOP_WRITEMem( unsigned Hart, uint64_t Addr, size_t Len, const void* Data, RevFlag flags );
 
   /// FORZA: send a large raw WRITE request: DO NOT USE
-  bool __ZOP_WRITEMemLarge( unsigned Hart, uint64_t Addr, size_t Len, void* Data, RevFlag flags );
+  bool __ZOP_WRITEMemLarge( unsigned Hart, uint64_t Addr, size_t Len, const void* Data, RevFlag flags );
 
   /// FORZA: send a WRITE request using the target opcode: DO NOT USE
-  bool __ZOP_WRITEMemBase( unsigned Hart, uint64_t Addr, size_t Len, void* Data, RevFlag flags, SST::Forza::zopOpc opc );
+  bool __ZOP_WRITEMemBase( unsigned Hart, uint64_t Addr, size_t Len, const void* Data, RevFlag flags, SST::Forza::zopOpc opc );
 
   /// FORZA: send a HART fence request
   bool __ZOP_FENCEHart( unsigned Hart );
@@ -508,9 +473,8 @@ private:
   RevMemCtrl*         ctrl{};      ///< RevMem: memory controller object
   SST::Output*        output{};    ///< RevMem: output handler
 
-  std::shared_ptr<RevScratchpad> scratchpad;  ///< FORZA: Scratchpad
-  Forza::zopAPI*                 zNic{};      ///< RevMem: FORZA ZOP NIC
-  bool                           isRZA;       ///< RevMem: FORZA RZA flag; true if this device is an RZA
+  Forza::zopAPI* zNic{};  ///< RevMem: FORZA ZOP NIC
+  bool           isRZA;   ///< RevMem: FORZA RZA flag; true if this device is an RZA
 
   std::vector<std::shared_ptr<MemSegment>> MemSegs{};        // Currently Allocated MemSegs
   std::vector<std::shared_ptr<MemSegment>> FreeMemSegs{};    // MemSegs that have been unallocated
@@ -527,7 +491,9 @@ private:
   void     FlushTLB();                                     ///< RevMem: Used to flush the TLB & LRUQueue
   uint64_t
     CalcPhysAddr( uint64_t pageNum, uint64_t vAddr );  ///< RevMem: Used to calculate the physical address based on virtual address
-  bool isValidVirtAddr( uint64_t vAddr );              ///< RevMem: Used to check if a virtual address exists in MemSegs
+  std::tuple<uint64_t, uint64_t, uint64_t>
+       AdjPageAddr( uint64_t Addr, uint64_t Len );  ///< RevMem: Used to adjust address crossing pages
+  bool isValidVirtAddr( uint64_t vAddr );           ///< RevMem: Used to check if a virtual address exists in MemSegs
 
   std::map<uint64_t, std::pair<uint32_t, bool>> pageMap{};    ///< RevMem: map of logical to pair<physical addresses, allocated>
   uint32_t                                      pageSize{};   ///< RevMem: size of allocated pages
@@ -541,14 +507,8 @@ private:
   uint64_t heapstart{};  ///< RevMem: top of the stack
   uint64_t stacktop{};   ///< RevMem: top of the stack
 
-  std::vector<uint64_t> FutureRes{};  ///< RevMem: future operation reservations
-
-  // these are LRSC tuple index macros
-#define LRSC_HART 0
-#define LRSC_ADDR 1
-#define LRSC_AQRL 2
-#define LRSC_VAL  3
-  std::vector<std::tuple<unsigned, uint64_t, unsigned, uint64_t*>> LRSC{};  ///< RevMem: load reserve/store conditional vector
+  std::vector<uint64_t>                                     FutureRes{};  ///< RevMem: future operation reservations
+  std::unordered_map<unsigned, std::pair<uint64_t, size_t>> LRSC{};       ///< RevMem: load reserve/store conditional set
 
   // -- FORZA
   std::map<uint64_t, Forza::zopEvent*> ZRqst;  ///< RevMem: zop request address map
