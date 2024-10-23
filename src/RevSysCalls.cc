@@ -47,7 +47,8 @@ EcallStatus RevCore::EcallLoadAndParseString( uint64_t straddr, std::function<vo
         HartToExecID,
         MemOp::MemOpREAD,
         true,
-        [=]( const MemReq& req ) { this->MarkLoadComplete( req ); } };
+        [=]( const MemReq& req ) { this->MarkLoadComplete( req ); }
+      };
       LSQueue->insert( req.LSQHashPair() );
       mem->ReadVal( HartToExecID, straddr + EcallState.string.size(), EcallState.buf.data(), req, RevFlag::F_NONE );
       EcallState.bytesRead = 1;
@@ -3907,7 +3908,7 @@ EcallStatus RevCore::ECALL_forza_send_word() {
       (uint8_t) ring_ev->getOp()
     );
     zoneRing->send( ring_ev, next_dest );
-    output->verbose( CALL_INFO, 5, 0, "SENDING RING MESSAGE, next addr = %llu\n", next_dest );
+    output->verbose( CALL_INFO, 5, 0, "SENDING RING MESSAGE, next addr = %" PRIu64 "\n", next_dest );
   } else {
     output->verbose( CALL_INFO, 5, 0, "[ERROR] NO RING NETWORK\n" );
     delete ring_ev;
@@ -4211,7 +4212,13 @@ EcallStatus RevCore::ECALL_forza_zqm_setup() {
 #endif
 
   output->verbose(
-    CALL_INFO, 5, 0, "Arguments: mbox_mask=0x%llx; logical_pe=0x%llx, data value=0x%" PRIx64 "\n", mbox_mask, logical_pe, outreg
+    CALL_INFO,
+    5,
+    0,
+    "Arguments: mbox_mask=0x%" PRIx64 "; logical_pe=0x%" PRIx64 ", data value=0x%" PRIx64 "\n",
+    mbox_mask,
+    logical_pe,
+    outreg
   );
 
   SST::Forza::ringEvent* ring_ev = new SST::Forza::ringEvent(
@@ -4230,7 +4237,7 @@ EcallStatus RevCore::ECALL_forza_zqm_setup() {
       (uint8_t) ring_ev->getOp()
     );
     zoneRing->send( ring_ev, next_dest );
-    output->verbose( CALL_INFO, 5, 0, "SENDING RING MESSAGE, next addr = %llu\n", next_dest );
+    output->verbose( CALL_INFO, 5, 0, "SENDING RING MESSAGE, next addr = %" PRIu64 "\n", next_dest );
   } else {
     output->verbose( CALL_INFO, 5, 0, "[ERROR] NO RING NETWORK\n" );
     delete ring_ev;

@@ -129,13 +129,7 @@ uint64_t RingNetNIC::getNextAddress() {
   uint64_t myAddr   = (uint64_t) ( getAddress() );
   uint64_t lastAddr = endPoints.back();
   output.verbose(
-    CALL_INFO,
-    11,
-    0,
-    "RingNet: my_addr=%llu, num_endpts=%lu, lastAddr=%llu\n",
-    myAddr,
-    endPoints.size(),
-    endPoints[( endPoints.size() - 1 )]
+    CALL_INFO, 11, 0, "RingNet: my_addr=%" PRIu64 ", num_endpts=%lu, lastAddr=%" PRIu64 "\n", myAddr, endPoints.size(), lastAddr
   );
   if( myAddr > lastAddr )
     return endPoints[0];
