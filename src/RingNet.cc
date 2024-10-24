@@ -42,8 +42,6 @@ RingNetNIC::RingNetNIC( SST::ComponentId_t id, SST::Params& params ) : RingNetAP
   iFace->setNotifyOnReceive( new SST::Interfaces::SimpleNetwork::Handler<RingNetNIC>( this, &RingNetNIC::msgNotify ) );
 }
 
-RingNetNIC::~RingNetNIC() {}
-
 void RingNetNIC::setMsgHandler( Event::HandlerBase* handler ) {
   msgHandler = handler;
 }

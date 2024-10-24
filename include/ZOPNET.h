@@ -501,12 +501,16 @@ public:
   void setDestHart( uint16_t H ) { DestHart = H; }
 
   /// zopEvent: set the destination ZCID
-  void setDestZCID( uint8_t Z ) { DestZCID = Z; }
-
-  void setDestZCID( zopCompID Z ) { DestZCID = static_cast<uint8_t>( Z ); }
+  template<typename T>
+  void setDestZCID( T Z ) {
+    DestZCID = static_cast<uint8_t>( Z );
+  }
 
   /// zopEvent: set the destination PCID
-  void setDestPCID( uint8_t P ) { DestPCID = P; }
+  template<typename T>
+  void setDestPCID( T P ) {
+    DestPCID = static_cast<uint8_t>( P );
+  }
 
   /// zopEvent: set the destination precinct
   void setDestPrec( uint16_t P ) { DestPrec = P; }
@@ -515,12 +519,16 @@ public:
   void setSrcHart( uint16_t H ) { SrcHart = H; }
 
   /// zopEvent: set the src ZCID
-  void setSrcZCID( uint8_t Z ) { SrcZCID = Z; }
-
-  void setSrcZCID( zopCompID Z ) { SrcZCID = static_cast<uint8_t>( Z ); }
+  template<typename T>
+  void setSrcZCID( T Z ) {
+    SrcZCID = static_cast<uint8_t>( Z );
+  }
 
   /// zopEvent: set the src PCID
-  void setSrcPCID( uint8_t P ) { SrcPCID = P; }
+  template<typename T>
+  void setSrcPCID( T P ) {
+    SrcPCID = static_cast<uint8_t>( P );
+  }
 
   /// zopEvent: set the src precinct
   void setSrcPrec( uint16_t P ) { SrcPrec = P; }
@@ -799,7 +807,7 @@ public:
   void serialize_order( SST::Core::Serialization::serializer& ser ) override {
     // we only serialize the raw packet
     Event::serialize_order( ser );
-    ser & Packet;
+    ser& Packet;
   }
 
   // zopEvent: implements the nic serialization
@@ -1152,7 +1160,7 @@ private:
     outstanding;  ///< zopNIC: tracks outstanding requests
 
   std::vector<Statistic<uint64_t>*> stats;  ///< zopNIC: statistics vector
-};  // zopNIC
+};                                          // zopNIC
 
 }  // namespace SST::Forza
 
