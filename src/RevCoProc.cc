@@ -33,7 +33,7 @@ bool RevCoProc::sendSuccessResp( Forza::zopAPI* zNic, Forza::zopEvent* zev, uint
     return false;
 
   output->verbose(
-    CALL_INFO, 9, 0, "[FORZA][RZA][MZOP]: Building MZOP success response for WRITE @ ID=%d\n", (unsigned) ( zev->getID() )
+    CALL_INFO, 9, 0, "[FORZA][RZA][MZOP]: Building MZOP success response for WRITE @ ID=%" PRIu16 "\n", zev->getID()
   );
 
   // create a new event
@@ -72,9 +72,7 @@ bool RevCoProc::sendSuccessResp( Forza::zopAPI* zNic, Forza::zopEvent* zev, uint
   if( zev == nullptr )
     return false;
 
-  output->verbose(
-    CALL_INFO, 9, 0, "[FORZA][RZA][]: Building LOAD or HZOP response for MSG @ ID=%d\n", (unsigned) ( zev->getID() )
-  );
+  output->verbose( CALL_INFO, 9, 0, "[FORZA][RZA][]: Building LOAD or HZOP response for MSG @ ID=%" PRIu16 "\n", zev->getID() );
 
   uint64_t Addr = 0x00ull;
   zev->getFLIT( Z_FLIT_ADDR, &Addr );
@@ -239,7 +237,9 @@ void RZALSCoProc::CheckLSQueue() {
     if( Alloc.getState( rs2 ) == _H_DIRTY ) {
       // load to register has occurred, time to build a response
       if( !sendSuccessResp( zNic, zev, Z_MZOP_PIPE_HART, Alloc.GetX( rs2 ) ) ) {
-        output->fatal( CALL_INFO, -1, "[FORZA][RZA][MZOP]: Failed to send success response for ZOP ID=%d\n", zev->getID() );
+        output->fatal(
+          CALL_INFO, -1, "[FORZA][RZA][MZOP]: Failed to send success response for ZOP ID=%" PRIu16 "\n", zev->getID()
+        );
       }
       Alloc.clearReg( rs2 );
 
@@ -287,7 +287,7 @@ bool RZALSCoProc::handleMZOP( Forza::zopEvent* zev, bool& flag ) {
     output->fatal(
       CALL_INFO,
       -1,
-      "[FORZA][RZA][MZOP]: MZOP packet has no address FLIT: Type=%s, ID=%d\n",
+      "[FORZA][RZA][MZOP]: MZOP packet has no address FLIT: Type=%s, ID=%" PRIu16 "\n",
       zNic->msgTToStr( zev->getType() ).c_str(),
       zev->getID()
     );
@@ -365,7 +365,7 @@ bool RZALSCoProc::handleMZOP( Forza::zopEvent* zev, bool& flag ) {
       output->fatal(
         CALL_INFO,
         -1,
-        "[FORZA][RZA][MZOP]: MZOP packet has no data FLIT: Type=%s, ID=%d\n",
+        "[FORZA][RZA][MZOP]: MZOP packet has no data FLIT: Type=%s, ID=%" PRIu16 "\n",
         zNic->msgTToStr( zev->getType() ).c_str(),
         zev->getID()
       );
@@ -379,7 +379,7 @@ bool RZALSCoProc::handleMZOP( Forza::zopEvent* zev, bool& flag ) {
       output->fatal(
         CALL_INFO,
         -1,
-        "[FORZA][RZA][MZOP]: MZOP packet has no data FLIT: Type=%s, ID=%d\n",
+        "[FORZA][RZA][MZOP]: MZOP packet has no data FLIT: Type=%s, ID=%" PRIu16 "\n",
         zNic->msgTToStr( zev->getType() ).c_str(),
         zev->getID()
       );
@@ -393,7 +393,7 @@ bool RZALSCoProc::handleMZOP( Forza::zopEvent* zev, bool& flag ) {
       output->fatal(
         CALL_INFO,
         -1,
-        "[FORZA][RZA][MZOP]: MZOP packet has no data FLIT: Type=%s, ID=%d\n",
+        "[FORZA][RZA][MZOP]: MZOP packet has no data FLIT: Type=%s, ID=%" PRIu16 "\n",
         zNic->msgTToStr( zev->getType() ).c_str(),
         zev->getID()
       );
@@ -407,7 +407,7 @@ bool RZALSCoProc::handleMZOP( Forza::zopEvent* zev, bool& flag ) {
       output->fatal(
         CALL_INFO,
         -1,
-        "[FORZA][RZA][MZOP]: MZOP packet has no data FLIT: Type=%s, ID=%d\n",
+        "[FORZA][RZA][MZOP]: MZOP packet has no data FLIT: Type=%s, ID=%" PRIu16 "\n",
         zNic->msgTToStr( zev->getType() ).c_str(),
         zev->getID()
       );
@@ -421,7 +421,7 @@ bool RZALSCoProc::handleMZOP( Forza::zopEvent* zev, bool& flag ) {
       output->fatal(
         CALL_INFO,
         -1,
-        "[FORZA][RZA][MZOP]: MZOP packet has no data FLIT: Type=%s, ID=%d\n",
+        "[FORZA][RZA][MZOP]: MZOP packet has no data FLIT: Type=%s, ID=%" PRIu16 "\n",
         zNic->msgTToStr( zev->getType() ).c_str(),
         zev->getID()
       );
@@ -435,7 +435,7 @@ bool RZALSCoProc::handleMZOP( Forza::zopEvent* zev, bool& flag ) {
       output->fatal(
         CALL_INFO,
         -1,
-        "[FORZA][RZA][MZOP]: MZOP packet has no data FLIT: Type=%s, ID=%d\n",
+        "[FORZA][RZA][MZOP]: MZOP packet has no data FLIT: Type=%s, ID=%" PRIu16 "\n",
         zNic->msgTToStr( zev->getType() ).c_str(),
         zev->getID()
       );
@@ -449,7 +449,7 @@ bool RZALSCoProc::handleMZOP( Forza::zopEvent* zev, bool& flag ) {
       output->fatal(
         CALL_INFO,
         -1,
-        "[FORZA][RZA][MZOP]: MZOP packet has no data FLIT: Type=%s, ID=%d\n",
+        "[FORZA][RZA][MZOP]: MZOP packet has no data FLIT: Type=%s, ID=%" PRIu16 "\n",
         zNic->msgTToStr( zev->getType() ).c_str(),
         zev->getID()
       );
@@ -471,7 +471,7 @@ bool RZALSCoProc::handleMZOP( Forza::zopEvent* zev, bool& flag ) {
           CALL_INFO,
           -1,
           "[FORZA][RZA][MZOP]: MZOP packet has no DMA data FLIT: "
-          "Type=%s, ID=%d\n",
+          "Type=%s, ID=%" PRIu16 "\n",
           zNic->msgTToStr( zev->getType() ).c_str(),
           zev->getID()
         );
@@ -491,7 +491,9 @@ bool RZALSCoProc::handleMZOP( Forza::zopEvent* zev, bool& flag ) {
     break;
   default:
     // not an MZOP
-    output->verbose( CALL_INFO, 9, 0, "[FORZA][RZA][MZOP]: Erroneous MZOP opcode=%d\n", (unsigned) ( zev->getOpc() ) );
+    output->verbose(
+      CALL_INFO, 9, 0, "[FORZA][RZA][MZOP]: Erroneous MZOP opcode=%" PRIu8 "\n", static_cast<uint8_t>( zev->getOpc() )
+    );
     return false;
     break;
   }
@@ -499,7 +501,7 @@ bool RZALSCoProc::handleMZOP( Forza::zopEvent* zev, bool& flag ) {
   if( flag ) {
     // this was a write, signal a success response
     if( !sendSuccessResp( zNic, zev, Z_MZOP_PIPE_HART ) ) {
-      output->fatal( CALL_INFO, -1, "[FORZA][RZA][MZOP]: Failed to send success response for ZOP ID=%d\n", zev->getID() );
+      output->fatal( CALL_INFO, -1, "[FORZA][RZA][MZOP]: Failed to send success response for ZOP ID=%" PRIu16 "\n", zev->getID() );
     }
     // go ahead and clear the RS2 as we dont need it for WRITE requests
     Alloc.clearReg( Rs2 );
@@ -613,7 +615,7 @@ bool RZAAMOCoProc::handleHZOP( Forza::zopEvent* zev, bool& flag ) {
     output->fatal(
       CALL_INFO,
       -1,
-      "[FORZA][RZA][HZOP]: HZOP packet has no address FLIT: Type=%s, ID=%d\n",
+      "[FORZA][RZA][HZOP]: HZOP packet has no address FLIT: Type=%s, ID=%" PRIu16 "\n",
       zNic->msgTToStr( zev->getType() ).c_str(),
       zev->getID()
     );
@@ -624,7 +626,7 @@ bool RZAAMOCoProc::handleHZOP( Forza::zopEvent* zev, bool& flag ) {
     output->fatal(
       CALL_INFO,
       -1,
-      "[FORZA][RZA][HZOP]: HZOP packet has no data FLIT: Type=%s, ID=%d\n",
+      "[FORZA][RZA][HZOP]: HZOP packet has no data FLIT: Type=%s, ID=%" PRIu16 "\n",
       zNic->msgTToStr( zev->getType() ).c_str(),
       zev->getID()
     );
@@ -777,7 +779,9 @@ bool RZAAMOCoProc::handleHZOP( Forza::zopEvent* zev, bool& flag ) {
     recordStat( HZOP_64_BASE_SWAP, 1 );
     break;
   default:
-    output->verbose( CALL_INFO, 9, 0, "[FORZA][RZA][HZOP]: Erroneous HZOP opcode=%d\n", (unsigned) ( zev->getOpc() ) );
+    output->verbose(
+      CALL_INFO, 9, 0, "[FORZA][RZA][HZOP]: Erroneous HZOP opcode=%" PRIu8 "\n", static_cast<uint8_t>( zev->getOpc() )
+    );
     return false;
     break;
   }
@@ -815,7 +819,9 @@ void RZAAMOCoProc::CheckLSQueue() {
     if( Alloc.getState( rs2 ) == _H_DIRTY ) {
       // load to register has occurred, time to build a response
       if( !sendSuccessResp( zNic, zev, Z_HZOP_PIPE_HART, Alloc.GetX( rs2 ) ) ) {
-        output->fatal( CALL_INFO, -1, "[FORZA][RZA][HZOP]: Failed to send success response for ZOP ID=%d\n", zev->getID() );
+        output->fatal(
+          CALL_INFO, -1, "[FORZA][RZA][HZOP]: Failed to send success response for ZOP ID=%" PRIu16 "\n", zev->getID()
+        );
       }
 
       // clear the hazards

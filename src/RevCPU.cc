@@ -713,7 +713,7 @@ void RevCPU::handleZOPMZOP( Forza::zopEvent* zev ) {
     output.fatal(
       CALL_INFO,
       -1,
-      "[FORZA][ZAP]: MZOP packet has no address FLIT: Type=%s, ID=%d\n",
+      "[FORZA][ZAP]: MZOP packet has no address FLIT: Type=%s, ID=%" PRIu16 "\n",
       zNic->msgTToStr( zev->getType() ).c_str(),
       zev->getID()
     );
@@ -753,7 +753,7 @@ void RevCPU::handleZOPMZOP( Forza::zopEvent* zev ) {
       output.fatal(
         CALL_INFO,
         -1,
-        "[FORZA][ZAP]: MZOP packet has no data FLIT: Type=%s, ID=%d\n",
+        "[FORZA][ZAP]: MZOP packet has no data FLIT: Type=%s, ID=%" PRIu16 "\n",
         zNic->msgTToStr( zev->getType() ).c_str(),
         zev->getID()
       );
@@ -765,7 +765,7 @@ void RevCPU::handleZOPMZOP( Forza::zopEvent* zev ) {
       output.fatal(
         CALL_INFO,
         -1,
-        "[FORZA][ZAP]: MZOP packet has no data FLIT: Type=%s, ID=%d\n",
+        "[FORZA][ZAP]: MZOP packet has no data FLIT: Type=%s, ID=%" PRIu16 "\n",
         zNic->msgTToStr( zev->getType() ).c_str(),
         zev->getID()
       );
@@ -777,7 +777,7 @@ void RevCPU::handleZOPMZOP( Forza::zopEvent* zev ) {
       output.fatal(
         CALL_INFO,
         -1,
-        "[FORZA][ZAP]: MZOP packet has no data FLIT: Type=%s, ID=%d\n",
+        "[FORZA][ZAP]: MZOP packet has no data FLIT: Type=%s, ID=%" PRIu16 "\n",
         zNic->msgTToStr( zev->getType() ).c_str(),
         zev->getID()
       );
@@ -789,7 +789,7 @@ void RevCPU::handleZOPMZOP( Forza::zopEvent* zev ) {
       output.fatal(
         CALL_INFO,
         -1,
-        "[FORZA][ZAP]: MZOP packet has no data FLIT: Type=%s, ID=%d\n",
+        "[FORZA][ZAP]: MZOP packet has no data FLIT: Type=%s, ID=%" PRIu16 "\n",
         zNic->msgTToStr( zev->getType() ).c_str(),
         zev->getID()
       );
@@ -801,7 +801,7 @@ void RevCPU::handleZOPMZOP( Forza::zopEvent* zev ) {
       output.fatal(
         CALL_INFO,
         -1,
-        "[FORZA][ZAP]: MZOP packet has no data FLIT: Type=%s, ID=%d\n",
+        "[FORZA][ZAP]: MZOP packet has no data FLIT: Type=%s, ID=%" PRIu16 "\n",
         zNic->msgTToStr( zev->getType() ).c_str(),
         zev->getID()
       );
@@ -813,7 +813,7 @@ void RevCPU::handleZOPMZOP( Forza::zopEvent* zev ) {
       output.fatal(
         CALL_INFO,
         -1,
-        "[FORZA][ZAP]: MZOP packet has no data FLIT: Type=%s, ID=%d\n",
+        "[FORZA][ZAP]: MZOP packet has no data FLIT: Type=%s, ID=%" PRIu16 "\n",
         zNic->msgTToStr( zev->getType() ).c_str(),
         zev->getID()
       );
@@ -825,7 +825,7 @@ void RevCPU::handleZOPMZOP( Forza::zopEvent* zev ) {
       output.fatal(
         CALL_INFO,
         -1,
-        "[FORZA][ZAP]: MZOP packet has no data FLIT: Type=%s, ID=%d\n",
+        "[FORZA][ZAP]: MZOP packet has no data FLIT: Type=%s, ID=%" PRIu16 "\n",
         zNic->msgTToStr( zev->getType() ).c_str(),
         zev->getID()
       );
@@ -836,7 +836,7 @@ void RevCPU::handleZOPMZOP( Forza::zopEvent* zev ) {
     output.fatal(
       CALL_INFO,
       -1,
-      "[FORZA][ZAP]: MZOP packet with erroneous opcode: Type=%s, ID=%d\n",
+      "[FORZA][ZAP]: MZOP packet with erroneous opcode: Type=%s, ID=%" PRIu16 "\n",
       zNic->msgTToStr( zev->getType() ).c_str(),
       zev->getID()
     );
@@ -845,7 +845,7 @@ void RevCPU::handleZOPMZOP( Forza::zopEvent* zev ) {
 
   if( isLoad ) {
     // create a response packet with the data
-    output.verbose( CALL_INFO, 9, 0, "[FORZA][ZAP]: Build LOAD response for MSG @ ID=%d\n", (unsigned) ( zev->getID() ) );
+    output.verbose( CALL_INFO, 9, 0, "[FORZA][ZAP]: Build LOAD response for MSG @ ID=%" PRIu16 "\n", zev->getID() );
     SST::Forza::zopEvent* rsp_zev = new SST::Forza::zopEvent();
 
     // set all the fields
@@ -874,7 +874,7 @@ void RevCPU::handleZOPMZOP( Forza::zopEvent* zev ) {
     zNic->send( rsp_zev, ( SST::Forza::zopCompID )( zev->getSrcZCID() ) );
   } else {
     // create a response packet with the data
-    output.verbose( CALL_INFO, 9, 0, "[FORZA][ZAP]: Build STORE response for MSG @ ID=%d\n", (unsigned) ( zev->getID() ) );
+    output.verbose( CALL_INFO, 9, 0, "[FORZA][ZAP]: Build STORE response for MSG @ ID=%" PRIu16 "\n", zev->getID() );
     SST::Forza::zopEvent* rsp_zev = new SST::Forza::zopEvent();
 
     // set all the fields
@@ -992,10 +992,12 @@ void RevCPU::handleZOPThreadMigrate( Forza::zopEvent* zev ) {
   switch( zev->getOpc() ) {
   case SST::Forza::zopOpc::Z_TMIG_INTREGS: handleZOPThreadMigrateIntRegs( zev ); break;
   case SST::Forza::zopOpc::Z_TMIG_FPREGS:
-    output.fatal( CALL_INFO, -1, "[FORZA][ZAP] TMIG_FPREGS not yet handled; message ID=%d\n", (uint32_t) ( zev->getID() ) );
+    output.fatal( CALL_INFO, -1, "[FORZA][ZAP] TMIG_FPREGS not yet handled; message ID=%" PRIu16 "\n", zev->getID() );
     break;
   case SST::Forza::zopOpc::Z_TMIG_SPAWN: handleZOPThreadMigrateSpawn( zev ); break;
-  default: output.fatal( CALL_INFO, -1, "[FORZA][ZAP] Invalid TMIG opcode; opcode=%u\n", (uint32_t) ( zev->getOpc() ) ); break;
+  default:
+    output.fatal( CALL_INFO, -1, "[FORZA][ZAP] Invalid TMIG opcode; opcode=%" PRIu8 "\n", static_cast<uint8_t>( zev->getOpc() ) );
+    break;
   }
 }
 
@@ -1004,16 +1006,16 @@ void RevCPU::handleZOPMessageZAP( Forza::zopEvent* zev ) {
   switch( zev->getType() ) {
   case Forza::zopMsgT::Z_RESP:
     if( !Mem->handleRZAResponse( zev ) ) {
-      output.fatal( CALL_INFO, -1, "[FORZA][ZAP] Could not handle response for message ID=%d\n", (uint32_t) ( zev->getID() ) );
+      output.fatal( CALL_INFO, -1, "[FORZA][ZAP] Could not handle response for message ID=%" PRIu8 "\n", zev->getID() );
     }
     break;
   case Forza::zopMsgT::Z_EXCP:
     output.fatal(
       CALL_INFO,
       -1,
-      "[FORZA][ZAP] Received exception code=%s from message ID=%d\n",
+      "[FORZA][ZAP] Received exception code=%s from message ID=%" PRIu16 "\n",
       zNic->msgTToStr( zev->getType() ).c_str(),
-      (uint32_t) ( zev->getID() )
+      zev->getID()
     );
     break;
   case Forza::zopMsgT::Z_TMIG: handleZOPThreadMigrate( zev ); break;
@@ -1327,7 +1329,7 @@ bool RevCPU::ThreadCanProceed( const std::unique_ptr<RevThread>& Thread ) {
   // If the thread is waiting on another thread, check if that thread has completed
   if( WaitingOnTID != _INVALID_TID_ ) {
     // Check if WaitingOnTID has completed... if so, return = true, else return false
-    output.verbose( CALL_INFO, 6, 0, "Thread %" PRIu32 " is waiting on Thread %u\n", Thread->GetID(), WaitingOnTID );
+    output.verbose( CALL_INFO, 6, 0, "Thread %" PRIu32 " is waiting on Thread %" PRIu32 "\n", Thread->GetID(), WaitingOnTID );
 
     // Check if the WaitingOnTID has completed, if not, thread cannot proceed
     rtn = ( CompletedThreads.find( WaitingOnTID ) != CompletedThreads.end() ) ? true : false;

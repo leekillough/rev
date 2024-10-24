@@ -17,7 +17,7 @@ namespace SST::Forza {
 //------------------------------------------
 RingNetNIC::RingNetNIC( SST::ComponentId_t id, SST::Params& params ) : RingNetAPI( id, params ) {
 
-  int verbosity = params.find<int>( "verbose", 0 );
+  verbosity = params.find<int>( "verbose", 0 );
   output.init( "RingNetNIC[" + getName() + ":@p:@t]: ", verbosity, 0, SST::Output::STDOUT );
 
   const std::string nicClock = params.find<std::string>( "clock", "1GHz" );
@@ -129,7 +129,13 @@ uint64_t RingNetNIC::getNextAddress() {
   uint64_t myAddr   = (uint64_t) ( getAddress() );
   uint64_t lastAddr = endPoints.back();
   output.verbose(
-    CALL_INFO, 11, 0, "RingNet: my_addr=%" PRIu64 ", num_endpts=%lu, lastAddr=%" PRIu64 "\n", myAddr, endPoints.size(), lastAddr
+    CALL_INFO,
+    11,
+    0,
+    "RingNet: my_addr=%" PRIu64 ", num_endpts=%" PRIu64 ", lastAddr=%" PRIu64 "\n",
+    myAddr,
+    endPoints.size(),
+    lastAddr
   );
   if( myAddr > lastAddr )
     return endPoints[0];
@@ -140,7 +146,7 @@ uint64_t RingNetNIC::getNextAddress() {
 
 #if 0
   for( unsigned i = 0; i < endPoints.size(); i++ ) {
-    output.verbose( CALL_INFO, 5, 0, "TJD: endpoint[%u]=%lu\n", i, endPoints[i] );
+    output.verbose( CALL_INFO, 5, 0, "TJD: endpoint[%" PRIu32 "]=%" PRIu64 "\n", i, endPoints[i] );
   }
   for( unsigned i = 0; i < endPoints.size(); i++ ) {
     if( endPoints[i] == myAddr ) {

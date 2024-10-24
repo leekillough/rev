@@ -344,7 +344,7 @@ void RevBasicMemCtrl::init( unsigned int phase ) {
   if( phase == 1 ) {
     lineSize = memIface->getLineSize();
     if( lineSize > 0 ) {
-      output->verbose( CALL_INFO, 5, 0, "Detected cache layers; default line size=%u\n", lineSize );
+      output->verbose( CALL_INFO, 5, 0, "Detected cache layers; default line size=%" PRIu32 "\n", lineSize );
       hasCache = true;
     } else {
       output->verbose( CALL_INFO, 5, 0, "No cache detected; disabling caching\n" );
