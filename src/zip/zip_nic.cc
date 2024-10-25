@@ -62,14 +62,14 @@ void ZIPHFINIC::init(unsigned int phase){
       req->src = iFace->getEndpointID();
       req->givePayload(ev);
       iFace->sendUntimedData(req);
-      output->verbose(CALL_INFO, 1, 0, "sent init message phase %d\n", phase);
+      output->verbose(CALL_INFO, 1, 0, "sent init message phase %" PRIu32 "\n", phase);
     }
   }
   
   while (SST::Interfaces::SimpleNetwork::Request * req = iFace->recvUntimedData() ) {
     // ZIPEvent *ev = static_cast<ZIPEvent*>(req->takePayload());
     numDest++;
-    output->verbose(CALL_INFO, 1, 0, "received init message phase %d for destination %ld\n", phase, req->dest);
+    output->verbose(CALL_INFO, 1, 0, "received init message phase %" PRIu32 " for destination %" PRId64 "\n", phase, req->dest);
   }
 }
 

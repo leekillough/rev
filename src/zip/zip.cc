@@ -283,9 +283,9 @@ bool ZIP::disaggregatePackets(uint16_t SrcPrec, ZIPMemTarget* Target, bool RV) {
       } else{
         t_c2 = true;
         if (RV) {
-          output.verbose(CALL_INFO, 10, 0, "disaggregateRVPackets: need %d credits for %d and only have %lu\n", receivedZop.getLength()+Z_NUM_HEADER_FLITS, receivedZop.getDestPCID(), inCreditCopy[receivedZop.getDestPCID()]);
+          output.verbose(CALL_INFO, 10, 0, "disaggregateRVPackets: need %" PRIu8 " credits for %" PRIu8 " and only have %" PRIu64 "\n", receivedZop.getLength()+Z_NUM_HEADER_FLITS, receivedZop.getDestPCID(), inCreditCopy[receivedZop.getDestPCID()]);
 	} else {
-          output.verbose(CALL_INFO, 10, 0, "disaggregatePackets: need %d credits for %d and only have %lu\n", receivedZop.getLength()+Z_NUM_HEADER_FLITS, receivedZop.getDestPCID(), inCreditCopy[receivedZop.getDestPCID()]);
+          output.verbose(CALL_INFO, 10, 0, "disaggregatePackets: need %" PRIu8 " credits for %" PRIu8 " and only have %" PRIu64 "\n", receivedZop.getLength()+Z_NUM_HEADER_FLITS, receivedZop.getDestPCID(), inCreditCopy[receivedZop.getDestPCID()]);
 	}
         return false;
       }
@@ -354,7 +354,7 @@ void ZIP::handleNOCEvent(SST::Event* ev) {
     // if the zopEvent is a Z_MSG_CREDIT, update credits for the source ZEN
     if (event->getOpc() == zopOpc::Z_MSG_CREDIT) {
       inCredit[event->getSrcPCID()] += event->getCredit();
-      output.verbose(CALL_INFO, 9, 0, "handleNOCEvent: received %d credits for %d, now at %lu\n", event->getCredit(), event->getSrcPCID(), inCredit[event->getSrcPCID()]);
+      output.verbose(CALL_INFO, 9, 0, "handleNOCEvent: received %" PRIu8 " credits for %" PRIu8 ", now at %" PRIu64 "\n", event->getCredit(), event->getSrcPCID(), inCredit[event->getSrcPCID()]);
     // otherwise add the zopEvent to the outgoing buffer for the destination precinct
     } else {
       uint16_t DestPrec = event->getDestPrec();
@@ -382,7 +382,7 @@ void ZIP::handleHFIEvent(SST::Event* ev) {
   ZIPCreditEvent* cEvent = dynamic_cast<ZIPCreditEvent*>(event);
   if (cEvent) {
     outCredit[SrcPrec] += cEvent->getCredits();
-    output.verbose(CALL_INFO, 9, 0, "handleHFIEvent: received %d credits for %d, now at %lu\n", cEvent->getCredits(), SrcPrec, outCredit[SrcPrec]);
+    output.verbose(CALL_INFO, 9, 0, "handleHFIEvent: received %d credits for %" PRIu16 ", now at %" PRIu64 "\n", cEvent->getCredits(), SrcPrec, outCredit[SrcPrec]);
     delete ev;
     return;
   }
