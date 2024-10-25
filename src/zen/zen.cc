@@ -170,7 +170,7 @@ void ZEN::handleRingOmc( SST::Forza::ringEvent *ev )
 {
   output.verbose(CALL_INFO, 7, 0, "[ZEN] %s handle ZENOMC message\n", getName().c_str());
   if ( ev->getOp() != SST::Forza::ringMsgT::R_READ )
-    output.fatal(CALL_INFO, -1, "[ZEN] %s unexpected optype message; OpType=%" PRIu8 "\n", getName().c_str(), ev->getOp());
+    output.fatal(CALL_INFO, -1, "[ZEN] %s unexpected optype message; OpType=%" PRIu8 "\n", getName().c_str(), static_cast<uint8_t>(ev->getOp()));
 
   auto &cnts = PerHartCSRs[ev->getSrcZap()][ev->getHart()].mbox_cntrs;
   uint64_t full_cnt = 0;
@@ -186,7 +186,7 @@ void ZEN::handleRingStatus( SST::Forza::ringEvent *ev )
 {
   output.verbose(CALL_INFO, 7, 0, "[ZEN] %s handle ZENSTAT message\n", getName().c_str());
   if ( ev->getOp() != SST::Forza::ringMsgT::R_READ )
-    output.fatal(CALL_INFO, -1, "[ZEN] %s unexpected optype message; OpType=%" PRIu8 "\n", getName().c_str(), ev->getOp());
+    output.fatal(CALL_INFO, -1, "[ZEN] %s unexpected optype message; OpType=%" PRIu8 "\n", getName().c_str(), static_cast<uint8_t>(ev->getOp()));
 
   auto &status = PerHartCSRs[ev->getSrcZap()][ev->getHart()].status;
   status |= ( PerHartCSRs[ev->getSrcZap()][ev->getHart()].is_sending ) ? 0x0ffUL : 0;
@@ -197,10 +197,10 @@ void ZEN::handleRingEqData( SST::Forza::ringEvent *ev )
 {
   output.verbose(CALL_INFO, 7, 0, "[ZEN] %s handle ZENEQData message\n", getName().c_str());
   if ( ev->getOp() != SST::Forza::ringMsgT::R_UPDATE )
-    output.fatal(CALL_INFO, -1, "[ZEN] %s unexpected optype message; OpType=%" PRIu8 "\n", getName().c_str(), ev->getOp());
+    output.fatal(CALL_INFO, -1, "[ZEN] %s unexpected optype message; OpType=%" PRIu8 "\n", getName().c_str(), static_cast<uint8_t>(ev->getOp()));
 
   auto &regs = PerHartCSRs[ev->getSrcZap()][ev->getHart()];
-  output.verbose(CALL_INFO, 7, 0, "[ZEN] %s ZENEQData src[Zap:Hart]=[%u:%u], cur_wd=%u, data=0x%llx\n", 
+  output.verbose(CALL_INFO, 7, 0, "[ZEN] %s ZENEQData src[Zap:Hart]=[%u:%u], cur_wd=%u, data=0x%" PRIx64 "\n",
                  getName().c_str(), ev->getSrcZap(), ev->getHart(), regs.msg_cur_word, ev->getDatum());
   // sanity check
   if (regs.msg_cur_word >= 8)
@@ -220,7 +220,7 @@ void ZEN::handleRingEqCtrl( SST::Forza::ringEvent *ev )
 {
   output.verbose(CALL_INFO, 7, 0, "[ZEN] %s handle ZENEQCtrl message\n", getName().c_str());
   if ( ev->getOp() != SST::Forza::ringMsgT::R_UPDATE )
-    output.fatal(CALL_INFO, -1, "[ZEN] %s unexpected optype message; OpType=%" PRIu8 "\n", getName().c_str(), ev->getOp());
+    output.fatal(CALL_INFO, -1, "[ZEN] %s unexpected optype message; OpType=%" PRIu8 "\n", getName().c_str(), static_cast<uint8_t>(ev->getOp()));
 
   auto &regs = PerHartCSRs[ev->getSrcZap()][ev->getHart()];
   regs.msg[0] = ev->getDatum();
@@ -231,7 +231,7 @@ void ZEN::handleRingEqCtrl( SST::Forza::ringEvent *ev )
   else if ( regs.mbox_cntrs[dest_mbox] == (UINT8_MAX-1) )
     regs.status |= ( 1UL << dest_mbox ); //if we're about to saturate the mbox counter, we have to set the status bit
   regs.mbox_cntrs[dest_mbox]++;
-  output.verbose(CALL_INFO, 5, 0, "[ZEN] %s ZENEqCtrl src[Zap:Hart]=[%u:%u], data=0x%llx\n", 
+  output.verbose(CALL_INFO, 5, 0, "[ZEN] %s ZENEqCtrl src[Zap:Hart]=[%u:%u], data=0x%" PRIx64 "\n",
                  getName().c_str(), ev->getSrcZap(), ev->getHart(), ev->getDatum());
   // TODO: DOES THIS NEED A RING RESPONSE?
 
@@ -246,7 +246,7 @@ void ZEN::handleRingSpawn( SST::Forza::ringEvent *ev )
 
   output.verbose(CALL_INFO, 7, 0, "[ZEN] %s handle ZENEQSpawn message\n", getName().c_str());
   if ( ev->getOp() != SST::Forza::ringMsgT::R_UPDATE )
-    output.fatal(CALL_INFO, -1, "[ZEN] %s unexpected optype message; OpType=%" PRIu8 "\n", getName().c_str(), ev->getOp());
+    output.fatal(CALL_INFO, -1, "[ZEN] %s unexpected optype message; OpType=%" PRIu8 "\n", getName().c_str(), static_cast<uint8_t>(ev->getOp()));
 
   auto &regs = PerHartCSRs[ev->getSrcZap()][ev->getHart()];
   // TODO: Check on status before setting it?

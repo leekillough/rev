@@ -209,7 +209,7 @@ void ZQM::handleRingMsg( SST::Event *event )
 void ZQM::handleRingStatus( SST::Forza::ringEvent *ev )
 {
   if ( ev->getOp() != SST::Forza::ringMsgT::R_READ )
-    output.fatal(CALL_INFO, -1, "[ZQM] %s unexpected optype message; OpType=%" PRIu8 "\n", getName().c_str(), ev->getOp());
+    output.fatal(CALL_INFO, -1, "[ZQM] %s unexpected optype message; OpType=%" PRIu8 "\n", getName().c_str(), static_cast<uint8_t>(ev->getOp()));
 
   auto status = PerHartCSRs[ev->getSrcZap()][ev->getHart()].status;
   output.verbose(CALL_INFO, 7, 0, "[ZQM] %s handle ZQMSTAT message; return status=0x%" PRIx64 "\n", getName().c_str(), status);
