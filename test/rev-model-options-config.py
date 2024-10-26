@@ -28,6 +28,7 @@ parser.add_argument("--machine", help="Machine type/configuration", default="[CO
 parser.add_argument("--args", help="Command line arguments to pass to the target executable", default="")
 parser.add_argument("--startSymbol", help="ELF Symbol Rev should begin execution at", default="[0:main]")
 parser.add_argument("--trcStartCycle", help="Starting cycle for rev tracer [default: 0 (off)]")
+parser.add_argument("--noStats", help="Disable statistics output", action="store_true")
 
 # Parse arguments
 args = parser.parse_args()
@@ -59,9 +60,11 @@ comp_cpu.addParams({
     "splash": 1
 })
 
-sst.setStatisticOutput("sst.statOutputCSV")
-sst.setStatisticLoadLevel(4)
-sst.enableAllStatisticsForComponentType("revcpu.RevCPU")
+# TODO post bug on --output-directory. I cannot seem to redirect this output
+if not args.noStats:
+    sst.setStatisticOutput("sst.statOutputCSV")
+    sst.setStatisticLoadLevel(4)
+    sst.enableAllStatisticsForComponentType("revcpu.RevCPU")
 
 # Conditional setup for memory hierarchy
 if args.enableMemH:
