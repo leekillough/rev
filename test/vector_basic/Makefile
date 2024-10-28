@@ -15,8 +15,10 @@ PROJHOME ?= $(realpath ../../)
 ifdef VALGRIND
  SST ?= valgrind sst
 else
- SST = sst
+ SST ?= sst
 endif
+
+SPIKE ?= spike
 
 # SST configuration
 SSTCFG ?= $(PROJHOME)/test/rev-model-options-config.py
@@ -82,14 +84,18 @@ WFLAGS    += -Wno-unused-function -Wno-unused-parameter
 #WFLAGS    += -Werror
 # DEBUG_FLAGS := -DDEBUG_MODE
 FLAGS     := $(CCOPT) $(WFLAGS) $(DEBUG_FLAGS) -static -lm -fpermissive
+ifdef USE_SPIKE
+FLAGS     += -DUSE_SPIKE
+endif
 ARCH      := rv64gc
 # TODO ARCH      := rv64gcv
-# ABI       := -mabi=lp64d
+ABI       := -mabi=lp64d
 
 # Test Specific Customization
 # $(OUTDIR)/testname/run.log: ...
 
-# The magical run command
+# The magical run commands
+ifndef USE_SPIKE
 %.log: compile
 	@mkdir -p $(@D)
 	@$(eval app = $(notdir $(@D)))
@@ -106,6 +112,24 @@ ARCH      := rv64gc
 
 %.revlog: %.log
 	@ $(REVPRINT) -l $< > $@
+	cat $@
+
+else
+%.log: compile
+	@mkdir -p $(@D)
+	@$(eval app = $(notdir $(@D)))
+	$(eval exe = $(shell if [ -z ${REV_EXE} ]; then echo $(OUTDIR)/bin/$(app).exe; else echo ${REV_EXE}; fi))
+	@$(eval statf = $(basename $@).status)
+	@$(eval revlog = $(basename $@).revlog)
+	@rm -f $(statf) $(revlog)
+	@echo Running $(basename $@)
+	$(SPIKE) -l --log=$@ --isa=$(ARCH)_zicntr pk $(exe) > $(revlog) && (echo "pass" > $(statf))
+
+%.revlog: %.log
+	cat $@
+endif
+
+
 
 %.dis: %.exe
 	$(OBJDUMP) $< > $@

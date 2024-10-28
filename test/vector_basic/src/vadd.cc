@@ -26,14 +26,21 @@ void check( uint64_t result[] ) {
   }
 }
 
-void add_scalar( uint64_t a[], uint64_t b[], uint64_t c[] ) {
+size_t add_scalar( uint64_t a[], uint64_t b[], uint64_t c[] ) {
+  size_t time0, time1;
+  REV_TIME( time0 );
   for( int i = 0; i < 16; i++ ) {
     c[i] = a[i] + b[i];
   }
+  REV_TIME( time1 );
+  return time1 - time0;
 }
 
 int main( int argc, char** argv ) {
-  uint64_t r[16] = { 0 };
-  add_scalar( s0, s1, r );
-  check( r );
+  size_t   time_scalar  = 0;
+  size_t   time_vector  = 0;
+  uint64_t r_scalar[16] = { 0 };
+  time_scalar           = add_scalar( s0, s1, r_scalar );
+  check( r_scalar );
+  printf( "Cycle counts: scalar=%ld vector=%ld\n", time_scalar, time_vector );
 }
