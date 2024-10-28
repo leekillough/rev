@@ -56,6 +56,7 @@ TARGS   := $(LOGS) $(EXES) $(DIASMS) $(SECTIONS) $(PRINTLOGS)
 all: $(TARGS)
 run: $(LOGS)
 compile: $(EXES) $(DIASMS)
+printlog: $(PRINTLOGS)
 
 # Rev toolchain
 CC=riscv64-unknown-elf-g++
@@ -88,11 +89,11 @@ ifdef USE_SPIKE
 FLAGS     += -DUSE_SPIKE
 endif
 
-ifndef USE_SPIKE
-ARCH      := rv64gc
-else
+# ifndef USE_SPIKE
+# ARCH      := rv64gc
+# else
 ARCH      := rv64gcv
-endif
+# endif
 
 # TODO ARCH      := rv64gcv
 ABI       := -mabi=lp64d
@@ -111,7 +112,7 @@ ifndef USE_SPIKE
 	@$(eval csv = $(basename $@).csv)
 	@rm -f $(statf) $(csv)
 	@echo Running $(basename $@)
-	$(SST) $(SSTCFG) --  --statDir=$(@D) --machine=CORES:$(ARCH)_zicntr --program=$(exe) --enableMemH=1 > $@ && (echo "pass" > $(statf))
+	$(SST) $(SSTCFG) -- --rvv --verbose=5 --trcStartCycle=1 --machine=CORES:$(ARCH)_zicntr --program=$(exe) --enableMemH=1 --statDir=$(@D)> $@ && (echo "pass" > $(statf))
 
 # To run all with all failures use this instead
 #  > $@ && echo "pass" > $(statf) || echo "fail" > $(statf)
@@ -155,6 +156,7 @@ clean:
 help:
 	@echo make compile
 	@echo make run
+	@echo make printlog
 	@echo make TLIST="test1 test2 ..."
 	@echo make DOT=1
 	@echo Valid TLIST selections are:

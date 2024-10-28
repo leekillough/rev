@@ -53,21 +53,24 @@ See riscv-unpriveleged spec Appendix C.1 Vector-vector add example
 */
 void vadd_array( uint32_t a[], uint32_t b[], uint32_t c[] ) {
 
-#ifndef USE_SPIKE
+#if 0
   printf( "REV VECTOR SUPPORT NOT YET AVAILABLE. Running scalar test instead.\n" );
   add_array( a, b, c );
 #else
   unsigned  time0, time1, inst0, inst1;
-  unsigned  N  = 16;
-  uint32_t* pa = &( a[0] );
-  uint32_t* pb = &( b[0] );
-  uint32_t* pc = &( c[0] );
+  int       rc    = 0x99;
+  unsigned  N     = 16;
+  unsigned  ITERS = N >> 2;
+  uint32_t* pa    = &( a[0] );
+  uint32_t* pb    = &( b[0] );
+  uint32_t* pc    = &( c[0] );
   RDTIME( time0 );
   RDINSTRET( inst0 );
-  asm volatile( "add  a0, zero, %0  \n\t"  // Load N
-                "add  a1, zero, %1  \n\t"  // Load pointer to a
-                "add  a2, zero, %2  \n\t"  // Load pointer to b
-                "add  a3, zero, %3  \n\t"  // Load pointer to c
+  asm volatile( "add  a0, zero, %1  \n\t"  // Load N
+                "add  a1, zero, %2  \n\t"  // Load pointer to a
+                "add  a2, zero, %3  \n\t"  // Load pointer to b
+                "add  a3, zero, %4  \n\t"  // Load pointer to c
+                "add  a4, zero, %5  \n\t"  // Load expected iterations
                 "vvaddint32: \n\t"
                 //          VL=n, SEW=32b, LMUL=1, tail/mask agnostic
                 "vsetvli t0,  a0,     e32,     m1,  ta, ma  \n\t"
@@ -81,15 +84,26 @@ void vadd_array( uint32_t a[], uint32_t b[], uint32_t c[] ) {
                 "vadd.vv v2, v0, v1   \n\t"  // Sum Vectors
                 "vse32.v v2, (a3)     \n\t"  // Store result
                 "add a3, a3, t0       \n\t"  // Bump pointer to c
+                "addi a4, a4, -1      \n\t"  // Decrement timeout
+                "bltz a4, vvaddexit   \n\t"  // Fail on timeout
                 "bnez a0, vvaddint32  \n\t"  // Loop back
-                :
-                : "r"( N ), "r"( pa ), "r"( pb ), "r"( pc )
+                "vvaddexit: \n\t"
+                "add %0, a4, zero     \n\t"  // Store result code
+                : "=r"( rc )
+                : "r"( N ), "r"( pa ), "r"( pb ), "r"( pc ), "r"( ITERS )
                 : "t0", "a0", "a1", "a2", "a3"  // TODO: assembler cannot handle v0,v1,v2 here
   );
+
   RDINSTRET( inst1 );
   RDTIME( time1 );
   counters_vector[0] = time1 - time0;
   counters_vector[1] = inst1 - inst0;
+
+  if( rc ) {
+    printf( "Error: vadd_array rc=%d\n", rc );
+    assert( 0 );
+  }
+
 #endif
 }
 

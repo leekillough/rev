@@ -20,6 +20,7 @@ memSize = 1024*1024*1024-1
 
 # Setup argument parser
 parser = argparse.ArgumentParser(description="Run Rev SST Simulation")
+parser.add_argument("--rvv", help="Enable Vector Instructions", action="store_true")
 parser.add_argument("--numCores", type=int, help="Number of Rev Cores per RevCPU", default=1)
 parser.add_argument("--numHarts", type=int, help="Number of HARTs per Rev Core", default=1)
 parser.add_argument("--program", help="The program executable to run in the simulation", default="a.out")
@@ -46,6 +47,8 @@ clock = "2.0GHz"
 comp_cpu = sst.Component("cpu", "revcpu.RevCPU")
 comp_cpu.addParams({
     "verbose": args.verbose,
+    "enableCoProc": args.rvv,
+    "independentCoprocClock": 0,  # TODO
     "numCores": args.numCores,
     "numHarts": args.numHarts,
     "clock": clock,
@@ -60,6 +63,13 @@ comp_cpu.addParams({
     "trcStartCycle": args.trcStartCycle,
     "splash": 1
 })
+
+if args.rvv:
+    coproc = comp_cpu.setSubComponent("co_proc", "revcpu.RevSimpleCoProc")
+    coproc.addParams({
+        "verbose": args.verbose,
+        "clockFreq": clock
+    })
 
 # sst --output-directory does not work with statistics. bug?
 os.makedirs(args.statDir, exist_ok=True)
