@@ -111,7 +111,7 @@ ifndef USE_SPIKE
 	@$(eval csv = $(basename $@).csv)
 	@rm -f $(statf) $(csv)
 	@echo Running $(basename $@)
-	$(SST) $(SSTCFG) -- --noStats --machine=CORES:$(ARCH)_zicntr --program=$(exe) --enableMemH=1 > $@ && (echo "pass" > $(statf))
+	$(SST) $(SSTCFG) --  --statDir=$(@D) --machine=CORES:$(ARCH)_zicntr --program=$(exe) --enableMemH=1 > $@ && (echo "pass" > $(statf))
 
 # To run all with all failures use this instead
 #  > $@ && echo "pass" > $(statf) || echo "fail" > $(statf)

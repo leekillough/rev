@@ -9,6 +9,7 @@
 #
 
 import argparse
+import os
 import sst
 
 DEBUG_L1 = 0
@@ -28,7 +29,7 @@ parser.add_argument("--machine", help="Machine type/configuration", default="[CO
 parser.add_argument("--args", help="Command line arguments to pass to the target executable", default="")
 parser.add_argument("--startSymbol", help="ELF Symbol Rev should begin execution at", default="[0:main]")
 parser.add_argument("--trcStartCycle", help="Starting cycle for rev tracer [default: 0 (off)]")
-parser.add_argument("--noStats", help="Disable statistics output", action="store_true")
+parser.add_argument("--statDir", help="Location for statistics files", default=".")
 
 # Parse arguments
 args = parser.parse_args()
@@ -60,11 +61,13 @@ comp_cpu.addParams({
     "splash": 1
 })
 
-# TODO post bug on --output-directory. I cannot seem to redirect this output
-if not args.noStats:
-    sst.setStatisticOutput("sst.statOutputCSV")
-    sst.setStatisticLoadLevel(4)
-    sst.enableAllStatisticsForComponentType("revcpu.RevCPU")
+# sst --output-directory does not work with statistics. bug?
+os.makedirs(args.statDir, exist_ok=True)
+sst.setStatisticOutput("sst.statOutputCSV", {
+    "filepath": f"{args.statDir}/StatisticOutput.csv",
+})
+sst.setStatisticLoadLevel(4)
+sst.enableAllStatisticsForComponentType("revcpu.RevCPU")
 
 # Conditional setup for memory hierarchy
 if args.enableMemH:
