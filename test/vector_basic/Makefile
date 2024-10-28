@@ -49,8 +49,8 @@ SECTIONS := $(patsubst %.exe,%.sections,$(EXES))
 
 # Targets
 LOGS    := $(addsuffix /run.log,$(addprefix $(OUTDIR)/,$(TLIST)))
-REVLOGS := $(addsuffix /run.revlog,$(addprefix $(OUTDIR)/,$(TLIST)))
-TARGS   := $(LOGS) $(EXES) $(DIASMS) $(SECTIONS) $(REVLOGS)
+PRINTLOGS := $(addsuffix /run.printlog,$(addprefix $(OUTDIR)/,$(TLIST)))
+TARGS   := $(LOGS) $(EXES) $(DIASMS) $(SECTIONS) $(PRINTLOGS)
 
 # Recipes
 all: $(TARGS)
@@ -87,7 +87,13 @@ FLAGS     := $(CCOPT) $(WFLAGS) $(DEBUG_FLAGS) -static -lm -fpermissive
 ifdef USE_SPIKE
 FLAGS     += -DUSE_SPIKE
 endif
+
+ifndef USE_SPIKE
 ARCH      := rv64gc
+else
+ARCH      := rv64gcv
+endif
+
 # TODO ARCH      := rv64gcv
 ABI       := -mabi=lp64d
 
@@ -96,6 +102,7 @@ ABI       := -mabi=lp64d
 
 # The magical run commands
 ifndef USE_SPIKE
+# run rev
 %.log: compile
 	@mkdir -p $(@D)
 	@$(eval app = $(notdir $(@D)))
@@ -110,22 +117,23 @@ ifndef USE_SPIKE
 #  > $@ && echo "pass" > $(statf) || echo "fail" > $(statf)
 # 	@echo "### " $@":" `cat $(statf)`
 
-%.revlog: %.log
+%.printlog: %.log
 	@ $(REVPRINT) -l $< > $@
 	cat $@
 
 else
+# run spike
 %.log: compile
 	@mkdir -p $(@D)
 	@$(eval app = $(notdir $(@D)))
 	$(eval exe = $(shell if [ -z ${REV_EXE} ]; then echo $(OUTDIR)/bin/$(app).exe; else echo ${REV_EXE}; fi))
 	@$(eval statf = $(basename $@).status)
-	@$(eval revlog = $(basename $@).revlog)
-	@rm -f $(statf) $(revlog)
+	@$(eval printlog = $(basename $@).printlog)
+	@rm -f $(statf) $(printlog)
 	@echo Running $(basename $@)
-	$(SPIKE) -l --log=$@ --isa=$(ARCH)_zicntr pk $(exe) > $(revlog) && (echo "pass" > $(statf))
+	$(SPIKE) -l --log=$@ --isa=$(ARCH)_zicntr pk $(exe) > $(printlog) && (echo "pass" > $(statf))
 
-%.revlog: %.log
+%.printlog: %.log
 	cat $@
 endif
 
@@ -157,7 +165,7 @@ help:
 
 .SECONDARY:
 
-.PRECIOUS: %.log %.revlog
+.PRECIOUS: %.log %.printlog
 
 #-- EOF
 

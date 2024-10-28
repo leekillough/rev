@@ -17,16 +17,20 @@
 // REV
 #include "rev.h"
 
-uint64_t s0[] = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 };
-uint64_t s1[] = { 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1100, 1200, 1300, 1400, 1500, 1600 };
+uint32_t s0[] = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 };
+uint32_t s1[] = { 0x100, 0x200, 0x300, 0x400, 0x500, 0x600, 0x700, 0x800, 0x900, 0xa00, 0xb00, 0xc00, 0xd00, 0xe00, 0xf00, 0x1000 };
 
-void check( uint64_t result[] ) {
-  for( int i = 0; i < 16; i++ ) {
-    assert( result[i] == ( s0[i] + s1[i] ) );
+void check_result( uint32_t result[] ) {
+  for( uint32_t i = 0; i < 16; i++ ) {
+    uint32_t expected = ( i + 1 ) + ( ( i + 1 ) << 8 );
+    if( expected != result[i] ) {
+      printf( "Error: 0x%x != 0x%x\n", expected, result[i] );
+    }
+    assert( expected == result[i] );
   }
 }
 
-size_t add_scalar( uint64_t a[], uint64_t b[], uint64_t c[] ) {
+size_t add_array( uint32_t a[], uint32_t b[], uint32_t c[] ) {
   size_t time0, time1;
   REV_TIME( time0 );
   for( int i = 0; i < 16; i++ ) {
@@ -36,11 +40,65 @@ size_t add_scalar( uint64_t a[], uint64_t b[], uint64_t c[] ) {
   return time1 - time0;
 }
 
+/*
+See riscv-unpriveleged spec Appendix C.1 Vector-vector add example
+*/
+size_t vadd_array( uint32_t a[], uint32_t b[], uint32_t c[] ) {
+
+#ifndef USE_SPIKE
+  printf( "REV VECTOR SUPPORT NOT YET AVAILABLE. Running scalar test instead.\n" );
+  return add_array( a, b, c );
+#else
+  size_t    time0, time1;
+  unsigned  N  = 16;
+  uint32_t* pa = &( a[0] );
+  uint32_t* pb = &( b[0] );
+  uint32_t* pc = &( c[0] );
+  REV_TIME( time0 );
+  asm volatile( "add  a0, zero, %0  \n\t"  // Load N
+                "add  a1, zero, %1  \n\t"  // Load pointer to a
+                "add  a2, zero, %2  \n\t"  // Load pointer to b
+                "add  a3, zero, %3  \n\t"  // Load pointer to c
+                "vvaddint32: \n\t"
+                //          VL=n, SEW=32b, LMUL=1, tail/mask agnostic
+                "vsetvli t0,  a0,     e32,     m1,  ta, ma  \n\t"
+                //
+                "vle32.v v0, (a1)     \n\t"  // Get first vector
+                "sub a0, a0, t0       \n\t"  // Decrement N
+                "slli t0, t0, 2       \n\t"  // Multiply number done by 4 bytes
+                "add a1, a1, t0       \n\t"  // Bump pointer to a
+                "vle32.v v1, (a2)     \n\t"  // Get second vector
+                "add a2, a2, t0       \n\t"  // Bump pointer to b
+                "vadd.vv v2, v0, v1   \n\t"  // Sum Vectors
+                "vse32.v v2, (a3)     \n\t"  // Store result
+                "add a3, a3, t0       \n\t"  // Bump pointer to c
+                "bnez a0, vvaddint32  \n\t"  // Loop back
+                :
+                : "r"( N ), "r"( pa ), "r"( pb ), "r"( pc )
+                : "t0", "a0", "a1", "a2", "a3"  // TODO: assembler cannot handle v0,v1,v2 here
+  );
+  REV_TIME( time1 );
+  return time1 - time0;
+#endif
+}
+
 int main( int argc, char** argv ) {
+
+  // Scalar
   size_t   time_scalar  = 0;
+  uint32_t r_scalar[16] = { 0 };
+  time_scalar           = add_array( s0, s1, r_scalar );
+  check_result( r_scalar );
+
+  // Vector
   size_t   time_vector  = 0;
-  uint64_t r_scalar[16] = { 0 };
-  time_scalar           = add_scalar( s0, s1, r_scalar );
-  check( r_scalar );
-  printf( "Cycle counts: scalar=%ld vector=%ld\n", time_scalar, time_vector );
+  uint32_t r_vector[16] = { 0 };
+  time_vector           = vadd_array( s0, s1, r_vector );
+  check_result( r_vector );
+
+#ifndef USE_SPIKE
+  printf( "vadd.cc rev cycle counts: scalar=%ld vector=%ld\n", time_scalar, time_vector );
+#else
+  printf( "vadd.cc spike cycle counts: scalar=%ld vector=%ld\n", time_scalar, time_vector );
+#endif
 }
