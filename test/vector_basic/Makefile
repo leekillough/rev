@@ -104,15 +104,15 @@ ABI       := -mabi=lp64d
 # The magical run commands
 ifndef USE_SPIKE
 # run rev
+# MEMH = --enableMemH=1
 %.log: compile
 	@mkdir -p $(@D)
 	@$(eval app = $(notdir $(@D)))
 	$(eval exe = $(shell if [ -z ${REV_EXE} ]; then echo $(OUTDIR)/bin/$(app).exe; else echo ${REV_EXE}; fi))
 	@$(eval statf = $(basename $@).status)
-	@$(eval csv = $(basename $@).csv)
-	@rm -f $(statf) $(csv)
+	@rm -f $(statf)
 	@echo Running $(basename $@)
-	$(SST) $(SSTCFG) -- --rvv --verbose=5 --trcStartCycle=1 --machine=CORES:$(ARCH)_zicntr --program=$(exe) --enableMemH=1 --statDir=$(@D)> $@ && (echo "pass" > $(statf))
+	$(SST) $(SSTCFG) -- --rvv --verbose=5 --trcStartCycle=1 --machine=CORES:$(ARCH)_zicntr --program=$(exe) $(MEMH) --statDir=$(@D)> $@ && (echo "pass" > $(statf))
 
 # To run all with all failures use this instead
 #  > $@ && echo "pass" > $(statf) || echo "fail" > $(statf)
@@ -156,14 +156,14 @@ clean:
 help:
 	@echo make compile
 	@echo make run
-	@echo make printlog
+	@echo make printlog "(run after failures)"
+	@echo make USE_SPIKE=1 ...
 	@echo make TLIST="test1 test2 ..."
-	@echo make DOT=1
 	@echo Valid TLIST selections are:
 	@echo $(ALL_TESTS)
 	@echo
 
-.PHONY: run clean help
+.PHONY: run clean help printlog
 
 .SECONDARY:
 

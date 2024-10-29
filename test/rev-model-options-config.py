@@ -5,7 +5,7 @@
 #
 # See LICENSE in the top level directory for licensing details
 #
-# rev-basic-config.py
+# rev-mode-options-config.py
 #
 
 import argparse
@@ -65,7 +65,7 @@ comp_cpu.addParams({
 })
 
 if args.rvv:
-    coproc = comp_cpu.setSubComponent("co_proc", "revcpu.RevSimpleCoProc")
+    coproc = comp_cpu.setSubComponent("co_proc", "revcpu.RevVectorCoProc")
     coproc.addParams({
         "verbose": args.verbose,
         "clockFreq": clock
