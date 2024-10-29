@@ -56,7 +56,7 @@ bool RevVectorCoProc::ClockTick( SST::Cycle_t cycle ) {
     InstQ.pop();
     cycleCount = cycle;
   }
-  if( ( cycle - cycleCount ) > 500 ) {
+  if( ( cycle - cycleCount ) > 1 ) {
     parent->ExternalReleaseHart( CreatePasskey(), 0 );
   }
   return true;
@@ -84,32 +84,62 @@ void RevVectorCoProc::FauxExec( RevCoProcInst rec ) {
   case 0x0205e007:  // vle32.v v0, (a1)
   {
     uint64_t a1 = rec.RegFile->GetX<uint64_t>( RevReg::a1 );
-    // MemReq req0(a1,   RevReg::zero, RevRegClass::RegGPR, 0, MemOp::MemOpREAD, true,  [this]( const MemReq& mreq ) {
-    // }
-    // MemReq req1(a1+8, RevReg::zero, RevRegClass::RegGPR, 0, MemOp::MemOpREAD, true, nullptr);
-    // rec.Mem->ReadVal<uint64_t>( 0, a1, &vreg[0][0], req0, RevFlag::F_NONE );
-    // rec.Mem->ReadVal<uint64_t>( 0, a1+8, &vreg[0][1], req1, RevFlag::F_NONE );
+    MemReq   req0( a1, RevReg::zero, RevRegClass::RegGPR, 0, MemOp::MemOpREAD, true, rec.RegFile->GetMarkLoadComplete() );
+    rec.Mem->ReadVal<uint64_t>( 0, a1, &vreg[0][0], req0, RevFlag::F_NONE );
+    MemReq req1( a1 + 8, RevReg::zero, RevRegClass::RegGPR, 0, MemOp::MemOpREAD, true, rec.RegFile->GetMarkLoadComplete() );
+    rec.Mem->ReadVal<uint64_t>( 0, a1 + 8, &vreg[0][1], req1, RevFlag::F_NONE );
+    output->verbose( CALL_INFO, 5, 0, "*V v[0][0] <- 0x%" PRIx64 " v[0][1] <- 0x%" PRIx64 "\n", vreg[0][0], vreg[0][1] );
     break;
   }
   case 0x02066087:  // vle32.v v1, (a2)
   {
     uint64_t a2 = rec.RegFile->GetX<uint64_t>( RevReg::a2 );
-    // MemReq req0(a2,   RevReg::zero, RevRegClass::RegGPR, 0, MemOp::MemOpREAD, true, nullptr);
-    // MemReq req1(a2+8, RevReg::zero, RevRegClass::RegGPR, 0, MemOp::MemOpREAD, true, nullptr);
-    // rec.Mem->ReadVal<uint64_t>( 0, a2, &vreg[1][0], req0, RevFlag::F_NONE );
-    // rec.Mem->ReadVal<uint64_t>( 0, a2+8, &vreg[1][1], req1, RevFlag::F_NONE );
+    MemReq   req0( a2, RevReg::zero, RevRegClass::RegGPR, 0, MemOp::MemOpREAD, true, rec.RegFile->GetMarkLoadComplete() );
+    rec.Mem->ReadVal<uint64_t>( 0, a2, &vreg[1][0], req0, RevFlag::F_NONE );
+    MemReq req1( a2 + 8, RevReg::zero, RevRegClass::RegGPR, 0, MemOp::MemOpREAD, true, rec.RegFile->GetMarkLoadComplete() );
+    rec.Mem->ReadVal<uint64_t>( 0, a2 + 8, &vreg[1][1], req1, RevFlag::F_NONE );
+    output->verbose( CALL_INFO, 5, 0, "*V v[1][0] <- 0x%" PRIx64 " v[1][1] <- 0x%" PRIx64 "\n", vreg[1][0], vreg[1][1] );
     break;
   }
   case 0x02008157:  // vadd.vv v2, v0, v1
     // this does 64 bits at a time. Overflow will not occur for this test
-    vreg[2][0] = vreg[0][0] + vreg[1][0] + 0x0ace0;
-    vreg[2][1] = vreg[0][1] + vreg[1][1] + 0x0ace1;
+    vreg[2][0] = vreg[0][0] + vreg[1][0];
+    vreg[2][1] = vreg[0][1] + vreg[1][1];
+    output->verbose(
+      CALL_INFO,
+      5,
+      0,
+      "*V"
+      " 0x%" PRIx64 " <- v[0][0] 0x%" PRIx64 " <- v[0][1]"
+      " 0x%" PRIx64 " <- v[1][0] 0x%" PRIx64 " <- v[1][1]"
+      " v[2][0] <- 0x%" PRIx64 " v[2][1] <- 0x%" PRIx64 "\n",
+      vreg[0][0],
+      vreg[0][1],
+      vreg[1][0],
+      vreg[1][1],
+      vreg[2][0],
+      vreg[2][1]
+    );
     break;
   case 0x0206e127:  // vse32.v v2, (a3)
   {
     uint64_t a3 = rec.RegFile->GetX<uint64_t>( RevReg::a3 );
     rec.Mem->WriteMem( 0, a3, 8, &vreg[2][0] );
-    rec.Mem->WriteMem( 0, a3, 8, &vreg[2][1] );
+    rec.Mem->WriteMem( 0, a3 + 8, 8, &vreg[2][1] );
+    output->verbose(
+      CALL_INFO,
+      5,
+      0,
+      "*V"
+      " 0x%" PRIx64 " <- v[2][0] 0x%" PRIx64 " <- v[2][1]"
+      " M[0x%" PRIx64 "] <- 0x%" PRIx64 " M[0x%" PRIx64 "] <- 0x%" PRIx64 "\n",
+      vreg[2][0],
+      vreg[2][1],
+      a3,
+      vreg[2][0],
+      a3 + 8,
+      vreg[2][1]
+    );
     break;
   }
   default: output->fatal( CALL_INFO, -1, "faux vector coprocessor cannot digest instruction 0x%" PRIu32 "\n", rec.Inst ); break;

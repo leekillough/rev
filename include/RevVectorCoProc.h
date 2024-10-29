@@ -102,7 +102,7 @@ private:
   SST::Cycle_t cycleCount{};
 
   // VLEN=128, ELEN=64
-  uint64_t vreg[32][2] = { 0 };
+  uint64_t vreg[32][2] = { { 0 } };
 
 public:
   /// RevVectorCoProc: Vector Execution Mock-up
