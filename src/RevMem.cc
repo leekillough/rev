@@ -1052,7 +1052,9 @@ bool RevMem::ZOP_AMOMem( unsigned Hart, uint64_t Addr, size_t Len, void* Data, v
   std::vector<uint64_t> payload;
   payload.push_back( 0x00ull );  //  ACS: FIXME
   payload.push_back( Addr );     //  address
-  payload.push_back( *( static_cast<uint64_t*>( Data ) ) );
+  uint64_t data;
+  memcpy( &data, Data, sizeof( data ) );
+  payload.push_back( data );
   zev->setPayload( payload );
 
   // inject the new packet

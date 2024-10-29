@@ -3847,9 +3847,9 @@ union ECALL_forza_send_union {
 
 // 4003 forza_send( uint64_t dst, uint64_t spaddr, size_t size  )
 EcallStatus RevCore::ECALL_forza_send() {
-  uint64_t dst               = (uint64_t) RegFile->GetX<uint64_t>( RevReg::a0 );
-  uint64_t spaddr            = (uint64_t) RegFile->GetX<uint64_t>( RevReg::a1 );
-  size_t   size              = (size_t) RegFile->GetX<size_t>( RevReg::a2 );
+  uint64_t dst               = RegFile->GetX<uint64_t>( RevReg::a0 );
+  uint64_t spaddr            = RegFile->GetX<uint64_t>( RevReg::a1 );
+  size_t   size              = RegFile->GetX<size_t>( RevReg::a2 );
 
   const size_t max_data_size = 4000;
   //unsigned char dat[max_data_size];
@@ -4076,10 +4076,10 @@ EcallStatus RevCore::ECALL_forza_zen_credit_release() {
 
 // 4005, forza_zen_setup(uint64_t addr, size_t size, uint64_t tailptr, uint64_t mbox_id);
 EcallStatus RevCore::ECALL_forza_zen_setup() {
-  uint64_t addr    = (uint64_t) RegFile->GetX<uint64_t>( RevReg::a0 );
-  size_t   size    = (size_t) RegFile->GetX<size_t>( RevReg::a1 );
-  uint64_t tailptr = (uint64_t) RegFile->GetX<uint64_t>( RevReg::a2 );
-  uint64_t mbox_id = (uint64_t) RegFile->GetX<uint64_t>( RevReg::a3 );
+  uint64_t addr    = RegFile->GetX<uint64_t>( RevReg::a0 );
+  size_t   size    = RegFile->GetX<size_t>( RevReg::a1 );
+  uint64_t tailptr = RegFile->GetX<uint64_t>( RevReg::a2 );
+  uint64_t mbox_id = RegFile->GetX<uint64_t>( RevReg::a3 );
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: forza_zen_setup called by thread %" PRIu32 " on hart %" PRIu32 "\n", GetActiveThreadID(), HartToExecID
   );
@@ -4153,12 +4153,12 @@ EcallStatus RevCore::ECALL_forza_zen_setup() {
 
 // 4006, forza_zqm_setup(uint64_t addr, uint64_t size, uint64_t min_hart, uint64_t max_hart, uint64_t seq_ld_flag);
 EcallStatus RevCore::ECALL_forza_zqm_setup() {
-  uint64_t low_addr    = (uint64_t) RegFile->GetX<uint64_t>( RevReg::a0 );
-  uint64_t size        = (uint64_t) RegFile->GetX<uint64_t>( RevReg::a1 );
+  uint64_t low_addr    = RegFile->GetX<uint64_t>( RevReg::a0 );
+  uint64_t size        = RegFile->GetX<uint64_t>( RevReg::a1 );
   uint64_t high_addr   = low_addr + size - 1;
-  uint64_t min_hart    = (uint64_t) RegFile->GetX<uint64_t>( RevReg::a2 );
-  uint64_t max_hart    = (uint64_t) RegFile->GetX<uint64_t>( RevReg::a3 );
-  uint64_t seq_ld_flag = (uint64_t) RegFile->GetX<uint64_t>( RevReg::a4 );
+  uint64_t min_hart    = RegFile->GetX<uint64_t>( RevReg::a2 );
+  uint64_t max_hart    = RegFile->GetX<uint64_t>( RevReg::a3 );
+  uint64_t seq_ld_flag = RegFile->GetX<uint64_t>( RevReg::a4 );
 
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: forza_zqm_init called by thread %" PRIu32 " on hart %" PRIu32 "\n", GetActiveThreadID(), HartToExecID
@@ -4363,9 +4363,9 @@ EcallStatus RevCore::ECALL_forza_zone_barrier() {
 
 // 4015, forza_debug_print
 EcallStatus RevCore::ECALL_forza_debug_print() {
-  uint64_t a = (uint64_t) RegFile->GetX<uint64_t>( RevReg::a0 );
-  uint64_t b = (uint64_t) RegFile->GetX<uint64_t>( RevReg::a1 );
-  uint64_t c = (uint64_t) RegFile->GetX<uint64_t>( RevReg::a2 );
+  uint64_t a = RegFile->GetX<uint64_t>( RevReg::a0 );
+  uint64_t b = RegFile->GetX<uint64_t>( RevReg::a1 );
+  uint64_t c = RegFile->GetX<uint64_t>( RevReg::a2 );
 
   output->verbose(
     CALL_INFO,
