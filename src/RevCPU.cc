@@ -32,17 +32,6 @@ const char splash_msg[] = R"(
 
 RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params ) : SST::Component( id ) {
 
-  if( std::getenv( "SPINNER" ) ) {
-    uint64_t spinner = 1;
-    std::cout << "spinner active" << std::endl;
-    while( spinner ) {
-      spinner++;
-      if( spinner % 10000000 == 0 )  // break here
-        std::cout << ".";
-    }
-    std::cout << std::endl;
-  }
-
   const int Verbosity = params.find<int>( "verbose", 0 );
 
   // Initialize the output handler
