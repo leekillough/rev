@@ -5,10 +5,11 @@
 #
 # See LICENSE in the top level directory for licensing details
 #
-# rev-basic-config.py
+# rev-mode-options-config.py
 #
 
 import argparse
+import os
 import sst
 
 DEBUG_L1 = 0
@@ -19,6 +20,7 @@ memSize = 1024*1024*1024-1
 
 # Setup argument parser
 parser = argparse.ArgumentParser(description="Run Rev SST Simulation")
+parser.add_argument("--rvv", help="Enable Vector Instructions", action="store_true")
 parser.add_argument("--numCores", type=int, help="Number of Rev Cores per RevCPU", default=1)
 parser.add_argument("--numHarts", type=int, help="Number of HARTs per Rev Core", default=1)
 parser.add_argument("--program", help="The program executable to run in the simulation", default="a.out")
@@ -27,6 +29,8 @@ parser.add_argument("--verbose", type=int, help="Verbosity level", default=2)
 parser.add_argument("--machine", help="Machine type/configuration", default="[CORES:RV64GC]")
 parser.add_argument("--args", help="Command line arguments to pass to the target executable", default="")
 parser.add_argument("--startSymbol", help="ELF Symbol Rev should begin execution at", default="[0:main]")
+parser.add_argument("--trcStartCycle", help="Starting cycle for rev tracer [default: 0 (off)]")
+parser.add_argument("--statDir", help="Location for statistics files", default=".")
 
 # Parse arguments
 args = parser.parse_args()
@@ -43,6 +47,8 @@ clock = "2.0GHz"
 comp_cpu = sst.Component("cpu", "revcpu.RevCPU")
 comp_cpu.addParams({
     "verbose": args.verbose,
+    "enableCoProc": args.rvv,
+    "independentCoprocClock": 0,  # TODO
     "numCores": args.numCores,
     "numHarts": args.numHarts,
     "clock": clock,
@@ -54,10 +60,22 @@ comp_cpu.addParams({
     "startSymbol": args.startSymbol,
     "enableMemH": args.enableMemH,
     "args": args.args,
+    "trcStartCycle": args.trcStartCycle,
     "splash": 1
 })
 
-sst.setStatisticOutput("sst.statOutputCSV")
+if args.rvv:
+    coproc = comp_cpu.setSubComponent("co_proc", "revcpu.RevVectorCoProc")
+    coproc.addParams({
+        "verbose": args.verbose,
+        "clockFreq": clock
+    })
+
+# sst --output-directory does not work with statistics. bug?
+os.makedirs(args.statDir, exist_ok=True)
+sst.setStatisticOutput("sst.statOutputCSV", {
+    "filepath": f"{args.statDir}/StatisticOutput.csv",
+})
 sst.setStatisticLoadLevel(4)
 sst.enableAllStatisticsForComponentType("revcpu.RevCPU")
 
