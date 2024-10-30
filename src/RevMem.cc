@@ -991,8 +991,9 @@ bool RevMem::ZOP_AMOMem( unsigned Hart, uint64_t Addr, size_t Len, void* Data, v
   std::vector<uint64_t> payload;
   payload.push_back( 0x00ull );  //  ACS: FIXME
   payload.push_back( Addr );     //  address
-  payload.push_back( *( static_cast<uint64_t*>( Data ) ) );
-  zev->setPayload( payload );
+  payload.push_back( 0 );
+  memcpy( &payload.back(), Data, sizeof( uint64_t ) );
+  zev->setPayload( std::move( payload ) );
 
   // inject the new packet
   zNic->send( zev, SST::Forza::zopCompID::Z_RZA );
@@ -1316,7 +1317,7 @@ bool RevMem::ZOP_ThreadMigrate( unsigned Hart, std::vector<uint64_t> Payload, un
   zev->setSrcPCID( (uint8_t) ( zNic->getPCID( zNic->getZoneID() ) ) );
   zev->setSrcPrec( (uint8_t) ( zNic->getPrecinctID() ) );
 
-  zev->setPayload( Payload );
+  zev->setPayload( std::move( Payload ) );
 
   zNic->send( zev, SST::Forza::zopCompID::Z_ZQM, zNic->getPCID( Zone ), Precinct );
 

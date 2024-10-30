@@ -551,7 +551,7 @@ bool zopNIC::msgNotify( int vn ) {
 }
 
 bool zopNIC::handleBarrier( zopEvent* ev ) {
-  uint64_t tmp;
+  uint64_t tmp{};
   if( !ev->getFLIT( Z_FLIT_SENSE, &tmp ) ) {
     output.fatal(
       CALL_INFO,

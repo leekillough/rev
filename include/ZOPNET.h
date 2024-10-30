@@ -459,12 +459,7 @@ public:
   void setTarget( uint64_t* T ) { Target = T; }
 
   /// zopEvent: set the packet payload.  NOTE: this is a destructive operation, but it does reset the size
-  void setPacket( const std::vector<uint64_t> P ) {
-    Packet.clear();
-    for( auto i : P ) {
-      Packet.push_back( i );
-    }
-  }
+  void setPacket( const std::vector<uint64_t> P ) { Packet = std::move( P ); }
 
   /// zopEvent: set the packet packet payload w/o the header. NOT a destructive operation
   void setPayload( const std::vector<uint64_t> P ) {

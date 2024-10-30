@@ -140,6 +140,7 @@ bool load( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) 
   if( !M->isLocalAddr( R->GetX<uint64_t>( Inst.rs1 ) + Inst.ImmSignExt( 12 ), Zone, Precinct ) ) {
     // trigger the migration
     std::vector<uint64_t> P;
+    P.reserve( 80 );
     P.push_back( R->GetPC() );
     for( unsigned i = 1; i < 32; i++ ) {
       P.push_back( R->GetX<uint64_t>( i ) );
@@ -154,7 +155,7 @@ bool load( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) 
 
     R->SetSCAUSE( RevExceptionCause::THREAD_MIGRATED );
 
-    return M->ZOP_ThreadMigrate( F->GetHartToExecID(), P, Zone, Precinct );
+    return M->ZOP_ThreadMigrate( F->GetHartToExecID(), std::move( P ), Zone, Precinct );
   }
 
   if( sizeof( T ) < sizeof( int64_t ) && !F->IsRV64() ) {
