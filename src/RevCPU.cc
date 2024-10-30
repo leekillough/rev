@@ -605,11 +605,11 @@ void RevCPU::processZOPQ() {
         -1,
         "[FORZA][RZA] Erroneous packet contents for ZOP : "
         "[SrcZCID:SrcPCID:Type:Opc:ID]=[%hu:%hu:%s:%hu:%hu]\n",
-        (uint8_t) ( zev->getSrcZCID() ),
-        (uint8_t) ( zev->getSrcPCID() ),
+        safe_static_cast<uint8_t>( zev->getSrcZCID() ),
+        safe_static_cast<uint8_t>( zev->getSrcPCID() ),
         zNic->msgTToStr( zev->getType() ).c_str(),
-        (uint8_t) ( zev->getOpc() ),
-        (uint8_t) ( zev->getID() )
+        safe_static_cast<uint8_t>( zev->getOpc() ),
+        safe_static_cast<uint8_t>( zev->getID() )
       );
     }
 
