@@ -118,7 +118,7 @@ ifndef USE_SPIKE
 #  > $@ && echo "pass" > $(statf) || echo "fail" > $(statf)
 # 	@echo "### " $@":" `cat $(statf)`
 
-%.printlog: %.log
+%.printlog: %.log FORCE
 	@ $(REVPRINT) -l $< > $@
 	cat $@
 
@@ -134,11 +134,11 @@ else
 	@echo Running $(basename $@)
 	$(SPIKE) -l --log=$@ --isa=$(ARCH)_zicntr pk $(exe) > $(printlog) && (echo "pass" > $(statf))
 
-%.printlog: %.log
+%.printlog: %.log FORCE
 	cat $@
 endif
 
-
+FORCE:
 
 %.dis: %.exe
 	$(OBJDUMP) $< > $@
@@ -163,7 +163,7 @@ help:
 	@echo $(ALL_TESTS)
 	@echo
 
-.PHONY: run clean help printlog
+.PHONY: run clean help FORCE
 
 .SECONDARY:
 

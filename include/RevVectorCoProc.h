@@ -36,6 +36,8 @@ public:
   SST_ELI_DOCUMENT_PARAMS(
     { "verbose", "Set the verbosity of output for the co-processor", "0" },
     { "clock", "Sets the clock frequency of the co-processor", "1Ghz" },
+    { "ELEN", "Maximum number of bits of a vector element that any operation can produce or consume" },
+    { "VLEN", "Max number of bits in a single vector register" },
   );
 
   // Register any subcomponents used by this element
