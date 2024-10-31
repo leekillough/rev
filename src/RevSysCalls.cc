@@ -4378,9 +4378,9 @@ EcallStatus RevCore::ECALL_forza_zone_barrier() {
 
 // 4015, forza_debug_print
 EcallStatus RevCore::ECALL_forza_debug_print() {
-  uint64_t a = (uint64_t) RegFile->GetX<uint64_t>( RevReg::a0 );
-  uint64_t b = (uint64_t) RegFile->GetX<uint64_t>( RevReg::a1 );
-  uint64_t c = (uint64_t) RegFile->GetX<uint64_t>( RevReg::a2 );
+  uint64_t a = RegFile->GetX<uint64_t>( RevReg::a0 );
+  uint64_t b = RegFile->GetX<uint64_t>( RevReg::a1 );
+  uint64_t c = RegFile->GetX<uint64_t>( RevReg::a2 );
 
   output->verbose(
     CALL_INFO,
