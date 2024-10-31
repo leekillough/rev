@@ -329,7 +329,7 @@ class ZEN : public SST::Component{
     // Internal data structures
     std::vector<std::vector<ZenPerHartRegs>> PerHartCSRs;
     std::vector<bool> SeqNumMgrList;
-    std::map<int32_t, OutgoingMessage*> RetryMgrMap;
+    std::map<uint32_t, OutgoingMessage*> RetryMgrMap;
     std::queue<OutgoingMessage*> OutMsgQueue;
     std::array<OutgoingMessage*, 3> MsgPipeline{};
     std::queue<zopEvent*> MsgAckQueue;

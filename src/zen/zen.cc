@@ -90,7 +90,6 @@ ZEN::ZEN(ComponentId_t id, Params& params)
 }
 
 ZEN::~ZEN(){
-  if( zoneMsgID )
     delete zoneMsgID;
 }
 
@@ -131,13 +130,25 @@ void ZEN::finish() {
 
 void ZEN::handleRingMsg( SST::Event *event )
 {
-  SST::Forza::ringEvent *ev = static_cast<SST::Forza::ringEvent*>(event);
+  auto *ev = static_cast<ringEvent*>(event);
   if ( ev->getDestComp() != zopCompID::Z_ZEN ){
     uint64_t next_addr = zone_ring->getNextAddress();
     zone_ring->send( ev, next_addr );
     output.verbose(CALL_INFO, 5, 0, "[ZEN] %s forwarding ring message; CSR=0x%" PRIx16 "; op=%" PRIu8 "\n", getName().c_str(), ev->getCSR(), (uint8_t)ev->getOp());
     return;
   }
+
+
+  // Do some sanity checks
+  // PerHartCSRs[ev->getSrcZap()][ev->getHart()]
+#if 0
+  if (ev->getSrcZap() >= m_num_zaps ) {
+    output.fatal(CALL_INFO, -1, "ev with srcZap=%" PRIu8 "\n", ev->getSrcZap());
+  }
+  if (ev->getHart() >= m_num_harts ) {
+    output.fatal(CALL_INFO, -1, "ev with Hart=%" PRIu16 "\n", ev->getHart());
+  }
+#endif
 
   if ( ev->getSrcComp() == zopCompID::Z_ZEN ){
     output.fatal(CALL_INFO, -1, "[ZEN] %s unexpected ring message; CSR=0x%" PRIx16 "; op=%" PRIu8 "\n", getName().c_str(), ev->getCSR(), (uint8_t)ev->getOp());
@@ -467,7 +478,6 @@ void ZEN::execMsgPipe0()
 
 void ZEN::updateMsgPipe0()
 {
-  //output.flush();
   if ( MsgPipeline[0] != nullptr )
     return;
 
@@ -525,8 +535,8 @@ void ZEN::ExecSpawns()
   setLocalZqmAsZopDest(zop);
 
   std::vector<uint64_t> payload;
-  for (uint16_t i = 0; i < spawn->thread.size(); i++)
-    payload[i] = spawn->thread[i];
+  for (size_t i = 0; i < spawn->thread.size(); i++)
+    payload.push_back(spawn->thread[i]);
   zop->setPayload(payload);
   zop->encodeEvent();
   output.verbose(CALL_INFO, 9, 0, "ZEN[%s]: Send spawned thread from %s to %s\n", getName().c_str(),
@@ -535,7 +545,7 @@ void ZEN::ExecSpawns()
 }
 
 void ZEN::handleIncomingPrecZOP(SST::Event *event) {
-  SST::Forza::zopEvent* ev = static_cast<SST::Forza::zopEvent*>(event);
+  auto* ev = static_cast<zopEvent*>(event);
   ev->decodeEvent();
 
   output.verbose(CALL_INFO, 7, 0, "ZEN[%s] PrecinctNOC received zop from %s to %s\n",

@@ -49,7 +49,7 @@ void ZOPGen_prec::init(unsigned int phase) {
 
 void ZOPGen_prec::setup() {
   m_zop_iface->setup();
-  output.verbose(CALL_INFO, 11, 0, "setup int_id %lu\n", int_id);
+  output.verbose(CALL_INFO, 11, 0, "setup int_id %" PRIu64 "\n", int_id);
 
   std::vector<uint64_t> payload;
   SST::Forza::zopEvent *zopgenMsg = new SST::Forza::zopEvent();
