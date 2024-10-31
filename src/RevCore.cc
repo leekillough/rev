@@ -109,7 +109,7 @@ void RevCore::SetCoProc( RevCoProc* coproc ) {
     output->fatal(
       CALL_INFO,
       -1,
-      "CONFIG ERROR: Core %u : Attempting to assign a "
+      "CONFIG ERROR: Core %" PRIu32 " : Attempting to assign a "
       "co-processor when one is already present\n",
       id
     );
@@ -937,7 +937,7 @@ RevInst RevCore::DecodeCompressed( uint32_t Inst ) const {
       CALL_INFO,
       -1,
       "Error: no entry in table for instruction at PC=0x%" PRIx64 " Opcode = %x Funct2 = %x Funct3 = %x Funct4 = %x Funct6 = "
-      "%x Enc = %x \n",
+      "%x Enc = %" PRIx32 " \n",
       GetPC(),
       opc,
       funct2,
@@ -2138,8 +2138,8 @@ void RevCore::handleRingReadData( Forza::ringEvent* ring_ev ) {
     CALL_INFO,
     5,
     0,
-    "[FORZA][%u] Received Ring Message; CSR=0x%x, datum=0x%" PRIx64 "\n",
-    (unsigned) zNic->getEndpointType(),
+    "[FORZA][%" PRIu8 "] Received Ring Message; CSR=0x%" PRIx16 ", datum=0x%" PRIx64 "\n",
+    static_cast<uint8_t>( zNic->getEndpointType() ),
     ring_ev->getCSR(),
     ring_ev->getDatum()
   );

@@ -47,8 +47,7 @@ EcallStatus RevCore::EcallLoadAndParseString( uint64_t straddr, std::function<vo
         HartToExecID,
         MemOp::MemOpREAD,
         true,
-        [=]( const MemReq& req ) { this->MarkLoadComplete( req ); }
-      };
+        [=]( const MemReq& req ) { this->MarkLoadComplete( req ); } };
       LSQueue->insert( req.LSQHashPair() );
       mem->ReadVal( HartToExecID, straddr + EcallState.string.size(), EcallState.buf.data(), req, RevFlag::F_NONE );
       EcallState.bytesRead = 1;
@@ -3802,10 +3801,10 @@ EcallStatus RevCore::ECALL_forza_read_zen_status() {
       CALL_INFO,
       5,
       0,
-      "[ZAP] %u sending ring message; CSR=0x%" PRIx16 "; op=%" PRIu8 "\n",
-      (uint8_t) zNic->getEndpointType(),
+      "[ZAP] %" PRIu8 " sending ring message; CSR=0x%" PRIx16 "; op=%" PRIu8 "\n",
+      static_cast<uint8_t>( zNic->getEndpointType() ),
       ring_ev->getCSR(),
-      (uint8_t) ring_ev->getOp()
+      static_cast<uint8_t>( ring_ev->getOp() )
     );
     zoneRing->send( ring_ev, next_dest );
   } else {
@@ -3838,10 +3837,10 @@ EcallStatus RevCore::ECALL_forza_read_zqm_status() {
       CALL_INFO,
       5,
       0,
-      "[ZAP] %u sending ring message; CSR=0x%" PRIx16 "; op=%" PRIu8 "\n",
-      (uint8_t) zNic->getEndpointType(),
+      "[ZAP] %" PRIu8 " sending ring message; CSR=0x%" PRIx16 "; op=%" PRIu8 "\n",
+      static_cast<uint8_t>( zNic->getEndpointType() ),
       ring_ev->getCSR(),
-      (uint8_t) ring_ev->getOp()
+      static_cast<uint8_t>( ring_ev->getOp() )
     );
     zoneRing->send( ring_ev, next_dest );
   } else {
@@ -3902,10 +3901,10 @@ EcallStatus RevCore::ECALL_forza_send_word() {
       CALL_INFO,
       5,
       0,
-      "[ZAP] %u sending ring message; CSR=0x%" PRIx16 "; op=%" PRIu8 "\n",
-      (uint8_t) zNic->getEndpointType(),
+      "[ZAP] %" PRIu8 " sending ring message; CSR=0x%" PRIx16 "; op=%" PRIu8 "\n",
+      static_cast<uint8_t>( zNic->getEndpointType() ),
       ring_ev->getCSR(),
-      (uint8_t) ring_ev->getOp()
+      static_cast<uint8_t>( ring_ev->getOp() )
     );
     zoneRing->send( ring_ev, next_dest );
     output->verbose( CALL_INFO, 5, 0, "SENDING RING MESSAGE, next addr = %" PRIu64 "\n", next_dest );
@@ -4128,10 +4127,10 @@ EcallStatus RevCore::ECALL_forza_receive_word() {
       CALL_INFO,
       5,
       0,
-      "[ZAP] %u sending ring message; CSR=0x%" PRIx16 "; op=%" PRIu8 "\n",
-      (uint8_t) zNic->getEndpointType(),
+      "[ZAP] %" PRIu8 " sending ring message; CSR=0x%" PRIx16 "; op=%" PRIu8 "\n",
+      static_cast<uint8_t>( zNic->getEndpointType() ),
       ring_ev->getCSR(),
-      (uint8_t) ring_ev->getOp()
+      static_cast<uint8_t>( ring_ev->getOp() )
     );
     zoneRing->send( ring_ev, next_dest );
   } else {
@@ -4164,10 +4163,10 @@ EcallStatus RevCore::ECALL_forza_zen_get_cntrs() {
       CALL_INFO,
       5,
       0,
-      "[ZAP] %u sending ring message; CSR=0x%" PRIx16 "; op=%" PRIu8 "\n",
-      (uint8_t) zNic->getEndpointType(),
+      "[ZAP] %" PRIu8 " sending ring message; CSR=0x%" PRIx16 "; op=%" PRIu8 "\n",
+      static_cast<uint8_t>( zNic->getEndpointType() ),
       ring_ev->getCSR(),
-      (uint8_t) ring_ev->getOp()
+      static_cast<uint8_t>( ring_ev->getOp() )
     );
     zoneRing->send( ring_ev, next_dest );
   } else {
@@ -4185,10 +4184,10 @@ EcallStatus RevCore::ECALL_forza_zqm_setup() {
     CALL_INFO,
     2,
     0,
-    "ECALL: forza_zqm_setup called by thread %" PRIu32 " on hart %" PRIu32 " on zap %" PRIu32 "\n",
+    "ECALL: forza_zqm_setup called by thread %" PRIu32 " on hart %" PRIu32 " on zap %" PRIu8 "\n",
     GetActiveThreadID(),
     HartToExecID,
-    (uint32_t) zNic->getEndpointType()
+    static_cast<uint8_t>( zNic->getEndpointType() )
   );
 
   uint64_t logical_pe = (uint64_t) RegFile->GetX<uint64_t>( RevReg::a0 );
@@ -4231,10 +4230,10 @@ EcallStatus RevCore::ECALL_forza_zqm_setup() {
       CALL_INFO,
       5,
       0,
-      "[ZAP] %u sending ring message; CSR=0x%" PRIx16 "; op=%" PRIu8 "\n",
-      (uint8_t) zNic->getEndpointType(),
+      "[ZAP] %" PRIu8 " sending ring message; CSR=0x%" PRIx16 "; op=%" PRIu8 "\n",
+      static_cast<uint8_t>( zNic->getEndpointType() ),
       ring_ev->getCSR(),
-      (uint8_t) ring_ev->getOp()
+      static_cast<uint8_t>( ring_ev->getOp() )
     );
     zoneRing->send( ring_ev, next_dest );
     output->verbose( CALL_INFO, 5, 0, "SENDING RING MESSAGE, next addr = %" PRIu64 "\n", next_dest );
@@ -4308,7 +4307,7 @@ EcallStatus RevCore::ECALL_forza_get_num_precincts() {
 
 // 4011, forza_get_my_zap();
 EcallStatus RevCore::ECALL_forza_get_my_zap() {
-  RegFile->SetX( RevReg::a0, (uint8_t) zNic->getEndpointType() );
+  RegFile->SetX( RevReg::a0, static_cast<uint8_t>( zNic->getEndpointType() ) );
   output->verbose(
     CALL_INFO,
     2,
@@ -4387,11 +4386,11 @@ EcallStatus RevCore::ECALL_forza_debug_print() {
     CALL_INFO,
     2,
     0,
-    "ECALL: forza_debug_print called by thread %" PRIu32 " on hart %" PRIu32 " on zap=%" PRIu32 "; a=0x%" PRIx64 "; b=0x%" PRIx64
+    "ECALL: forza_debug_print called by thread %" PRIu32 " on hart %" PRIu32 " on zap=%" PRIu8 "; a=0x%" PRIx64 "; b=0x%" PRIx64
     "; c=0x%" PRIx64 "\n",
     GetActiveThreadID(),
     HartToExecID,
-    (unsigned) zNic->getEndpointType(),
+    static_cast<uint8_t>( zNic->getEndpointType() ),
     a,
     b,
     c

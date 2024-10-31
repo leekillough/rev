@@ -215,7 +215,7 @@ void RevMem::AddToTLB( uint64_t vAddr, uint64_t physAddr ) {
     // Insert the vAddr and physAddr into the TLB and LRU list
     LRUQueue.push_front( vAddr );
     TLB.insert( {
-      vAddr, { physAddr, LRUQueue.begin() }
+      vAddr, {physAddr, LRUQueue.begin()}
     } );
   }
 }
@@ -256,14 +256,7 @@ uint64_t RevMem::CalcPhysAddr( uint64_t pageNum, uint64_t vAddr ) {
         if( PhysAddrCheck ) {
           auto [validate, reason] = validatePhysAddr( physAddr, 0 );
           if( !validate ) {
-            output->fatal(
-              CALL_INFO,
-              -1,
-              "Invalid Physical Address Access %" PRIu64 " = 0x%" PRIx64 " Reason %s\n",
-              physAddr,
-              physAddr,
-              reason.c_str()
-            );
+            output->fatal( CALL_INFO, -1, "Invalid Physical Address Access 0x%" PRIx64 " Reason %s\n", physAddr, reason.c_str() );
           }
         }
       } else {
@@ -737,7 +730,7 @@ uint64_t RevMem::DeallocMem( uint64_t BaseAddr, uint64_t Size ) {
 
   int ret = -1;
   // Search through allocated segments for the segment that begins on the baseAddr
-  for( unsigned i = 0; i < MemSegs.size(); i++ ) {
+  for( size_t i = 0; i < MemSegs.size(); i++ ) {
     auto AllocedSeg = MemSegs[i];
     // We don't allow memory to be deallocated if it's not on a segment boundary
     if( AllocedSeg->getBaseAddr() != BaseAddr ) {
@@ -855,7 +848,7 @@ uint64_t RevMem::ExpandHeap( uint64_t Size ) {
     output->fatal(
       CALL_INFO,
       7,
-      "Out Of Memory --- Attempted to expand heap to 0x%" PRIx64 " which goes beyond the maxHeapSize = 0x%x set in the "
+      "Out Of Memory --- Attempted to expand heap to 0x%" PRIx64 " which goes beyond the maxHeapSize = 0x%" PRIx32 " set in the "
       "python configuration. "
       "If unset, this value will be equal to 1/4 of memSize.\n",
       NewHeapEnd,
@@ -958,10 +951,10 @@ SST::Forza::zopOpc RevMem::memToZOP( uint32_t flags, size_t Len, bool Write ) {
     4,
     0,
     "WARNING: Failed to convert memory request to MZOP opcode; "
-    "flags=%d, len=%lu, write=%d\n",
+    "flags=%" PRIu32 ", len=%" PRIuPTR ", write=%" PRIu32 "\n",
     flags,
     Len,
-    Write
+    (uint32_t) Write
   );
   return SST::Forza::zopOpc::Z_NULL_OPC;
 }
@@ -1351,7 +1344,13 @@ bool RevMem::isLocalAddr( uint64_t vAddr, unsigned& Zone, unsigned& Precinct ) {
     Zone     = TmpZone;
     Precinct = TmpPrecinct;
     output->verbose(
-      CALL_INFO, 7, 0, "[FORZA][ZAP] Triggering ThreadMigrate on vAddr=0x%" PRIx64 "to Zone=%d;Precinct=%d\n", vAddr, Zone, Precinct
+      CALL_INFO,
+      7,
+      0,
+      "[FORZA][ZAP] Triggering ThreadMigrate on vAddr=0x%" PRIx64 "to Zone=%" PRIu32 ";Precinct=%" PRIu32 "\n",
+      vAddr,
+      Zone,
+      Precinct
     );
     return false;
   }
@@ -1362,7 +1361,7 @@ bool RevMem::isLocalAddr( uint64_t vAddr, unsigned& Zone, unsigned& Precinct ) {
 // Handles an RZA response message
 // This specifically handles MZOP and HZOP responses
 bool RevMem::handleRZAResponse( Forza::zopEvent* zev ) {
-  output->verbose( CALL_INFO, 5, 0, "[FORZA][ZAP] Handling ZOP Response in RevMem; ID=%d\n", (uint32_t) ( zev->getID() ) );
+  output->verbose( CALL_INFO, 5, 0, "[FORZA][ZAP] Handling ZOP Response in RevMem; ID=%" PRIu16 "\n", zev->getID() );
   auto req = zev->getMemReq();
   req.MarkLoadComplete();
   return true;
