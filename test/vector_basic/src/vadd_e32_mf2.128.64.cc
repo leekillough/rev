@@ -1,5 +1,5 @@
 /*
- * vadd_e32_mf4.cc
+ * vadd_e32_mf2.128.64.cc
  *
  * Copyright (C) 2017-2024 Tactical Computing Laboratories, LLC
  * All Rights Reserved
@@ -22,15 +22,13 @@ typedef uint32_t elem_t;              // Element Type
 const unsigned   VLEN       = 128;    // Width of register file entry
 const unsigned   ELEN       = 64;     // Maximum bits per operation on vector element
 const unsigned   SEW        = 32;     // Selected Element Width for adds
-const float      LMUL       = 1 / 4;  // Length multiplier
-const unsigned   VLMAX      = 1;      // Max vector length LMUL * VLEN / SEW
-const unsigned   AVL        = 1;      // Application Vector Length (elements)
-//const unsigned   VL         = 1;    // Elements operated on by a vector instruction (<=VLMAX, <=AVL)
+const float      LMUL       = 1 / 2;  // Length multiplier
+const unsigned   VLMAX      = 2;      // Max vector length LMUL * VLEN / SEW
+const unsigned   AVL        = 4;      // Application Vector Length (elements)
+//const unsigned   VL         = 2;    // Elements operated on by a vector instruction (<=VLMAX, <=AVL)
 
 // for LMUL<1 we still want to operate on full vector register
 const unsigned VELEM        = 16;
-
-// Illegal AVL <= VLMAX? // TODO find reference in specification. Seems like this should be ok
 
 // counter 0 = cycles
 // counter 1 = instructions
@@ -80,7 +78,7 @@ void vadd_array( elem_t a[], elem_t b[], elem_t c[] ) {
 #else
   unsigned time0, time1, inst0, inst1;
   int      rc    = 0x99;
-  unsigned ITERS = 1;  // AVL/VLMAX = 1/1
+  unsigned ITERS = 2;  // AVL/VLMAX = 4/2
   elem_t*  pa    = &( a[0] );
   elem_t*  pb    = &( b[0] );
   elem_t*  pc    = &( c[0] );
@@ -92,7 +90,7 @@ void vadd_array( elem_t a[], elem_t b[], elem_t c[] ) {
                 "add  a3, zero, %4  \n\t"  // Load pointer to c
                 "add  a4, zero, %5  \n\t"  // Load expected iterations
                 "_vadd_loop: \n\t"
-                //            AVL,    SEW, LMUL=1/4, tail/mask agnostic
+                //            AVL,    SEW, LMUL=1/2, tail/mask agnostic
                 "vsetvli t0,  a0,     e32,     mf2,  ta, ma  \n\t"
                 //
                 "vle32.v v0, (a1)     \n\t"  // Get first vector
@@ -105,9 +103,9 @@ void vadd_array( elem_t a[], elem_t b[], elem_t c[] ) {
                 "vse32.v v2, (a3)     \n\t"  // Store result
                 "add a3, a3, t0       \n\t"  // Bump pointer to c
                 "addi a4, a4, -1      \n\t"  // Decrement expected iterations
-                "bltz a4, _vadd_exit  \n\t"  // Fail on overrun
+                "bltz a4, _vadd_done  \n\t"  // Fail on overrun
                 "bnez a0, _vadd_loop  \n\t"  // Loop back
-                "_vadd_exit: \n\t"
+                "_vadd_done: \n\t"
                 "add %0, a4, zero     \n\t"  // Store result code
                 : "=r"( rc )
                 : "r"( AVL ), "r"( pa ), "r"( pb ), "r"( pc ), "r"( ITERS )
@@ -120,7 +118,7 @@ void vadd_array( elem_t a[], elem_t b[], elem_t c[] ) {
   counters_vector[1] = inst1 - inst0;
 
   if( rc ) {
-    printf( "Error: vadd_e32_mf4 rc=%d\n", rc );
+    printf( "Error: vadd_e32_mf2.128.64 rc=%d\n", rc );
     assert( 0 );
   }
 
@@ -140,10 +138,10 @@ int main( int argc, char** argv ) {
   check_result( r_vector );
 
 #ifndef USE_SPIKE
-  printf( "[vadd_e32_mf4 rev cycles] scalar=%d vector=%d\n", counters_scalar[0], counters_vector[0] );
-  printf( "[vadd_e32_mf4 rev instrs] scalar=%d vector=%d\n", counters_scalar[1], counters_vector[1] );
+  printf( "[vadd_e32_mf2.128.64 rev cycles] scalar=%d vector=%d\n", counters_scalar[0], counters_vector[0] );
+  printf( "[vadd_e32_mf2.128.64 rev instrs] scalar=%d vector=%d\n", counters_scalar[1], counters_vector[1] );
 #else
-  printf( "[vadd_e32_mf4 spike cycles] scalar=%d vector=%d\n", counters_scalar[0], counters_vector[0] );
-  printf( "[vadd_e32_mf4 spike instrs] scalar=%d vector=%d\n", counters_scalar[1], counters_vector[1] );
+  printf( "[vadd_e32_mf2.128.64 spike cycles] scalar=%d vector=%d\n", counters_scalar[0], counters_vector[0] );
+  printf( "[vadd_e32_mf2.128.64 spike instrs] scalar=%d vector=%d\n", counters_scalar[1], counters_vector[1] );
 #endif
 }

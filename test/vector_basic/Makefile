@@ -89,17 +89,18 @@ ifdef USE_SPIKE
 FLAGS     += -DUSE_SPIKE
 endif
 
-# ifndef USE_SPIKE
-# ARCH      := rv64gc
-# else
+# TODO rv32gcv
 ARCH      := rv64gcv
-# endif
-
-# TODO ARCH      := rv64gcv
 ABI       := -mabi=lp64d
 
 # Test Specific Customization
-# $(OUTDIR)/testname/run.log: ...
+# $(OUTDIR)/vadd_e16_m1.64.32/run.log: SPIKE_OPTS += --varch="vlen:64,elen:32"
+# $(OUTDIR)/vadd_e16_m1.32.16/run.log: SPIKE_OPTS += --varch="vlen:32,elen:16"
+
+# Default VLEN=128, ELEN=64 for both spike and rev
+# TODO add all supported combinations
+$(OUTDIR)/%.64.32/run.log: SPIKE_OPTS += --varch="vlen:64,elen:32"
+$(OUTDIR)/%.32.16/run.log: SPIKE_OPTS += --varch="vlen:32,elen:16"
 
 # The magical run commands
 ifndef USE_SPIKE
@@ -112,7 +113,7 @@ ifndef USE_SPIKE
 	@$(eval statf = $(basename $@).status)
 	@rm -f $(statf)
 	@echo Running $(basename $@)
-	$(SST) $(SSTCFG) -- --rvv --verbose=5 --trcStartCycle=1 --machine=CORES:$(ARCH)_zicntr --program=$(exe) $(MEMH) --statDir=$(@D)> $@ && (echo "pass" > $(statf))
+	$(SST) $(SSTOPTS) $(SSTCFG) -- --rvv --verbose=5 --trcStartCycle=1 --machine=CORES:$(ARCH)_zicntr --program=$(exe) $(MEMH) --statDir=$(@D)> $@ && (echo "pass" > $(statf))
 
 # To run all with all failures use this instead
 #  > $@ && echo "pass" > $(statf) || echo "fail" > $(statf)
@@ -132,7 +133,7 @@ else
 	@$(eval printlog = $(basename $@).printlog)
 	@rm -f $(statf) $(printlog)
 	@echo Running $(basename $@)
-	$(SPIKE) -l --log=$@ --isa=$(ARCH)_zicntr pk $(exe) > $(printlog) && (echo "pass" > $(statf))
+	$(SPIKE) $(SPIKE_OPTS) -l --log=$@ --isa=$(ARCH)_zicntr pk $(exe) > $(printlog) && (echo "pass" > $(statf))
 
 %.printlog: %.log FORCE
 	cat $@

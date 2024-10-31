@@ -1,5 +1,5 @@
 /*
- * vadd_e32_m4.cc
+ * vadd_e32_m1.128.64.cc
  *
  * Copyright (C) 2017-2024 Tactical Computing Laboratories, LLC
  * All Rights Reserved
@@ -22,26 +22,20 @@ typedef uint32_t elem_t;            // Element Type
 const unsigned   VLEN       = 128;  // Width of register file entry
 const unsigned   ELEN       = 64;   // Maximum bits per operation on vector element
 const unsigned   SEW        = 32;   // Selected Element Width for adds
-const unsigned   LMUL       = 4;    // Length multiplier
-const unsigned   VLMAX      = 16;   // Max vector length LMUL * VLEN / SEW
-const unsigned   AVL        = 64;   // Application Vector Length (elements)
-//const unsigned   VL         = 16;    // Elements operated on by a vector instruction (<=VLMAX, <=AVL)
+const unsigned   LMUL       = 1;    // Length multiplier
+const unsigned   VLMAX      = 4;    // Max vector length LMUL * VLEN / SEW
+const unsigned   AVL        = 16;   // Application Vector Length (elements)
+//const unsigned   VL         = 4;    // Elements operated on by a vector instruction (<=VLMAX, <=AVL)
 
 // counter 0 = cycles
 // counter 1 = instructions
 unsigned counters_scalar[2] = { 0 };
 unsigned counters_vector[2] = { 0 };
 
-// LMUL=2 so 2 vector registers
-elem_t s0[AVL]              = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10,
-                                0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f, 0x20,
-                                0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x28, 0x29, 0x2a, 0x2b, 0x2c, 0x2d, 0x2e, 0x2f, 0x30,
-                                0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39, 0x3a, 0x3b, 0x3c, 0x3d, 0x3e, 0x3f, 0x40 };
-elem_t s1[AVL] = { 0x0100, 0x0200, 0x0300, 0x0400, 0x0500, 0x0600, 0x0700, 0x0800, 0x0900, 0x0a00, 0x0b00, 0x0c00, 0x0d00,
-                   0x0e00, 0x0f00, 0x1000, 0x1100, 0x1200, 0x1300, 0x1400, 0x1500, 0x1600, 0x1700, 0x1800, 0x1900, 0x1a00,
-                   0x1b00, 0x1c00, 0x1d00, 0x1e00, 0x1f00, 0x2000, 0x2100, 0x2200, 0x2300, 0x2400, 0x2500, 0x2600, 0x2700,
-                   0x2800, 0x2900, 0x2a00, 0x2b00, 0x2c00, 0x2d00, 0x2e00, 0x2f00, 0x3000, 0x3100, 0x3200, 0x3300, 0x3400,
-                   0x3500, 0x3600, 0x3700, 0x3800, 0x3900, 0x3a00, 0x3b00, 0x3c00, 0x3d00, 0x3e00, 0x3f00, 0x4000 };
+elem_t s0[AVL]              = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10 };
+elem_t s1[AVL]              = {
+  0x0100, 0x0200, 0x0300, 0x0400, 0x0500, 0x0600, 0x0700, 0x0800, 0x0900, 0x0a00, 0x0b00, 0x0c00, 0x0d00, 0x0e00, 0x0f00, 0x1000
+};
 
 void check_result( elem_t result[] ) {
   for( unsigned i = 0; i < AVL; i++ ) {
@@ -80,34 +74,34 @@ void vadd_array( elem_t a[], elem_t b[], elem_t c[] ) {
 #else
   unsigned time0, time1, inst0, inst1;
   int      rc    = 0x99;
-  unsigned ITERS = 4;  // AVL=32, VLMAX=8
+  unsigned ITERS = 4;  // AVL/VLMAX = 16/4
   elem_t*  pa    = &( a[0] );
   elem_t*  pb    = &( b[0] );
   elem_t*  pc    = &( c[0] );
   RDTIME( time0 );
   RDINSTRET( inst0 );
-  asm volatile( "add  a0, zero, %1  \n\t"  // Load VL
+  asm volatile( "add  a0, zero, %1  \n\t"  // Load AVL
                 "add  a1, zero, %2  \n\t"  // Load pointer to a
                 "add  a2, zero, %3  \n\t"  // Load pointer to b
                 "add  a3, zero, %4  \n\t"  // Load pointer to c
                 "add  a4, zero, %5  \n\t"  // Load expected iterations
                 "_vadd_loop: \n\t"
-                //            AVL,    SEW, LMUL=4, tail/mask agnostic
-                "vsetvli t0,  a0,     e32,     m4,  ta, ma  \n\t"
+                //            AVL,    SEW, LMUL=1, tail/mask agnostic
+                "vsetvli t0,  a0,     e32,     m1,  ta, ma  \n\t"
                 //
-                "vle32.v v0, (a1)     \n\t"  // Get first vector (v[0:3])
+                "vle32.v v0, (a1)     \n\t"  // Get first vector
                 "sub a0, a0, t0       \n\t"  // Decrement N
                 "slli t0, t0, 2       \n\t"  // Divide by number of bytes per element
                 "add a1, a1, t0       \n\t"  // Bump pointer to a
-                "vle32.v v4, (a2)     \n\t"  // Get second vector (v[4:7])
+                "vle32.v v1, (a2)     \n\t"  // Get second vector
                 "add a2, a2, t0       \n\t"  // Bump pointer to b
-                "vadd.vv v8, v0, v4   \n\t"  // Sum Vectors (v[8:11])
-                "vse32.v v8, (a3)     \n\t"  // Store result(v[8:11])
+                "vadd.vv v2, v0, v1   \n\t"  // Sum Vectors
+                "vse32.v v2, (a3)     \n\t"  // Store result
                 "add a3, a3, t0       \n\t"  // Bump pointer to c
                 "addi a4, a4, -1      \n\t"  // Decrement expected iterations
-                "bltz a4, _vadd_exit  \n\t"  // Fail on overrun
+                "bltz a4, _vadd_done  \n\t"  // Fail on overrun
                 "bnez a0, _vadd_loop  \n\t"  // Loop back
-                "_vadd_exit: \n\t"
+                "_vadd_done: \n\t"
                 "add %0, a4, zero     \n\t"  // Store result code
                 : "=r"( rc )
                 : "r"( AVL ), "r"( pa ), "r"( pb ), "r"( pc ), "r"( ITERS )
@@ -120,7 +114,7 @@ void vadd_array( elem_t a[], elem_t b[], elem_t c[] ) {
   counters_vector[1] = inst1 - inst0;
 
   if( rc ) {
-    printf( "Error: vadd_e32_m4 rc=%d\n", rc );
+    printf( "Error: vadd_e32_m1.128.64 rc=%d\n", rc );
     assert( 0 );
   }
 
@@ -140,10 +134,10 @@ int main( int argc, char** argv ) {
   check_result( r_vector );
 
 #ifndef USE_SPIKE
-  printf( "[vadd_e32_m4 rev cycles] scalar=%d vector=%d\n", counters_scalar[0], counters_vector[0] );
-  printf( "[vadd_e32_m4 rev instrs] scalar=%d vector=%d\n", counters_scalar[1], counters_vector[1] );
+  printf( "[vadd_e32_m1.128.64 rev cycles] scalar=%d vector=%d\n", counters_scalar[0], counters_vector[0] );
+  printf( "[vadd_e32_m1.128.64 rev instrs] scalar=%d vector=%d\n", counters_scalar[1], counters_vector[1] );
 #else
-  printf( "[vadd_e32_m4 spike cycles] scalar=%d vector=%d\n", counters_scalar[0], counters_vector[0] );
-  printf( "[vadd_e32_m4 spike instrs] scalar=%d vector=%d\n", counters_scalar[1], counters_vector[1] );
+  printf( "[vadd_e32_m1.128.64 spike cycles] scalar=%d vector=%d\n", counters_scalar[0], counters_vector[0] );
+  printf( "[vadd_e32_m1.128.64 spike instrs] scalar=%d vector=%d\n", counters_scalar[1], counters_vector[1] );
 #endif
 }
