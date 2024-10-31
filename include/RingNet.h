@@ -162,66 +162,73 @@ enum class ringMsgT : uint8_t {
 class ringEvent : public SST::Event {
 
 public:
-  // Use this constructor only for the initial broadcast
-  explicit ringEvent( zopCompID srcComp, uint64_t datum )
-    : Event(), SrcComp( srcComp ), Hart( 0 ), DestComp( zopCompID::Z_UNK_COMP ), Type( ringMsgT::R_RETDATA ), CSR( 0 ),
-      Datum( datum ) { /* Empty constructor */ }
-
   // raw event constructor
-  explicit ringEvent()
-    : Event(), SrcComp( zopCompID::Z_UNK_COMP ), Hart( 0 ), DestComp( zopCompID::Z_UNK_COMP ), Type( ringMsgT::R_RETDATA ),
-      CSR( 0 ), Datum( 0 ) { /* Empty constructor */ }
+  ringEvent() = default;
 
-  explicit ringEvent( zopCompID srcComp, uint16_t hart, zopCompID destComp, ringMsgT type, uint16_t csr, uint64_t datum )
-    : Event(), SrcComp( srcComp ), Hart( hart ), DestComp( destComp ), Type( type ), CSR( csr ),
-      Datum( datum ) { /* Empty constructor */ }
+  // Use this constructor only for the initial broadcast
+  ringEvent( zopCompID SrcComp, uint64_t Datum ) : SrcComp{ SrcComp }, Datum{ Datum } {}
 
-  virtual Event* clone( void ) override {
-    ringEvent* ev = new ringEvent( *this );
-    return ev;
-  }
+  ringEvent( zopCompID SrcComp, uint16_t Hart, zopCompID DestComp, ringMsgT Type, uint16_t CSR, uint64_t Datum )
+    : SrcComp{ SrcComp }, Hart{ Hart }, DestComp{ DestComp }, Type{ Type }, CSR{ CSR }, Datum{ Datum } {}
+
+  // copy and move constructors
+  ringEvent( const ringEvent& )            = default;
+  ringEvent( ringEvent&& )                 = default;
+
+  // do not allow assignment
+  ringEvent& operator=( const ringEvent& ) = delete;
+  ringEvent& operator=( ringEvent&& )      = delete;
+
+  // destructor
+  ~ringEvent() override                    = default;
+
+  // clone
+  Event* clone() override { return new ringEvent( *this ); }
 
   /* Set functions */
 
   /* Get functions */
-  uint64_t getDatum() { return Datum; }
+  auto getDatum() const { return Datum; }
 
-  uint16_t getCSR() { return CSR; }
+  auto getCSR() const { return CSR; }
 
-  uint16_t getHart() { return ( Hart & 0x1ff ); }
+  auto getHart() const { return static_cast<uint16_t>( Hart & 0x1ff ); }
 
-  ringMsgT getOp() { return Type; }
+  auto getOp() const { return Type; }
 
-  zopCompID getSrcComp() { return SrcComp; }
+  auto getSrcComp() const { return SrcComp; }
 
-  zopCompID getDestComp() { return DestComp; }
+  auto getDestComp() const { return DestComp; }
 
-  uint8_t getSrcZap() { return (uint8_t) SrcComp; }
+  auto getSrcZap() const { return static_cast<uint8_t>( SrcComp ); }
 
-  std::string getDestCompStr() { return getCompStr( false ); }
+  auto getDestCompStr() const { return getCompStr( DestComp ); }
 
-  std::string getSrcCompStr() { return getCompStr( true ); }
+  auto getSrcCompStr() const { return getCompStr( SrcComp ); }
 
-  std::string getCompStr( bool isSrc ) {
-    zopCompID C = ( isSrc ) ? SrcComp : DestComp;
-    switch( C ) {
-    case zopCompID::Z_ZAP0: return "ZAP0"; break;
-    case zopCompID::Z_ZAP1: return "ZAP1"; break;
-    case zopCompID::Z_ZAP2: return "ZAP2"; break;
-    case zopCompID::Z_ZAP3: return "ZAP3"; break;
-    case zopCompID::Z_ZEN: return "ZEN"; break;
-    case zopCompID::Z_ZQM: return "ZQM"; break;
-    default: return "UNKNOWN"; break;
+private:
+  static std::string getCompStr( zopCompID Comp ) {
+    switch( Comp ) {
+    case zopCompID::Z_ZAP0: return "ZAP0";
+    case zopCompID::Z_ZAP1: return "ZAP1";
+    case zopCompID::Z_ZAP2: return "ZAP2";
+    case zopCompID::Z_ZAP3: return "ZAP3";
+    case zopCompID::Z_ZEN: return "ZEN";
+    case zopCompID::Z_ZQM: return "ZQM";
+    default: return "UNKNOWN";
     }
   }
+
+public:
 #if 0
+  // clang-format off
   /// ringEvent: decode this event and set the appropriate internal structures
   void decodeEvent() {
-    Hart     = (uint16_t) ( ( Packet[0] >> R_SHIFT_HARTID ) & R_MASK_HARTID );
-    SrcComp  = (zopCompID) ( ( Packet[0] >> R_SHIFT_SRCZCID ) & R_MASK_ZCID );
-    DestComp = (zopCompID) ( ( Packet[0] >> R_SHIFT_DESTZCID ) & R_MASK_ZCID );
-    Type     = (ringMsgT) ( ( Packet[0] >> R_SHIFT_CMD ) & R_MASK_CMD );
-    CSR      = (uint16_t) ( ( Packet[0] >> R_SHIFT_CSRNUM ) & R_MASK_CSR );
+    Hart     = uint16_t  ( Packet[0] >> R_SHIFT_HARTID   & R_MASK_HARTID );
+    SrcComp  = zopCompID ( Packet[0] >> R_SHIFT_SRCZCID  & R_MASK_ZCID   );
+    DestComp = zopCompID ( Packet[0] >> R_SHIFT_DESTZCID & R_MASK_ZCID   );
+    Type     = ringMsgT  ( Packet[0] >> R_SHIFT_CMD      & R_MASK_CMD    );
+    CSR      = uint16_t  ( Packet[0] >> R_SHIFT_CSRNUM   & R_MASK_CSR    );
     Datum    = Packet[1];
   }
 
@@ -229,34 +236,36 @@ public:
   void encodeEvent() {
     Packet.resize(2);
     Packet[0] = 0;
-    Packet[0] |= ( (uint64_t) ( Hart & R_MASK_HARTID ) << R_SHIFT_HARTID );
-    Packet[0] |= ( (uint64_t) ( Hart & R_MASK_ZCID ) << R_SHIFT_SRCZCID );
-    Packet[0] |= ( (uint64_t) ( Hart & R_MASK_ZCID ) << R_SHIFT_DESTZCID );
-    Packet[0] |= ( (uint64_t) ( Hart & R_MASK_CSR ) << R_SHIFT_CSRNUM );
-    Packet[0] |= ( (uint64_t) ( Hart & R_MASK_CMD ) << R_SHIFT_CMD );
+    Packet[0] |= uint64_t ( Hart & R_MASK_HARTID ) << R_SHIFT_HARTID;
+    Packet[0] |= uint64_t ( Hart & R_MASK_ZCID   ) << R_SHIFT_SRCZCID;
+    Packet[0] |= uint64_t ( Hart & R_MASK_ZCID   ) << R_SHIFT_DESTZCID;
+    Packet[0] |= uint64_t ( Hart & R_MASK_CSR    ) << R_SHIFT_CSRNUM;
+    Packet[0] |= uint64_t ( Hart & R_MASK_CMD    ) << R_SHIFT_CMD;
     Packet[1] = Datum;
   }
+  // clang-format on
 #endif
+
 private:
   //std::vector<uint64_t> Packet;  ///< zopEvent: data payload: serialized payload
 
-  zopCompID SrcComp;   /// ringEvent: Dest component
-  uint16_t  Hart;      /// ringEvent: HART involved in transaction
-  zopCompID DestComp;  /// ringEvent: Dest component
-  ringMsgT  Type;      /// ringEvent: Command type
-  uint16_t  CSR;       /// ringEvent: Register accessed
-  uint64_t  Datum;     /// ringEvent: data payload
+  zopCompID SrcComp  = zopCompID::Z_UNK_COMP;  /// ringEvent: Dest component
+  uint16_t  Hart     = 0;                      /// ringEvent: HART involved in transaction
+  zopCompID DestComp = zopCompID::Z_UNK_COMP;  /// ringEvent: Dest component
+  ringMsgT  Type     = ringMsgT::R_RETDATA;    /// ringEvent: Command type
+  uint16_t  CSR      = 0;                      /// ringEvent: Register accessed
+  uint64_t  Datum    = 0;                      /// ringEvent: data payload
 
 public:
   // ringEvent: event serializer
   void serialize_order( SST::Core::Serialization::serializer& ser ) override {
     Event::serialize_order( ser );
-    ser & SrcComp;
-    ser & Hart;
-    ser & DestComp;
-    ser & Type;
-    ser & CSR;
-    ser & Datum;
+    ser& SrcComp;
+    ser& Hart;
+    ser& DestComp;
+    ser& Type;
+    ser& CSR;
+    ser& Datum;
   }
 
   // ringEvent: implements the nic serialization
@@ -274,7 +283,7 @@ public:
   RingNetAPI( ComponentId_t id, Params& params ) : SubComponent( id ) {}
 
   /// RingNetAPI: default destructor
-  virtual ~RingNetAPI()                                     = default;
+  ~RingNetAPI() override                                    = default;
 
   /// RingNetAPI: registers the event handler with the core
   virtual void setMsgHandler( Event::HandlerBase* handler ) = 0;
@@ -337,7 +346,7 @@ public:
   RingNetNIC( ComponentId_t id, Params& params );
 
   /// RingNetNIC: destructor
-  virtual ~RingNetNIC();
+  ~RingNetNIC() override = default;
 
   /// RingNetNIC: callback to parent on received messages
   virtual void setMsgHandler( Event::HandlerBase* handler );
@@ -373,8 +382,8 @@ public:
   bool msgNotify( int virtualNetwork );
 
 protected:
-  SST::Output output;     ///< RingNetNIC: SST output object
-  int         verbosity;  ///< RingNetNIC: verbosity
+  SST::Output output;       ///< RingNetNIC: SST output object
+  int         verbosity{};  ///< RingNetNIC: verbosity
 
   TimeConverter*                   timeConverter{};  ///< SST time conversion handler
   SST::Clock::Handler<RingNetNIC>* clockHandler{};   ///< Clock Handler
