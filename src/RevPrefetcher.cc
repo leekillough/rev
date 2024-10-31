@@ -182,7 +182,7 @@ void RevPrefetcher::Fill( uint64_t Addr ) {
 
   // allocate a new stream buffer
   baseAddr.push_back( Addr );
-  iStack.push_back( std::vector<uint32_t>( depth ) );
+  iStack.push_back( std::vector<uint64_t>( depth ) );
 
   // initialize it
   size_t x = baseAddr.size() - 1;
@@ -197,7 +197,9 @@ void RevPrefetcher::Fill( uint64_t Addr ) {
     );
     LSQueue->insert( req.LSQHashPair() );
     OutstandingFetchQ.emplace_back( req );
-    mem->ReadVal<uint32_t>( feature->GetHartToExecID(), Addr + ( y * 4 ), &iStack[x][y], req, RevFlag::F_NONE );
+    mem->ReadVal<uint32_t>(
+      feature->GetHartToExecID(), Addr + ( y * 4 ), reinterpret_cast<uint32_t*>( &iStack[x][y] ), req, RevFlag::F_NONE
+    );
     //Track outstanding requests
   }
 }
