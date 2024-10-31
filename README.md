@@ -56,35 +56,37 @@ If spike is not available an internal, less useful, instruction trace format wil
     make printlog
 
 ## Vector Test Directory Structure
+
     test/vector_basic
-    ├── CMakeLists.txt
     ├── Makefile
     ├── output
     │   ├── bin
-    │   │   ├── vadd.dis
-    │   │   ├── vadd.exe
-    │   │   ├── vadd.sections
-    │   │   ├── vadd2.dis
-    │   │   ├── vadd2.exe
-    │   │   └── vadd2.sections
-    │   ├── vadd
-    │   │   ├── StatisticOutput.csv
-    │   │   ├── run.log         # logging and trace
-    │   │   ├── run.printlog    # console text
+    │   │   ├── vadd_e16_m1.64.32.dis
+    │   │   ├── vadd_e16_m1.64.32.exe
+    │   │   ├── vadd_e16_m1.64.32.sections
+    │   │   ├── vadd_e32_m1.128.64.dis
+    │   │   ├── vadd_e32_m1.128.64.exe
+    │   │   ├── vadd_e32_m1.128.64.sections
+    |   |
+    │   ├── vadd_e16_m1.64.32
+    │   │   ├── run.log
+    │   │   ├── run.printlog
     │   │   └── run.status
-    │   └── vadd2
-    │       ├── StatisticOutput.csv
+    │   └── vadd_e32_m1.128.64
     │       ├── run.log
     │       ├── run.printlog
     │       └── run.status
     └── src
+        ├── README.md
         ├── rev.h
-        ├── vadd.cc
-        └── vadd2.cc
+        ├── vadd_e16_m1.64.32.cc
+        └── vadd_e32_m1.128.64.cc
 
 ## Creating Vector Tests
 
 All files with a .cc suffix under test/vector_basic/src will be in the list of tests to run. Simple copy/paste/modify an existing test to create a new test.
+
+The suffix (e.g. .64.32.cc) is used to pass VLEN and ELEN into the simulator. These are required at configuration time and remain fixed for the entire simulation.
 
 ## Vector Test Writing Tips
 

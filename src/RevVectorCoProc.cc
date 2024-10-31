@@ -142,7 +142,7 @@ void RevVectorCoProc::FauxExec( RevCoProcInst rec ) {
     );
     break;
   }
-  default: output->fatal( CALL_INFO, -1, "faux vector coprocessor cannot digest instruction 0x%" PRIu32 "\n", rec.Inst ); break;
+  default: output->fatal( CALL_INFO, -1, "faux vector coprocessor cannot digest instruction 0x%" PRIx32 "\n", rec.Inst ); break;
   }
 }
 

@@ -1,0 +1,131 @@
+//
+// _RevMultiTypeRF_h_
+//
+// Copyright (C) 2017-2024 Tactical Computing Laboratories, LLC
+// All Rights Reserved
+// contact@tactcomplabs.com
+//
+// See LICENSE in the top level directory for licensing details
+//
+
+#ifndef _SST_REVCPU_MULTITYPERF_H_
+#define _SST_REVCPU_MULTITYPERF_H_
+
+#include <iostream>
+#include <bitset>
+
+namespace SST{
+  namespace RevCPU {
+
+	  // T_MaxElem = VLEN / 8
+	  template <int T_MaxElem>
+	  class MultiTypeRF {
+			public:
+
+		  MultiTypeRF ( unsigned EntryCount, unsigned Width);
+		  ~MultiTypeRF( );
+
+		  // template<typename DType>
+		  // DType 	operator[] ( unsigned index);
+			template<typename DType>
+		  DType		ReadElem(unsigned regNum, unsigned index);
+
+			template<typename DType>
+			bool		ReadReg(unsigned regNum, DType* regBuffer);
+
+			template<typename DType>
+		  bool 		WriteReg(unsigned regNum, std::bitset<T_MaxElem> mask, DType* fullReg);
+
+			template<typename DType>
+		  bool 		WriteElem(unsigned regNum, unsigned index, std::bitset<T_MaxElem> mask, DType  val);
+
+			bool		Reset();
+
+			int			cur_vl;
+			int			cur_vsew;
+
+			private:
+			uint8_t** registerFile;
+			int		max_vl;
+			int		vregmax;
+			int 	regWidthInBytes;
+
+	  };
+
+		template<int T_MaxElem>
+		MultiTypeRF<T_MaxElem>::MultiTypeRF(unsigned EntryCount, unsigned Width){
+			vregmax = EntryCount;
+			regWidthInBytes = Width;
+
+			registerFile = new uint8_t*[vregmax];
+			for(int row =0; row < vregmax; row++){
+				registerFile[row] = new uint8_t[regWidthInBytes];
+			}
+		}
+
+		template<int T_MaxElem>
+		MultiTypeRF<T_MaxElem>::~MultiTypeRF(){
+			for(int row = 0; row < vregmax; row++){
+				delete[] registerFile[row];
+			}
+			delete registerFile;
+			registerFile = NULL;
+		}
+
+		template<int T_MaxElem>
+		bool MultiTypeRF<T_MaxElem>::Reset(){
+			for(int row = 0; row < vregmax; row++){
+				memset(registerFile[row], 0, regWidthInBytes);
+			}
+			return true;
+		}
+
+		// DDD: this function needs error handling / bounds checking on the input parameters
+		template<int T_MaxElem>
+		template<typename DType>
+		DType MultiTypeRF<T_MaxElem>::ReadElem(unsigned regNum, unsigned index){
+			int offset = sizeof(DType) * index;
+			return reinterpret_cast<DType&>(registerFile[regNum][offset]);
+		}
+
+		template<int T_MaxElem>
+		template<typename DType>
+		bool MultiTypeRF<T_MaxElem>::ReadReg(unsigned regNum, DType* regBuffer){
+			if(regNum < vregmax){
+				memcpy(regBuffer, registerFile[regNum], regWidthInBytes);
+				return true;
+			}
+			return false;
+		}
+
+		template<int T_MaxElem>
+		template<typename DType>
+		bool	MultiTypeRF<T_MaxElem>::WriteElem(unsigned regNum, unsigned index, std::bitset<T_MaxElem> mask, DType  val){
+			if(regNum < vregmax){
+				if(mask[index] > 0){
+					reinterpret_cast<DType&>(registerFile[regNum][index]) = val;
+				}
+				return true;
+			}
+			return false;
+		}
+
+		template<int T_MaxElem>
+		template<typename DType>
+		bool	MultiTypeRF<T_MaxElem>::WriteReg(unsigned regNum, std::bitset<T_MaxElem> mask, DType* fullReg){
+			if(regNum < vregmax){
+				for(int i = 0; i < T_MaxElem; i++){
+					if(mask[i] > 0){
+						reinterpret_cast<DType&>(registerFile[regNum][i]) = fullReg[i];
+					}
+				}
+				return true;
+			}
+			return false;
+		}
+
+
+  } // namespace RevCPU
+} // namespace SST
+
+#endif

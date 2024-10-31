@@ -25,8 +25,43 @@
 #include <cstdio>
 #endif
 
-// Basic intrinsics
-// This works on REV but just returns 0 on spike
+// Test helpers
+#define xstr( s ) str( s )
+#define str( s )  #s
+
+#define CHECKU64( VAR, EXPECTED )                                   \
+  do {                                                              \
+    if( EXPECTED != VAR ) {                                         \
+      printf( "Error: " #VAR " E=0x%lx A=0x%lx\n", EXPECTED, VAR ); \
+      assert( EXPECTED == VAR );                                    \
+    }                                                               \
+  } while( 0 )
+
+#define CHECKU16( VAR, EXPECTED )                                 \
+  do {                                                            \
+    if( EXPECTED != VAR ) {                                       \
+      printf( "Error: " #VAR " E=0x%x A=0x%x\n", EXPECTED, VAR ); \
+      assert( EXPECTED == VAR );                                  \
+    }                                                             \
+  } while( 0 )
+
+// Assembly helpers
+
+// Vector CSR URW
+#define csr_vstart  0x008
+#define csr_vxsat   0x009
+#define csr_vxrm    0x00a
+#define csr_vcsr    0x00f
+// Counters
+#define csr_cycle   0xc00
+#define csr_time    0xc01
+#define csr_instret 0xc02
+// Vector CSR URO
+#define csr_vl      0xc20
+#define csr_vtype   0xc21
+#define csr_vlenb   0xc22
+
+// rdtime works on REV but just returns 0 on spike
 #define RDTIME( X )                           \
   do {                                        \
     asm volatile( " rdtime %0" : "=r"( X ) ); \
@@ -36,3 +71,96 @@
   do {                                           \
     asm volatile( " rdinstret %0" : "=r"( X ) ); \
   } while( 0 )
+
+//"vsetvli t0,  a0,     e8,     m1,  ta, ma  \n\t"
+#define VSETVLI( RD, RS1, SEW, LMUL, VTA, VMA )                                                                               \
+  do {                                                                                                                        \
+    asm volatile( " vsetvli %0, %1, " str( SEW ) ", " str( LMUL ) ", " str( VTA ) "," str( VMA ) : "=r"( RD ) : "r"( RS1 ) ); \
+  } while( 0 )
+
+// vsetivli rd, uimm, vtypei # rd=new vl, uimm=AVL, vtypei=new vtype setting
+#define VSETIVLI( RD, UIMM5, SEW, LMUL, VTA, VMA )                                                                             \
+  do {                                                                                                                         \
+    asm volatile( " vsetivli %0," str( UIMM5 ) ", " str( SEW ) ", " str( LMUL ) ", " str( VTA ) "," str( VMA ) : "=r"( RD ) ); \
+  } while( 0 )
+
+// vsetvl rd, rs1, rs2    # rd=new vl, rs1=AVL, rs2=new vtype value
+#define VSETVL( RD, RS1, RS2 )                                                   \
+  do {                                                                           \
+    asm volatile( " vsetvl %0, %1, %2 " : "=r"( RD ) : "r"( RS1 ), "r"( RS2 ) ); \
+  } while( 0 )
+
+// CSR Access
+
+#define CSRRW( RD, CSR, RS1 )                                                  \
+  do {                                                                         \
+    asm volatile( " csrrw %0, " str( CSR ) ", %1" : "=r"( RD ) : "r"( RS1 ) ); \
+  } while( 0 )
+
+#define CSR_READ( RD, CSR )                                       \
+  do {                                                            \
+    asm volatile( " csrrsi %0, " str( CSR ) ", 0" : "=r"( RD ) ); \
+  } while( 0 )
+
+#define CSR_WRITE( RS1, CSR )                                       \
+  do {                                                              \
+    asm volatile( " csrrw zero, " str( CSR ) ", %1" : "r"( RS1 ) ); \
+  } while( 0 )
+
+/*
+CSRRS
+CSRRC
+CSRRWI
+CSRRSI
+CSRRCI
+*/
+
+union reg_vstart_t {
+  uint64_t v = 0x0UL;
+
+  struct {
+    uint64_t eindex : 7;  // [6:0] VLEN=128, 2**7=128
+  } f;
+
+  void dump() { printf( "vstart (0x%016lx) eindex=0x%x\n", v, f.eindex ); }
+};
+
+union reg_vtype_t {
+  uint64_t v = 0x0UL;
+
+  struct {
+    uint64_t vlmul : 3;   // [2:0]
+    uint64_t vsew  : 3;   // [5:3]
+    uint64_t vta   : 1;   // [6]
+    uint64_t vma   : 1;   // [7]
+    uint64_t zero  : 55;  // [62:8]
+    uint64_t vii   : 1;   // 63
+  } f;
+
+  void dump() {
+    printf( "vtype  (0x%016lx) vii=0x%x vma=0x%x vta=0x%x vsew=0x%x vlmul=0x%x\n", v, f.vii, f.vma, f.vta, f.vsew, f.vlmul );
+  }
+};
+
+union reg_vl_t {
+  uint64_t v = 0UL;
+
+  struct {
+    // VLEN=128, SEW=8, LMUL=8, VLMAX = 8*128/8 = 128, 2**7=128
+    uint64_t l : 7;  // [6:0]
+  } f;
+
+  void dump() { printf( "vl     (0x%016lx) l=0x%x\n", v, f.l ); }
+};
+
+// #define csr_vstart  0x008
+// #define csr_vxsat   0x009
+// #define csr_vxrm    0x00a
+// #define csr_vcsr    0x00f
+// // Counters
+// #define csr_cycle   0xc00
+// #define csr_time    0xc01
+// #define csr_instret 0xc02
+// // Vector CSR URO
+// #define csr_vl      0xc20
+// #define csr_vlenb   0xc22

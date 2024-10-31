@@ -71,6 +71,12 @@ public:
     fflags         = 0x001,
     frm            = 0x002,
     fcsr           = 0x003,
+    // Vector CSR Group 1
+    vstart         = 0x008,
+    vxsat          = 0x009,
+    vxrm           = 0x00a,
+    vcsr           = 0x00f,
+    //
     cycle          = 0xc00,
     time           = 0xc01,
     instret        = 0xc02,
@@ -97,6 +103,11 @@ public:
     hpmcounter23   = 0xc17,
     hpmcounter24   = 0xc18,
     hpmcounter25   = 0xc19,
+    // Vector CSR Group 2
+    vl             = 0xc20,
+    vtype          = 0xc21,
+    vlenb          = 0xc22,
+    //
     hpmcounter26   = 0xc1a,
     hpmcounter27   = 0xc1b,
     hpmcounter28   = 0xc1c,

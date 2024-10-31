@@ -82,7 +82,7 @@ void vadd_array( elem_t a[], elem_t b[], elem_t c[] ) {
   elem_t*  pc    = &( c[0] );
   RDTIME( time0 );
   RDINSTRET( inst0 );
-  asm volatile( "add  a0, zero, %1  \n\t"  // Load VL
+  asm volatile( "add  a0, zero, %1  \n\t"  // Load AVL
                 "add  a1, zero, %2  \n\t"  // Load pointer to a
                 "add  a2, zero, %3  \n\t"  // Load pointer to b
                 "add  a3, zero, %4  \n\t"  // Load pointer to c
