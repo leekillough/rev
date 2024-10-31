@@ -146,7 +146,7 @@ FORCE:
 %.sections: %.exe
 	${RVOBJDUMP} -s $< > $@
 
-$(OUTDIR)/bin/%.exe: $(SRCDIR)/%.cc
+$(OUTDIR)/bin/%.exe: $(SRCDIR)/%.cc $(SRCDIR)/rev.h
 	@mkdir -p $(@D)
 	$(CC) $(FLAGS) -g -march=$(ARCH) $(ABI) $(INCLUDE) -o $@ $<
 

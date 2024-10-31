@@ -1,5 +1,5 @@
 /*
- * vadd.cc
+ * vadd_e32_m1.cc
  *
  * Copyright (C) 2017-2024 Tactical Computing Laboratories, LLC
  * All Rights Reserved
@@ -24,20 +24,21 @@ const unsigned   ELEN       = 64;   // Maximum bits per operation on vector elem
 const unsigned   SEW        = 32;   // Selected Element Width for adds
 const unsigned   LMUL       = 1;    // Length multiplier
 const unsigned   VLMAX      = 4;    // Max vector length LMUL * VLEN / SEW
-const unsigned   VL         = 16;   // Vector Length
+const unsigned   AVL        = 16;   // Application Vector Length (elements)
+//const unsigned   VL         = 4;    // Elements operated on by a vector instruction (<=VLMAX, <=AVL)
 
 // counter 0 = cycles
 // counter 1 = instructions
 unsigned counters_scalar[2] = { 0 };
 unsigned counters_vector[2] = { 0 };
 
-elem_t s0[VL]               = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10 };
-elem_t s1[VL]               = {
+elem_t s0[AVL]              = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10 };
+elem_t s1[AVL]              = {
   0x0100, 0x0200, 0x0300, 0x0400, 0x0500, 0x0600, 0x0700, 0x0800, 0x0900, 0x0a00, 0x0b00, 0x0c00, 0x0d00, 0x0e00, 0x0f00, 0x1000
 };
 
 void check_result( elem_t result[] ) {
-  for( unsigned i = 0; i < VL; i++ ) {
+  for( unsigned i = 0; i < AVL; i++ ) {
     elem_t expected = ( i + 1 ) + ( ( i + 1 ) << 8 );
 #if 0
     printf("Checking i=%d 0x%x\n", i, expected);
@@ -53,7 +54,7 @@ void add_array( elem_t a[], elem_t b[], elem_t c[] ) {
   unsigned time0, time1, inst0, inst1;
   RDTIME( time0 );
   RDINSTRET( inst0 );
-  for( unsigned i = 0; i < VL; i++ ) {
+  for( unsigned i = 0; i < AVL; i++ ) {
     c[i] = a[i] + b[i];
   }
   RDINSTRET( inst1 );
@@ -73,19 +74,19 @@ void vadd_array( elem_t a[], elem_t b[], elem_t c[] ) {
 #else
   unsigned time0, time1, inst0, inst1;
   int      rc    = 0x99;
-  unsigned ITERS = 4;  // VL/VMAX = 16/4
+  unsigned ITERS = 4;  // AVL/VLMAX = 16/4
   elem_t*  pa    = &( a[0] );
   elem_t*  pb    = &( b[0] );
   elem_t*  pc    = &( c[0] );
   RDTIME( time0 );
   RDINSTRET( inst0 );
-  asm volatile( "add  a0, zero, %1  \n\t"  // Load VL
+  asm volatile( "add  a0, zero, %1  \n\t"  // Load AVL
                 "add  a1, zero, %2  \n\t"  // Load pointer to a
                 "add  a2, zero, %3  \n\t"  // Load pointer to b
                 "add  a3, zero, %4  \n\t"  // Load pointer to c
                 "add  a4, zero, %5  \n\t"  // Load expected iterations
                 "_vadd_loop: \n\t"
-                //          VL=n, SEW=32b, LMUL=1, tail/mask agnostic
+                //            AVL,    SEW, LMUL=1, tail/mask agnostic
                 "vsetvli t0,  a0,     e32,     m1,  ta, ma  \n\t"
                 //
                 "vle32.v v0, (a1)     \n\t"  // Get first vector
@@ -103,7 +104,7 @@ void vadd_array( elem_t a[], elem_t b[], elem_t c[] ) {
                 "_vadd_exit: \n\t"
                 "add %0, a4, zero     \n\t"  // Store result code
                 : "=r"( rc )
-                : "r"( VL ), "r"( pa ), "r"( pb ), "r"( pc ), "r"( ITERS )
+                : "r"( AVL ), "r"( pa ), "r"( pb ), "r"( pc ), "r"( ITERS )
                 : "t0", "a0", "a1", "a2", "a3"  // TODO: assembler cannot handle v0,v1,v2 here
   );
 
@@ -123,12 +124,12 @@ void vadd_array( elem_t a[], elem_t b[], elem_t c[] ) {
 int main( int argc, char** argv ) {
 
   // Scalar
-  elem_t r_scalar[VL] = { 0 };
+  elem_t r_scalar[AVL] = { 0 };
   add_array( s0, s1, r_scalar );
   check_result( r_scalar );
 
   // Vector
-  elem_t r_vector[VL] = { 0 };
+  elem_t r_vector[AVL] = { 0 };
   vadd_array( s0, s1, r_vector );
   check_result( r_vector );
 
