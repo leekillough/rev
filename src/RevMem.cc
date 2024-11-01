@@ -256,7 +256,7 @@ uint64_t RevMem::CalcPhysAddr( uint64_t pageNum, uint64_t vAddr ) {
         if( PhysAddrCheck ) {
           auto [validate, reason] = validatePhysAddr( physAddr, 0 );
           if( !validate ) {
-            output->fatal( CALL_INFO, -1, "Invalid Physical Address Access %lu Reason %s\n", physAddr, reason.c_str() );
+            output->fatal( CALL_INFO, -1, "Invalid Physical Address Access 0x%" PRIx64 " Reason %s\n", physAddr, reason.c_str() );
           }
         }
       } else {
@@ -500,10 +500,8 @@ uint64_t RevMem::AllocMemAt( const uint64_t& BaseAddr, const uint64_t& SegSize )
         output->fatal(
           CALL_INFO,
           11,
-          "Error: Attempting to allocate memory at address 0x%lx "
-          "of size 0x%lx which contains memory that is"
-          "already allocated in the segment with BaseAddr = 0x%lx "
-          "and Size 0x%lx\n",
+          "Error: Attempting to allocate memory at address 0x%" PRIx64 " of size 0x%" PRIx64 " which contains memory that is"
+          "already allocated in the segment with BaseAddr = 0x%" PRIx64 " and Size 0x%" PRIx64 "\n",
           BaseAddr,
           SegSize,
           Seg->getBaseAddr(),
@@ -726,11 +724,13 @@ bool RevMem::CleanLine( unsigned Hart, uint64_t Addr ) {
 // 3. Deallocating memory that hasn't been allocated
 // - |---- FreeSeg ----| ==> SegFault :/
 uint64_t RevMem::DeallocMem( uint64_t BaseAddr, uint64_t Size ) {
-  output->verbose( CALL_INFO, 10, 99, "Attempting to deallocate %lul bytes starting at BaseAddr = 0x%lx\n", Size, BaseAddr );
+  output->verbose(
+    CALL_INFO, 10, 99, "Attempting to deallocate %" PRIu64 " bytes starting at BaseAddr = 0x%" PRIx64 "\n", Size, BaseAddr
+  );
 
   int ret = -1;
   // Search through allocated segments for the segment that begins on the baseAddr
-  for( unsigned i = 0; i < MemSegs.size(); i++ ) {
+  for( size_t i = 0; i < MemSegs.size(); i++ ) {
     auto AllocedSeg = MemSegs[i];
     // We don't allow memory to be deallocated if it's not on a segment boundary
     if( AllocedSeg->getBaseAddr() != BaseAddr ) {
@@ -744,8 +744,8 @@ uint64_t RevMem::DeallocMem( uint64_t BaseAddr, uint64_t Size ) {
           CALL_INFO,
           11,
           "Dealloc Error: Cannot free beyond the segment bounds. Attempted to"
-          "free from 0x%lx to 0x%lx however the highest address in the segment "
-          "is 0x%lx",
+          "free from 0x%" PRIx64 " to 0x%" PRIx64 " however the highest address in the segment "
+          "is 0x%" PRIx64,
           BaseAddr,
           BaseAddr + Size,
           AllocedSeg->getTopAddr()
@@ -820,7 +820,7 @@ void RevMem::InitHeap( const uint64_t& EndOfStaticData ) {
       7,
       "The loader was unable"
       "to find a .text section in your executable. This is a bug."
-      "EndOfStaticData = 0x%lx which is less than or equal to 0",
+      "EndOfStaticData = 0x%" PRIx64 " which is less than or equal to 0",
       EndOfStaticData
     );
   } else {
@@ -848,7 +848,7 @@ uint64_t RevMem::ExpandHeap( uint64_t Size ) {
     output->fatal(
       CALL_INFO,
       7,
-      "Out Of Memory --- Attempted to expand heap to 0x%" PRIx64 " which goes beyond the maxHeapSize = 0x%x set in the "
+      "Out Of Memory --- Attempted to expand heap to 0x%" PRIx64 " which goes beyond the maxHeapSize = 0x%" PRIx32 " set in the "
       "python configuration. "
       "If unset, this value will be equal to 1/4 of memSize.\n",
       NewHeapEnd,
@@ -864,67 +864,6 @@ uint64_t RevMem::ExpandHeap( uint64_t Size ) {
 // ----------------------------------------------------
 // ---- FORZA Interfaces
 // ----------------------------------------------------
-
-void RevMem::InitScratchpad( const unsigned ZapNum, size_t ScratchpadSize, size_t ChunkSize ) {
-  // Allocate the scratchpad memory
-  scratchpad = std::make_shared<RevScratchpad>( ZapNum, _SCRATCHPAD_SIZE_, _CHUNK_SIZE_, output );
-  if( !scratchpad ) {
-    output->fatal( CALL_INFO, -1, "Error: could not allocate backing memory\n" );
-  }
-}
-
-// FORZA: Checks if its a scratchpad addr
-bool RevMem::IsAddrInScratchpad( const uint64_t& Addr ) {
-  //// Mask with bits 56 and 57 set to 1
-  uint64_t Mask = ( 1ULL << 56 ) | ( 1ULL << 57 );
-#if 0
-  if( (Addr & Mask ) ){
-    std::cout << "THIS IS A SCRATCHPAD ADDRESS" << std::endl;
-  }
-#endif
-  return ( Addr & Mask );
-  //return (Addr & Mask) == Mask;
-  //return scratchpad->Contains(Addr);
-}
-
-uint64_t RevMem::ScratchpadAlloc( size_t numBytes ) {
-  uint64_t Addr = scratchpad->Alloc( numBytes );
-
-  // Sanity check: Make sure that if the allocation succeeded (Addr != _INVALID_ADDR_) its in the scratchpad
-  if( Addr != _INVALID_ADDR_ && !scratchpad->Contains( Addr ) ) {
-    output->fatal(
-      CALL_INFO,
-      11,
-      "Error: Scratchpad allocated address 0x%" PRIx64 " is not in the scratchpad. The scratchpad"
-      " is defined as addresses 0x%" PRIx64 " to 0x%" PRIx64 ".\n",
-      Addr,
-      scratchpad->GetBaseAddr(),
-      scratchpad->GetTopAddr()
-    );
-  }
-
-  if( Addr == _INVALID_ADDR_ ) {
-    output->verbose( CALL_INFO, 4, 11, "Error: Scratchpad allocation failed. Requested %zu bytes.\n", numBytes );
-  } else {
-    output->verbose( CALL_INFO, 4, 99, "Allocated 0x%zu bytes in the scratchpad at address 0x%" PRIx64 "\n", numBytes, Addr );
-  }
-  return Addr;
-}
-
-void RevMem::ScratchpadFree( uint64_t Addr, size_t size ) {
-  if( !IsAddrInScratchpad( Addr ) ) {
-    output->fatal(
-      CALL_INFO,
-      -1,
-      "Error: Request to perform a free in the scratchpad at address 0x%" PRIx64
-      ", however, this address is not in the scratchpad.",
-      Addr
-    );
-  }
-  scratchpad->Free( Addr, size );
-  return;
-}
-
 SST::Forza::zopOpc RevMem::flagToZOP( uint32_t flags, size_t Len ) {
 
   static const std::tuple<RevCPU::RevFlag, size_t, Forza::zopOpc> table[] = {
@@ -1012,10 +951,10 @@ SST::Forza::zopOpc RevMem::memToZOP( uint32_t flags, size_t Len, bool Write ) {
     4,
     0,
     "WARNING: Failed to convert memory request to MZOP opcode; "
-    "flags=%d, len=%lu, write=%d\n",
+    "flags=%" PRIu32 ", len=%" PRIuPTR ", write=%" PRIu32 "\n",
     flags,
     Len,
-    Write
+    (uint32_t) Write
   );
   return SST::Forza::zopOpc::Z_NULL_OPC;
 }
@@ -1052,10 +991,9 @@ bool RevMem::ZOP_AMOMem( unsigned Hart, uint64_t Addr, size_t Len, void* Data, v
   std::vector<uint64_t> payload;
   payload.push_back( 0x00ull );  //  ACS: FIXME
   payload.push_back( Addr );     //  address
-  uint64_t data;
-  memcpy( &data, Data, sizeof( data ) );
-  payload.push_back( data );
-  zev->setPayload( payload );
+  payload.push_back( 0 );
+  memcpy( &payload.back(), Data, sizeof( uint64_t ) );
+  zev->setPayload( std::move( payload ) );
 
   // inject the new packet
   zNic->send( zev, SST::Forza::zopCompID::Z_RZA );
@@ -1332,6 +1270,7 @@ bool RevMem::__ZOP_FENCEHart( unsigned Hart ) {
 }
 
 bool RevMem::ZOP_ThreadMigrate( unsigned Hart, std::vector<uint64_t> Payload, unsigned Zone, unsigned Precinct ) {
+  // TODO: Investigate if migration is/can be stalled if outstanding zops for the thread
 #ifdef _REV_DEBUG_
   std::cout << "ZOP_THREADMIGRATE" << std::endl;
 #endif
@@ -1368,7 +1307,7 @@ bool RevMem::ZOP_ThreadMigrate( unsigned Hart, std::vector<uint64_t> Payload, un
   zev->setNB( 0 );
   zev->setID( Hart );
   zev->setCredit( 0 );
-  zev->setOpc( SST::Forza::zopOpc::Z_TMIG_SELECT );
+  zev->setOpc( SST::Forza::zopOpc::Z_TMIG_INTREGS );  // FIXME - depends on payload length
   zev->setAppID( 0 );
   zev->setDestZCID( (uint8_t) ( SST::Forza::zopCompID::Z_ZQM ) );
   zev->setDestPCID( (uint8_t) ( zNic->getPCID( Zone ) ) );  //FIXME
@@ -1378,7 +1317,7 @@ bool RevMem::ZOP_ThreadMigrate( unsigned Hart, std::vector<uint64_t> Payload, un
   zev->setSrcPCID( (uint8_t) ( zNic->getPCID( zNic->getZoneID() ) ) );
   zev->setSrcPrec( (uint8_t) ( zNic->getPrecinctID() ) );
 
-  zev->setPayload( Payload );
+  zev->setPayload( std::move( Payload ) );
 
   zNic->send( zev, SST::Forza::zopCompID::Z_ZQM, zNic->getPCID( Zone ), Precinct );
 
@@ -1406,7 +1345,13 @@ bool RevMem::isLocalAddr( uint64_t vAddr, unsigned& Zone, unsigned& Precinct ) {
     Zone     = TmpZone;
     Precinct = TmpPrecinct;
     output->verbose(
-      CALL_INFO, 7, 0, "[FORZA][ZAP] Triggering ThreadMigrate on vAddr=0x%" PRIx64 "to Zone=%d;Precinct=%d\n", vAddr, Zone, Precinct
+      CALL_INFO,
+      7,
+      0,
+      "[FORZA][ZAP] Triggering ThreadMigrate on vAddr=0x%" PRIx64 "to Zone=%" PRIu32 ";Precinct=%" PRIu32 "\n",
+      vAddr,
+      Zone,
+      Precinct
     );
     return false;
   }
@@ -1417,7 +1362,7 @@ bool RevMem::isLocalAddr( uint64_t vAddr, unsigned& Zone, unsigned& Precinct ) {
 // Handles an RZA response message
 // This specifically handles MZOP and HZOP responses
 bool RevMem::handleRZAResponse( Forza::zopEvent* zev ) {
-  output->verbose( CALL_INFO, 5, 0, "[FORZA][ZAP] Handling ZOP Response in RevMem; ID=%d\n", (uint32_t) ( zev->getID() ) );
+  output->verbose( CALL_INFO, 5, 0, "[FORZA][ZAP] Handling ZOP Response in RevMem; ID=%" PRIu16 "\n", zev->getID() );
   auto req = zev->getMemReq();
   req.MarkLoadComplete();
   return true;

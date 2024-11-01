@@ -187,8 +187,7 @@ static const FP special_fcvt_values[]{
 };
 // clang-format on
 
-#define OPER_PAIR( lambda ) \
-  { lambda, #lambda }
+#define OPER_PAIR( lambda ) { lambda, #lambda }
 
 template<typename FP, typename INT>
 const char fcvt_instruction[] = "";
@@ -224,7 +223,7 @@ void generate_fcvt_tests() {
 
   using INT_FUNC1 = std::pair<INT ( * )( FP ), const char*>[];
   for( auto oper_pair : INT_FUNC1{
-         {[]( volatile auto x ) { return to_int<INT>( x ); }, test_src},
+         { []( volatile auto x ) { return to_int<INT>( x ); }, test_src },
   } ) {
     for( auto x : special_fcvt_values<FP, INT> ) {
       generate_test( oper_pair, x );
@@ -283,12 +282,12 @@ void generate_tests() {
   strcat( test_src, R"( %0, %1, %2, %3 " : "=f"(res) : "f"(x), "f"(y), "f"(z) ); return res; } )" );
 
   for( auto oper_pair : FUNC3{
-         {[]( volatile auto x, volatile auto y, volatile auto z )
- -> std::common_type_t<decltype( x ), decltype( y ), decltype( z )> {
- using namespace std;
- using T = common_type_t<decltype( x ), decltype( y ), decltype( z )>;
- return revFMA( T( x ), T( y ), T( z ) );
- }, test_src},
+         { []( volatile auto x, volatile auto y, volatile auto z )
+             -> std::common_type_t<decltype( x ), decltype( y ), decltype( z )> {
+            using namespace std;
+            using T = common_type_t<decltype( x ), decltype( y ), decltype( z )>;
+            return revFMA( T( x ), T( y ), T( z ) );
+          }, test_src },
   } ) {
     for( auto x : special_fp_values<FP> ) {
       for( auto y : special_fp_values<FP> ) {

@@ -8,6 +8,13 @@
 // See LICENSE in the top level directory for licensing details
 //
 
+/**
+ * TOOD: Look at changing up the zop event to handle msg sends a little differently since
+ * those are sent to an 11b logical PE; in the zen, we're breaking that up to a 9b hart id
+ * and 2b ZCID; zopnet::send() handles steering those to the zqm (zqm holds mapping of
+ * logical_pe to phys zap/hart)
+ */
+
 #ifndef _SST_ZOPNET_H_
 #define _SST_ZOPNET_H_
 
@@ -88,14 +95,15 @@ namespace SST::Forza {
 // zopMsgT : ZOP Type
 // --------------------------------------------
 enum class zopMsgT : uint8_t {
+  // Commented items are currently unused/unsupported
   Z_MZOP   = 0b0000,  /// FORZA MZOP
   Z_HZOPAC = 0b0001,  /// FORZA HZOP ATOMICS/CUSTOM
-  Z_HZOPV  = 0b0010,  /// FORZA HZOP VECTOR
-  Z_RZOP   = 0b0011,  /// FORZA RZOP
+  //Z_HZOPV  = 0b0010,  /// FORZA HZOP VECTOR
+  //Z_RZOP   = 0b0011,  /// FORZA RZOP
   Z_MSG    = 0b0100,  /// FORZA MESSAGING
   Z_TMIG   = 0b0101,  /// FORZA THREAD MIGRATION
-  Z_TMGT   = 0b0110,  /// FORZA THREAD MANAGEMENT
-  Z_SYSC   = 0b0111,  /// FORZA SYSCALL
+  //Z_TMGT   = 0b0110,  /// FORZA THREAD MANAGEMENT
+  //Z_SYSC   = 0b0111,  /// FORZA SYSCALL
   Z_RESP   = 0b1000,  /// FORZA RESPONSE
   // -- 0b1001 - 0b1101 UNASSIGNED
   Z_FENCE  = 0b1110,  /// FORZE FENCE
@@ -265,17 +273,21 @@ enum class zopOpc : uint8_t {
   Z_MSG_SENDP         = 0b00000000,  /// zopOpc: MESSAGING Send with payload
   Z_MSG_SENDAS        = 0b00000001,  /// zopOpc: MESSAGING Send with address and size
   Z_MSG_MBXDONE       = 0b00000010,  /// zopOpc: MESSAGING Send mailbox done
-  Z_MSG_CREDIT        = 0b11110000,  /// zopOpc: MESSAGING Credit replenishment
-  Z_MSG_ZENSET        = 0b11110001,  /// zopOpc: MESSAGING ZEN Setup
-  Z_MSG_ZQMSET        = 0b11110100,  /// zopOpc: MESSAGING ZQM Setup
+  Z_MSG_CREDIT        = 0b11110000,  /// zopOpc: MESSAGING Credit replenishment -- DELETE
+  Z_MSG_ZENSET        = 0b11110001,  /// zopOpc: MESSAGING ZEN Setup -- DELETE
+  Z_MSG_ZQMSET        = 0b11110100,  /// zopOpc: MESSAGING ZQM Setup -- DELETE
   Z_MSG_ZQMHARTDONE   = 0b11110101,  /// zopOpc: MESSAGING ZQM Notify HART completion
-  Z_MSG_ACK           = 0b11110010,  /// zopOpc: MESSAGING Send Ack
+  Z_MSG_ZQMMBOXSET    = 0b11110110,  /// zopOpc: MESSAGING ZQM Setup Mailbox -- DELETE
+  Z_MSG_ACK           = 0b11110000,  /// zopOpc: MESSAGING Send Ack
+  Z_MSG_NACK          = 0b11110001,  /// zopOpc: MESSAGING Send Nack
   Z_MSG_EXCP          = 0b11110011,  /// zopOpc: MESSAGING Send exception
   Z_MSG_ZBAR          = 0b11111001,  /// zopOpc: MESSAGING Zone Barrier Request
 
   // -- THREAD MIGRATION --
-  Z_TMIG_SELECT       = 0b00000000,  /// zopOpc: THREAD MIGRATION ZQM choose HART
-  Z_TMIG_FIXED        = 0b00000001,  /// zopOpc: THREAD MIGRATION Fixed HART choice
+  Z_TMIG_INTREGS      = 0b00000000,  /// zopOpc: THREAD MIGRATION migrate state + int regs
+  Z_TMIG_FPREGS       = 0b00000001,  /// zopOpc: THREAD MIGRATION migrate state + int regs + fp regs
+  Z_TMIG_SPAWN        = 0b00000010,  /// zopOpc: THREAD MIGRATION Spawned thread
+  Z_TMIG_REQUEST      = 0b00000100,  /// zopOpc: THREAD MIGRATION ZAP requesting a thread
 
   // -- RZA RESPONSE --
   Z_RESP_LR           = 0b00000000,  /// zopOpc: RZA RESPONSE Load response
@@ -323,7 +335,8 @@ enum class zopCompID : uint8_t {
   Z_RZA      = 0b00001000,  /// zopCompID: RZA
   Z_ZQM      = 0b00001010,  /// zopCompID: ZQM
   Z_ZEN      = 0b00001100,  /// zopCompID: ZEN
-  Z_PREC_ZIP = 0b00001111,  /// zopCompID: PRECINCT ZIP
+  Z_PREC_ZIP = 0b00001110,  /// zopCompID: PRECINCT ZIP - update doc?
+  Z_UNK_COMP = 0b00001111,  /// zopCompID:: Z_UNK_COMP - mostly needed for initialization
 };
 
 // --------------------------------------------
@@ -446,12 +459,7 @@ public:
   void setTarget( uint64_t* T ) { Target = T; }
 
   /// zopEvent: set the packet payload.  NOTE: this is a destructive operation, but it does reset the size
-  void setPacket( const std::vector<uint64_t> P ) {
-    Packet.clear();
-    for( auto i : P ) {
-      Packet.push_back( i );
-    }
-  }
+  void setPacket( const std::vector<uint64_t> P ) { Packet = std::move( P ); }
 
   /// zopEvent: set the packet packet payload w/o the header. NOT a destructive operation
   void setPayload( const std::vector<uint64_t> P ) {
@@ -470,10 +478,10 @@ public:
   void setNB( uint8_t N ) { NB = N; }
 
   /// zopEvent: set the packet ID
-  void setID( uint8_t I ) { ID = I; }
+  void setID( uint16_t I ) { ID = I; }
 
   /// zopEvent: set the credit
-  void setCredit( uint8_t C ) { Credit = C; }
+  void setCredit( uint8_t C ) { Credit = C; }  // CURRENTLY USED AS MBOX_ID for messages/(n)acks
 
   /// zopEvent: set the opcode
   void setOpc( zopOpc O ) { Opc = O; }
@@ -482,18 +490,22 @@ public:
   void setAppID( uint8_t A ) { AppID = A & Z_MASK_APPID; }
 
   /// zopEvent: set the packet reserved
-  void setPktRes( uint32_t X ) { PktRes = X; }
+  void setPktRes( uint32_t X ) { PktRes = X; }  // CURRENTLY USED AS RETRY NUMBER for messages/(n)acks
 
   /// zopEvent: set the destination hart
   void setDestHart( uint16_t H ) { DestHart = H; }
 
   /// zopEvent: set the destination ZCID
-  void setDestZCID( uint8_t Z ) { DestZCID = Z; }
-
-  void setDestZCID( zopCompID Z ) { DestZCID = static_cast<uint8_t>( Z ); }
+  template<typename T>
+  void setDestZCID( T Z ) {
+    DestZCID = static_cast<uint8_t>( Z );
+  }
 
   /// zopEvent: set the destination PCID
-  void setDestPCID( uint8_t P ) { DestPCID = P; }
+  template<typename T>
+  void setDestPCID( T P ) {
+    DestPCID = static_cast<uint8_t>( P );
+  }
 
   /// zopEvent: set the destination precinct
   void setDestPrec( uint16_t P ) { DestPrec = P; }
@@ -502,12 +514,16 @@ public:
   void setSrcHart( uint16_t H ) { SrcHart = H; }
 
   /// zopEvent: set the src ZCID
-  void setSrcZCID( uint8_t Z ) { SrcZCID = Z; }
-
-  void setSrcZCID( zopCompID Z ) { SrcZCID = static_cast<uint8_t>( Z ); }
+  template<typename T>
+  void setSrcZCID( T Z ) {
+    SrcZCID = static_cast<uint8_t>( Z );
+  }
 
   /// zopEvent: set the src PCID
-  void setSrcPCID( uint8_t P ) { SrcPCID = P; }
+  template<typename T>
+  void setSrcPCID( T P ) {
+    SrcPCID = static_cast<uint8_t>( P );
+  }
 
   /// zopEvent: set the src precinct
   void setSrcPrec( uint16_t P ) { SrcPrec = P; }
@@ -574,10 +590,10 @@ public:
   uint8_t getLength() { return Length; }
 
   /// zopEvent: get the packet ID
-  uint8_t getID() { return ID; }
+  uint16_t getID() { return ID; }
 
   /// zopEvent: get the credit
-  uint8_t getCredit() { return Credit; }
+  uint8_t getCredit() { return Credit; }  // CURRENTLY USED AS MBOX_ID for messages/(n)acks
 
   /// zopEvent: get the opcode
   zopOpc getOpc() { return Opc; }
@@ -586,7 +602,7 @@ public:
   uint8_t getAppID() { return AppID; }
 
   /// zopEvent: get the packet reserved field
-  uint32_t getPktRes() { return PktRes; }
+  uint32_t getPktRes() { return PktRes; }  // CURRENTLY USED AS RETRY NUMBER for messages/(n)acks
 
   /// zopEvent: determine whether the fence has been encountered
   bool getFence() { return FenceEncountered; }
@@ -613,7 +629,7 @@ public:
 
     Opc      = (zopOpc) ( ( Packet[Z_FLIT_OPC] >> Z_SHIFT_OPC ) & Z_MASK_OPC );
     Credit   = (uint8_t) ( ( Packet[Z_FLIT_CREDIT] >> Z_SHIFT_CREDIT ) & Z_MASK_CREDIT );
-    ID       = (uint8_t) ( ( Packet[Z_FLIT_MSGID] >> Z_SHIFT_MSGID ) & Z_MASK_MSGID );
+    ID       = (uint16_t) ( ( Packet[Z_FLIT_MSGID] >> Z_SHIFT_MSGID ) & Z_MASK_MSGID );
     Length   = (uint8_t) ( ( Packet[Z_FLIT_FLITLEN] >> Z_SHIFT_FLITLEN ) & Z_MASK_FLITLEN );
     NB       = (uint8_t) ( ( Packet[Z_FLIT_BLOCK] >> Z_SHIFT_BLOCK ) & Z_MASK_BLOCK );
     Type     = (zopMsgT) ( ( Packet[Z_FLIT_TYPE] >> Z_SHIFT_TYPE ) & Z_MASK_TYPE );
@@ -652,11 +668,14 @@ public:
   }
 
   std::string getSrcString() {
-    std::string str = "Src[hart:zcid:pcid:type]=[";
+    std::stringstream opc_ss;
+    opc_ss << "0x" << std::hex << (uint16_t) Opc;
+    std::string str = "Src[hart:zcid:pcid:type:opc]=[";
     str += std::to_string( SrcHart ) + ":";
     str += ZCIDToStr( SrcZCID ) + ":";
     str += PCIDToStr( SrcPCID ) + ":";
-    str += msgTToStr( Type ) + "]";
+    str += msgTToStr( Type ) + ":";
+    str += opc_ss.str() + "]";
     return str;
   }
 
@@ -737,13 +756,14 @@ public:
     switch( T ) {
     case zopMsgT::Z_MZOP: return "MZOP"; break;
     case zopMsgT::Z_HZOPAC: return "HZOPAC"; break;
-    case zopMsgT::Z_HZOPV: return "HZOPV"; break;
-    case zopMsgT::Z_RZOP: return "RZOP"; break;
+    //case zopMsgT::Z_HZOPV: return "HZOPV"; break;
+    //case zopMsgT::Z_RZOP: return "RZOP"; break;
     case zopMsgT::Z_MSG: return "MSG"; break;
     case zopMsgT::Z_TMIG: return "TMIG"; break;
-    case zopMsgT::Z_TMGT: return "TMGT"; break;
-    case zopMsgT::Z_SYSC: return "SYSC"; break;
+    //case zopMsgT::Z_TMGT: return "TMGT"; break;
+    //case zopMsgT::Z_SYSC: return "SYSC"; break;
     case zopMsgT::Z_RESP: return "RESP"; break;
+    case zopMsgT::Z_FENCE: return "FENCE"; break;
     case zopMsgT::Z_EXCP: return "EXCP"; break;
     default: return "UNKNOWN"; break;
     }
@@ -765,7 +785,7 @@ private:
   zopMsgT  Type;    ///< zopEvent: message type
   uint8_t  NB;      ///< zopEvent: blocking/non-blocking
   uint8_t  Length;  ///< zopEvent: packet length (in flits)
-  uint8_t  ID;      ///< zopEvent: message ID
+  uint16_t ID;      ///< zopEvent: message ID
   uint8_t  Credit;  ///< zopEvent: credit piggyback
   zopOpc   Opc;     ///< zopEvent: opcode
   uint8_t  AppID;   ///< zopEvent: application source
@@ -926,12 +946,12 @@ public:
     switch( T ) {
     case zopMsgT::Z_MZOP: return "MZOP"; break;
     case zopMsgT::Z_HZOPAC: return "HZOPAC"; break;
-    case zopMsgT::Z_HZOPV: return "HZOPV"; break;
-    case zopMsgT::Z_RZOP: return "RZOP"; break;
+    //case zopMsgT::Z_HZOPV: return "HZOPV"; break;
+    //case zopMsgT::Z_RZOP: return "RZOP"; break;
     case zopMsgT::Z_MSG: return "MSG"; break;
     case zopMsgT::Z_TMIG: return "TMIG"; break;
-    case zopMsgT::Z_TMGT: return "TMGT"; break;
-    case zopMsgT::Z_SYSC: return "SYSC"; break;
+    //case zopMsgT::Z_TMGT: return "TMGT"; break;
+    //case zopMsgT::Z_SYSC: return "SYSC"; break;
     case zopMsgT::Z_RESP: return "RESP"; break;
     case zopMsgT::Z_EXCP: return "EXCP"; break;
     default: return "UNK"; break;

@@ -40,6 +40,7 @@
 #include "RevThread.h"
 
 // -- FORZA Headers
+#include "RingNet.h"
 #include "ZOPNET.h"
 
 namespace SST::RevCPU {
@@ -146,6 +147,7 @@ public:
     { "rza_ls",  "[FORZA] RZA Load/Store Pipeline", "SST::RevCPU::RZALSCoProc" },
     { "rza_amo", "[FORZA] RZA AMO Pipeline", "SST::RevCPU::RZAAMOCoProc" },
     { "zone_nic","[FORZA] Zone NIC", "SST::Forza::zopNIC" },
+    { "ring_nic", "[FORZA] Zone Ring Network", "SST::Forza::RingNetNIC" }
     )
 
   // -------------------------------------------------------
@@ -306,10 +308,11 @@ private:
   unsigned Precinct{};  ///< RevCPU: FORZA precinct ID
   unsigned Zone{};      ///< RevCPU: FORZA zone ID
 
-  Forza::zopAPI*   zNic{};           ///< RevCPU: FORZA ZOP NIC
-  Forza::zopMsgID* zNicMsgIds{};     ///< RevCPU: FORZA ZOP NIC Message ID handler
-  TimeConverter*   timeConverter{};  ///< RevCPU: SST time conversion handler
-  SST::Output      output{};         ///< RevCPU: SST output handler
+  Forza::zopAPI*     zNic{};           ///< RevCPU: FORZA ZOP NIC
+  Forza::zopMsgID*   zNicMsgIds{};     ///< RevCPU: FORZA ZOP NIC Message ID handler
+  Forza::RingNetAPI* zoneRing{};       ///< RevCPU: FORZA Zone Ring network
+  TimeConverter*     timeConverter{};  ///< RevCPU: SST time conversion handler
+  SST::Output        output{};         ///< RevCPU: SST output handler
 
   nicAPI*                     Nic{};  ///< RevCPU: Network interface controller
   std::unique_ptr<RevMemCtrl> Ctrl;   ///< RevCPU: Rev memory controller
@@ -323,8 +326,8 @@ private:
 
   std::queue<std::pair<uint32_t, char*>> ZeroRqst{};   ///< RevCPU: tracks incoming zero address put requests; pair<Size, Data>
   std::list<std::pair<uint8_t, int>>     TrackTags{};  ///< RevCPU: tracks the outgoing messages; pair<Tag, Dest>
-  std::vector<std::tuple<uint8_t, uint64_t, uint32_t>>
-    TrackGets{};  ///< RevCPU: tracks the outstanding get messages; tuple<Tag, Addr, Sz>
+  std::vector<std::tuple<uint8_t, uint64_t, uint32_t>> TrackGets{
+  };  ///< RevCPU: tracks the outstanding get messages; tuple<Tag, Addr, Sz>
   std::vector<std::tuple<uint8_t, uint32_t, unsigned, int, uint64_t>> ReadQueue{};  ///< RevCPU: outgoing memory read queue
   ///<         - Tag
   ///<         - Size
@@ -421,14 +424,20 @@ private:
   /// RevCPU: Handle FORZA MZOP requests
   void handleZOPMZOP( Forza::zopEvent* zev );
 
-  /// RevCPU: Handle FORZA Thread Migration
+  /// RevCPU: Handle FORZA Thread Migration with FP regs
+  void handleZOPThreadMigrateIntRegs( Forza::zopEvent* zev );
+
+  /// RevCPU: Handle FORZA Thread Migration with a spawned thread
+  void handleZOPThreadMigrateSpawn( Forza::zopEvent* zev );
+
+  /// RevCPU: Handle FORZA Thread Migration (Top level)
   void handleZOPThreadMigrate( Forza::zopEvent* zev );
 
-  /// RevCPU: Handle FORZA scratchpad request responses
-  void MarkLoadCompleteDummy( const MemReq& req );
+  /// RevCPU: Handle Zone Ring Message
+  void handleRingMsg( SST::Event* event );
 
-  /// RevCPU: Inform the ZQM that a thread is done
-  void sendZQMThreadComplete( uint32_t ThreadID, uint32_t HartID );
+  /// RevCPU: Dummy mark load complete function
+  void MarkLoadCompleteDummy( const MemReq& req );
 
   /// RevCPU: Creates a unique tag for this message
   uint8_t createTag();

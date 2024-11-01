@@ -45,12 +45,12 @@ zen.addParams({
 # --------------------------
 # zqm = sst.Component("zqm0", "forzazqm.ZQM")
 # zqm.addParams({
-#  "verbose": 7,              # Verbosity
+#  "verbose": 9,              # Verbosity
 #  "clockFreq": "1.0GHz",     # Clock Frequency
 #  "precinctId": 0,           # precinct Id
 #  "zoneId": 0,               # zone Id
 #  "numHarts": 1,             # number of harts
-#  "numCores": 1,             # number of cores
+#  "numCores": 2,             # number of cores
 # })
 
 # --------------------------
@@ -206,7 +206,7 @@ memory.addParams({
 # SETUP THE NOC
 # --------------------------
 nic_params = {
-  "verbose": 9,
+  "verbose": 5,
   "clock": "1GHz",
   "req_per_cycle": 1
 }
@@ -219,7 +219,7 @@ rtr_params = {
   "xbar_bw": "100GB/s",
   "flit_size": "8B",
   # "num_ports": "7",
-  "num_ports": "4",
+  "num_ports": "5",
   "id": 0
 }
 
@@ -292,6 +292,6 @@ zen_link0 = sst.Link("zen_link")
 zen_link0.connect((zen_iface, "rtr_port", "1us"), (router, "port3", "1us"))
 
 # zqm_link0 = sst.Link("zqm_link")
-# zqm_link0.connect((zqm_iface, "rtr_port", "1us"), (router, "port6", "1us"))
+# zqm_link0.connect((zqm_iface, "rtr_port", "1us"), (router, "port4", "1us"))
 
 # EOF
