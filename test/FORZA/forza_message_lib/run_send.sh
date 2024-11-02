@@ -1,5 +1,5 @@
 #!/bin/bash
-11;rgb:0000/0000/0000
+
 #Build the test
 make clean && make
 
