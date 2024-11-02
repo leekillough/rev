@@ -4,7 +4,7 @@
 make clean && make
 
 # Check that the exec was built...
-if [ -f actor_main_concurrent.exe ]; then
+if [[ -f actor_main_concurrent.exe ]]; then
   #sst --add-lib-path=../../build/src/ ./rev_forza_send.py
   sst --model-options="--program=actor_main_concurrent.exe" ./rev-onezone.py
 else

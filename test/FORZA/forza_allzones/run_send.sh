@@ -13,7 +13,7 @@ make clean && make
 
 
 # Check that the exec was built...
-if [ -f forza_allzones.exe ]; then
+if [[ -f forza_allzones.exe ]]; then
   sst --add-lib-path=../../build/src/ ../forza-test-config-ring.py -- -a 32 -z 4 -o 8 -p 1 -r ./forza_allzones.exe -s 1,1:1
 else
   echo "Test FORZA forza_send.c: forza_send.exe not Found - likely build failed"

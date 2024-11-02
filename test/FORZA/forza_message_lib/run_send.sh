@@ -4,7 +4,7 @@
 make clean && make
 
 # Check that the exec was built...
-if [ -f forza_send_test.exe ]; then
+if [[ -f forza_send_test.exe ]]; then
   #sst --add-lib-path=../../build/src/ ./rev_forza_send.py
   sst --model-options="--program=forza_send_test.exe --numHarts=16" ./rev-onezone.py
 else

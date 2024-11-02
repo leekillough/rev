@@ -4,7 +4,7 @@
 make clean && make
 
 # Check that the exec was built...
-if [ -f actor_4zap.exe ]; then
+if [[ -f actor_4zap.exe ]]; then
   #sst --add-lib-path=../../build/src/ ./rev_forza_send.py
 
   #sst --model-options="--program=actor_conc_4zap.exe --numZaps=4" ./rev-4zap-onezone.py
