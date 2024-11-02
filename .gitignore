@@ -10,3 +10,5 @@
 .gdb_history
 *.out
 *.asm
+forza-elts/
+

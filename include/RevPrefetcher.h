@@ -57,7 +57,7 @@ private:
   RevFeature*                                                feature{};   ///< RevFeature object
   unsigned                                                   depth{};     ///< Depth of each prefetcher stream
   std::vector<uint64_t>                                      baseAddr{};  ///< Vector of base addresses for each stream
-  std::vector<std::vector<uint32_t>>                         iStack{};    ///< Vector of instruction vectors
+  std::vector<std::vector<uint64_t>>                         iStack{};    ///< Vector of instruction vectors
   std::shared_ptr<std::unordered_multimap<uint64_t, MemReq>> LSQueue{};
   std::function<void( const MemReq& )>                       MarkLoadAsComplete{};
   std::vector<MemReq>                                        OutstandingFetchQ{};

@@ -49,6 +49,9 @@
 #include "RevRand.h"
 #include "RevThread.h"
 #include "RevTracer.h"
+
+#include "RingNet.h"
+
 #define SYSCALL_TYPES_ONLY
 #include "../common/syscalls/syscalls.h"
 #include "RevCommon.h"
@@ -196,6 +199,9 @@ public:
   ///< RevCore: Set the ZOP NIC msg id generator
   void setZNicMsgIds( Forza::zopMsgID* Z ) { zNicMsgIds = Z; }
 
+  ///< RevCore: Set the zone ring handler
+  void setZRing( Forza::RingNetAPI* Z ) { zoneRing = Z; }
+
   ///< RevCore: Add a co-processor to the RevCore
   void SetCoProc( RevCoProc* coproc );
 
@@ -296,6 +302,9 @@ public:
   ///< RevCore: Returns true if there are any IdleHarts
   bool HasIdleHart() const { return IdleHarts.any(); }
 
+  ///< RevCore: FORZA - Request a thread from the ZQM if HART available
+  void ReqThreadFromZqm();
+
   ///< RevCore: Returns the number of cycles executed so far
   uint64_t GetCycles() const { return cycles; }
 
@@ -318,13 +327,15 @@ private:
   std::bitset<_MAX_HARTS_>              HartsClearToDecode{};   ///< RevCore: Thread is clear to start (proceed with decode)
   std::bitset<_MAX_HARTS_>              HartsClearToExecute{};  ///< RevCore: Thread is clear to execute (no register dependencides)
 
-  Forza::zopAPI*   zNic;        ///< RevCore: ZOPNic object
-  Forza::zopMsgID* zNicMsgIds;  ///< RevCore: FORZA ZOP NIC Message ID handler
-  unsigned         numHarts{};  ///< RevCore: Number of Harts for this core
-  RevOpts*         opts{};      ///< RevCore: options object
-  RevMem*          mem{};       ///< RevCore: memory object
-  RevCoProc*       coProc{};    ///< RevCore: attached co-processor
-  RevLoader*       loader{};    ///< RevCore: loader object
+  Forza::zopAPI*     zNic{};        ///< RevCore: ZOPNic object
+  Forza::zopMsgID*   zNicMsgIds{};  ///< RevCore: FORZA ZOP NIC Message ID handler
+  Forza::RingNetAPI* zoneRing{};    ///< RevCPU: FORZA Zone Ring network
+  bool               ThreadReqd{};  ///< RevCore: FORZA Thread has been requested from ZQM
+  unsigned           numHarts{};    ///< RevCore: Number of Harts for this core
+  RevOpts*           opts{};        ///< RevCore: options object
+  RevMem*            mem{};         ///< RevCore: memory object
+  RevCoProc*         coProc{};      ///< RevCore: attached co-processor
+  RevLoader*         loader{};      ///< RevCore: loader object
 
   // Function pointer to the GetNewThreadID function in RevCPU (monotonically increasing thread ID counter)
   std::function<uint32_t()> const GetNewThreadID;
@@ -705,12 +716,12 @@ private:
   // clang-format on
 
   /// FORZA
-  EcallStatus ECALL_forza_scratchpad_alloc();        // 4000, forza_scratchpad_alloc(size_t size);
-  EcallStatus ECALL_forza_scratchpad_free();         // 4001, forza_scratchpad_free(size_t size);
+  EcallStatus ECALL_forza_read_zen_status();         // 4000, forza_read_zen_status();
+  EcallStatus ECALL_forza_read_zqm_status();         // 4001, forza_read_zqm_status();
   EcallStatus ECALL_forza_get_hart_id();             // 4002, forza_get_hart_id();
-  EcallStatus ECALL_forza_send();                    // 4003, forza_send();
-  EcallStatus ECALL_forza_zen_credit_release();      // 4004, forza_popq();
-  EcallStatus ECALL_forza_zen_setup();               // 4005, forza_zen_setup();
+  EcallStatus ECALL_forza_send_word();               // 4003, forza_send_word();
+  EcallStatus ECALL_forza_receive_word();            // 4004, forza_receive_word();
+  EcallStatus ECALL_forza_zen_get_cntrs();           // 4005, forza_zen_get_cntrs();
   EcallStatus ECALL_forza_zqm_setup();               // 4006, forza_zqm_setup();
   EcallStatus ECALL_forza_get_harts_per_zap();       // 4007, forza_get_harts_per_zap
   EcallStatus ECALL_forza_get_zaps_per_zone();       // 4008, forza_get_zaps_per_zone();
@@ -912,6 +923,9 @@ private:
   void DependencyClear( unsigned HartID, T RegNum, RevRegClass regClass ) {
     DependencySet( HartID, RegNum, regClass, false );
   }
+
+public:
+  void handleRingReadData( Forza::ringEvent* ring_ev );
 
 };  // class RevCore
 

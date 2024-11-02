@@ -36,8 +36,8 @@ bool RevFeature::ParseMachineModel() {
     return false;
   mac += 4;
 
-  output->verbose( CALL_INFO, 6, 0, "Core %u ; Setting XLEN to %u\n", ProcID, xlen );
-  output->verbose( CALL_INFO, 6, 0, "Core %u ; Architecture string=%s\n", ProcID, mac );
+  output->verbose( CALL_INFO, 6, 0, "Core %" PRIu32 " ; Setting XLEN to %" PRIu32 "\n", ProcID, xlen );
+  output->verbose( CALL_INFO, 6, 0, "Core %" PRIu32 " ; Architecture string=%s\n", ProcID, mac );
 
   // clang-format off
   ///< List of architecture extensions. These must listed in canonical order
