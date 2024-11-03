@@ -107,24 +107,9 @@
     asm volatile( " csrrw zero, " str( CSR ) ", %1" : "r"( RS1 ) ); \
   } while( 0 )
 
-/*
-CSRRS
-CSRRC
-CSRRWI
-CSRRSI
-CSRRCI
-*/
+// CSRRS CSRRC CSRRWI CSRRSI CSRRCI
 
-union reg_vstart_t {
-  uint64_t v = 0x0UL;
-
-  struct {
-    uint64_t eindex : 7;  // [6:0] VLEN=128, 2**7=128
-  } f;
-
-  void dump() { printf( "vstart (0x%016lx) eindex=0x%x\n", v, f.eindex ); }
-};
-
+// CSR Types
 union reg_vtype_t {
   uint64_t v = 0x0UL;
 
@@ -164,3 +149,30 @@ union reg_vl_t {
 // // Vector CSR URO
 // #define csr_vl      0xc20
 // #define csr_vlenb   0xc22
+
+// Vector Load/Store (VLE16.v/VSE16.v ...)
+#define VL( VTYPE, SRC, RS1 )                                                  \
+  do {                                                                         \
+    asm volatile( " vs" str( VTYPE ) " " str( SRC ) ", (%0)" : : "r"( RS1 ) ); \
+  } while( 0 )
+
+#define VS( VTYPE, SUFFIX, SRC, RS1 )                                          \
+  do {                                                                         \
+    asm volatile( " vs" str( VTYPE ) " " str( SRC ) ", (%0)" : : "r"( RS1 ) ); \
+  } while( 0 )
+
+// Vector Integer operations
+#define VADD( SUFFIX, VD, VS2, VS1 )                                                    \
+  do {                                                                                  \
+    asm volatile( " vadd" str( SUFFIX ) " " str( VD ) "," str( VS2 ) ", " str( VS1 ) ); \
+  } while( 0 )
+
+union reg_vstart_t {
+  uint64_t v = 0x0UL;
+
+  struct {
+    uint64_t eindex : 7;  // [6:0] VLEN=128, 2**7=128
+  } f;
+
+  void dump() { printf( "vstart (0x%016lx) eindex=0x%x\n", v, f.eindex ); }
+};
