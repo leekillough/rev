@@ -97,13 +97,13 @@ void check_lw_sign_ext() {
   volatile uint64_t  checkneg = 0xffffffffbadbeef0;
   TRACE_PUSH_ON
 lw_neq:
-  asm volatile( "ld   t3, 0(%1)   \n\t"     // t3 <- badneg
-                "ld   t4, 0(%2)   \n\t"     // t4 <- checkneg
-                "sd   t3, 4(%0)   \n\t"     // store badneg to upper half of mem[0]
-                "lw   t3, 0(%0)   \n\t"     // load mem[0]
-                "beq  t3, t4, _okneg \n\t"  // check
-                ".word 0x0 \n\t"            // fail
-                "_okneg: \n\t"
+  asm volatile( "ld   t3, 0(%1)   \n\t"  // t3 <- badneg
+                "ld   t4, 0(%2)   \n\t"  // t4 <- checkneg
+                "sd   t3, 4(%0)   \n\t"  // store badneg to upper half of mem[0]
+                "lw   t3, 0(%0)   \n\t"  // load mem[0]
+                "beq  t3, t4, 0f  \n\t"  // check
+                ".word 0x0 \n\t"         // fail
+                "0: \n\t"
                 "sd   t3, 0(%0)  \n\t"  // store back into mem
                 : "=r"( p )
                 : "r"( &badneg ), "r"( &checkneg )
@@ -116,13 +116,13 @@ lw_neq:
   mem[0]                     = 0;
   mem[1]                     = 0;
 lw_pos:
-  asm volatile( "ld   t3, 0(%1)   \n\t"     // t3 <- badpos
-                "ld   t4, 0(%2)   \n\t"     // t4 <- checkpos
-                "sd   t3, 4(%0)   \n\t"     // store badpos to upper half of mem[0]
-                "lw   t3, 0(%0)   \n\t"     // load mem[0]
-                "beq  t3, t4, _okpos \n\t"  // check
-                ".word 0x0 \n\t"            // fail
-                "_okpos: \n\t"
+  asm volatile( "ld   t3, 0(%1)   \n\t"  // t3 <- badpos
+                "ld   t4, 0(%2)   \n\t"  // t4 <- checkpos
+                "sd   t3, 4(%0)   \n\t"  // store badpos to upper half of mem[0]
+                "lw   t3, 0(%0)   \n\t"  // load mem[0]
+                "beq  t3, t4, 0f \n\t"   // check
+                ".word 0x0 \n\t"         // fail
+                "0: \n\t"
                 "sd   t3, 0(%0)  \n\t"  // store back into mem
                 : "=r"( p )
                 : "r"( &badpos ), "r"( &checkpos )
