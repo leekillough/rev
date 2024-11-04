@@ -1,35 +1,29 @@
 #!/bin/bash
 
+set -e
+
 #Build the test
 make clean && make
 
-error=0
-
 # Run all tests and check for completion
-echo "$(date)" > test_all.out
-echo ./run_setup.sh >> test_all.out
-./run_setup.sh | grep -a "Simulation is complete" >> test_all.out
-if [ $? -ne 0 ]; then error=1; fi
+exec > test_all.out
 
-echo ./run_send.sh >> test_all.out
-./run_send.sh | grep -a "Simulation is complete" >> test_all.out
-if [ $? -ne 0 ]; then error=1; fi
+date
 
-echo ./run_send_debug.sh >> test_all.out
-./run_send_debug.sh | grep -a "Simulation is complete" >> test_all.out
-if [ $? -ne 0 ]; then error=1; fi
+echo ./run_setup.sh
+./run_setup.sh | grep -a "Simulation is complete"
 
-echo ./run_thread.sh >> test_all.out
-./run_thread.sh | grep -a "Simulation is complete" >> test_all.out
-if [ $? -ne 0 ]; then error=1; fi
+echo ./run_send.sh
+./run_send.sh | grep -a "Simulation is complete"
 
-echo ./run_actor.sh >> test_all.out
-./run_actor.sh | grep -a "Simulation is complete" >> test_all.out
-if [ $? -ne 0 ]; then error=1; fi
+echo ./run_send_debug.sh
+./run_send_debug.sh | grep -a "Simulation is complete"
 
-echo ./run_actor_concurrent.sh >> test_all.out
-./run_actor_concurrent.sh | grep -a "Simulation is complete" >> test_all.out
-if [ $? -ne 0 ]; then error=1; fi
+echo ./run_thread.sh
+./run_thread.sh | grep -a "Simulation is complete"
 
-echo $error
-exit $error
+echo ./run_actor.sh
+./run_actor.sh | grep -a "Simulation is complete"
+
+echo ./run_actor_concurrent.sh
+./run_actor_concurrent.sh | grep -a "Simulation is complete"

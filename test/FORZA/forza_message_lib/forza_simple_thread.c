@@ -32,65 +32,62 @@ static int forza_thread_join( forza_thread_t tid ) {
 
 void* forza_thread1( void* FArgs ) {
   ForzaThreadArgs* args_recv = (ForzaThreadArgs*) FArgs;
-	uint64_t tid = rev_gettid() % 10UL;
-	for (int i=0; i<I; i++) {
-		char msg[20] = "\nTIDX: II: thread1\n";
-		msg[4] = '0' + tid;
-		msg[8] = '0' + i;
-  	rev_write( STDOUT_FILENO, msg, sizeof( msg ) );
-	}
+  uint64_t         tid       = rev_gettid() % 10UL;
+  for( int i = 0; i < I; i++ ) {
+    char msg[20] = "\nTIDX: II: thread1\n";
+    msg[4]       = '0' + tid;
+    msg[8]       = '0' + i;
+    rev_write( STDOUT_FILENO, msg, sizeof( msg ) );
+  }
   assert( 13 == args_recv->ActorID );
   return NULL;
 }
 
 void* forza_thread2( void* FArgs ) {
   ForzaThreadArgs* args_recv = (ForzaThreadArgs*) FArgs;
-	uint64_t tid = rev_gettid() % 10UL;
-	for (int i=0; i<I; i++) {
-  	char msg[20] = "\nTIDX: II: thread2\n";
-		msg[4] = '0' + tid;
-		msg[8] = '0' + i;
-  	rev_write( STDOUT_FILENO, msg, sizeof( msg ) );
+  uint64_t         tid       = rev_gettid() % 10UL;
+  for( int i = 0; i < I; i++ ) {
+    char msg[20] = "\nTIDX: II: thread2\n";
+    msg[4]       = '0' + tid;
+    msg[8]       = '0' + i;
+    rev_write( STDOUT_FILENO, msg, sizeof( msg ) );
   }
-	assert( 14 == args_recv->ActorID );
+  assert( 14 == args_recv->ActorID );
   return NULL;
 }
 
-
 int main( int argc, char** argv ) {
-  
-	uint64_t tid = rev_gettid() % 10UL;
-	char msg1[20] = "\nTIDX: Main start\n";
-	msg1[4] = '0' + tid;
+
+  uint64_t tid      = rev_gettid() % 10UL;
+  char     msg1[20] = "\nTIDX: Main start\n";
+  msg1[4]           = '0' + tid;
   rev_write( STDOUT_FILENO, msg1, sizeof( msg1 ) );
 
   ForzaThreadArgs FArgs[2];
 #if 1
-	FArgs[0].ThreadType = 0;
+  FArgs[0].ThreadType = 0;
   FArgs[0].ActorID    = 13;
-	forza_thread_create(
-    &actor_threads[0], (void*) forza_thread1, (void*) &(FArgs[0]) );
-#endif 
+  forza_thread_create( &actor_threads[0], (void*) forza_thread1, (void*) &( FArgs[0] ) );
+#endif
 #if 1
-	FArgs[1].ThreadType = 0;
-	FArgs[1].ActorID = 14;
-	forza_thread_create(
-    &actor_threads[1], (void*) forza_thread2, (void*) &(FArgs[1]) );
+  FArgs[1].ThreadType = 0;
+  FArgs[1].ActorID    = 14;
+  forza_thread_create( &actor_threads[1], (void*) forza_thread2, (void*) &( FArgs[1] ) );
 #endif
 
-	char msg2[30] = "\nTIDX: After thread create\n";
-  msg2[4] = '0' + tid;
-	rev_write( STDOUT_FILENO, msg2, sizeof( msg2 ) );
+  char msg2[30] = "\nTIDX: After thread create\n";
+  msg2[4]       = '0' + tid;
+  rev_write( STDOUT_FILENO, msg2, sizeof( msg2 ) );
 
 #if 1
   forza_thread_join( actor_threads[0] );
 #endif
 #if 1
-	forza_thread_join( actor_threads[1] );
+  forza_thread_join( actor_threads[1] );
 #endif
 
-	char msg3[20] = "\nTIDX: After join\n";
-  msg3[4] = '0' + tid;
-	rev_write( STDOUT_FILENO, msg3, sizeof( msg3 ) );
+  char msg3[20] = "\nTIDX: After join\n";
+  msg3[4]       = '0' + tid;
+  rev_write( STDOUT_FILENO, msg3, sizeof( msg3 ) );
   return 0;
 }
