@@ -1,3 +1,4 @@
+# ---------------------------------------------------------------------------------------------------------------------------------
 
 # Macro to build and configure tests in rev based on the labels the test was specified with
 # Config vals is a list of options to be passed to the forza config script
@@ -180,6 +181,21 @@ macro(add_forza_test test_name test_dir timeout labels config_vals)
   endif()
 endmacro()
 
+# if(NOT CTEST_FORZA_TESTS)
+#   set_tests_properties (NOC_DISCOVERY PROPERTIES DISABLED True)
+#   message(NOTICE "   * Tests requiring FORZA are disabled (ie. -DCTEST_FORZA_REQUIRED_TESTS=OFF)
+#     - If you'd like to still run these tests run: `ctest -L forza_required`")
+#   message(VERBOSE "NOC_DISCOVERY - Disabled")
+# endif()
+
+# remove scratchpad calls, just do registration (how to verify? - probably just read it back)
+# TODO: Need to convert to use add_forza_test
+# add_rev_test(forza_zqm_mbox_setup forza_zqm_mbox_setup 30 "all;memh;rv64;loader;forza" SCRIPT "run_zqm_mbox_setup.sh")
+
+# New actor test
+# TODO: Need to convert to use add_forza_test
+# add_rev_test(forza_actor forza_message_lib 30 "all;memh;rv64;loader;forza" SCRIPT "run_actor.sh")
+
 #TODO: need to add the other noc discovery variants(?)
 add_forza_test(forza_noc_discovery1 forza_noc_discovery 120 "all;memh;rv64;loader;forza" "hartsperzap=1;zaps=1;zones=1;precints=1;program=ex2")
 add_forza_test(forza_noc_discovery2 forza_noc_discovery 120 "all;memh;rv64;loader;forza" "hartsperzap=1;zaps=4;zones=1;precints=1;program=ex2")
@@ -217,4 +233,3 @@ add_rev_test(private_access_allowed_rza forza_security 30 "all;memh;rv64;loader;
 add_rev_test(private_access_denied_rza forza_security 30 "all;memh;rv64;loader;forza;security" SCRIPT "run_private_invalid.sh")
 add_rev_test(shared_access_allowed forza_security 30 "all;memh;rv64;loader;forza;" SCRIPT "run_shared_valid.sh")
 add_rev_test(shared_access_denied forza_security 30 "all;memh;rv64;loader;forza;security" SCRIPT "run_shared_invalid.sh")
-

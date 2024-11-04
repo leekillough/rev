@@ -22,12 +22,12 @@ set(RevCPUSrcs
   RevCoProc.cc
   RevRegFile.cc
   RevThread.cc
-  RevScratchpad.cc
 #  ZOPNET.cc
   )
 
 set(ZOPSrcs
 ZOPNET.cc
+RingNet.cc
 )
 
 add_subdirectory(../common common)

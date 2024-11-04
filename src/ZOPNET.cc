@@ -8,7 +8,7 @@
 // See LICENSE in the top level directory for licensing details
 //
 
-#include "../include/ZOPNET.h"
+#include "ZOPNET.h"
 
 namespace SST::Forza {
 
@@ -122,19 +122,19 @@ zopNIC::zopStats zopNIC::getStatFromPacket( zopEvent* ev ) {
   }
 
   zopMsgT Type = ev->getType();
-  switch( (zopMsgT) ( Type ) ) {
+  switch( Type ) {
   case zopMsgT::Z_MZOP: return zopStats::MZOPSent; break;
   case zopMsgT::Z_HZOPAC: return zopStats::HZOPACSent; break;
-  case zopMsgT::Z_HZOPV: return zopStats::HZOPVSent; break;
-  case zopMsgT::Z_RZOP: return zopStats::RZOPSent; break;
+  //case zopMsgT::Z_HZOPV: return zopStats::HZOPVSent; break;
+  //case zopMsgT::Z_RZOP: return zopStats::RZOPSent; break;
   case zopMsgT::Z_MSG: return zopStats::MSGSent; break;
   case zopMsgT::Z_TMIG: return zopStats::TMIGSent; break;
-  case zopMsgT::Z_TMGT: return zopStats::TMGTSent; break;
-  case zopMsgT::Z_SYSC: return zopStats::SYSCSent; break;
+  //case zopMsgT::Z_TMGT: return zopStats::TMGTSent; break;
+  //case zopMsgT::Z_SYSC: return zopStats::SYSCSent; break;
   case zopMsgT::Z_RESP: return zopStats::RESPSent; break;
   case zopMsgT::Z_FENCE: return zopStats::FENCESent; break;
   case zopMsgT::Z_EXCP: return zopStats::EXCPSent; break;
-  default: output.fatal( CALL_INFO, -1, "Error: unknown packet type=%d\n", (unsigned) ( Type ) ); break;
+  default: output.fatal( CALL_INFO, -1, "Error: unknown packet type=%" PRIu8 "\n", static_cast<uint8_t>( Type ) ); break;
   }
 
   // we should never reach this point
@@ -192,20 +192,20 @@ void zopNIC::init( unsigned int phase ) {
     auto                                  t     = std::make_tuple(
       static_cast<zopCompID>( Pkt[0] & Z_MASK_TYPE ),
       static_cast<zopPrecID>( Pkt[2] & Z_MASK_PCID ),
-      static_cast<unsigned>( Pkt[3] & Z_MASK_PRECINCT )
+      static_cast<uint32_t>( Pkt[3] & Z_MASK_PRECINCT )
     );
     hostMap.emplace( srcID, t );
     output.verbose(
       CALL_INFO,
       7,
       0,
-      "%s received init broadcast messages from %d of "
-      "[Type][PCID][Precinct]: [%s][%d][%d]\n",
+      "%s received init broadcast messages from %" PRId64 " of "
+      "[Type][PCID][Precinct]: [%s][%" PRIu8 "][%" PRIu32 "]\n",
       getName().c_str(),
-      (uint32_t) ( srcID ),
+      srcID,
       endPToStr( std::get<_HM_ENDP_T>( t ) ).c_str(),
-      (uint32_t) ( std::get<_HM_ZID>( t ) ),
-      (uint32_t) ( std::get<_HM_PID>( t ) )
+      static_cast<uint8_t>( std::get<_HM_ZID>( t ) ),
+      std::get<_HM_PID>( t )
     );
     delete ev;
   }
@@ -221,11 +221,11 @@ void zopNIC::init( unsigned int phase ) {
         CALL_INFO,
         9,
         0,
-        "Endpoint ID=%d is of [Type][PCID][Precinct] = [%s][%d][%d]\n",
-        (uint32_t) ( key ),
+        "Endpoint ID=%" PRId64 " is of [Type][PCID][Precinct] = [%s][%" PRIu8 "][%" PRIu32 "]\n",
+        key,
         endPToStr( std::get<_HM_ENDP_T>( val ) ).c_str(),
-        (uint32_t) ( std::get<_HM_ZID>( val ) ),
-        (uint32_t) ( std::get<_HM_PID>( val ) )
+        static_cast<uint8_t>( std::get<_HM_ZID>( val ) ),
+        std::get<_HM_PID>( val )
       );
     }
 
@@ -331,7 +331,7 @@ void zopNIC::send( zopEvent* ev, zopCompID dest, zopPrecID zone, unsigned prec )
       9,
       0,
       "Buffering message from %s to endpoint "
-      "[hart:zcid:pcid:type]=[%d:%d:%d:%s] before network boots\n",
+      "[hart:zcid:pcid:type]=[%" PRIu16 ":%" PRIu8 ":%" PRIu8 ":%s] before network boots\n",
       getName().c_str(),
       ev->getDestHart(),
       ev->getDestZCID(),
@@ -353,35 +353,34 @@ void zopNIC::send( zopEvent* ev, zopCompID dest, zopPrecID zone, unsigned prec )
 #endif
 
   SST::Interfaces::SimpleNetwork::Request* req = new SST::Interfaces::SimpleNetwork::Request();
-  output.verbose(
-    CALL_INFO,
-    9,
-    0,
-    "Sending message from %s @ endpoint=%d with "
-    "msg_id=%d and %s to %s\n",
-    getName().c_str(),
-    (uint32_t) ( getAddress() ),
-    ev->getID(),
-    ev->getSrcString().c_str(),
-    ev->getDestString().c_str()
-  );
-  auto realDest = 0;
-  if( ev->getType() == SST::Forza::zopMsgT::Z_MSG && ( ev->getOpc() == SST::Forza::zopOpc::Z_MSG_SENDP || ev->getOpc() == SST::Forza::zopOpc::Z_MSG_SENDAS ) ) {
-    TmpDest = zopCompID::Z_ZEN;
+  if( ev->getType() == SST::Forza::zopMsgT::Z_MSG ) {
     output.verbose(
       CALL_INFO,
       9,
       0,
-      "Forwarding messaging send from %s @ endpoint=%d to "
-      "dest[hart:zone:prec:Type]=[%d:%d:%d:%s]\n",
+      "Sending message from %s @ endpoint=%" PRId64 " with "
+      "msg_id=%" PRIu16 " and %s to %s\n",
       getName().c_str(),
-      (uint32_t) ( getAddress() ),
-      ev->getDestHart(),
-      ev->getDestZCID(),
-      ev->getDestPCID(),
-      endPToStr( TmpDest ).c_str()
+      getAddress(),
+      ev->getID(),
+      ev->getSrcString().c_str(),
+      ev->getDestString().c_str()
     );
   }
+  auto realDest = 0;
+  if( ( (unsigned) zone == Zone ) && ( prec == Precinct ) ) {
+    if( ev->getDestZCID() <= (uint8_t) SST::Forza::zopCompID::Z_ZAP7 && ev->getType() == SST::Forza::zopMsgT::Z_MSG ) {
+      if( ev->getOpc() == SST::Forza::zopOpc::Z_MSG_SENDP || ev->getOpc() == SST::Forza::zopOpc::Z_MSG_SENDAS )
+        TmpDest = zopCompID::Z_ZQM;  // any send message so go to a zqm
+      else if( ev->getOpc() == SST::Forza::zopOpc::Z_MSG_ACK || ev->getOpc() == SST::Forza::zopOpc::Z_MSG_NACK )
+        TmpDest = zopCompID::Z_ZEN;  // any msg ack/nack goes to a zen
+    }
+  } else if( prec == Precinct ) {
+    TmpDest = zopCompID::Z_ZEN;
+  } else {
+    output.fatal( CALL_INFO, -1, "Packet should be for a diff precinct - not yet supported\n" );
+  }
+
   for( auto i : hostMap ) {
     auto t = i.second;
     if( ( std::get<_HM_ENDP_T>( t ) == TmpDest ) && ( std::get<_HM_ZID>( t ) == zone ) && ( std::get<_HM_PID>( t ) == prec ) ) {
@@ -398,161 +397,42 @@ void zopNIC::send( zopEvent* ev, zopCompID dest, zopPrecID zone, unsigned prec )
 void zopNIC::handleLoadResponse(
   zopEvent* ev, uint64_t* Target, SST::Forza::zopOpc Opc, SST::RevCPU::MemReq Req, uint8_t ID, uint16_t SrcHart
 ) {
+  /**
+   * Notes
+   * - Target argument is a host system pointer for a location in the requesting thread's reg file
+   */
+
+  // make sure this request is a response from an MZOP or HZOP RZA pipe
+  if( SrcHart != Z_MZOP_PIPE_HART && SrcHart != Z_HZOP_PIPE_HART ) {
+    output.fatal(
+      CALL_INFO,
+      -1,
+      "%s, Error: Unknown FLIT Source Hart ID %" PRIu16 "; "
+      "OPC=%" PRIu8 ", LENGTH=%" PRIu8 ", ID=%" PRIu8 "; PACKET %s to %s\n",
+      getName().c_str(),
+      SrcHart,
+      static_cast<uint8_t>( ev->getOpc() ),
+      ev->getLength(),
+      ID,
+      ev->getSrcString().c_str(),
+      ev->getDestString().c_str()
+    );
+  }
+
   // retrieve the data from the response payload
-  uint64_t tmp = 0x00ull;
-  if( !ev->getFLIT( Z_FLIT_DATA_RESP, &tmp ) ) {
+  if( !ev->getFLIT( Z_FLIT_DATA_RESP, Target ) ) {
     output.fatal(
       CALL_INFO,
       -1,
       "%s, Error: zopEvent on zopNIC failed to read response FLIT; "
-      "OPC=%d, LENGTH=%d, ID=%d\n",
+      "OPC=%" PRIu8 ", LENGTH=%" PRIu8 ", ID=%" PRIu8 "; PACKET %s to %s\n",
       getName().c_str(),
-      (unsigned) ( ev->getOpc() ),
-      (unsigned) ( ev->getLength() ),
-      ID
+      static_cast<uint8_t>( ev->getOpc() ),
+      ev->getLength(),
+      ID,
+      ev->getSrcString().c_str(),
+      ev->getDestString().c_str()
     );
-  }
-
-  // write the data depending upon what the sending opcode was
-  if( SrcHart == Z_MZOP_PIPE_HART ) {
-    // this request is a response from an MZOP RZA pipe
-    switch( Opc ) {
-    case SST::Forza::zopOpc::Z_MZOP_LB: *( reinterpret_cast<uint8_t*>( Target ) ) = static_cast<uint8_t>( tmp ); break;
-    case SST::Forza::zopOpc::Z_MZOP_LH: *( reinterpret_cast<uint16_t*>( Target ) ) = static_cast<uint16_t>( tmp ); break;
-    case SST::Forza::zopOpc::Z_MZOP_LW: *( reinterpret_cast<uint32_t*>( Target ) ) = static_cast<uint32_t>( tmp ); break;
-    case SST::Forza::zopOpc::Z_MZOP_LD: *Target = tmp; break;
-    case SST::Forza::zopOpc::Z_MZOP_LSB: *( reinterpret_cast<int8_t*>( Target ) ) = static_cast<int8_t>( tmp ); break;
-    case SST::Forza::zopOpc::Z_MZOP_LSH: *( reinterpret_cast<int16_t*>( Target ) ) = static_cast<int16_t>( tmp ); break;
-    case SST::Forza::zopOpc::Z_MZOP_LSW: *( reinterpret_cast<int32_t*>( Target ) ) = static_cast<int32_t>( tmp ); break;
-    default:
-      output.fatal(
-        CALL_INFO,
-        -1,
-        "%s, Error: zopEvent on zopNIC MZOP load response could "
-        "not be handled; OPC=%d\n",
-        getName().c_str(),
-        (unsigned) ( Opc )
-      );
-      break;
-    }
-  } else if( SrcHart == Z_HZOP_PIPE_HART ) {
-    // this request is a response from an HZOP RZA pipe
-    switch( Opc ) {
-    case SST::Forza::zopOpc::Z_HAC_32_BASE_ADD:
-    case SST::Forza::zopOpc::Z_HAC_32_BASE_AND:
-    case SST::Forza::zopOpc::Z_HAC_32_BASE_OR:
-    case SST::Forza::zopOpc::Z_HAC_32_BASE_XOR:
-    case SST::Forza::zopOpc::Z_HAC_32_BASE_SMAX:
-    case SST::Forza::zopOpc::Z_HAC_32_BASE_MAX:
-    case SST::Forza::zopOpc::Z_HAC_32_BASE_SMIN:
-    case SST::Forza::zopOpc::Z_HAC_32_BASE_MIN:
-    case SST::Forza::zopOpc::Z_HAC_32_BASE_SWAP:
-    case SST::Forza::zopOpc::Z_HAC_32_BASE_CAS:
-    case SST::Forza::zopOpc::Z_HAC_32_BASE_FADD:
-    case SST::Forza::zopOpc::Z_HAC_32_BASE_FSUB:
-    case SST::Forza::zopOpc::Z_HAC_32_BASE_FRSUB:
-    case SST::Forza::zopOpc::Z_HAC_32_M_ADD:
-    case SST::Forza::zopOpc::Z_HAC_32_M_AND:
-    case SST::Forza::zopOpc::Z_HAC_32_M_OR:
-    case SST::Forza::zopOpc::Z_HAC_32_M_XOR:
-    case SST::Forza::zopOpc::Z_HAC_32_M_SMAX:
-    case SST::Forza::zopOpc::Z_HAC_32_M_MAX:
-    case SST::Forza::zopOpc::Z_HAC_32_M_SMIN:
-    case SST::Forza::zopOpc::Z_HAC_32_M_MIN:
-    case SST::Forza::zopOpc::Z_HAC_32_M_SWAP:
-    case SST::Forza::zopOpc::Z_HAC_32_M_CAS:
-    case SST::Forza::zopOpc::Z_HAC_32_M_FADD:
-    case SST::Forza::zopOpc::Z_HAC_32_M_FSUB:
-    case SST::Forza::zopOpc::Z_HAC_32_M_FRSUB:
-    case SST::Forza::zopOpc::Z_HAC_32_S_ADD:
-    case SST::Forza::zopOpc::Z_HAC_32_S_AND:
-    case SST::Forza::zopOpc::Z_HAC_32_S_OR:
-    case SST::Forza::zopOpc::Z_HAC_32_S_XOR:
-    case SST::Forza::zopOpc::Z_HAC_32_S_SMAX:
-    case SST::Forza::zopOpc::Z_HAC_32_S_MAX:
-    case SST::Forza::zopOpc::Z_HAC_32_S_SMIN:
-    case SST::Forza::zopOpc::Z_HAC_32_S_MIN:
-    case SST::Forza::zopOpc::Z_HAC_32_S_SWAP:
-    case SST::Forza::zopOpc::Z_HAC_32_S_CAS:
-    case SST::Forza::zopOpc::Z_HAC_32_S_FADD:
-    case SST::Forza::zopOpc::Z_HAC_32_S_FSUB:
-    case SST::Forza::zopOpc::Z_HAC_32_S_FRSUB:
-    case SST::Forza::zopOpc::Z_HAC_32_MS_ADD:
-    case SST::Forza::zopOpc::Z_HAC_32_MS_AND:
-    case SST::Forza::zopOpc::Z_HAC_32_MS_OR:
-    case SST::Forza::zopOpc::Z_HAC_32_MS_XOR:
-    case SST::Forza::zopOpc::Z_HAC_32_MS_SMAX:
-    case SST::Forza::zopOpc::Z_HAC_32_MS_MAX:
-    case SST::Forza::zopOpc::Z_HAC_32_MS_SMIN:
-    case SST::Forza::zopOpc::Z_HAC_32_MS_MIN:
-    case SST::Forza::zopOpc::Z_HAC_32_MS_SWAP:
-    case SST::Forza::zopOpc::Z_HAC_32_MS_CAS:
-    case SST::Forza::zopOpc::Z_HAC_32_MS_FADD:
-    case SST::Forza::zopOpc::Z_HAC_32_MS_FSUB:
-    case SST::Forza::zopOpc::Z_HAC_32_MS_FRSUB: *( reinterpret_cast<uint32_t*>( Target ) ) = static_cast<uint32_t>( tmp ); break;
-    case SST::Forza::zopOpc::Z_HAC_64_BASE_ADD:
-    case SST::Forza::zopOpc::Z_HAC_64_BASE_AND:
-    case SST::Forza::zopOpc::Z_HAC_64_BASE_OR:
-    case SST::Forza::zopOpc::Z_HAC_64_BASE_XOR:
-    case SST::Forza::zopOpc::Z_HAC_64_BASE_SMAX:
-    case SST::Forza::zopOpc::Z_HAC_64_BASE_MAX:
-    case SST::Forza::zopOpc::Z_HAC_64_BASE_SMIN:
-    case SST::Forza::zopOpc::Z_HAC_64_BASE_MIN:
-    case SST::Forza::zopOpc::Z_HAC_64_BASE_SWAP:
-    case SST::Forza::zopOpc::Z_HAC_64_BASE_CAS:
-    case SST::Forza::zopOpc::Z_HAC_64_BASE_FADD:
-    case SST::Forza::zopOpc::Z_HAC_64_BASE_FSUB:
-    case SST::Forza::zopOpc::Z_HAC_64_BASE_FRSUB:
-    case SST::Forza::zopOpc::Z_HAC_64_M_ADD:
-    case SST::Forza::zopOpc::Z_HAC_64_M_AND:
-    case SST::Forza::zopOpc::Z_HAC_64_M_OR:
-    case SST::Forza::zopOpc::Z_HAC_64_M_XOR:
-    case SST::Forza::zopOpc::Z_HAC_64_M_SMAX:
-    case SST::Forza::zopOpc::Z_HAC_64_M_MAX:
-    case SST::Forza::zopOpc::Z_HAC_64_M_SMIN:
-    case SST::Forza::zopOpc::Z_HAC_64_M_MIN:
-    case SST::Forza::zopOpc::Z_HAC_64_M_SWAP:
-    case SST::Forza::zopOpc::Z_HAC_64_M_CAS:
-    case SST::Forza::zopOpc::Z_HAC_64_M_FADD:
-    case SST::Forza::zopOpc::Z_HAC_64_M_FSUB:
-    case SST::Forza::zopOpc::Z_HAC_64_M_FRSUB:
-    case SST::Forza::zopOpc::Z_HAC_64_S_ADD:
-    case SST::Forza::zopOpc::Z_HAC_64_S_AND:
-    case SST::Forza::zopOpc::Z_HAC_64_S_OR:
-    case SST::Forza::zopOpc::Z_HAC_64_S_XOR:
-    case SST::Forza::zopOpc::Z_HAC_64_S_SMAX:
-    case SST::Forza::zopOpc::Z_HAC_64_S_MAX:
-    case SST::Forza::zopOpc::Z_HAC_64_S_SMIN:
-    case SST::Forza::zopOpc::Z_HAC_64_S_MIN:
-    case SST::Forza::zopOpc::Z_HAC_64_S_SWAP:
-    case SST::Forza::zopOpc::Z_HAC_64_S_CAS:
-    case SST::Forza::zopOpc::Z_HAC_64_S_FADD:
-    case SST::Forza::zopOpc::Z_HAC_64_S_FSUB:
-    case SST::Forza::zopOpc::Z_HAC_64_S_FRSUB:
-    case SST::Forza::zopOpc::Z_HAC_64_MS_ADD:
-    case SST::Forza::zopOpc::Z_HAC_64_MS_AND:
-    case SST::Forza::zopOpc::Z_HAC_64_MS_OR:
-    case SST::Forza::zopOpc::Z_HAC_64_MS_XOR:
-    case SST::Forza::zopOpc::Z_HAC_64_MS_SMAX:
-    case SST::Forza::zopOpc::Z_HAC_64_MS_MAX:
-    case SST::Forza::zopOpc::Z_HAC_64_MS_SMIN:
-    case SST::Forza::zopOpc::Z_HAC_64_MS_MIN:
-    case SST::Forza::zopOpc::Z_HAC_64_MS_SWAP:
-    case SST::Forza::zopOpc::Z_HAC_64_MS_CAS:
-    case SST::Forza::zopOpc::Z_HAC_64_MS_FADD:
-    case SST::Forza::zopOpc::Z_HAC_64_MS_FSUB:
-    case SST::Forza::zopOpc::Z_HAC_64_MS_FRSUB: *Target = tmp; break;
-    default:
-      output.fatal(
-        CALL_INFO,
-        -1,
-        "%s, Error: zopEvent on zopNIC HZOP AMO response could not "
-        "be handled; OPC=%d\n",
-        getName().c_str(),
-        (unsigned) ( Opc )
-      );
-      break;
-    }
   }
 
   // setup the zopEvent infrastructure to clear the hazards
@@ -582,7 +462,7 @@ bool zopNIC::msgNotify( int vn ) {
     CALL_INFO,
     9,
     0,
-    "%s:%s received zop message of type %s, ID=%d\n",
+    "%s:%s received zop message of type %s, ID=%" PRIu16 "\n",
     getName().c_str(),
     endPToStr( getEndpointType() ).c_str(),
     msgTToStr( ev->getType() ).c_str(),
@@ -611,15 +491,15 @@ bool zopNIC::msgNotify( int vn ) {
   }
 
   // if this is an RZA device, marshall it through to the ZIQ
-  // if this is a ZEN, forward it in the incoming queue
+  // if this is a ZEN/ZQM/ZIP, forward it in the incoming queue
   if( Type == Forza::zopCompID::Z_RZA || Type == Forza::zopCompID::Z_ZEN || Type == Forza::zopCompID::Z_ZQM || Type == Forza::zopCompID::Z_PREC_ZIP ) {
     ( *msgHandler )( ev );
     return true;
   }
 
-  // if this is a ZIP device
+  // if this is a ZIP device (see above)
 
-  // if this is a ZAP device and a thread migration,
+  // if this is a ZAP device and a thread migration or mzop (scratchpad req, methinks - tjd, 6-sept-24),
   // send it to the RevCPU handler
   if( ( Type == Forza::zopCompID::Z_ZAP0 || Type == Forza::zopCompID::Z_ZAP1 || Type == Forza::zopCompID::Z_ZAP2 || Type == Forza::zopCompID::Z_ZAP3 || Type == Forza::zopCompID::Z_ZAP4 || Type == Forza::zopCompID::Z_ZAP5 || Type == Forza::zopCompID::Z_ZAP6 || Type == Forza::zopCompID::Z_ZAP7 ) && ( ev->getType() == Forza::zopMsgT::Z_TMIG || ev->getType() == Forza::zopMsgT::Z_MZOP ) ) {
     ( *msgHandler )( ev );
@@ -671,26 +551,26 @@ bool zopNIC::msgNotify( int vn ) {
 }
 
 bool zopNIC::handleBarrier( zopEvent* ev ) {
-  uint64_t tmp = 0x00ull;
+  uint64_t tmp{};
   if( !ev->getFLIT( Z_FLIT_SENSE, &tmp ) ) {
     output.fatal(
       CALL_INFO,
       -1,
       "%s, Error: zopEvent on zopNIC failed to read sense FLIT; "
-      "OPC=%d, LENGTH=%d, ID=%d\n",
+      "OPC=%" PRIu8 ", LENGTH=%" PRIu8 ", ID=%" PRIu16 "\n",
       getName().c_str(),
-      (unsigned) ( ev->getOpc() ),
-      (unsigned) ( ev->getLength() ),
+      static_cast<uint8_t>( ev->getOpc() ),
+      ev->getLength(),
       ev->getID()
     );
   }
-  unsigned sense = static_cast<unsigned>( tmp );
+  uint32_t sense = static_cast<uint32_t>( tmp );
 
   if( sense > 1 ) {
-    output.fatal( CALL_INFO, -1, "%s, Error: received zone barrier with sense > 1; SENSE=%u\n", getName().c_str(), sense );
+    output.fatal( CALL_INFO, -1, "%s, Error: received zone barrier with sense > 1; SENSE=%" PRIu32 "\n", getName().c_str(), sense );
   }
 
-  for( unsigned i = 0; i < numHarts; i++ ) {
+  for( size_t i = 0; i < numHarts; i++ ) {
     zoneBarrier[sense][i]++;
   }
 
@@ -726,7 +606,7 @@ bool zopNIC::handleFence( zopEvent* ev ) {
       CALL_INFO,
       9,
       0,
-      "Clearing FENCE from %s @ [hart:zcid:pcid:type]=[%d:%d:%d:%s]\n",
+      "Clearing FENCE from %s @ [hart:zcid:pcid:type]=[%" PRIu16 ":%" PRIu8 ":%" PRIu8 ":%s]\n",
       getName().c_str(),
       ev->getSrcHart(),
       ev->getSrcZCID(),
@@ -743,7 +623,7 @@ bool zopNIC::handleFence( zopEvent* ev ) {
       CALL_INFO,
       9,
       0,
-      "Issuing FENCE from %s @ [hart:zcid:pcid:type]=[%d:%d:%d:%s]\n",
+      "Issuing FENCE from %s @ [hart:zcid:pcid:type]=[%" PRIu16 ":%" PRIu8 ":%" PRIu8 ":%s]\n",
       getName().c_str(),
       ev->getSrcHart(),
       ev->getSrcZCID(),
@@ -792,7 +672,7 @@ bool zopNIC::clockTick( SST::Cycle_t cycle ) {
     if( thisCycle < ReqPerCycle ) {
       zopEvent* ev = static_cast<zopEvent*>( ( *it )->inspectPayload() );
       Hart         = (unsigned) ( ev->getSrcHart() );
-      if( Type == SST::Forza::zopCompID::Z_RZA || Type == SST::Forza::zopCompID::Z_ZEN ) {
+      if( Type == SST::Forza::zopCompID::Z_RZA || Type == SST::Forza::zopCompID::Z_ZEN || Type == SST::Forza::zopCompID::Z_ZQM ) {
         // I am an RZA... I don't need to reserve any message IDs
         // ZEN ACKs and NACKs do not use message IDs, ZEN ZOPs to the RZA internally
         // handle message IDs.
@@ -806,6 +686,7 @@ bool zopNIC::clockTick( SST::Cycle_t cycle ) {
           iFace->send( ( *it ), 0 );
           it    = sendQ.erase( it );
           erase = true;
+          output.verbose( CALL_INFO, 9, 0, "ZOPNET: Sending message to Type=%s\n", endPToStr( Type ).c_str() );
         }
       } else if( ev->getType() == SST::Forza::zopMsgT::Z_FENCE ) {
         // handle the fence operation
@@ -815,6 +696,12 @@ bool zopNIC::clockTick( SST::Cycle_t cycle ) {
           erase = true;
         }
       } else if( ( msgId[Hart].getNumFree() > 0 ) && ( HARTFence[Hart] == 0 ) ) {
+        /**
+         * Underlying issue here is do we allow rev to managae the msgIds or do we let zopnet handle it
+         * if we let zopnet handle it, we can probably free an ID for a hart somewhere along the way without
+         * needing an ack (probably better for migrations and thread requests)
+         */
+
         // we have a free message Id for this hart
         auto P = ev->getPacket();
         if( iFace->spaceToSend( 0, P.size() * 64 ) ) {
@@ -824,7 +711,9 @@ bool zopNIC::clockTick( SST::Cycle_t cycle ) {
           // tdysart note (31-may-2024): This is where some messages are having their msg_id changed.
           // Use skip to not update the msg_id for responses from zap to zen (these are scratchpad acks)
           bool skip =
-            ( ev->getType() == SST::Forza::zopMsgT::Z_RESP ) && ( ev->getDestZCID() == (uint8_t) SST::Forza::zopCompID::Z_ZEN );
+            ( ev->getType() == SST::Forza::zopMsgT::Z_RESP ) && ( ( ev->getDestZCID() == (uint8_t) SST::Forza::zopCompID::Z_ZEN ) ||
+                                                                  ( ev->getDestZCID() == (uint8_t) SST::Forza::zopCompID::Z_ZQM ) );
+          skip = ( skip && ( ev->getType() == SST::Forza::zopMsgT::Z_TMIG ) );  //also skip anything migrate related
           if( ( ev->getOpc() != SST::Forza::zopOpc::Z_MSG_ZBAR ) && ( !skip ) ) {
             ev->setID( msgId[Hart].getMsgId() );
             auto V = std::make_tuple( Hart, ev->getID(), ev->isRead(), ev->getTarget(), ev->getOpc(), ev->getMemReq() );

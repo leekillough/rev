@@ -109,7 +109,7 @@ void RevCore::SetCoProc( RevCoProc* coproc ) {
     output->fatal(
       CALL_INFO,
       -1,
-      "CONFIG ERROR: Core %u : Attempting to assign a "
+      "CONFIG ERROR: Core %" PRIu32 " : Attempting to assign a "
       "co-processor when one is already present\n",
       id
     );
@@ -937,7 +937,7 @@ RevInst RevCore::DecodeCompressed( uint32_t Inst ) const {
       CALL_INFO,
       -1,
       "Error: no entry in table for instruction at PC=0x%" PRIx64 " Opcode = %x Funct2 = %x Funct3 = %x Funct4 = %x Funct6 = "
-      "%x Enc = %x \n",
+      "%x Enc = %" PRIx32 " \n",
       GetPC(),
       opc,
       funct2,
@@ -1653,12 +1653,49 @@ void RevCore::MarkLoadComplete( const MemReq& req ) {
   );
 }
 
+void RevCore::ReqThreadFromZqm() {
+  output->verbose( CALL_INFO, 11, 0, "NOTE Core %" PRIu32 " needs to request a thread\n", id );
+  if( !HasIdleHart() )
+    return;
+
+#if 0
+  SST::Forza::zopEvent *zev = new SST::Forza::zopEvent();
+
+  // set all the fields
+  zev->setType(SST::Forza::zopMsgT::Z_TMIG);
+  zev->setNB(0);
+  zev->setID(UINT16_MAX);
+  zev->setCredit(0);
+  zev->setOpc(SST::Forza::zopOpc::Z_TMIG_REQUEST);
+  zev->setAppID(0);
+  zev->setDestZCID((uint8_t)(SST::Forza::zopCompID::Z_ZQM));
+  zev->setDestPCID((uint8_t)(zNic->getPCID(Zone)));
+  zev->setDestPrec((uint8_t)(Precinct));
+  zev->setSrcHart(UINT16_MAX);
+  zev->setSrcZCID((uint8_t)(zNic->getEndpointType()));
+  zev->setSrcPCID((uint8_t)(zNic->getPCID(zNic->getZoneID())));
+  zev->setSrcPrec((uint8_t)(zNic->getPrecinctID()));
+
+  // no payload
+  //std::vector<uint64_t> Payload;
+  //Payload.push_back((uint64_t)(ThreadID));
+  //zev->setPayload(Payload);
+
+  zNic->send(zev, SST::Forza::zopCompID::Z_ZQM,
+             zNic->getPCID(Zone), Precinct);
+#endif
+}
+
 bool RevCore::ClockTick( SST::Cycle_t currentCycle ) {
   RevInst Inst;
   bool    rtn = false;
   ++Stats.totalCycles;
   ++cycles;
   currentSimCycle = currentCycle;
+
+  // FORZA specific
+  if( zNic && !ThreadReqd )
+    ReqThreadFromZqm();
 
   // -- MAIN PROGRAM LOOP --
   //
@@ -1855,6 +1892,8 @@ bool RevCore::ClockTick( SST::Cycle_t currentCycle ) {
     }
 
     if( HartToExecID != _REV_INVALID_HART_ID_ && !IdleHarts[HartToExecID] && HartHasNoDependencies( HartToExecID ) ) {
+      // TODO: Is using HartToDecodeID correct?  Everything else here is
+      // using HartToExecID
       std::unique_ptr<RevThread> ActiveThread = PopThreadFromHart( HartToDecodeID );
       ActiveThread->SetState( ThreadState::DONE );
       HartsClearToExecute[HartToExecID] = false;
@@ -2092,6 +2131,22 @@ void RevCore::UpdateStatusOfHarts() {
     HartsClearToDecode[i] = !IdleHarts[i] && Harts[i]->RegFile->cost == 0;
   }
   return;
+}
+
+void RevCore::handleRingReadData( Forza::ringEvent* ring_ev ) {
+  output->verbose(
+    CALL_INFO,
+    5,
+    0,
+    "[FORZA][%" PRIu8 "] Received Ring Message; CSR=0x%" PRIx16 ", datum=0x%" PRIx64 "\n",
+    static_cast<uint8_t>( zNic->getEndpointType() ),
+    ring_ev->getCSR(),
+    ring_ev->getDatum()
+  );
+  // Need to clear the dependency for Procs[0].Harts[0]
+  DependencyClear( ring_ev->getHart(), RevReg::a0, RevRegClass::RegGPR );
+  Harts.at( ring_ev->getHart() )->RegFile->SetX( RevReg::a0, ring_ev->getDatum() );
+  delete ring_ev;
 }
 
 }  // namespace SST::RevCPU

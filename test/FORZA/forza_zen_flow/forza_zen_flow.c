@@ -14,7 +14,7 @@ int main( int argc, char** argv ) {
   int       TID   = forza_get_my_zap();
   int       qsize = 10;
   uint64_t  qaddr[10];    // Storage buffer for incoming messages
-  uint64_t* my_tail_ptr;  // Scratchpad address that zen updates
+  uint64_t* my_tail_ptr;  // Scratchpad address that zqm updates
   my_tail_ptr            = (uint64_t*) forza_scratchpad_alloc( 1 * sizeof( uint64_t* ) );
   *my_tail_ptr           = 0xdeadbeef;  // initialize contents of tail ptr to dummy data
 
@@ -23,7 +23,7 @@ int main( int argc, char** argv ) {
 
   // Buffer needs to be memory for now
   uint64_t mbox_id       = 0;
-  forza_zen_setup( (uint64_t) cur_recv_ptr, qsize * sizeof( uint64_t ), (uint64_t) my_tail_ptr, mbox_id );
+  forza_zqm_mbox_setup( (uint64_t) cur_recv_ptr, qsize * sizeof( uint64_t ), (uint64_t) my_tail_ptr, mbox_id );
 
   forza_zone_barrier( 2 );  // two executing harts
   forza_debug_print( (uint64_t) cur_recv_ptr, (uint64_t) my_tail_ptr, (uint64_t) *my_tail_ptr );
@@ -52,7 +52,7 @@ int main( int argc, char** argv ) {
     assert( recv_pkt == 690 );
     // Update my pointer for comparison (this would be needed for the next packet)
     cur_recv_ptr += 3;  // uint64_t ptr; each increment of 1 adds 8 (goes to next uint64_t item)
-    forza_zen_credit_release( sizeof( uint64_t ) );
+    //forza_zen_credit_release( sizeof( uint64_t ) );
   }
 
   forza_scratchpad_free( (uint64_t) my_tail_ptr, sizeof( uint64_t* ) );
