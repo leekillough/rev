@@ -251,6 +251,8 @@ check_tight_loop:
   printf( "Time check: %ld\n", time2 - time1 );
 #endif
 
+  check_lw_sign_ext();
+
   printf( "tracer test completed normally\n" );
   return 0;
 }
