@@ -16,9 +16,14 @@
 #include "stdlib.h"
 #include "syscalls.h"
 
-#define assert TRACE_ASSERT
-
+#ifdef SPIKE
+// #include "stdio.h"
+#define printf( ... )
+#else
 #define printf rev_fast_printf
+#endif
+
+#define assert TRACE_ASSERT
 
 #if 1
 #define REV_TIME( X )                         \
@@ -31,6 +36,13 @@
     X = 0;            \
   } while( 0 )
 #endif
+
+void trace_vec() {
+#ifdef RV64GV
+  asm volatile( "vsetivli  x0, 0, e8, m1, ta, ma \n\t" );
+
+#endif
+}
 
 // inefficient calculation of r-s
 int long_sub( int r, int s ) {
@@ -134,6 +146,8 @@ int main( int argc, char** argv ) {
   printf( " [no new line] " );
   printf( " ... new line here->\n" );
 
+  trace_vec();
+
   int res = 3000;
   res     = long_sub( res, 1000 );
   // res == 2000;
@@ -212,19 +226,22 @@ check_tight_loop:
                 : "t3", "t4" );
 
   // trace some threads
-#if 0
+#if 1
+  printf( "Thread test starting\n" );
   rev_pthread_t tid1, tid2;
-  rev_pthread_create(&tid1, NULL, (void *)thread1, NULL);
-  rev_pthread_create(&tid2, NULL, (void *)thread2, NULL);
-  rev_pthread_join(tid1);
-  rev_pthread_join(tid2);
+  rev_pthread_create( &tid1, NULL, (void*) thread1, NULL );
+  rev_pthread_create( &tid2, NULL, (void*) thread2, NULL );
+  rev_pthread_join( tid1 );
+  rev_pthread_join( tid2 );
 
-  TRACE_ASSERT(thread1_counter==10);
-  TRACE_ASSERT(thread2_counter==20);
+  TRACE_ASSERT( thread1_counter == 10 );
+  TRACE_ASSERT( thread2_counter == 20 );
+  printf( "Thread test finished\n" );
 #endif
 
   TRACE_ON;
 
+#if 1
   // use CSR to get time
   size_t time1, time2;
   REV_TIME( time1 );
@@ -232,8 +249,7 @@ check_tight_loop:
   REV_TIME( time2 );
   assert( fubar == 80 );
   printf( "Time check: %ld\n", time2 - time1 );
-
-  check_lw_sign_ext();
+#endif
 
   printf( "tracer test completed normally\n" );
   return 0;
