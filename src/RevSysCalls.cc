@@ -3863,7 +3863,7 @@ EcallStatus RevCore::ECALL_forza_get_hart_id() {
     GetActiveThreadID(),
     HartToExecID
   );
-  RegFile->SetX( RevReg::a0, static_cast<uint64_t>( HartToExecID ) );
+  RegFile->SetX( RevReg::a0, HartToExecID );
   return EcallStatus::SUCCESS;
 }
 
@@ -4248,7 +4248,7 @@ EcallStatus RevCore::ECALL_forza_zqm_setup() {
 
 // 4007, forza_get_harts_per_zap
 EcallStatus RevCore::ECALL_forza_get_harts_per_zap() {
-  RegFile->SetX( RevReg::a0, static_cast<uint64_t>( this->numHarts ) );
+  RegFile->SetX( RevReg::a0, this->numHarts );
   output->verbose(
     CALL_INFO,
     2,
@@ -4263,7 +4263,7 @@ EcallStatus RevCore::ECALL_forza_get_harts_per_zap() {
 
 // 4008, forza_get_zaps_per_zone();
 EcallStatus RevCore::ECALL_forza_get_zaps_per_zone() {
-  RegFile->SetX( RevReg::a0, static_cast<uint64_t>( zNic->getNumZaps() ) );
+  RegFile->SetX( RevReg::a0, zNic->getNumZaps() );
   output->verbose(
     CALL_INFO,
     2,
@@ -4278,7 +4278,7 @@ EcallStatus RevCore::ECALL_forza_get_zaps_per_zone() {
 
 // 4009, forza_get_zones_per_precinct();
 EcallStatus RevCore::ECALL_forza_get_zones_per_precinct() {
-  RegFile->SetX( RevReg::a0, static_cast<uint64_t>( zNic->getNumZones() ) );
+  RegFile->SetX( RevReg::a0, zNic->getNumZones() );
   output->verbose(
     CALL_INFO,
     2,
@@ -4293,7 +4293,7 @@ EcallStatus RevCore::ECALL_forza_get_zones_per_precinct() {
 
 // 4010, forza_get_num_precincts();
 EcallStatus RevCore::ECALL_forza_get_num_precincts() {
-  RegFile->SetX( RevReg::a0, static_cast<uint64_t>( zNic->getNumPrecincts() ) );
+  RegFile->SetX( RevReg::a0, zNic->getNumPrecincts() );
   output->verbose(
     CALL_INFO,
     2,
@@ -4308,7 +4308,7 @@ EcallStatus RevCore::ECALL_forza_get_num_precincts() {
 
 // 4011, forza_get_my_zap();
 EcallStatus RevCore::ECALL_forza_get_my_zap() {
-  RegFile->SetX( RevReg::a0, static_cast<uint64_t>( zNic->getEndpointType() ) );
+  RegFile->SetX( RevReg::a0, safe_static_cast<uint8_t>( zNic->getEndpointType() ) );
   output->verbose(
     CALL_INFO,
     2,
@@ -4323,7 +4323,7 @@ EcallStatus RevCore::ECALL_forza_get_my_zap() {
 
 // 4012, forza_get_my_zone();
 EcallStatus RevCore::ECALL_forza_get_my_zone() {
-  RegFile->SetX( RevReg::a0, static_cast<uint64_t>( zNic->getZoneID() ) );
+  RegFile->SetX( RevReg::a0, zNic->getZoneID() );
   output->verbose(
     CALL_INFO,
     2,
@@ -4338,7 +4338,7 @@ EcallStatus RevCore::ECALL_forza_get_my_zone() {
 
 // 4013, forza_get_my_precinct();
 EcallStatus RevCore::ECALL_forza_get_my_precinct() {
-  RegFile->SetX( RevReg::a0, static_cast<uint64_t>( zNic->getPrecinctID() ) );
+  RegFile->SetX( RevReg::a0, zNic->getPrecinctID() );
   output->verbose(
     CALL_INFO,
     2,
