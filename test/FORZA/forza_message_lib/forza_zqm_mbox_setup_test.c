@@ -16,13 +16,13 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-int main( int argc, char** argv ) {
-  int TID = forza_get_my_zap();
+int main( uint32_t argc, char** argv ) {
+  uint32_t TID = forza_get_my_zap();
   if( forza_get_my_zone() > 0 )
     return 0;
 
   forza_debug_print( 0x0AD, 0, 0xcafe );
-  int result = forza_zqm_pe_setup( TID, 6 );
+  uint32_t result = forza_zqm_pe_setup( TID, 6 );
   if( result )
     assert( 0 );
 

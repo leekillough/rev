@@ -7,7 +7,7 @@
 
 // NOTE: This requires #HARTs to be > logical_pe numbers (> 0xb)
 
-int main( int argc, char** argv ) {
+int main( uint32_t argc, char** argv ) {
   uint64_t TID        = forza_get_my_zap();
   uint64_t zen_status = forza_read_zen_status();
   uint64_t logical_pe = 0x0UL;
@@ -26,7 +26,7 @@ int main( int argc, char** argv ) {
   forza_debug_print( 0x1111, logical_pe, TID );
 
   // Register the locical PE and number of mailboxes with the ZQM
-  int ret = forza_zqm_pe_setup( logical_pe, 6 );
+  uint32_t ret = forza_zqm_pe_setup( logical_pe, 6 );
   if( ret )
     assert( 0 );
 
@@ -54,12 +54,12 @@ int main( int argc, char** argv ) {
   if( TID == 1 ) {
 
     // Check mailbox for messages
-    int msg_avail = forza_message_available( mb_id );
+    uint32_t msg_avail = forza_message_available( mb_id );
     while( msg_avail == NO_MSG )
       msg_avail = forza_message_available( mb_id );
 
     // Get first message
-    int result1 = forza_message_receive( mb_id, rcv_pkt, 7 * sizeof( uint64_t ) );
+    uint32_t result1 = forza_message_receive( mb_id, rcv_pkt, 7 * sizeof( uint64_t ) );
     if( result1 != SUCCESS )
       assert( 0 );
 
@@ -76,13 +76,13 @@ int main( int argc, char** argv ) {
       msg_avail = forza_message_available( mb_id );
 
     // Get DONE message
-    int result2 = forza_message_receive( mb_id, rcv_pkt, 0 );
+    uint32_t result2 = forza_message_receive( mb_id, rcv_pkt, 0 );
     if( result2 != DONE_MSG )
       assert( 0 );
   }
   // Debug 0x4444 main: print received message
   {
-    char msg[40] = "\ndebug:TX: main: print received pkt\n";
+    char msg[45] = "\ndebug:TX: main: print received pkt\n";
     msg[8]       = '0' + TID;
     rev_write( STDOUT_FILENO, msg, sizeof( msg ) );
   }

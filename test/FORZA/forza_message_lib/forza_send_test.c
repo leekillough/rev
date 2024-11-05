@@ -6,7 +6,7 @@
 
 // NOTE: Requires #HARTs > logical_pe number (<0xb)
 
-int main( int argc, char** argv ) {
+int main( uint32_t argc, char** argv ) {
   uint64_t TID        = forza_get_my_zap();
   uint64_t zen_status = forza_read_zen_status();
   uint64_t logical_pe = 0x0UL;
@@ -44,11 +44,11 @@ int main( int argc, char** argv ) {
   if( TID == 1 ) {
 
     // Check mailbox for messages
-    int msg_avail = forza_message_available( mb_id );
+    uint32_t msg_avail = forza_message_available( mb_id );
     while( msg_avail == NO_MSG )
       msg_avail = forza_message_available( mb_id );
     // Get first message
-    int result1 = forza_message_receive( mb_id, rcv_pkt, 7 * sizeof( uint64_t ) );
+    uint32_t result1 = forza_message_receive( mb_id, rcv_pkt, 7 * sizeof( uint64_t ) );
     if( result1 != SUCCESS )
       assert( 0 );
 
@@ -57,13 +57,13 @@ int main( int argc, char** argv ) {
     while( msg_avail == NO_MSG )
       msg_avail = forza_message_available( mb_id );
     // Get DONE message
-    int result2 = forza_message_receive( mb_id, rcv_pkt, 0 );
+    uint32_t result2 = forza_message_receive( mb_id, rcv_pkt, 0 );
     if( result2 != DONE_MSG )
       assert( 0 );
     forza_debug_print( 0x4442, result1, result2 );
 
     // Check results
-    for( int i = 0; i < 7; i++ )
+    for( uint32_t i = 0; i < 7; i++ )
       assert( rcv_pkt[i] == data[i] );
   }
 

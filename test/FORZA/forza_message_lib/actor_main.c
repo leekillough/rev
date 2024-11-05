@@ -24,19 +24,19 @@
 #define PE_PER_ZAP  1  // Number of PEs per ZAP since we have SPMD model
 #define NSENDS      4
 
-typedef unsigned long int forza_thread_t;
-static forza_thread_t     actor_threads[16];
+typedef uint64_t      forza_thread_t;
+static forza_thread_t actor_threads[16];
 
 // Extra info for debug
 struct ForzaThreadArgs_ {
-  int       thread_type;
-  int       total_pes;
-  int       global_pe;  // single zone so same as local pe
-  int       zap;
-  int       local_pe;
-  int       n_mailboxes;
-  int       n_sends;
-  int       n_received;
+  uint32_t  thread_type;
+  uint32_t  total_pes;
+  uint32_t  global_pe;  // single zone so same as local pe
+  uint32_t  zap;
+  uint32_t  local_pe;
+  uint32_t  n_mailboxes;
+  uint32_t  n_sends;
+  uint32_t  n_received;
   uint64_t* a;
 };
 
@@ -57,15 +57,15 @@ enum MailBoxType { REQUEST, RESPONSE, NMBOXES };
 //enum ForzaThreadType {SENDER, RECEIVER};  // Currently both
 
 // Creates a new pthread. Currently only works if there is one HART per ZAP
-static int forza_thread_create( forza_thread_t* tid, void* fn, void* arg ) {
-  int ret;
+static uint32_t forza_thread_create( forza_thread_t* tid, void* fn, void* arg ) {
+  uint32_t ret;
   ret = rev_pthread_create( tid, NULL, fn, arg );
   return ret;
 }
 
 // Joins a pthread back with its parent
-static int forza_thread_join( forza_thread_t tid ) {
-  int ret;
+static uint32_t forza_thread_join( forza_thread_t tid ) {
+  uint32_t ret;
   ret = rev_pthread_join( tid );
   return ret;
 }
@@ -88,7 +88,7 @@ void* actor_thread_init( void* fcnargs ) {
   }
 
   // Register this PE with ZQM
-  int ret = forza_zqm_pe_setup( fargs->local_pe, fargs->n_mailboxes );
+  uint32_t ret = forza_zqm_pe_setup( fargs->local_pe, fargs->n_mailboxes );
   if( ret ) {
     char msg[55] = "\ndebug:PEX: actor thread init: zqm setup failed\n";
     msg[9]       = '0' + fargs->local_pe;
@@ -117,8 +117,8 @@ void* actor_thread_init( void* fcnargs ) {
     if( dest_pe == fargs->total_pes )
       dest_pe = 0;
 
-    for( long i = 0; i < fargs->n_sends; i++ ) {
-      int sendstat = forza_send( REQUEST, (uint64_t*) &send_pkt, precinct, zone, dest_pe );
+    for( uint32_t i = 0; i < fargs->n_sends; i++ ) {
+      uint32_t sendstat = forza_send( REQUEST, (uint64_t*) &send_pkt, precinct, zone, dest_pe );
       if( sendstat != SUCCESS ) {
         char msg[60] = "\ndebug:PEX: actor thread init: REQUEST msg send failed\n";
         msg[9]       = '0' + fargs->local_pe;
@@ -130,7 +130,7 @@ void* actor_thread_init( void* fcnargs ) {
       }
     }
 
-    int sendstat = forza_send_done( REQUEST, precinct, zone, dest_pe );
+    uint32_t sendstat = forza_send_done( REQUEST, precinct, zone, dest_pe );
     if( sendstat != SUCCESS ) {
       char msg[60] = "\ndebug:PEX: actor thread init: REQUEST msg send done failed\n";
       msg[9]       = '0' + fargs->local_pe;
@@ -147,18 +147,18 @@ void* actor_thread_init( void* fcnargs ) {
     //   * Adds the value from the messages to a local sum
     //     and tracks the number of messages received
     struct Packet rcv_pkt    = { 0, 0, 0, 0, 0, 0, 0 };
-    int           recv_count = 0;
-    int           done       = 0;
-    int           sum        = 0;
+    uint32_t      recv_count = 0;
+    uint32_t      done       = 0;
+    uint32_t      sum        = 0;
 
     do {
       // Wait for message
-      int msg_avail = forza_message_available( REQUEST );
+      uint32_t msg_avail = forza_message_available( REQUEST );
       while( msg_avail == NO_MSG )
         msg_avail = forza_message_available( REQUEST );
 
       // Get message
-      int ret = forza_message_receive( REQUEST, (uint64_t*) &rcv_pkt, 7 * sizeof( uint64_t ) );
+      uint32_t ret = forza_message_receive( REQUEST, (uint64_t*) &rcv_pkt, 7 * sizeof( uint64_t ) );
       if( ret == SUCCESS ) {
         // process message
         char msg[60] = "\ndebug:PEX: actor thread init: received REQUEST msg\n";
@@ -204,7 +204,7 @@ void* actor_thread_init( void* fcnargs ) {
     if( dest_pe == fargs->total_pes )
       dest_pe = 0;
 
-    int sendstat = forza_send( RESPONSE, (uint64_t*) &send_pkt, precinct, zone, dest_pe );
+    uint32_t sendstat = forza_send( RESPONSE, (uint64_t*) &send_pkt, precinct, zone, dest_pe );
     if( sendstat != SUCCESS ) {
       char msg[60] = "\ndebug:PEX: actor thread init: RESPONSE msg send failed\n";
       msg[9]       = '0' + fargs->local_pe;
@@ -230,18 +230,18 @@ void* actor_thread_init( void* fcnargs ) {
   if( fargs->local_pe == 0 ) {
     // Process RESPONSE messages
     struct Packet rcv_pkt    = { 0, 0, 0, 0, 0, 0, 0 };
-    int           recv_count = 0;
-    int           done       = 0;
-    int           sum        = 0;
+    uint32_t      recv_count = 0;
+    uint32_t      done       = 0;
+    uint32_t      sum        = 0;
 
     do {
       // Wait for message
-      int msg_avail = forza_message_available( RESPONSE );
+      uint32_t msg_avail = forza_message_available( RESPONSE );
       while( msg_avail == NO_MSG )
         msg_avail = forza_message_available( RESPONSE );
 
       // Get message
-      int ret = forza_message_receive( RESPONSE, (uint64_t*) &rcv_pkt, 7 * sizeof( uint64_t ) );
+      uint32_t ret = forza_message_receive( RESPONSE, (uint64_t*) &rcv_pkt, 7 * sizeof( uint64_t ) );
       if( ret == SUCCESS ) {
         // process message
         char msg[60] = "\ndebug:PEX: actor thread init: received RESPONSE msg\n";
@@ -302,8 +302,8 @@ int main() {
 
   // This is kind of weird right now because of the SPMD model that spawns at each ZAP
   // Currently spawning only one thread for each zap
-  for( int j = 0; j < n_local_pes / 2; j++ ) {
-    int index                = zap_id * PE_PER_ZAP + j;
+  for( uint32_t j = 0; j < n_local_pes / 2; j++ ) {
+    uint32_t index           = zap_id * PE_PER_ZAP + j;
     FArgs[index].thread_type = 0;
     FArgs[index].total_pes   = n_local_pes;
     FArgs[index].global_pe   = index;
@@ -320,8 +320,8 @@ int main() {
   }
 
 #if USE_PTHREAD
-  for( int j = 0; j < n_local_pes / 2; j++ ) {
-    int index = zap_id * PE_PER_ZAP + j;
+  for( uint32_t j = 0; j < n_local_pes / 2; j++ ) {
+    uint32_t index = zap_id * PE_PER_ZAP + j;
     forza_thread_join( actor_threads[index] );
   }
 #endif
