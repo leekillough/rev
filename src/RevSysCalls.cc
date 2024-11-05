@@ -47,7 +47,8 @@ EcallStatus RevCore::EcallLoadAndParseString( uint64_t straddr, std::function<vo
         HartToExecID,
         MemOp::MemOpREAD,
         true,
-        [=]( const MemReq& req ) { this->MarkLoadComplete( req ); } };
+        [=]( const MemReq& req ) { this->MarkLoadComplete( req ); }
+      };
       LSQueue->insert( req.LSQHashPair() );
       mem->ReadVal( HartToExecID, straddr + EcallState.string.size(), EcallState.buf.data(), req, RevFlag::F_NONE );
       EcallState.bytesRead = 1;
@@ -4262,7 +4263,7 @@ EcallStatus RevCore::ECALL_forza_get_harts_per_zap() {
 
 // 4008, forza_get_zaps_per_zone();
 EcallStatus RevCore::ECALL_forza_get_zaps_per_zone() {
-  RegFile->SetX( RevReg::a0, (uint8_t) zNic->getNumZaps() );
+  RegFile->SetX( RevReg::a0, zNic->getNumZaps() );
   output->verbose(
     CALL_INFO,
     2,
@@ -4307,7 +4308,7 @@ EcallStatus RevCore::ECALL_forza_get_num_precincts() {
 
 // 4011, forza_get_my_zap();
 EcallStatus RevCore::ECALL_forza_get_my_zap() {
-  RegFile->SetX( RevReg::a0, static_cast<uint8_t>( zNic->getEndpointType() ) );
+  RegFile->SetX( RevReg::a0, safe_static_cast<uint8_t>( zNic->getEndpointType() ) );
   output->verbose(
     CALL_INFO,
     2,
@@ -4395,7 +4396,6 @@ EcallStatus RevCore::ECALL_forza_debug_print() {
     b,
     c
   );
-  RegFile->SetX( RevReg::a0, 0 );
   return EcallStatus::SUCCESS;
 }
 
