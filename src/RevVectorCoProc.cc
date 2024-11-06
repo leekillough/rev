@@ -29,14 +29,6 @@ RevVectorCoProc::RevVectorCoProc( ComponentId_t id, Params& params, RevCore* par
     output->output("Registering subcomponent RevVectorCoProc with frequency=%s\n", ClockFreq.c_str());*/
 }
 
-bool RevVectorCoProc::IssueInst( const RevFeature* F, RevRegFile* R, RevMem* M, uint32_t Inst ) {
-  RevCoProcInst inst = RevCoProcInst( Inst, F, R, M );
-  //std::cout << "Vector CoProc instruction issued: " << std::hex << Inst << std::dec << std::endl;
-  //parent->ExternalDepSet(CreatePasskey(), F->GetHartToExecID(), 7, false);
-  InstQ.push( inst );
-  return true;
-}
-
 void RevVectorCoProc::registerStats() {
   num_instRetired = registerStatistic<uint64_t>( "InstRetired" );
 }
@@ -44,6 +36,30 @@ void RevVectorCoProc::registerStats() {
 bool RevVectorCoProc::Reset() {
   InstQ = {};
   return true;
+}
+
+bool RevVectorCoProc::Decode( const uint32_t inst ) {
+  // csr access instructions
+  csr_inst_t csr_inst( inst );
+  if( csr_inst.f.opcode == csr_inst_opcode ) {
+    if( csr_inst.f.csr >= RevCSR::vstart && csr_inst.f.csr <= RevCSR::vcsr )
+      return true;
+    if( csr_inst.f.csr >= RevCSR::vl && csr_inst.f.csr <= RevCSR::vlenb )
+      return true;
+  }
+  return false;
+}
+
+bool RevVectorCoProc::IssueInst( const RevFeature* F, RevRegFile* R, RevMem* M, uint32_t Inst ) {
+  if( Decode( Inst ) ) {
+    // TODO finite instruction queue
+    RevCoProcInst inst = RevCoProcInst( Inst, F, R, M );
+    //std::cout << "Vector CoProc instruction issued: " << std::hex << Inst << std::dec << std::endl;
+    //parent->ExternalDepSet(CreatePasskey(), F->GetHartToExecID(), 7, false);
+    InstQ.push( inst );
+    return true;
+  }
+  return false;
 }
 
 bool RevVectorCoProc::ClockTick( SST::Cycle_t cycle ) {
@@ -63,6 +79,18 @@ bool RevVectorCoProc::ClockTick( SST::Cycle_t cycle ) {
 }
 
 void RevVectorCoProc::FauxExec( RevCoProcInst rec ) {
+  std::cout << "Vector CoProcessor to execute instruction: " << std::hex << rec.Inst << std::endl;
+  // CSR access presumes valid csr address
+  csr_inst_t csr_inst( rec.Inst );
+  if( csr_inst.f.opcode == csr_inst_opcode ) {
+    if( csr_inst.f.funct3 == csr_inst_funct3::csrrsi ) {
+      rec.RegFile->SetX( csr_inst.f.rd, csrmap[csr_inst.f.csr] );
+      return;
+    } else {
+      output->fatal( CALL_INFO, -1, "currently only csrrsi supported for csr access\n" );
+      return;
+    }
+  }
 
   // For speedy prototyping, I'm only concerned with these fine folks
   // 0d0572d7    vsetvli t0, a0, e32, m1, ta, ma
@@ -75,7 +103,6 @@ void RevVectorCoProc::FauxExec( RevCoProcInst rec ) {
   // 32-bit elements require 4 parallel loads, adds, or stores.
   // MemHierarchy must be disabled.
 
-  std::cout << "Vector CoProcessor to execute instruction: " << std::hex << rec.Inst << std::endl;
   switch( rec.Inst ) {
   case 0x0d0572d7:  // vsetvli t0, a0, e32, m1, ta, ma
     // returns new vl. Always 4 for our test case

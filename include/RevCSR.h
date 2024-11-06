@@ -71,7 +71,7 @@ public:
     fflags         = 0x001,
     frm            = 0x002,
     fcsr           = 0x003,
-    // Vector CSR Group 1
+    // Coprocessor Vector CSR Group 1
     vstart         = 0x008,
     vxsat          = 0x009,
     vxrm           = 0x00a,
@@ -103,7 +103,7 @@ public:
     hpmcounter23   = 0xc17,
     hpmcounter24   = 0xc18,
     hpmcounter25   = 0xc19,
-    // Vector CSR Group 2
+    // Coprocessor Vector CSR Group 2
     vl             = 0xc20,
     vtype          = 0xc21,
     vlenb          = 0xc22,
@@ -463,6 +463,14 @@ public:
   /// Get a CSR register
   template<typename XLEN>
   XLEN GetCSR( uint16_t csr ) const {
+
+    // Vector Coprocessor CSRs handled in coprocessor
+    // TODO remove this
+    if( ( csr >= vstart && csr <= vcsr ) || ( csr >= vl && csr <= vlenb ) ) {
+      std::cout << "Core should not read this vector CSR: 0x" << std::hex << csr << std::endl;
+      assert( false );
+    }
+
     // clang-format off
     switch( csr ) {
       case fflags:   return static_cast<XLEN>( CSR[fcsr] >> 0 & 0b00011111 );

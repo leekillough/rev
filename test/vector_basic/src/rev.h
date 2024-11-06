@@ -90,7 +90,7 @@
     asm volatile( " vsetvl %0, %1, %2 " : "=r"( RD ) : "r"( RS1 ), "r"( RS2 ) ); \
   } while( 0 )
 
-// CSR Access
+// CSR Access: CSRRW CSRRS CSRRC CSRRWI CSRRSI CSRRCI
 
 #define CSRRW( RD, CSR, RS1 )                                                  \
   do {                                                                         \
@@ -106,8 +106,6 @@
   do {                                                              \
     asm volatile( " csrrw zero, " str( CSR ) ", %1" : "r"( RS1 ) ); \
   } while( 0 )
-
-// CSRRS CSRRC CSRRWI CSRRSI CSRRCI
 
 // CSR Types
 union reg_vtype_t {
