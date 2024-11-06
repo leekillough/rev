@@ -11,6 +11,8 @@
  *
  */
 
+#include <inttypes.h>
+
 #include "rev-macros.h"
 #include "stdint.h"
 #include "stdlib.h"
@@ -107,8 +109,8 @@ lw_neq:
                 "sd   t3, 0(%0)  \n\t"  // store back into mem
                 : "=r"( p )
                 : "r"( &badneg ), "r"( &checkneg )
-                : "t3" );
-  printf( "neg result is 0x%llx\n", *p );
+                : "t3", "t4" );
+  printf( "neg result is 0x%" PRIx64 "\n", *p );
   //assert(resneg==checkneg);
 
   volatile uint64_t badpos   = 0x7adbeef17adbeef0;
@@ -126,8 +128,8 @@ lw_pos:
                 "sd   t3, 0(%0)  \n\t"  // store back into mem
                 : "=r"( p )
                 : "r"( &badpos ), "r"( &checkpos )
-                : "t3" );
-  printf( "pos result is 0x%llx\n", *p );
+                : "t3", "t4" );
+  printf( "pos result is 0x%" PRIx64 "\n", *p );
   TRACE_PUSH_OFF
 #endif
 }
@@ -248,7 +250,7 @@ check_tight_loop:
   int fubar = long_sub( 100, 20 );
   REV_TIME( time2 );
   assert( fubar == 80 );
-  printf( "Time check: %ld\n", time2 - time1 );
+  printf( "Time check: %" PRId64 "\n", time2 - time1 );
 #endif
 
   check_lw_sign_ext();
