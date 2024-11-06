@@ -75,7 +75,7 @@ uint32_t receive_request_messages( struct ForzaThreadArgs_* fargs, int* recv_cou
   // Process REQUEST messages
   //   * Adds the value from the messages to a local sum
   //     and tracks the number of messages received
-  struct Packet rcv_pkt = { 0UL, 0UL, 0UL, 0UL, 0UL, 0UL, 0UL };
+  struct Packet rcv_pkt = { 0, 0, 0, 0, 0, 0, 0 };
 
   do {
     // Check if message available

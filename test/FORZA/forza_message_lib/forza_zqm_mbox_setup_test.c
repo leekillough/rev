@@ -16,7 +16,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-int main( uint32_t argc, char** argv ) {
+int main( int argc, char** argv ) {
   uint32_t TID = forza_get_my_zap();
   if( forza_get_my_zone() > 0 )
     return 0;

@@ -56,7 +56,7 @@ void* forza_thread2( void* FArgs ) {
   return NULL;
 }
 
-int main( uint32_t argc, char** argv ) {
+int main( int argc, char** argv ) {
 
   uint64_t tid      = rev_gettid() % 10UL;
   char     msg1[20] = "\nTIDX: Main start\n";

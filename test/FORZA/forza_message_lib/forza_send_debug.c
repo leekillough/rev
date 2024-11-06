@@ -10,7 +10,7 @@
 #define ONE_THD   0
 #define TEST_DONE 1
 
-int main( uint32_t argc, char** argv ) {
+int main( int argc, char** argv ) {
   uint64_t TID        = forza_get_my_zap();
   uint64_t zen_status = forza_read_zen_status();
   uint64_t logical_pe = TID;
