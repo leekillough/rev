@@ -11,6 +11,8 @@
  *
  */
 
+#include <inttypes.h>
+
 #include "rev-macros.h"
 #include "stdint.h"
 #include "stdlib.h"
@@ -87,6 +89,49 @@ void* thread2() {
     thread2_counter += 2;
   TRACE_PUSH_OFF
   return 0;
+}
+
+void check_lw_sign_ext() {
+#ifdef RV64G
+  volatile uint64_t  mem[2]   = { 0 };
+  volatile uint64_t* p        = &mem[0];
+  volatile uint64_t  badneg   = 0xbadbeef1badbeef0;
+  volatile uint64_t  checkneg = 0xffffffffbadbeef0;
+  TRACE_PUSH_ON
+lw_neq:
+  asm volatile( "ld   t3, 0(%1)   \n\t"  // t3 <- badneg
+                "ld   t4, 0(%2)   \n\t"  // t4 <- checkneg
+                "sd   t3, 4(%0)   \n\t"  // store badneg to upper half of mem[0]
+                "lw   t3, 0(%0)   \n\t"  // load mem[0]
+                "beq  t3, t4, 0f  \n\t"  // check
+                ".word 0x0 \n\t"         // fail
+                "0: \n\t"
+                "sd   t3, 0(%0)  \n\t"  // store back into mem
+                : "=r"( p )
+                : "r"( &badneg ), "r"( &checkneg )
+                : "t3", "t4" );
+  printf( "neg result is 0x%" PRIx64 "\n", *p );
+  //assert(resneg==checkneg);
+
+  volatile uint64_t badpos   = 0x7adbeef17adbeef0;
+  volatile uint64_t checkpos = 0x07adbeef0;
+  mem[0]                     = 0;
+  mem[1]                     = 0;
+lw_pos:
+  asm volatile( "ld   t3, 0(%1)   \n\t"  // t3 <- badpos
+                "ld   t4, 0(%2)   \n\t"  // t4 <- checkpos
+                "sd   t3, 4(%0)   \n\t"  // store badpos to upper half of mem[0]
+                "lw   t3, 0(%0)   \n\t"  // load mem[0]
+                "beq  t3, t4, 0f \n\t"   // check
+                ".word 0x0 \n\t"         // fail
+                "0: \n\t"
+                "sd   t3, 0(%0)  \n\t"  // store back into mem
+                : "=r"( p )
+                : "r"( &badpos ), "r"( &checkpos )
+                : "t3", "t4" );
+  printf( "pos result is 0x%" PRIx64 "\n", *p );
+  TRACE_PUSH_OFF
+#endif
 }
 
 int main( int argc, char** argv ) {
@@ -205,8 +250,10 @@ check_tight_loop:
   int fubar = long_sub( 100, 20 );
   REV_TIME( time2 );
   assert( fubar == 80 );
-  printf( "Time check: %ld\n", time2 - time1 );
+  printf( "Time check: %" PRId64 "\n", time2 - time1 );
 #endif
+
+  check_lw_sign_ext();
 
   printf( "tracer test completed normally\n" );
   return 0;

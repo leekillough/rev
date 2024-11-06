@@ -30,6 +30,7 @@ parser.add_argument("--machine", help="Machine type/configuration", default="[CO
 parser.add_argument("--args", help="Command line arguments to pass to the target executable", default="")
 parser.add_argument("--startSymbol", help="ELF Symbol Rev should begin execution at", default="[0:main]")
 parser.add_argument("--trcStartCycle", help="Starting cycle for rev tracer [default: 0 (off)]")
+parser.add_argument("--trcLimit", help="Max trace records per core [default: 0 (no limit)]", default=0)
 parser.add_argument("--statDir", help="Location for statistics files", default=".")
 
 # Parse arguments
@@ -61,6 +62,7 @@ comp_cpu.addParams({
     "enableMemH": args.enableMemH,
     "args": args.args,
     "trcStartCycle": args.trcStartCycle,
+    "trcLimit": args.trcLimit,
     "splash": 1
 })
 
@@ -71,7 +73,6 @@ if args.rvv:
         "clockFreq": clock
     })
 
-# sst --output-directory does not work with statistics. bug?
 os.makedirs(args.statDir, exist_ok=True)
 sst.setStatisticOutput("sst.statOutputCSV", {
     "filepath": f"{args.statDir}/StatisticOutput.csv",
