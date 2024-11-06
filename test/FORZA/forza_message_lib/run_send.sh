@@ -2,12 +2,13 @@
 
 #Build the test
 make clean && make
+program=forza_send_test.exe
+
 
 # Check that the exec was built...
-if [[ -f forza_send_test.exe ]]; then
-  #sst --add-lib-path=../../build/src/ ./rev_forza_send.py
-  sst --model-options="--program=forza_send_test.exe --numHarts=16" ./rev-onezone.py
+if [[ -f $program ]]; then
+  sst --model-options="--hartsperzap 16 --zaps 2 --zones 1 --precincts 1 --shape 1,1:1 --program $program" ../forza-test-config-ring.py
 else
-  echo "Test FORZA forza_send_test.c: forza_send_test.exe not Found - likely build failed"
+  echo "Test FORZA $program not Found - likely build failed"
   exit 1
 fi

@@ -10,22 +10,22 @@
 
 #define I 10
 
-typedef unsigned long int forza_thread_t;
-static forza_thread_t     actor_threads[16];
+typedef uint64_t      forza_thread_t;
+static forza_thread_t actor_threads[16];
 
 typedef struct ForzaThreadArgs_ {
-  int ThreadType;
-  int ActorID;
+  uint32_t ThreadType;
+  uint32_t ActorID;
 } ForzaThreadArgs;
 
-static int forza_thread_create( forza_thread_t* tid, void* fn, void* arg ) {
-  int ret;
+static uint32_t forza_thread_create( forza_thread_t* tid, void* fn, void* arg ) {
+  uint32_t ret;
   ret = rev_pthread_create( tid, NULL, fn, arg );
   return ret;
 }
 
-static int forza_thread_join( forza_thread_t tid ) {
-  int ret;
+static uint32_t forza_thread_join( forza_thread_t tid ) {
+  uint32_t ret;
   ret = rev_pthread_join( tid );
   return ret;
 }
@@ -33,7 +33,7 @@ static int forza_thread_join( forza_thread_t tid ) {
 void* forza_thread1( void* FArgs ) {
   ForzaThreadArgs* args_recv = (ForzaThreadArgs*) FArgs;
   uint64_t         tid       = rev_gettid() % 10UL;
-  for( int i = 0; i < I; i++ ) {
+  for( uint32_t i = 0; i < I; i++ ) {
     char msg[20] = "\nTIDX: II: thread1\n";
     msg[4]       = '0' + tid;
     msg[8]       = '0' + i;
@@ -46,7 +46,7 @@ void* forza_thread1( void* FArgs ) {
 void* forza_thread2( void* FArgs ) {
   ForzaThreadArgs* args_recv = (ForzaThreadArgs*) FArgs;
   uint64_t         tid       = rev_gettid() % 10UL;
-  for( int i = 0; i < I; i++ ) {
+  for( uint32_t i = 0; i < I; i++ ) {
     char msg[20] = "\nTIDX: II: thread2\n";
     msg[4]       = '0' + tid;
     msg[8]       = '0' + i;
