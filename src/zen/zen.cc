@@ -565,9 +565,7 @@ void ZEN::handleIncomingPrecZOP(SST::Event *event) {
     case SST::Forza::zopMsgT::Z_RESP:
       // RZA Response
       // Put onto zone NoC
-      output.fatal(CALL_INFO, -1, "ZEN %s: received an incoming rza response zop packet (unhandled)\n",
-                   getName().c_str());
-      //to_zone_noc_q.push_back(ev);
+      zone_nic->send( ev, zone_nic->getZCID( ev->getDestZCID(), false ) );
       break;
 
     //case SST::Forza::zopMsgT::Z_HZOPV: [[fallthrough]];
@@ -575,9 +573,7 @@ void ZEN::handleIncomingPrecZOP(SST::Event *event) {
     case SST::Forza::zopMsgT::Z_MZOP: [[fallthrough]];
     case SST::Forza::zopMsgT::Z_HZOPAC:
       // Memory zop type - forward on to zone NoC
-      //to_zone_noc_q.push_back(ev);
-      output.fatal(CALL_INFO, -1, "ZEN %s: received an incoming memory zop packet (unhandled)\n",
-                   getName().c_str());
+      zone_nic->send( ev, zopCompID::Z_RZA );
       break;
 
     case SST::Forza::zopMsgT::Z_TMIG:
@@ -626,25 +622,17 @@ void ZEN::handleIncomingZOP(SST::Event *event) {
       helper_handleMsgZop(ev);
       break;
 
-    case SST::Forza::zopMsgT::Z_RESP:
-      // These can from the RZA and the ZAP scratchpad
-      //mem_acks.push(ev);
-      output.fatal(CALL_INFO, -7, "ZEN %s: received a response packet (unhandled)\n",
-                   getName().c_str());
-      break;
-
     //case SST::Forza::zopMsgT::Z_HZOPV: [[fallthrough]];
     //case SST::Forza::zopMsgT::Z_RZOP: [[fallthrough]];
+    case SST::Forza::zopMsgT::Z_RESP: [[fallthrough]];
     case SST::Forza::zopMsgT::Z_MZOP: [[fallthrough]];
     case SST::Forza::zopMsgT::Z_HZOPAC:
       // Memory zop type - should be strictly outgoing to precinct NoC
-      if (isDestLocal(ev))
+      if ( isDestLocal(ev) )
         output.fatal(CALL_INFO, -2, "ZEN %s: received a memory zop with local dest\n",
                      getName().c_str());
       // Put packet in outgoing queue
-      // to_precinct_noc_q.push_back(ev);
-      output.fatal(CALL_INFO, -3, "ZEN %s: received an outgoing memory zop packet (unhandled)\n",
-                   getName().c_str());
+      m_prec_iface->send( ev, zopCompID::Z_RZA );
       break;
 
     case SST::Forza::zopMsgT::Z_TMIG:
