@@ -298,7 +298,7 @@ class FORZA:
                  memAccessTime="100ns", reqPerCycle=1,
                  inputBufSize="2048B", outputBufSize="2048B",
                  linkBW="100GB/s", flitSize="8B", linkLatency="100ns",
-                 xbarBW="800GB/s", verbose="5"):
+                 xbarBW="800GB/s", verbose="9"):
         print("Initializing FORZA")
         self.name = name
         self.zones = zones

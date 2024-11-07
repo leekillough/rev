@@ -3768,6 +3768,7 @@ const std::unordered_map<uint32_t, EcallStatus(RevCore::*)()> RevCore::Ecalls = 
     { 4013, &RevCore::ECALL_forza_get_my_precinct }, // , forza_get_my_precinct();
     { 4014, &RevCore::ECALL_forza_zone_barrier }, // , forza_zone_barrier();
     { 4015, &RevCore::ECALL_forza_debug_print }, //, forza_debug_print();
+    { 4016, &RevCore::ECALL_forza_remote_update },      //, forza_remote_update(uint64_t *dest, uint64_t data);
     { 9000, &RevCore::ECALL_dump_mem_range },           // rev_dump_mem_range(uint64_t addr, uint64_t size)
     { 9001, &RevCore::ECALL_dump_mem_range_to_file },   // rev_dump_mem_range_to_file(const char* outputFile, uint64_t addr, uint64_t size)
     { 9002, &RevCore::ECALL_dump_stack },               // rev_dump_stack()
@@ -4387,15 +4388,81 @@ EcallStatus RevCore::ECALL_forza_debug_print() {
     CALL_INFO,
     2,
     0,
-    "ECALL: forza_debug_print called by thread %" PRIu32 " on hart %" PRIu32 " on zap=%" PRIu8 "; a=0x%" PRIx64 "; b=0x%" PRIx64
-    "; c=0x%" PRIx64 "\n",
+    "ECALL: forza_debug_print called by thread %" PRIu32 " on hart %" PRIu32 " on zap=%" PRIu8 "; zone=%" PRIu32 "; a=0x%" PRIx64
+    "; b=0x%" PRIx64 "; c=0x%" PRIx64 "\n",
     GetActiveThreadID(),
     HartToExecID,
     static_cast<uint8_t>( zNic->getEndpointType() ),
+    zNic->getZoneID(),
     a,
     b,
     c
   );
+  return EcallStatus::SUCCESS;
+}
+
+// 4016, forza_remote_update
+EcallStatus RevCore::ECALL_forza_remote_update() {
+  uint64_t dest      = RegFile->GetX<uint64_t>( RevReg::a0 );
+  uint64_t data      = RegFile->GetX<uint64_t>( RevReg::a1 );
+
+  // Translate dest into necessary components
+  uint64_t dest_addr = dest & Z_ADDR_MASK;
+  uint64_t dest_zone = ( ( dest >> Z_ZONE_SHIFT ) & Z_ZONE_MASK );
+  uint64_t dest_prec = ( ( dest >> Z_PREC_SHIFT ) & Z_PREC_MASK );
+
+  if( !zNic ) {
+    output->fatal( CALL_INFO, -1, "[FORZA][ZAP]: zNic not implemented, cannot send zop\n" );
+    return EcallStatus::ERROR;
+  }
+
+  output->verbose(
+    CALL_INFO,
+    2,
+    0,
+    "ECALL: forza_remote_update called by thread %" PRIu32 " on hart %" PRIu32 ", val=%" PRIu32 "\n",
+    GetActiveThreadID(),
+    HartToExecID,
+    zNic->getPrecinctID()
+  );
+
+  // Get a message ID
+  uint16_t msg_id           = 0;
+  //uint16_t msg_id = zNicMsgIds->getMsgId();
+  //if (msg_id == Z_MAX_MSG_IDS)
+  //  output->fatal(CALL_INFO, -2, "[FORZA][ZAP]: no valid msg_ids\n");
+
+  // create a new event
+  SST::Forza::zopEvent* zev = new SST::Forza::zopEvent();
+
+  // set all the fields
+  zev->setType( SST::Forza::zopMsgT::Z_MZOP );
+  zev->setNB( 0 );
+  zev->setID( msg_id );
+  zev->setCredit( 0 );
+  zev->setOpc( Forza::zopOpc::Z_MZOP_SD );
+  zev->setAppID( 0 );
+  zev->setDestHart( Z_MZOP_PIPE_HART );
+  zev->setDestZCID( (uint8_t) ( SST::Forza::zopCompID::Z_RZA ) );
+  zev->setDestPCID( (uint8_t) ( dest_zone ) );
+  zev->setDestPrec( (uint8_t) ( dest_prec ) );
+  zev->setSrcHart( HartToExecID );
+  zev->setSrcZCID( (uint8_t) ( zNic->getEndpointType() ) );
+  zev->setSrcPCID( (uint8_t) ( zNic->getPCID( zNic->getZoneID() ) ) );
+  zev->setSrcPrec( (uint8_t) ( zNic->getPrecinctID() ) );
+
+  // set the payload
+  std::vector<uint64_t> payload;
+  payload.push_back( 0x00ull );    //  ACS: FIXME
+  payload.push_back( dest_addr );  //  address
+  payload.push_back( data );
+  zev->setPayload( payload );
+
+  output->verbose( CALL_INFO, 5, 0, "Sending ZOP from %s to %s\n", zev->getSrcString().c_str(), zev->getDestString().c_str() );
+
+  // inject the new packet
+  zNic->send( zev, SST::Forza::zopCompID::Z_RZA );
+
   return EcallStatus::SUCCESS;
 }
 
