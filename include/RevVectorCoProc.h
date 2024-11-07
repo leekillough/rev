@@ -36,8 +36,8 @@ public:
   SST_ELI_DOCUMENT_PARAMS(
     { "verbose", "Set the verbosity of output for the co-processor", "0" },
     { "clock", "Sets the clock frequency of the co-processor", "1Ghz" },
-    { "ELEN", "Maximum number of bits of a vector element that any operation can produce or consume" },
-    { "VLEN", "Max number of bits in a single vector register" },
+    { "ELEN", "Maximum number of bits of a vector element that any operation can produce or consume", "64" },
+    { "VLEN", "Max number of bits in a single vector register", "128" },
   );
 
   // Register any subcomponents used by this element
@@ -88,28 +88,54 @@ public:
   virtual bool IsDone() { return InstQ.empty(); }
 
 private:
-  struct RevCoProcInst {
-    RevCoProcInst( uint32_t inst, const RevFeature* F, RevRegFile* R, RevMem* M )
-      : Inst( inst ), Feature( F ), RegFile( R ), Mem( M ) {}
+  // Decoded instruction fields and source data
+  struct DecodedInst_t {
+    uint32_t inst;
+    RevInstF format = RevInstF::RVTypeUNKNOWN;
+    uint64_t rdval;
+  };
 
-    uint32_t const          Inst;
+  DecodedInst_t decodedInst = {};
+
+  struct RevCoProcInst {
+    RevCoProcInst( DecodedInst_t D, const RevFeature* F, RevRegFile* R, RevMem* M )
+      : decodedInst( D ), Feature( F ), RegFile( R ), Mem( M ) {}
+
+    DecodedInst_t           decodedInst;
     const RevFeature* const Feature;
     RevRegFile* const       RegFile;
     RevMem* const           Mem;
   };
 
-  /// RevVectorCoProc: Total number of instructions retired
-  Statistic<uint64_t>* num_instRetired{};
+  std::vector<RevInstEntry>                   InstTable{};    ///< RevVectorCoProc: vector instruction table
+  std::vector<std::unique_ptr<RevExt>>        Extensions{};   ///< RevVectorCoProc: vector of enabled extensions
+  std::unordered_multimap<uint64_t, unsigned> EncToEntry{};   ///< RevVectorCoProc: instruction encoding to table entry mapping
+  std::unordered_map<std::string, unsigned>   NameToEntry{};  ///< RevVectorCoProc: instruction mnemonic to table entry mapping
+  std::unordered_map<unsigned, std::pair<unsigned, unsigned>> EntryToExt{
+  };  ///< RevVectorCoProc: instruction entry to extension mapping
 
-  /// Queue of instructions sent from attached RevCore
-  std::queue<RevCoProcInst> InstQ{};
+  Statistic<uint64_t>*      num_instRetired{};  ///< RevVectorCoProc: Total number of instructions retired
+  std::queue<RevCoProcInst> InstQ{};            ///< RevVectorCoProc: Queue of instructions sent from attached RevCore
+  SST::Cycle_t              cycleCount{};       ///< RevVectorCoProc: Cycles executed
 
-  SST::Cycle_t cycleCount{};
+  bool LoadInstructionTable();    ///< RevVectorCoProc: Loads the vector instruction table
+  bool SeedInstructionTable();    ///< RevVectorCoProc: stage 1 loading initial tables
+  bool EnableExt( RevExt* Ext );  ///< RevVectorCoProc: merge extension into main instruction table
+  bool InitTableMapping();        ///< RevVectorCoProc: initializes the internal mapping tables
 
-  // VLEN=128, ELEN=64
-  uint64_t vreg[32][2] = { { 0 } };
+  std::string ExtractMnemonic( const RevInstEntry& Entry
+  );  ///< RevVectorCoProc: extracts the instruction mnemonic from the table entry
+  uint32_t    CompressEncoding( const RevInstEntry& Entry );  ///< RevCore: compressed the encoding structure to a single value
+  auto        matchInst(  ///< RevVectorCoProc: finds an entry which matches an encoding whose predicate is true
+    const std::unordered_multimap<uint64_t, unsigned>& map,
+    uint64_t                                           encoding,
+    const std::vector<RevInstEntry>&                   InstTable,
+    uint32_t                                           Inst
+  ) const;
 
-  /// Quick Decode helpers for special CSR access
+  uint64_t vreg[32][2] = { { 0 } };  ///< RevVectorCoProc: Vector RF VLEN=128, ELEN=64
+
+  // Quick Decode helpers for special CSR access
   union csr_inst_t {
     uint32_t v = 0x0;
 
@@ -154,7 +180,7 @@ private:
 
 public:
   /// RevVectorCoProc: Vector Execution Mock-up
-  void FauxExec( RevCoProcInst rec );
+  void Exec( RevCoProcInst rec );
 
 };  //class RevVectorCoProc
 

@@ -28,6 +28,7 @@
 #include "insns/RV64I.h"
 #include "insns/RV64M.h"
 #include "insns/RV64P.h"
+#include "insns/RVVec.h"
 #include "insns/Zaamo.h"
 #include "insns/Zalrsc.h"
 #include "insns/Zfa.h"

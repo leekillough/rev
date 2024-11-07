@@ -97,6 +97,7 @@ protected:
 
   ///< RevCoProc: Create the passkey object - this allows access to otherwise private members within RevCore
   RevCorePasskey<RevCoProc> CreatePasskey() { return RevCorePasskey<RevCoProc>(); }
+
 };  // class RevCoProc
 
 // ----------------------------------------
