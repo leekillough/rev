@@ -15,6 +15,7 @@
 
 // -- RevCPU Headers
 #include "RevCoProc.h"
+#include "RevVRegFile.h"
 
 namespace SST::RevCPU {
 
@@ -59,7 +60,7 @@ public:
   RevVectorCoProc( ComponentId_t id, Params& params, RevCore* parent );
 
   /// RevVectorCoProc: destructor
-  virtual ~RevVectorCoProc()                           = default;
+  virtual ~RevVectorCoProc();
 
   /// RevVectorCoProc: disallow copying and assignment
   RevVectorCoProc( const RevVectorCoProc& )            = delete;
@@ -88,26 +89,19 @@ public:
   virtual bool IsDone() { return InstQ.empty(); }
 
 private:
-  // Decoded instruction fields and source data
-  struct DecodedInst_t {
-    uint32_t inst;
-    RevInstF format = RevInstF::RVTypeUNKNOWN;
-    uint64_t rdval;
-  };
-
-  DecodedInst_t decodedInst = {};
+  RevVecInst VecInst = {};
 
   struct RevCoProcInst {
-    RevCoProcInst( DecodedInst_t D, const RevFeature* F, RevRegFile* R, RevMem* M )
-      : decodedInst( D ), Feature( F ), RegFile( R ), Mem( M ) {}
+    RevCoProcInst( RevVecInst D, const RevFeature* F, RevRegFile* R, RevMem* M )
+      : VecInst( D ), Feature( F ), RegFile( R ), Mem( M ) {}
 
-    DecodedInst_t           decodedInst;
+    RevVecInst              VecInst;
     const RevFeature* const Feature;
     RevRegFile* const       RegFile;
     RevMem* const           Mem;
   };
 
-  std::vector<RevInstEntry>                   InstTable{};    ///< RevVectorCoProc: vector instruction table
+  std::vector<RevVecInstEntry>                InstTable{};    ///< RevVectorCoProc: vector instruction table
   std::vector<std::unique_ptr<RevExt>>        Extensions{};   ///< RevVectorCoProc: vector of enabled extensions
   std::unordered_multimap<uint64_t, unsigned> EncToEntry{};   ///< RevVectorCoProc: instruction encoding to table entry mapping
   std::unordered_map<std::string, unsigned>   NameToEntry{};  ///< RevVectorCoProc: instruction mnemonic to table entry mapping
@@ -118,22 +112,22 @@ private:
   std::queue<RevCoProcInst> InstQ{};            ///< RevVectorCoProc: Queue of instructions sent from attached RevCore
   SST::Cycle_t              cycleCount{};       ///< RevVectorCoProc: Cycles executed
 
-  bool LoadInstructionTable();    ///< RevVectorCoProc: Loads the vector instruction table
-  bool SeedInstructionTable();    ///< RevVectorCoProc: stage 1 loading initial tables
-  bool EnableExt( RevExt* Ext );  ///< RevVectorCoProc: merge extension into main instruction table
-  bool InitTableMapping();        ///< RevVectorCoProc: initializes the internal mapping tables
+  bool LoadInstructionTable();   ///< RevVectorCoProc: Loads the vector instruction table
+  bool SeedInstructionTable();   ///< RevVectorCoProc: stage 1 loading initial tables
+  bool EnableExt( RVVec* Ext );  ///< RevVectorCoProc: merge extension into main instruction table
+  bool InitTableMapping();       ///< RevVectorCoProc: initializes the internal mapping tables
 
-  std::string ExtractMnemonic( const RevInstEntry& Entry
+  std::string ExtractMnemonic( const RevVecInstEntry& Entry
   );  ///< RevVectorCoProc: extracts the instruction mnemonic from the table entry
-  uint32_t    CompressEncoding( const RevInstEntry& Entry );  ///< RevCore: compressed the encoding structure to a single value
+  uint32_t    CompressEncoding( const RevVecInstEntry& Entry );  ///< RevCore: compressed the encoding structure to a single value
   auto        matchInst(  ///< RevVectorCoProc: finds an entry which matches an encoding whose predicate is true
     const std::unordered_multimap<uint64_t, unsigned>& map,
     uint64_t                                           encoding,
-    const std::vector<RevInstEntry>&                   InstTable,
+    const std::vector<RevVecInstEntry>&                InstTable,
     uint32_t                                           Inst
   ) const;
 
-  uint64_t vreg[32][2] = { { 0 } };  ///< RevVectorCoProc: Vector RF VLEN=128, ELEN=64
+  RevVRegFile* vregfile = nullptr;
 
   // Quick Decode helpers for special CSR access
   union csr_inst_t {
