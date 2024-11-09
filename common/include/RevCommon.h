@@ -83,6 +83,7 @@ enum class RevRegClass : uint8_t {  ///< Rev CPU Register Classes
   RegGPR     = 2,                   ///< RevRegClass: GPR reg file
   RegCSR     = 3,                   ///< RevRegClass: CSR reg file
   RegFLOAT   = 4,                   ///< RevRegClass: Float register file
+  RegVEC     = 5,                   ///< RevRegClass: Vector register file
 };
 
 enum class MemOp : uint8_t {

@@ -245,16 +245,29 @@ RevVecInst::RevVecInst( uint32_t inst ) : Inst( inst ) {
 
 void RevVecInst::DecodeBase() {
   // registers
-  if( revInstEntry->rdClass != RevRegClass::RegUNKNOWN ) {
+
+  if( revInstEntry->rdClass == RevRegClass::RegVEC ) {
+    vd = DECODE_VD( Inst );
+  } else if( revInstEntry->rdClass != RevRegClass::RegUNKNOWN ) {
     rd = DECODE_RD( Inst );
   }
-  if( revInstEntry->rs1Class != RevRegClass::RegUNKNOWN ) {
+
+  if( revInstEntry->rs1Class == RevRegClass::RegVEC ) {
+    vs1 = DECODE_VS1( Inst );
+  } else if( revInstEntry->rs1Class != RevRegClass::RegUNKNOWN ) {
     rs1      = DECODE_RS1( Inst );
     read_rs1 = true;
   }
-  if( revInstEntry->rs2Class != RevRegClass::RegUNKNOWN ) {
+
+  if( revInstEntry->rs2Class == RevRegClass::RegVEC ) {
+    vs2 = DECODE_VS2( Inst );
+  } else if( revInstEntry->rs2Class == RevRegClass::RegUNKNOWN ) {
     rs2      = DECODE_RS2( Inst );
     read_rs2 = true;
+  }
+
+  if( revInstEntry->rs3Class == RevRegClass::RegVEC ) {
+    vs3 = DECODE_VS3( Inst );
   }
 }
 

@@ -36,17 +36,16 @@ struct RevVecInst {
   // vector instruction table entry
   RevVecInstEntry* revInstEntry = nullptr;
 
-  // local vector register file
-  // The functions take a core register file pointer but we want to keep
-  // the vector register file encapsulated with the coprocessor. A pointer
-  // to this object is passed along with the core register file.
-  // Crude but effective.
-  // RevVRegFile* vregfile      = nullptr;
-
   // core register addresses
   uint64_t rd                   = 0;
   uint64_t rs1                  = 0;
   uint64_t rs2                  = 0;
+
+  // vector register addresses
+  uint64_t vd                   = 0;
+  uint64_t vs1                  = 0;
+  uint64_t vs2                  = 0;
+  uint64_t vs3                  = 0;
 
   // TODO: We should model one pipeline stage to flopping the source registers.
   //       Now we reach down out of the clear blue sky and grab them
@@ -54,6 +53,7 @@ struct RevVecInst {
   uint64_t src2                 = 0xbadbeef;
   bool     read_rs1             = false;
   bool     read_rs2             = false;
+  bool     read_rs3             = false;
 
   RevVecInst() {};
   RevVecInst( uint32_t Inst );
@@ -62,6 +62,8 @@ struct RevVecInst {
   void DecodeRVVTypeOp();
   void DecodeRVVTypeLd();
   void DecodeRVVTypeSt();
+
+  // Vector Extension
   //void ReadScalars( RevRegFile* R );
 };
 
@@ -82,6 +84,7 @@ struct RevVecInstEntry {
   uint16_t jumpTarget  = 0;  ///< RevVecInstEntry: compressed jump target value
 
   // register encodings
+  // overlay vector registers vd, vs1, vs2, vs3 onto rd, vs1, vs2, vs3, respectively
   RevRegClass rdClass  = RevRegClass::RegGPR;      ///< RevVecInstEntry: Rd register class
   RevRegClass rs1Class = RevRegClass::RegGPR;      ///< RevVecInstEntry: Rs1 register class
   RevRegClass rs2Class = RevRegClass::RegGPR;      ///< RevVecInstEntry: Rs2 register class
@@ -144,6 +147,10 @@ public:
 
   const std::vector<RevVecInstEntry>& GetVecTable() const { return VecTable; }
 
+  /**
+   * Vector Instruction Implementations
+   */
+
   static bool vsetivli( const RevFeature* F, RevRegFile* R, RevVRegFile* V, RevMem* M, const RevVecInst& Inst ) {
     std::cout << "vsetivli: no need to go further\n" << std::endl;
     assert( false );
@@ -162,49 +169,31 @@ public:
   }
 
   static bool vadd( const RevFeature* F, RevRegFile* R, RevVRegFile* V, RevMem* M, const RevVecInst& Inst ) {
-#if 1
-    // this does 64 bits at a time. Overflow will not occur for this test
-    V->vreg[2][0] = V->vreg[0][0] + V->vreg[1][0];
-    V->vreg[2][1] = V->vreg[0][1] + V->vreg[1][1];
-    // output->verbose(
-    //   CALL_INFO,
-    //   5,
-    //   0,
-    //   "*V"
-    //   " 0x%" PRIx64 " <- v[0][0] 0x%" PRIx64 " <- v[0][1]"
-    //   " 0x%" PRIx64 " <- v[1][0] 0x%" PRIx64 " <- v[1][1]"
-    //   " v[2][0] <- 0x%" PRIx64 " v[2][1] <- 0x%" PRIx64 "\n",
-    //   V->vreg[0][0],
-    //   V->vreg[0][1],
-    //   V->vreg[1][0],
-    //   V->vreg[1][1],
-    //   V->vreg[2][0],
-    //   V->vreg[2][1]
-#else
-    std::cout << "vsetvl: no need to go further\n" << std::endl;
-    assert( false );
-#endif
+    //TODO this only does 64 bits at a time. Overflow will not occur for this test so using simple adds
+    V->vreg[Inst.vd][0] = V->vreg[Inst.vs1][0] + V->vreg[Inst.vs2][0];
+    V->vreg[Inst.vd][1] = V->vreg[Inst.vs1][1] + V->vreg[Inst.vs2][1];
     return true;
   }
 
   static bool vs( const RevFeature* F, RevRegFile* R, RevVRegFile* V, RevMem* M, const RevVecInst& Inst ) {
-    uint64_t a3 = R->GetX<uint64_t>( RevReg::a3 );
-    M->WriteMem( 0, a3, 8, &( V->vreg[2][0] ) );
-    M->WriteMem( 0, a3 + 8, 8, &( V->vreg[2][1] ) );
+    uint64_t addr = R->GetX<uint64_t>( Inst.rs1 );
+    M->WriteMem( 0, addr, 8, &( V->vreg[Inst.vs3][0] ) );
+    M->WriteMem( 0, addr + 8, 8, &( V->vreg[Inst.vs3][1] ) );
     return true;
   }
 
   static bool vl( const RevFeature* F, RevRegFile* R, RevVRegFile* V, RevMem* M, const RevVecInst& Inst ) {
-
-    uint64_t src = R->GetX<uint64_t>( Inst.rs1 );
-    uint16_t vd  = Inst.rs1 == 11 ? 0 : 1;
-    MemReq   req0( src, RevReg::zero, RevRegClass::RegGPR, 0, MemOp::MemOpREAD, true, R->GetMarkLoadComplete() );
-    M->ReadVal<uint64_t>( 0, src, &( V->vreg[vd][0] ), req0, RevFlag::F_NONE );
-    MemReq req1( src + 8, RevReg::zero, RevRegClass::RegGPR, 0, MemOp::MemOpREAD, true, R->GetMarkLoadComplete() );
-    M->ReadVal<uint64_t>( 0, src + 8, &( V->vreg[vd][1] ), req1, RevFlag::F_NONE );
-    // output->verbose( CALL_INFO, 5, 0, "*V v[vd][0] <- 0x%" PRIx64 " v[vd][1] <- 0x%" PRIx64 "\n", vreg[vd][0], vreg[vd][1] );
+    uint64_t addr = R->GetX<uint64_t>( Inst.rs1 );
+    MemReq   req0( addr, RevReg::zero, RevRegClass::RegGPR, 0, MemOp::MemOpREAD, true, R->GetMarkLoadComplete() );
+    M->ReadVal<uint64_t>( 0, addr, &( V->vreg[Inst.vd][0] ), req0, RevFlag::F_NONE );
+    MemReq req1( addr + 8, RevReg::zero, RevRegClass::RegGPR, 0, MemOp::MemOpREAD, true, R->GetMarkLoadComplete() );
+    M->ReadVal<uint64_t>( 0, addr + 8, &( V->vreg[Inst.vd][1] ), req1, RevFlag::F_NONE );
     return true;
   }
+
+  /**
+   * Vector Instruction Table
+   */
 
   // clang-format off
   std::vector<RevVecInstEntry> RVVTable = {
@@ -214,7 +203,9 @@ public:
   //   For LOAD-FP and STORE-FP, Func3 = 0x8
 
   // Func3=0x0: OPIVV
-  RevVecInstDefaults().SetMnemonic("vadd.vv %vd, %vs2, %vs2, %vm" ).SetFunct3(0x0).SetImplFunc(&vadd    ).SetrdClass(RevRegClass::RegGPR)  .SetFormat(RVVTypeOp).SetOpcode(0b1010111),
+  // func6   vm    vs2    vs1  0  vd   b1010111
+  //   6      1     5      5   3   5     6
+  RevVecInstDefaults().SetMnemonic("vadd.vv %vd, %vs2, %vs2, %vm" ).SetFunct3(0x0).SetImplFunc(&vadd).SetrdClass(RevRegClass::RegVEC).Setrs1Class(RevRegClass::RegVEC).Setrs2Class(RevRegClass::RegVEC)  .SetFormat(RVVTypeOp).SetOpcode(0b1010111),
 
   // Func3=0x1: OPFVV
   // Func3=0x2: OPMVV
@@ -229,9 +220,18 @@ public:
   RevVecInstDefaults().SetMnemonic("vsetvl %rd, %rs1, %rs2"       ).SetFunct3(0x7).SetImplFunc(&vsetvl  ).SetrdClass(RevRegClass::RegGPR).Setrs1Class(RevRegClass::RegGPR    ).Setrs2Class(RevRegClass::RegGPR)      .SetFormat(RVVTypeOp).SetOpcode(0b1010111).SetPredicate( []( uint32_t Inst ){ return ((Inst >> 25) & 0x7f) == 0xb1000000; } ),
 
   // Func3=0x8: Vector Loads and Stores
-  // Note: RS2 will be for strided loads/stores
-  RevVecInstDefaults().SetMnemonic("vle32.v %vd, (%rs1), %vm"  ).SetFunct3(0x8).SetImplFunc(&vl    ).Setrs1Class(RevRegClass::RegGPR).Setrs1Class(RevRegClass::RegGPR).Setrs2Class(RevRegClass::RegUNKNOWN)  .SetFormat(RVVTypeLd).SetOpcode(0b0000111),
-  RevVecInstDefaults().SetMnemonic("vse32.v %vs3, (%rs1), %vm" ).SetFunct3(0x8).SetImplFunc(&vs    ).Setrs1Class(RevRegClass::RegGPR).Setrs1Class(RevRegClass::RegGPR).Setrs2Class(RevRegClass::RegUNKNOWN)  .SetFormat(RVVTypeSt).SetOpcode(0b0100111),
+  // Note: Func3 is synthesized to differentiate it from OP types
+
+
+  // VL* Unit Stride
+  // nf   mew  mop  vm  lumop  rs1   width  vd  b0000111
+  //  3    1    2    1    5     5     3      5     7
+  RevVecInstDefaults().SetMnemonic("vl*.v %vd, (%rs1), %vm"  ).SetFunct3(0x8).SetImplFunc(&vl).SetrdClass(RevRegClass::RegVEC).Setrs1Class(RevRegClass::RegGPR).Setrs2Class(RevRegClass::RegUNKNOWN)   .SetFormat(RVVTypeLd).SetOpcode(0b0000111),
+
+  // VS* Unit Stride
+  // nf   mew  mop  vm  sumop  rs1   width  vs3  b0100111
+  //  3    1    2    1    5     5     3      5     7
+  RevVecInstDefaults().SetMnemonic("vs*.v %vs3, (%rs1), %vm" ).SetFunct3(0x8).SetImplFunc(&vs).SetrdClass(RevRegClass::RegUNKNOWN).Setrs1Class(RevRegClass::RegGPR).Setrs2Class(RevRegClass::RegUNKNOWN).Setrs3Class(RevRegClass::RegVEC)  .SetFormat(RVVTypeSt).SetOpcode(0b0100111),
 
   };
   // clang-format on

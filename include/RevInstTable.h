@@ -40,6 +40,10 @@ constexpr uint8_t  DECODE_FUNCT3    ( uint32_t Inst ) { return Inst >> 12 &     
 constexpr bool     DECODE_RL        ( uint32_t Inst ) { return Inst >> 25 &                    0b1; }
 constexpr bool     DECODE_AQ        ( uint32_t Inst ) { return Inst >> 26 &                    0b1; }
 constexpr FRMode   DECODE_RM        ( uint32_t Inst ) { return FRMode{ Inst >> 12 &          0b111 }; }
+constexpr uint8_t  DECODE_VD        ( uint32_t Inst ) { return Inst >>  7 &                0b11111; }
+constexpr uint8_t  DECODE_VS1       ( uint32_t Inst ) { return Inst >> 15 &                0b11111; }
+constexpr uint8_t  DECODE_VS2       ( uint32_t Inst ) { return Inst >> 20 &                0b11111; }
+constexpr uint8_t  DECODE_VS3       ( uint32_t Inst ) { return Inst >> 7  &                0b11111; }
 
 // clang-format on
 
