@@ -436,7 +436,7 @@ private:
   EcallStatus ECALL_capget();                 // 90, rev_capget(cap_user_header_t header, cap_user_data_t dataptr)
   EcallStatus ECALL_capset();                 // 91, rev_capset(cap_user_header_t header, const cap_user_data_t data)
   EcallStatus ECALL_personality();            // 92, rev_personality(unsigned int personality)
-  EcallStatus ECALL_exit();                   // 93, rev_exit(int error_code)
+  [[noreturn]] EcallStatus ECALL_exit();      // 93, rev_exit(int error_code)
   EcallStatus ECALL_exit_group();             // 94, rev_exit_group(int error_code)
   EcallStatus ECALL_waitid();                 // 95, rev_waitid(int which, pid_t pid, struct siginfo  *infop, int options, struct rusage  *ru)
   EcallStatus ECALL_set_tid_address();        // 96, rev_set_tid_address(int  *tidptr)
@@ -816,7 +816,7 @@ private:
   }
 
   /// RevCore: Check LS queue for outstanding load - ignore x0
-  bool LSQCheck( unsigned HartID, const RevRegFile* regFile, uint16_t reg, RevRegClass regClass ) const {
+  static bool LSQCheck( unsigned HartID, const RevRegFile* regFile, uint16_t reg, RevRegClass regClass ) {
     if( reg == 0 && regClass == RevRegClass::RegGPR ) {
       return false;  // GPR x0 is not considered
     } else {
@@ -825,7 +825,7 @@ private:
   }
 
   /// RevCore: Check scoreboard for a source register dependency
-  bool ScoreboardCheck( const RevRegFile* regFile, uint16_t reg, RevRegClass regClass ) const {
+  static bool ScoreboardCheck( const RevRegFile* regFile, uint16_t reg, RevRegClass regClass ) {
     switch( regClass ) {
     case RevRegClass::RegGPR: return reg != 0 && regFile->RV_Scoreboard[reg];
     case RevRegClass::RegFLOAT: return regFile->FP_Scoreboard[reg];

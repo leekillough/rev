@@ -215,13 +215,13 @@ public:
   RevMemCtrl& operator=( const RevMemCtrl& )                                                                            = delete;
 
   /// RevMemCtrl: initialization function
-  virtual void init( unsigned int phase )                                                                               = 0;
+  void init( unsigned int phase ) override                                                                              = 0;
 
   /// RevMemCtrl: setup function
-  virtual void setup()                                                                                                  = 0;
+  void setup() override                                                                                                 = 0;
 
   /// RevMemCtrl: finish function
-  virtual void finish()                                                                                                 = 0;
+  void finish() override                                                                                                = 0;
 
   /// RevMemCtrl: determines if outstanding requests exist
   virtual bool outstandingRqsts()                                                                                       = 0;
@@ -425,103 +425,101 @@ public:
   RevBasicMemCtrl( ComponentId_t id, const Params& params );
 
   /// RevBasicMemCtrl: destructor
-  virtual ~RevBasicMemCtrl();
+  ~RevBasicMemCtrl() final;
 
   /// RevBasicMemCtrl: disallow copying and assignment
   RevBasicMemCtrl( const RevBasicMemCtrl& )            = delete;
   RevBasicMemCtrl& operator=( const RevBasicMemCtrl& ) = delete;
 
   /// RevBasicMemCtrl: initialization function
-  virtual void init( unsigned int phase ) override;
+  void init( unsigned int phase ) final;
 
   /// RevBasicMemCtrl: setup function
-  virtual void setup() override;
+  void setup() final;
 
   /// RevBasicMemCtrl: finish function
-  virtual void finish() override;
+  void finish() final;
 
   /// RevBasicMemCtrl: clock tick function
   virtual bool clockTick( Cycle_t cycle );
 
   /// RevBasicMemCtrl: determines if outstanding requests exist
-  bool outstandingRqsts() override;
+  bool outstandingRqsts() final;
 
   /// RevBasicMemCtrl: returns the cache line size
-  unsigned getLineSize() override { return lineSize; }
+  unsigned getLineSize() final { return lineSize; }
 
   /// RevBasicMemCtrl: memory event processing handler
   void processMemEvent( StandardMem::Request* ev );
 
   /// RevBasicMemCtrl: send a flush request
-  virtual bool sendFLUSHRequest( unsigned Hart, uint64_t Addr, uint64_t PAdr, uint32_t Size, bool Inv, RevFlag flags ) override;
+  bool sendFLUSHRequest( unsigned Hart, uint64_t Addr, uint64_t PAdr, uint32_t Size, bool Inv, RevFlag flags ) final;
 
   /// RevBasicMemCtrl: send a read request
-  virtual bool sendREADRequest(
+  bool sendREADRequest(
     unsigned Hart, uint64_t Addr, uint64_t PAddr, uint32_t Size, void* target, const MemReq& req, RevFlag flags
-  ) override;
+  ) final;
 
   /// RevBasicMemCtrl: send a write request
-  virtual bool sendWRITERequest(
+  bool sendWRITERequest(
     unsigned Hart, uint64_t Addr, uint64_t PAddr, uint32_t Size, char* buffer, RevFlag flags = RevFlag::F_NONE
-  ) override;
+  ) final;
 
   /// RevBasicMemCtrl: send an AMO request
-  virtual bool sendAMORequest(
+  bool sendAMORequest(
     unsigned Hart, uint64_t Addr, uint64_t PAddr, uint32_t Size, char* buffer, void* target, const MemReq& req, RevFlag flags
-  ) override;
+  ) final;
 
   // RevBasicMemCtrl: send a readlock request
-  virtual bool sendREADLOCKRequest(
+  bool sendREADLOCKRequest(
     unsigned Hart, uint64_t Addr, uint64_t PAddr, uint32_t Size, void* target, const MemReq& req, RevFlag flags
-  ) override;
+  ) final;
 
   // RevBasicMemCtrl: send a writelock request
-  virtual bool
-    sendWRITELOCKRequest( unsigned Hart, uint64_t Addr, uint64_t PAddr, uint32_t Size, char* buffer, RevFlag flags ) override;
+  bool sendWRITELOCKRequest( unsigned Hart, uint64_t Addr, uint64_t PAddr, uint32_t Size, char* buffer, RevFlag flags ) final;
 
   // RevBasicMemCtrl: send a loadlink request
-  virtual bool sendLOADLINKRequest( unsigned Hart, uint64_t Addr, uint64_t PAddr, uint32_t Size, RevFlag flags ) override;
+  bool sendLOADLINKRequest( unsigned Hart, uint64_t Addr, uint64_t PAddr, uint32_t Size, RevFlag flags ) final;
 
   // RevBasicMemCtrl: send a storecond request
-  virtual bool
-    sendSTORECONDRequest( unsigned Hart, uint64_t Addr, uint64_t PAddr, uint32_t Size, char* buffer, RevFlag flags ) override;
+  bool sendSTORECONDRequest( unsigned Hart, uint64_t Addr, uint64_t PAddr, uint32_t Size, char* buffer, RevFlag flags ) final;
 
   // RevBasicMemCtrl: send an void custom read memory request
-  virtual bool sendCUSTOMREADRequest(
+  bool sendCUSTOMREADRequest(
     unsigned Hart, uint64_t Addr, uint64_t PAddr, uint32_t Size, void* target, unsigned Opc, RevFlag flags
-  ) override;
+  ) final;
 
   // RevBasicMemCtrl: send a custom write request
-  virtual bool sendCUSTOMWRITERequest(
+  bool sendCUSTOMWRITERequest(
     unsigned Hart, uint64_t Addr, uint64_t PAddr, uint32_t Size, char* buffer, unsigned Opc, RevFlag flags
-  ) override;
+  ) final;
 
   // RevBasicMemCtrl: send a FENCE request
-  virtual bool sendFENCE( unsigned Hart ) override;
+  bool sendFENCE( unsigned Hart ) final;
 
   /// RevBasicMemCtrl: handle a read response
-  virtual void handleReadResp( StandardMem::ReadResp* ev ) override;
+  void handleReadResp( StandardMem::ReadResp* ev ) final;
 
   /// RevBasicMemCtrl: handle a write response
-  virtual void handleWriteResp( StandardMem::WriteResp* ev ) override;
+  void handleWriteResp( StandardMem::WriteResp* ev ) final;
 
   /// RevBasicMemCtrl: handle a flush response
-  virtual void handleFlushResp( StandardMem::FlushResp* ev ) override;
+  void handleFlushResp( StandardMem::FlushResp* ev ) final;
 
   /// RevBasicMemCtrl: handle a custom response
-  virtual void handleCustomResp( StandardMem::CustomResp* ev ) override;
+  void handleCustomResp( StandardMem::CustomResp* ev ) final;
 
   /// RevBasicMemCtrl: handle an invalidate response
-  virtual void handleInvResp( StandardMem::InvNotify* ev ) override;
+  void handleInvResp( StandardMem::InvNotify* ev ) final;
 
   /// RevBasicMemCtrl: handle RevMemCtrl flags for write responses
-  virtual void handleFlagResp( RevMemOp* op ) override { RevHandleFlagResp( op->getTarget(), op->getSize(), op->getFlags() ); }
+  void handleFlagResp( RevMemOp* op ) final { RevHandleFlagResp( op->getTarget(), op->getSize(), op->getFlags() ); }
 
   /// RevBasicMemCtrl: handle an AMO for the target READ+MODIFY+WRITE triplet
-  virtual void handleAMO( RevMemOp* op ) override;
+  void handleAMO( RevMemOp* op ) final;
 
   /// RevBasicMemCtrl: assign tracer pointer
-  virtual void setTracer( RevTracer* tracer ) override;
+  void setTracer( RevTracer* tracer ) final;
 
 protected:
   // ----------------------------------------
@@ -535,26 +533,26 @@ protected:
     RevStdMemHandlers( RevBasicMemCtrl* Ctrl, SST::Output* output );
 
     /// RevStdMemHandlers: destructor
-    virtual ~RevStdMemHandlers();
+    ~RevStdMemHandlers() final;
 
     /// RevStdMemHandlers: disallow copying and assignment
     RevStdMemHandlers( const RevStdMemHandlers& )            = delete;
     RevStdMemHandlers& operator=( const RevStdMemHandlers& ) = delete;
 
     /// RevStdMemHandlers: handle read response
-    virtual void handle( StandardMem::ReadResp* ev );
+    void handle( StandardMem::ReadResp* ev ) final;
 
     /// RevStdMemhandlers: handle write response
-    virtual void handle( StandardMem::WriteResp* ev );
+    void handle( StandardMem::WriteResp* ev ) final;
 
     /// RevStdMemHandlers: handle flush response
-    virtual void handle( StandardMem::FlushResp* ev );
+    void handle( StandardMem::FlushResp* ev ) final;
 
     /// RevStdMemHandlers: handle custom response
-    virtual void handle( StandardMem::CustomResp* ev );
+    void handle( StandardMem::CustomResp* ev ) final;
 
     /// RevStdMemHandlers: handle invalidate response
-    virtual void handle( StandardMem::InvNotify* ev );
+    void handle( StandardMem::InvNotify* ev ) final;
 
   private:
     RevBasicMemCtrl* Ctrl{};  ///< RevStdMemHandlers: memory controller object

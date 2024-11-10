@@ -42,7 +42,7 @@ public:
   std::vector<uint8_t> getData() { return Data; }
 
   /// nicEvent: virtual function to clone an event
-  virtual Event* clone( void ) override {
+  Event* clone() final {
     nicEvent* ev = new nicEvent( *this );
     return ev;
   }
@@ -53,10 +53,11 @@ private:
 
 public:
   /// nicEvent: secondary constructor
-  nicEvent() : Event() {}
+  nicEvent()        = default;
+  ~nicEvent() final = default;
 
   /// nicEvent: event serializer
-  void serialize_order( SST::Core::Serialization::serializer& ser ) override {
+  void serialize_order( SST::Core::Serialization::serializer& ser ) final {
     Event::serialize_order( ser );
     ser& SrcName;
     ser& Data;
@@ -74,19 +75,19 @@ public:
   SST_ELI_REGISTER_SUBCOMPONENT_API( SST::RevCPU::nicAPI )
 
   /// nicEvent: constructor
-  nicAPI( ComponentId_t id, Params& params ) : SubComponent( id ) {}
+  nicAPI( ComponentId_t id, Params& ) : SubComponent( id ) {}
 
   /// nicEvent: default destructor
-  virtual ~nicAPI()                                         = default;
+  ~nicAPI() override                                         = default;
 
   /// nicEvent: registers the event handler with the core
-  virtual void setMsgHandler( Event::HandlerBase* handler ) = 0;
+  virtual void setMsgHandler( Event::HandlerBase* handler )  = 0;
 
   /// nicEvent: initializes the network
-  virtual void init( unsigned int phase )                   = 0;
+  void init( unsigned int phase ) override                   = 0;
 
   /// nicEvent: setup the network
-  virtual void setup() {}
+  void setup() override                                      = 0;
 
   /// nicEvent: send a message on the network
   virtual void send( nicEvent* ev, int dest )                = 0;
@@ -125,25 +126,25 @@ public:
   RevNIC( ComponentId_t id, Params& params );
 
   /// RevNIC: destructor
-  virtual ~RevNIC();
+  ~RevNIC() final;
 
   /// RevNIC: Callback to parent on received messages
-  virtual void setMsgHandler( Event::HandlerBase* handler );
+  void setMsgHandler( Event::HandlerBase* handler ) final;
 
   /// RevNIC: initialization function
-  virtual void init( unsigned int phase );
+  void init( unsigned int phase ) final;
 
   /// RevNIC: setup function
-  virtual void setup();
+  void setup() final;
 
   /// RevNIC: send event to the destination id
-  virtual void send( nicEvent* ev, int dest );
+  void send( nicEvent* ev, int dest ) final;
 
   /// RevNIC: retrieve the number of destinations
-  virtual int getNumDestinations();
+  int getNumDestinations() final;
 
   /// RevNIC: get the endpoint's network address
-  virtual SST::Interfaces::SimpleNetwork::nid_t getAddress();
+  SST::Interfaces::SimpleNetwork::nid_t getAddress() final;
 
   /// RevNIC: callback function for the SimpleNetwork interface
   bool msgNotify( int virtualNetwork );
