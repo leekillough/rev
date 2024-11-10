@@ -11,6 +11,7 @@
 #include "RevVRegFile.h"
 
 namespace SST::RevCPU {
+
 RevVRegFile::RevVRegFile( uint16_t vlen, uint16_t elen ) : VLEN( vlen ), ELEN( elen ) {}
 
 }  //namespace SST::RevCPU

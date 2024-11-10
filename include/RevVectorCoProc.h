@@ -160,18 +160,6 @@ private:
     csrrci = 0b111,
   };
 
-  std::map<uint16_t, uint64_t> csrmap{
-    // URW
-    {0x008,             0}, // vstart
-    {0x009,             0}, // vxsat
-    {0x00a,             0}, // vxrm
-    {0x00f,             0}, // vxcsr
-    // URO
-    {0xc20,             0}, // vl
-    {0xc21,    1ULL << 63}, // vtype
-    {0xc22, 128ULL / 8ULL}, // vlenb
-  };
-
 public:
   /// RevVectorCoProc: Vector Execution Mock-up
   void Exec( RevCoProcInst rec );

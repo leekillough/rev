@@ -68,7 +68,7 @@ int main( int argc, char** argv ) {
   // in software before use.
   // The vector registers can have arbitrary values at reset.
 
-  printf( "init\n" );
+  printf( "initial csr values\n" );
   read_and_dump_registers();
   CHECKU64( vstart.v, 0UL );
   CHECKU64( vxsat, 0UL );
@@ -81,7 +81,7 @@ int main( int argc, char** argv ) {
   // Part 1: Check vsetvli, vsetivli, vsetvl instructions
 
   // vsetvli rd, rs1, vtypei   # rd=new vl, rs1=avl, imm_sew, lmul, vta, vma
-  printf( "\nsetting vl: avl=32, e8, m1, ta, ma\n" );
+  printf( "\nvsetvli: avl=128, e8, m1, ta, ma\n" );
   uint64_t newvl = 0;
   uint64_t avl   = 128;
   VSETVLI( newvl, avl, e8, m1, ta, ma );
@@ -95,8 +95,7 @@ int main( int argc, char** argv ) {
   CHECKU64( vtype.v, 0xc0UL );
   CHECKU64( vlenb, 16UL );
 
-  // vsetivli rd, uimm5, vtypei # rd=new vl, uimm=AVL, vtypei=new vtype setting
-  printf( "\nsetting vl: avl=8, e32, m8, tu, ma\n" );
+  printf( "\nvsetivli: avl=8, e32, m8, tu, ma\n" );
   VSETIVLI( newvl, 8, e32, m8, tu, ma );
   CHECKU64( newvl, 8UL );
   read_and_dump_registers();
@@ -108,10 +107,10 @@ int main( int argc, char** argv ) {
   CHECKU64( vtype.v, 0x93UL );
   CHECKU64( vlenb, 16UL );
 
-  // vsetvl  rd, rs1, rs2      # rd=new vl, rs1=AVL, rs2=new vtype value
-  printf( "\nsetting vl: avl=10, sew=e64, mf4, ta, mu\n" );
+  printf( "\nvsetvl: avl=10, sew=e64, mf4, ta, mu\n" );
   avl = 10;
   reg_vtype_t vt2;
+  vt2.f.vlmul = 1;
   vt2.f.vsew  = 3;
   vt2.f.vlmul = 1;
   vt2.f.vta   = 1;
@@ -134,7 +133,7 @@ int main( int argc, char** argv ) {
   // !x0  x0    ~x0       Set vl to VLMAX
   // x0   x0     vl       existing vl (vtype can change)
 
-  printf( "\nsetvli !x0 x0 ...\n" );
+  printf( "\vsetvl !x0 x0 ...\n" );
   vt2.f.vsew  = 0UL;
   vt2.f.vlmul = 3;
   asm volatile( "vsetvl %0, x0, %1\n\t" : "=r"( newvl ) : "r"( vt2 ) );
@@ -150,14 +149,14 @@ int main( int argc, char** argv ) {
 
   // put back to previous value
   avl         = 10;
-  vt2.f.vsew  = 3;
   vt2.f.vlmul = 1;
+  vt2.f.vsew  = 3;
   vt2.f.vta   = 1;
   vt2.f.vma   = 0;
   vt2.f.vii   = 0;
   VSETVL( newvl, avl, vt2 );
 
-  printf( "\nsetvli x0 x0 ...\n" );
+  printf( "\vsetvl x0 x0 ...\n" );
   asm volatile( "vsetvl x0, x0, %0\n\t" : : "r"( vt2 ) );
   CHECKU64( newvl, 0x4UL );
   read_and_dump_registers();
@@ -171,7 +170,7 @@ int main( int argc, char** argv ) {
 
   // Part 3: check CSR's after vector add operations
   avl = 32;
-  printf( "\nsetting vl: avl=32, e16, m1, ta, ma\n" );
+  printf( "\nvsetvli: avl=32, e16, m1, ta, ma\n" );
   VSETVLI( newvl, avl, e16, m1, ta, ma );
   CHECKU64( newvl, 0x8UL );
   read_and_dump_registers();

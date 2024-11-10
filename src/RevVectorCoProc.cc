@@ -143,29 +143,33 @@ auto RevVectorCoProc::matchInst(
     // If an entry is valid and has a satisfied predicate, return it
     if( Entry < InstTable.size() && InstTable[Entry].predicate( Inst ) )
       return it;
+    // else {
+    //   std::cout << "### Entry=" << Entry << " pred=" << InstTable[Entry].predicate(Inst) << std::endl;
+    // }
   }
   // No match
   return map.end();
 }
 
 bool RevVectorCoProc::Decode( const uint32_t Inst ) {
-  // capture decoded information at each stage including
-  // values for any source scalar registers.
+
+  VecInst = { Inst };  // pre-decode
 
   // vector csr access instructions
+  // TODO move into vector instruction table
   csr_inst_t csr_inst( Inst );
   if( csr_inst.f.opcode == csr_inst_opcode ) {
+    //std::cout << "### " << std::hex << csr_inst.f.csr << std::endl;
     if( csr_inst.f.csr >= RevCSR::vstart && csr_inst.f.csr <= RevCSR::vcsr )
       return true;
     if( csr_inst.f.csr >= RevCSR::vl && csr_inst.f.csr <= RevCSR::vlenb )
       return true;
   }
   // RVV instructions
-  //VecInst = { Inst, vregfile };  // pre-decode
-  VecInst = { Inst };  // pre-decode
   auto it = matchInst( EncToEntry, VecInst.Enc, InstTable, Inst );
   if( it == EncToEntry.end() ) {
-    output->verbose( CALL_INFO, 1, 0, "Warning: Vector coprocessor unable to decode instruction 0x%" PRIu32 "\n", Inst );
+    output->verbose( CALL_INFO, 1, 0, "Warning: Vector coprocessor unable to decode instruction 0x%" PRIx32 "\n", Inst );
+    return false;
   }
   VecInst.revInstEntry = &( InstTable[it->second] );
   return true;
@@ -174,13 +178,17 @@ bool RevVectorCoProc::Decode( const uint32_t Inst ) {
 bool RevVectorCoProc::IssueInst( const RevFeature* F, RevRegFile* R, RevMem* M, uint32_t Inst ) {
   // TODO finite instruction queue
   if( Decode( Inst ) ) {
-    // Decode the full instruction.
-    assert( VecInst.revInstEntry );
-    switch( VecInst.revInstEntry->format ) {
-    case RVVTypeOp: VecInst.DecodeRVVTypeOp(); break;
-    case RVVTypeLd: VecInst.DecodeRVVTypeLd(); break;
-    case RVVTypeSt: VecInst.DecodeRVVTypeSt(); break;
-    default: output->fatal( CALL_INFO, -1, "Error: failed to decode instruction 0x%" PRIx32 ".", Inst );
+    // Decode the full instruction
+    if( VecInst.revInstEntry ) {
+      switch( VecInst.revInstEntry->format ) {
+      case RVVTypeOp: VecInst.DecodeRVVTypeOp(); break;
+      case RVVTypeLd: VecInst.DecodeRVVTypeLd(); break;
+      case RVVTypeSt: VecInst.DecodeRVVTypeSt(); break;
+      default: output->fatal( CALL_INFO, -1, "Error: failed to decode instruction 0x%" PRIx32 ".", Inst );
+      }
+    } else {
+      // special csr access case
+      assert( ( (csr_inst_t) Inst ).f.opcode == csr_inst_opcode );
     }
     // Grab any scalars from core register file. In reality, the core must provided these after its decode pipeline.
     //VecInst.ReadScalars( R );
@@ -211,11 +219,12 @@ bool RevVectorCoProc::ClockTick( SST::Cycle_t cycle ) {
 
 void RevVectorCoProc::Exec( RevCoProcInst rec ) {
 
+  // TODO move into instruction table
   // CSR access presumes valid csr address
   csr_inst_t csr_inst( rec.VecInst.Inst );
   if( csr_inst.f.opcode == csr_inst_opcode ) {
     if( csr_inst.f.funct3 == csr_inst_funct3::csrrsi ) {
-      rec.RegFile->SetX( csr_inst.f.rd, csrmap[csr_inst.f.csr] );
+      rec.RegFile->SetX( csr_inst.f.rd, vregfile->vcsrmap[csr_inst.f.csr] );
       return;
     } else {
       output->fatal( CALL_INFO, -1, "currently only csrrsi supported for vector csr access\n" );
@@ -223,6 +232,7 @@ void RevVectorCoProc::Exec( RevCoProcInst rec ) {
     }
   }
   // execute vector instruction
+  assert( VecInst.revInstEntry );
   VecInst.revInstEntry->func( rec.Feature, rec.RegFile, vregfile, rec.Mem, VecInst );
   return;
 }
@@ -261,7 +271,7 @@ void RevVecInst::DecodeBase() {
 
   if( revInstEntry->rs2Class == RevRegClass::RegVEC ) {
     vs2 = DECODE_VS2( Inst );
-  } else if( revInstEntry->rs2Class == RevRegClass::RegUNKNOWN ) {
+  } else if( revInstEntry->rs2Class != RevRegClass::RegUNKNOWN ) {
     rs2      = DECODE_RS2( Inst );
     read_rs2 = true;
   }

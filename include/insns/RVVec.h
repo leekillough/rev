@@ -137,6 +137,22 @@ struct RevVecInstEntry {
 // The default initialization for RevVecInstDefaults is the same as RevVecInstEntry
 using RevVecInstDefaults = RevVecInstEntry;
 
+// CSR Types
+union reg_vtype_t {
+  uint64_t v = 0x0UL;
+
+  struct {
+    uint64_t vlmul : 3;   // [2:0]
+    uint64_t vsew  : 3;   // [5:3]
+    uint64_t vta   : 1;   // [6]
+    uint64_t vma   : 1;   // [7]
+    uint64_t zero  : 55;  // [62:8]
+    uint64_t vii   : 1;   // [63]
+  } f;
+
+  reg_vtype_t( uint64_t _v ) : v( _v ) {};
+};
+
 class RVVec : public RevExt {
 
 public:
@@ -151,20 +167,81 @@ public:
    * Vector Instruction Implementations
    */
 
-  static bool vsetivli( const RevFeature* F, RevRegFile* R, RevVRegFile* V, RevMem* M, const RevVecInst& Inst ) {
-    std::cout << "vsetivli: no need to go further\n" << std::endl;
-    assert( false );
-    return true;
+  static uint16_t CalculateVLMAX( RevVRegFile* V ) {
+    reg_vtype_t _vtype( V->vcsrmap[RevCSR::vtype] );
+    uint8_t     sew = 0;
+    switch( _vtype.f.vsew ) {
+    case 0: sew = 8; break;
+    case 1: sew = 16; break;
+    case 2: sew = 32; break;
+    case 3: sew = 64; break;
+    default: assert( false ); break;
+    }
+    uint16_t vlmax = 0;
+    uint64_t lenb  = V->vcsrmap[RevCSR::vlenb];
+    switch( _vtype.f.vlmul ) {
+    case 0: vlmax = ( lenb * 8 ) / sew; break;
+    case 1: vlmax = 2 * ( ( lenb * 8 ) / sew ); break;
+    case 2: vlmax = 4 * ( ( lenb * 8 ) / sew ); break;
+    case 3: vlmax = 8 * ( ( lenb * 8 ) / sew ); break;
+    case 5: vlmax = ( ( lenb * 8 ) / sew ) / 8; break;
+    case 6: vlmax = ( ( lenb * 8 ) / sew ) / 4; break;
+    case 7: vlmax = ( ( lenb * 8 ) / sew ) / 2; break;
+    default: assert( false ); break;
+    }
+    return vlmax;
   }
 
+  static bool _vsetvl( uint16_t avl, uint64_t newvtype, RevRegFile* R, RevVRegFile* V, const RevVecInst& Inst ) {
+    // Configure the vtype csr
+    V->vcsrmap[RevCSR::vtype] = newvtype & 0x0ffUL;
+    // Configure the vl csr
+    uint64_t newvl            = 0;
+    if( avl != 0 ) {
+      uint16_t vlmax = RVVec::CalculateVLMAX( V );
+      if( avl <= vlmax ) {
+        newvl = avl;
+      } else if( avl < ( 2 * vlmax ) ) {
+        newvl = ceil( avl / 2 );
+      } else {
+        newvl = vlmax;
+      }
+    } else if( ( Inst.rd != 0 ) && ( avl == 0 ) ) {
+      newvl = RVVec::CalculateVLMAX( V );
+    } else if( ( Inst.rd == 0 ) && ( avl == 0 ) ) {
+      newvl = V->vcsrmap[RevCSR::vl];
+    }
+    V->vcsrmap[RevCSR::vl] = newvl;
+    R->SetX( Inst.rd, newvl );
+    tatu return true;
+  }
+
+  // 31 30        20  19 15 14 12 11 7 6       0
+  // 0  vtypei[10:0]   rs1  0b111  rd  0b1010111
   static bool vsetvli( const RevFeature* F, RevRegFile* R, RevVRegFile* V, RevMem* M, const RevVecInst& Inst ) {
-    R->SetX( RevReg::t0, 0x4 );
+    uint16_t avl      = R->GetX<uint64_t>( Inst.rs1 );
+    uint64_t newvtype = ( Inst.Inst >> 20 ) & 0x7ff;
+    _vsetvl( avl, newvtype, R, V, Inst );
     return true;
   }
 
+  // vsetivli
+  //   31 30 29       20   19     15 14  12 11 7 6      0
+  //   0b11   vtypei[9:0]  uimm[4:0]  0b111  rd  0b1010111
+  static bool vsetivli( const RevFeature* F, RevRegFile* R, RevVRegFile* V, RevMem* M, const RevVecInst& Inst ) {
+    uint16_t avl      = ( Inst.Inst >> 15 ) & 0x1f;
+    uint64_t newvtype = ( Inst.Inst >> 20 ) & 0x3ff;
+    _vsetvl( avl, newvtype, R, V, Inst );
+    return true;
+  }
+
+  // vsetvl
+  // 1  0b000000  rs2  rs1  0b111    rd  0b1010111
+  // 1     6       5    5      3      5      7
   static bool vsetvl( const RevFeature* F, RevRegFile* R, RevVRegFile* V, RevMem* M, const RevVecInst& Inst ) {
-    std::cout << "vsetvl: no need to go further\n" << std::endl;
-    assert( false );
+    uint16_t avl      = R->GetX<uint64_t>( Inst.rs1 );
+    uint64_t newvtype = R->GetX<uint64_t>( Inst.rs2 );
+    _vsetvl( avl, newvtype, R, V, Inst );
     return true;
   }
 
@@ -182,12 +259,17 @@ public:
     return true;
   }
 
+  // VL* Unit Stride
+  // nf   mew  mop  vm  lumop  rs1   width  vd  b0000111
+  //  3    1    2    1    5     5     3      5     7
   static bool vl( const RevFeature* F, RevRegFile* R, RevVRegFile* V, RevMem* M, const RevVecInst& Inst ) {
     uint64_t addr = R->GetX<uint64_t>( Inst.rs1 );
     MemReq   req0( addr, RevReg::zero, RevRegClass::RegGPR, 0, MemOp::MemOpREAD, true, R->GetMarkLoadComplete() );
     M->ReadVal<uint64_t>( 0, addr, &( V->vreg[Inst.vd][0] ), req0, RevFlag::F_NONE );
+
     MemReq req1( addr + 8, RevReg::zero, RevRegClass::RegGPR, 0, MemOp::MemOpREAD, true, R->GetMarkLoadComplete() );
     M->ReadVal<uint64_t>( 0, addr + 8, &( V->vreg[Inst.vd][1] ), req1, RevFlag::F_NONE );
+
     return true;
   }
 
@@ -215,13 +297,12 @@ public:
   // Func3=0x6: OPMVX
 
   // Func3=0x7: Formats for Vector Configuration Instructions under OP-V major opcode.
-  RevVecInstDefaults().SetMnemonic("vsetvli %rd, %rs1, %zimm11"   ).SetFunct3(0x7).SetImplFunc(&vsetvli ).SetrdClass(RevRegClass::RegGPR).Setrs1Class(RevRegClass::RegGPR    ).Setrs2Class(RevRegClass::RegUNKNOWN)  .SetFormat(RVVTypeOp).SetOpcode(0b1010111).SetPredicate( []( uint32_t Inst ){ return ((Inst >> 31) & 0x1)  == 0; } ),
-  RevVecInstDefaults().SetMnemonic("vsetivli %rd, %zimm, %zimm10" ).SetFunct3(0x7).SetImplFunc(&vsetivli).SetrdClass(RevRegClass::RegGPR).Setrs1Class(RevRegClass::RegUNKNOWN).Setrs2Class(RevRegClass::RegUNKNOWN)  .SetFormat(RVVTypeOp).SetOpcode(0b1010111).SetPredicate( []( uint32_t Inst ){ return ((Inst >> 30) & 0x3)  == 0xb11; } ),
-  RevVecInstDefaults().SetMnemonic("vsetvl %rd, %rs1, %rs2"       ).SetFunct3(0x7).SetImplFunc(&vsetvl  ).SetrdClass(RevRegClass::RegGPR).Setrs1Class(RevRegClass::RegGPR    ).Setrs2Class(RevRegClass::RegGPR)      .SetFormat(RVVTypeOp).SetOpcode(0b1010111).SetPredicate( []( uint32_t Inst ){ return ((Inst >> 25) & 0x7f) == 0xb1000000; } ),
+  RevVecInstDefaults().SetMnemonic("vsetvli %rd, %rs1, %zimm11"   ).SetFunct3(0x7).SetImplFunc(&vsetvli ).SetrdClass(RevRegClass::RegGPR).Setrs1Class(RevRegClass::RegGPR    ).Setrs2Class(RevRegClass::RegUNKNOWN)  .SetFormat(RVVTypeOp).SetOpcode(0b1010111).SetPredicate( []( uint32_t Inst ){ return ((Inst >> 31) & 0x1)  == 0x00; } ),
+  RevVecInstDefaults().SetMnemonic("vsetivli %rd, %zimm, %zimm10" ).SetFunct3(0x7).SetImplFunc(&vsetivli).SetrdClass(RevRegClass::RegGPR).Setrs1Class(RevRegClass::RegUNKNOWN).Setrs2Class(RevRegClass::RegUNKNOWN)  .SetFormat(RVVTypeOp).SetOpcode(0b1010111).SetPredicate( []( uint32_t Inst ){ return ((Inst >> 30) & 0x3)  == 0x03; } ),
+  RevVecInstDefaults().SetMnemonic("vsetvl %rd, %rs1, %rs2"       ).SetFunct3(0x7).SetImplFunc(&vsetvl  ).SetrdClass(RevRegClass::RegGPR).Setrs1Class(RevRegClass::RegGPR    ).Setrs2Class(RevRegClass::RegGPR)      .SetFormat(RVVTypeOp).SetOpcode(0b1010111).SetPredicate( []( uint32_t Inst ){ return ((Inst >> 25) & 0x7f) == 0x40; } ),
 
   // Func3=0x8: Vector Loads and Stores
   // Note: Func3 is synthesized to differentiate it from OP types
-
 
   // VL* Unit Stride
   // nf   mew  mop  vm  lumop  rs1   width  vd  b0000111
