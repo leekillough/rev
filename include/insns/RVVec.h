@@ -240,6 +240,17 @@ public:
     uint64_t vd  = Inst.vd;
     uint64_t vs1 = Inst.vs1;
     uint64_t vs2 = Inst.vs2;
+#ifdef NEWRF
+    for( unsigned i = 0; i < V->Iters(); i++ ) {
+      for( unsigned e = 0; e < V->ElemsPerReg(); e++ ) {
+        uint64_t res = V->GetElem( vs1, e ) + V->GetElem( vs2, e );
+        V->SetElem( vd, e, res );
+      }
+      vd++;
+      vs1++;
+      vs2++;
+    }
+#else
     for( unsigned i = 0; i < V->Iters(); i++ ) {
       V->SetVLo( vd, V->GetVLo( vs1 ) + V->GetVLo( vs2 ) );
       if( V->BytesHi() ) {
@@ -249,6 +260,7 @@ public:
       vs1++;
       vs2++;
     }
+#endif
     return true;
   }
 
@@ -259,6 +271,21 @@ public:
   static bool vs( const RevFeature* F, RevRegFile* R, RevVRegFile* V, RevMem* M, const RevVecInst& Inst ) {
     uint64_t addr = R->GetX<uint64_t>( Inst.rs1 );
     uint64_t vs3  = Inst.vs3;
+#ifdef NEWRF
+    for( unsigned i = 0; i < V->Iters(); i++ ) {
+      for( unsigned e = 0; e < V->ElemsPerReg(); e++ ) {
+        unsigned bytes = V->ElemBytes( e );  // for fractional LMUL
+        if( bytes ) {
+          uint64_t d = V->GetElem( vs3, e );
+          M->WriteMem( 0, addr, bytes, &d );
+          std::cout << "*V M[0x" << std::hex << addr << "] <- 0x" << std::hex << d << " <- v" << std::dec << vs3 << "." << std::dec
+                    << d << std::endl;
+        }
+        addr += sizeof( uint64_t );
+      }
+      vs3++;
+    }
+#else
     for( unsigned i = 0; i < V->Iters(); i++ ) {
       // Lower 64
       uint64_t lo = V->GetVLo( vs3 );
@@ -278,6 +305,7 @@ public:
       addr += 8;
       vs3++;
     }
+#endif
     return true;
   }
 
@@ -287,6 +315,19 @@ public:
   static bool vl( const RevFeature* F, RevRegFile* R, RevVRegFile* V, RevMem* M, const RevVecInst& Inst ) {
     uint64_t addr = R->GetX<uint64_t>( Inst.rs1 );
     uint64_t vd   = Inst.vd;
+#ifdef NEWRF
+    for( unsigned i = 0; i < V->Iters(); i++ ) {
+      for( unsigned e = 0; e < V->ElemsPerReg(); e++ ) {
+        uint64_t d = 0;
+        MemReq   req0( addr, RevReg::zero, RevRegClass::RegGPR, 0, MemOp::MemOpREAD, true, R->GetMarkLoadComplete() );
+        M->ReadVal<uint64_t>( 0, addr, &d, req0, RevFlag::F_NONE );
+        V->SetElem( vd, e, d );
+        std::cout << "*V v" << std::dec << vd << "." << e << " <- 0x" << std::hex << d << " <- M[0x" << addr << "]" << std::endl;
+        addr += sizeof( uint64_t );
+      }
+      vd++;
+    }
+#else
     for( unsigned i = 0; i < V->Iters(); i++ ) {
       // lower 64
       uint64_t lo = 0;
@@ -301,13 +342,13 @@ public:
       MemReq   req1( addr, RevReg::zero, RevRegClass::RegGPR, 0, MemOp::MemOpREAD, true, R->GetMarkLoadComplete() );
       M->ReadVal<uint64_t>( 0, addr, &hi, req1, RevFlag::F_NONE );
       V->SetVHi( vd, hi );
-      std::cout << "*V v" << std::dec << vd << ".1 <-0x " << std::hex << hi << " <- M[0x" << addr << "]" << std::endl;
+      std::cout << "*V v" << std::dec << vd << ".1 <- 0x" << std::hex << hi << " <- M[0x" << addr << "]" << std::endl;
 
       // Next vector
       addr += 8;
       vd++;
     }
-
+#endif
     return true;
   }
 

@@ -13,6 +13,8 @@
 
 #include "RevCSR.h"
 
+#define NEWRF 1
+
 namespace SST::RevCPU {
 
 // Vector CSR Types
@@ -62,27 +64,44 @@ public:
 
 public:
   void     Configure( reg_vtype_t vt );
+  uint64_t GetVCSR( uint16_t csr );
+  void     SetVCSR( uint16_t csr, uint64_t d );
   void     SetVLo( uint64_t vd, uint64_t d );
   void     SetVHi( uint64_t vd, uint64_t d );
   uint64_t GetVLo( uint64_t vs );
   uint64_t GetVHi( uint64_t vs );
-  uint64_t GetVCSR( uint16_t csr );
-  void     SetVCSR( uint16_t csr, uint64_t d );
+#ifdef NEWRF
+  void     SetElem( uint64_t vd, unsigned e, uint64_t d );
+  uint64_t GetElem( uint64_t vs, unsigned e );
+#endif
 
+  uint8_t BytesPerReg();
+  uint8_t ElemsPerReg();
   uint8_t BytesHi();
   uint8_t BytesLo();
   uint8_t Iters();
+#ifdef NEWRF
+  uint8_t  ElemBytes( unsigned e );
+  uint64_t ElemMask( unsigned e );
+#endif
 
 private:
   uint16_t VLEN;
   uint16_t ELEN;
-  // Proto Vector RF VLEN=128, ELEN=64
-  uint64_t vreg[32][2] = { { 0 } };
-  uint64_t maskHi      = 0;
-  uint64_t maskLo      = 0;
-  uint8_t  bytesHi     = 0;
-  uint8_t  bytesLo     = 0;
-  uint8_t  iters       = 0;
+  uint8_t  bytesPerReg;
+  uint8_t  bytesPerElem;
+  uint8_t  elemsPerReg;
+#ifndef NEWRF
+  uint64_t vreg64[32][2] = { { 0 } };  // Proto Vector RF VLEN=128, ELEN=64
+#else
+  std::vector<std::vector<uint8_t>>         vreg         = {};
+  std::vector<std::pair<uint8_t, uint64_t>> elemMaskInfo = {};
+#endif
+  uint64_t maskHi  = 0;
+  uint64_t maskLo  = 0;
+  uint8_t  bytesHi = 0;
+  uint8_t  bytesLo = 0;
+  uint8_t  iters   = 0;
   ///< RevVRegFile: CSRs residing in vector coprocessor
   std::map<uint16_t, uint64_t> vcsrmap{
     // URW
