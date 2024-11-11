@@ -219,12 +219,12 @@ bool RevVectorCoProc::ClockTick( SST::Cycle_t cycle ) {
 
 void RevVectorCoProc::Exec( RevCoProcInst rec ) {
 
-  // TODO move into instruction table
-  // CSR access presumes valid csr address
+  // TODO move into instruction table.
+  // This is just here to provide tests a quick way to read vector CSRs.
   csr_inst_t csr_inst( rec.VecInst.Inst );
   if( csr_inst.f.opcode == csr_inst_opcode ) {
     if( csr_inst.f.funct3 == csr_inst_funct3::csrrsi ) {
-      rec.RegFile->SetX( csr_inst.f.rd, vregfile->vcsrmap[csr_inst.f.csr] );
+      rec.RegFile->SetX( csr_inst.f.rd, vregfile->GetVCSR( csr_inst.f.csr ) );
       return;
     } else {
       output->fatal( CALL_INFO, -1, "currently only csrrsi supported for vector csr access\n" );

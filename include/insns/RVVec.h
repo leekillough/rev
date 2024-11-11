@@ -152,7 +152,7 @@ public:
    */
 
   static uint16_t CalculateVLMAX( RevVRegFile* V ) {
-    reg_vtype_t _vtype( V->vcsrmap[RevCSR::vtype] );
+    reg_vtype_t _vtype( V->GetVCSR( RevCSR::vtype ) );
     uint8_t     sew = 0;
     switch( _vtype.f.vsew ) {
     case 0: sew = 8; break;
@@ -162,7 +162,7 @@ public:
     default: assert( false ); break;
     }
     uint16_t vlmax = 0;
-    uint64_t lenb  = V->vcsrmap[RevCSR::vlenb];
+    uint64_t lenb  = V->GetVCSR( RevCSR::vlenb );
     switch( _vtype.f.vlmul ) {
     case 0: vlmax = ( lenb * 8 ) / sew; break;
     case 1: vlmax = 2 * ( ( lenb * 8 ) / sew ); break;
@@ -178,10 +178,10 @@ public:
 
   static bool _vsetvl( uint16_t avl, uint64_t newvtype, RevRegFile* R, RevVRegFile* V, const RevVecInst& Inst ) {
     // Configure the vtype csr
-    reg_vtype_t vt            = newvtype & 0xffULL;
-    V->vcsrmap[RevCSR::vtype] = vt.v;
+    reg_vtype_t vt = newvtype & 0xffULL;
+    V->SetVCSR( RevCSR::vtype, vt.v );
     // Configure the vl csr
-    uint64_t newvl            = 0;
+    uint64_t newvl = 0;
     if( avl != 0 ) {
       uint16_t vlmax = RVVec::CalculateVLMAX( V );
       if( avl <= vlmax ) {
@@ -194,9 +194,9 @@ public:
     } else if( ( Inst.rd != 0 ) && ( avl == 0 ) ) {
       newvl = RVVec::CalculateVLMAX( V );
     } else if( ( Inst.rd == 0 ) && ( avl == 0 ) ) {
-      newvl = V->vcsrmap[RevCSR::vl];
+      newvl = V->GetVCSR( RevCSR::vl );
     }
-    V->vcsrmap[RevCSR::vl] = newvl;
+    V->SetVCSR( RevCSR::vl, newvl );
     R->SetX( Inst.rd, newvl );
 
     // Configure vector register file based on new vtype
@@ -237,10 +237,9 @@ public:
   // 31  26  25   24 20  19 15 14 12 11 7  6     0
   // func6   vm    vs2    vs1   0    vd   b1010111
   static bool vadd( const RevFeature* F, RevRegFile* R, RevVRegFile* V, RevMem* M, const RevVecInst& Inst ) {
-    uint64_t    vd  = Inst.vd;
-    uint64_t    vs1 = Inst.vs1;
-    uint64_t    vs2 = Inst.vs2;
-    reg_vtype_t vt  = V->vcsrmap[RevCSR::vtype];
+    uint64_t vd  = Inst.vd;
+    uint64_t vs1 = Inst.vs1;
+    uint64_t vs2 = Inst.vs2;
     for( unsigned i = 0; i < V->Iters(); i++ ) {
       V->SetVLo( vd, V->GetVLo( vs1 ) + V->GetVLo( vs2 ) );
       if( V->BytesHi() ) {
@@ -258,9 +257,8 @@ public:
   // nf     mew  mop  vm  sumop  rs1   width  vs3  b0100111
   //  3      1    2    1    5     5     3      5     7
   static bool vs( const RevFeature* F, RevRegFile* R, RevVRegFile* V, RevMem* M, const RevVecInst& Inst ) {
-    uint64_t    addr = R->GetX<uint64_t>( Inst.rs1 );
-    uint64_t    vs3  = Inst.vs3;
-    reg_vtype_t vt   = V->vcsrmap[RevCSR::vtype];
+    uint64_t addr = R->GetX<uint64_t>( Inst.rs1 );
+    uint64_t vs3  = Inst.vs3;
     for( unsigned i = 0; i < V->Iters(); i++ ) {
       // Lower 64
       uint64_t lo = V->GetVLo( vs3 );
@@ -287,9 +285,8 @@ public:
   // nf   mew  mop  vm  lumop  rs1   width  vd  b0000111
   //  3    1    2    1    5     5     3      5     7
   static bool vl( const RevFeature* F, RevRegFile* R, RevVRegFile* V, RevMem* M, const RevVecInst& Inst ) {
-    uint64_t    addr = R->GetX<uint64_t>( Inst.rs1 );
-    uint64_t    vd   = Inst.vd;
-    reg_vtype_t vt   = V->vcsrmap[RevCSR::vtype];
+    uint64_t addr = R->GetX<uint64_t>( Inst.rs1 );
+    uint64_t vd   = Inst.vd;
     for( unsigned i = 0; i < V->Iters(); i++ ) {
       // lower 64
       uint64_t lo = 0;

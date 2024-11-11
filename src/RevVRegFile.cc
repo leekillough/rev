@@ -61,6 +61,16 @@ uint64_t RevVRegFile::GetVHi( uint64_t vs ) {
   return vreg[vs][1] & maskHi;
 }
 
+uint64_t RevVRegFile::GetVCSR( uint16_t csr ) {
+  assert( vcsrmap.count( csr ) == 1 );
+  return vcsrmap[csr];
+}
+
+void RevVRegFile::SetVCSR( uint16_t csr, uint64_t d ) {
+  assert( vcsrmap.count( csr ) == 1 );
+  vcsrmap[csr] = d;
+}
+
 uint8_t RevVRegFile::BytesHi() {
   return bytesHi;
 };

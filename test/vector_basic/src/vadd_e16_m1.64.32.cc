@@ -40,8 +40,8 @@ elem_t s1[AVL]              = {
 void check_result( elem_t result[] ) {
   for( unsigned i = 0; i < AVL; i++ ) {
     elem_t expected = ( i + 1 ) + ( ( i + 1 ) << 8 );
-#if 0
-    printf("Checking i=%d 0x%x\n", i, expected);
+#if 1
+    printf( "Checking i=%d 0x%x\n", i, expected );
 #endif
     if( expected != result[i] ) {
       printf( "Error: 0x%x != 0x%x\n", expected, result[i] );

@@ -61,24 +61,13 @@ public:
   }
 
 public:
-  ///< RevVRegFile: CSRs residing in vector coprocessor
-  std::map<uint16_t, uint64_t> vcsrmap{
-    // URW
-    {0x008,             0}, // vstart
-    {0x009,             0}, // vxsat
-    {0x00a,             0}, // vxrm
-    {0x00f,             0}, // vxcsr
-    // URO
-    {0xc20,             0}, // vl
-    {0xc21,    1ULL << 63}, // vtype
-    {0xc22, 128ULL / 8ULL}, // vlenb
-  };
-
   void     Configure( reg_vtype_t vt );
   void     SetVLo( uint64_t vd, uint64_t d );
   void     SetVHi( uint64_t vd, uint64_t d );
   uint64_t GetVLo( uint64_t vs );
   uint64_t GetVHi( uint64_t vs );
+  uint64_t GetVCSR( uint16_t csr );
+  void     SetVCSR( uint16_t csr, uint64_t d );
 
   uint8_t BytesHi();
   uint8_t BytesLo();
@@ -94,6 +83,18 @@ private:
   uint8_t  bytesHi     = 0;
   uint8_t  bytesLo     = 0;
   uint8_t  iters       = 0;
+  ///< RevVRegFile: CSRs residing in vector coprocessor
+  std::map<uint16_t, uint64_t> vcsrmap{
+    // URW
+    {0x008,             0}, // vstart
+    {0x009,             0}, // vxsat
+    {0x00a,             0}, // vxrm
+    {0x00f,             0}, // vxcsr
+    // URO
+    {0xc20,             0}, // vl
+    {0xc21,    1ULL << 63}, // vtype
+    {0xc22, 128ULL / 8ULL}, // vlenb
+  };
 };  //class RevVRegFile
 
 };  //namespace SST::RevCPU
