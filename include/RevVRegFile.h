@@ -15,6 +15,22 @@
 
 namespace SST::RevCPU {
 
+// Vector CSR Types
+union reg_vtype_t {
+  uint64_t v = 0x0UL;
+
+  struct {
+    uint64_t vlmul : 3;   // [2:0]
+    uint64_t vsew  : 3;   // [5:3]
+    uint64_t vta   : 1;   // [6]
+    uint64_t vma   : 1;   // [7]
+    uint64_t zero  : 55;  // [62:8]
+    uint64_t vii   : 1;   // [63]
+  } f;
+
+  reg_vtype_t( uint64_t _v ) : v( _v ) {};
+};
+
 /// RISC-V Vector Register Mnemonics
 // clang-format off
 enum class VRevReg : uint16_t {
@@ -40,7 +56,7 @@ public:
   }
 
   bool IsRV64() const override {
-    assert( false );
+    assert( false );  // TODO
     return true;
   }
 
@@ -58,12 +74,26 @@ public:
     {0xc22, 128ULL / 8ULL}, // vlenb
   };
 
-  // Proto Vector RF VLEN=128, ELEN=64
-  uint64_t vreg[32][2] = { { 0 } };
+  void     Configure( reg_vtype_t vt );
+  void     SetVLo( uint64_t vd, uint64_t d );
+  void     SetVHi( uint64_t vd, uint64_t d );
+  uint64_t GetVLo( uint64_t vs );
+  uint64_t GetVHi( uint64_t vs );
+
+  uint8_t BytesHi();
+  uint8_t BytesLo();
+  uint8_t Iters();
 
 private:
   uint16_t VLEN;
   uint16_t ELEN;
+  // Proto Vector RF VLEN=128, ELEN=64
+  uint64_t vreg[32][2] = { { 0 } };
+  uint64_t maskHi      = 0;
+  uint64_t maskLo      = 0;
+  uint8_t  bytesHi     = 0;
+  uint8_t  bytesLo     = 0;
+  uint8_t  iters       = 0;
 };  //class RevVRegFile
 
 };  //namespace SST::RevCPU
