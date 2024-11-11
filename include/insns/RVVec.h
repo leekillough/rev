@@ -213,7 +213,7 @@ public:
     }
     V->vcsrmap[RevCSR::vl] = newvl;
     R->SetX( Inst.rd, newvl );
-    tatu return true;
+    return true;
   }
 
   // 31 30        20  19 15 14 12 11 7 6       0
