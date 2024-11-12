@@ -118,7 +118,7 @@ macro(add_forza_test test_name test_dir timeout labels config_vals)
 
     # Define forza target with the new naming convention
     add_custom_target(run_${test_name_lower}_${test_name_suffix}
-      COMMAND cd ${CMAKE_CURRENT_SOURCE_DIR}/${test_dir_lower} && sst --add-lib-path=${CMAKE_SOURCE_DIR}/build/src/ ${CMAKE_SOURCE_DIR}/test/FORZA/forza-test-config.py -- --program="${program_val}.exe" --hartsperzap="${hpz_val}" --zaps="${zaps_val}" --zones="${zones_val}" --precincts="${precincts_val}" --shape="${shape_val}" --progargs="${args_val}"
+      COMMAND cd ${CMAKE_CURRENT_SOURCE_DIR}/${test_dir_lower} && sst --add-lib-path=${CMAKE_SOURCE_DIR}/build/src/ ${CMAKE_SOURCE_DIR}/test/FORZA/forza-test-config-ring.py -- --program="${program_val}.exe" --hartsperzap="${hpz_val}" --zaps="${zaps_val}" --zones="${zones_val}" --precincts="${precincts_val}" --shape="${shape_val}" --progargs="${args_val}"
       DEPENDS build_${test_name_lower}
       COMMENT "Running ${test_name_lower} test with ${hpz_val} harts per ZAP, ${zaps_val} ZAPs, ${zones_val} zones, and ${precincts_val} precincts
       executing program ${program_val} with shape ${shape_val}"
@@ -189,14 +189,11 @@ endmacro()
 # endif()
 
 # remove scratchpad calls, just do registration (how to verify? - probably just read it back)
-# TODO: Need to convert to use add_forza_test
-# add_rev_test(forza_zqm_mbox_setup forza_zqm_mbox_setup 30 "all;memh;rv64;loader;forza" SCRIPT "run_zqm_mbox_setup.sh")
 
 # New actor test
 # TODO: Need to convert to use add_forza_test
 # add_rev_test(forza_actor forza_message_lib 30 "all;memh;rv64;loader;forza" SCRIPT "run_actor.sh")
 
-#TODO: need to add the other noc discovery variants(?)
 add_forza_test(forza_noc_discovery1 forza_noc_discovery 120 "all;memh;rv64;loader;forza" "hartsperzap=1;zaps=1;zones=1;precints=1;program=ex2")
 add_forza_test(forza_noc_discovery2 forza_noc_discovery 120 "all;memh;rv64;loader;forza" "hartsperzap=1;zaps=4;zones=1;precints=1;program=ex2")
 add_forza_test(forza_noc_discovery3 forza_noc_discovery 120 "all;memh;rv64;loader;forza" "hartsperzap=1;zaps=4;zones=2;precints=1;program=ex2")
@@ -204,9 +201,17 @@ add_forza_test(forza_noc_discovery3 forza_noc_discovery 120 "all;memh;rv64;loade
 add_forza_test(forza_amoadd_c forza_amoadd_c 30 "all;memh;rv64;loader;forza" "hartsperzap=1;zaps=1;zones=1;precincts=1;program=amoadd_c")
 add_forza_test(forza_recv forza_recv 30 "all;memh;rv64;loader;forza" "hartsperzap=1;zaps=1;zones=1;precincts=1")
 add_forza_test(forza_send forza_send 30 "all;memh;rv64;loader;forza" "hartsperzap=1;zaps=1;zones=1;precincts=1")
-add_forza_test(forza_zen_setup forza_zen_setup 30 "all;memh;rv64;loader;forza" "hartsperzap=1;zaps=4;zones=2;precincts=1")
-add_forza_test(forza_zen_setup_cxx forza_zen_setup 30 "all;memh;rv64;loader;forza" "hartsperzap=1;zaps=4;zones=2;precincts=1")
-add_forza_test(forza_zqm_setup forza_zqm_setup 30 "all;memh;rv64;loader;forza" "hartsperzap=4;zaps=4;zones=2;precincts=1")
+# TODO: convert below
+#add_rev_test(forza_send_twozone forza_send_twozone 30 "all;memh;rv64;loader;forza" SCRIPT "run_send.sh")
+add_forza_test(forza_send_twozone forza_send_twozone 30 "all;memh;rv64;loader;forza" "hartsperzap=1;zaps=1;zones=2;precincts=1;program=forza_send")
+# TODO: Need to convert to use add_forza_test
+# add_rev_test(forza_zqm_mbox_setup forza_zqm_mbox_setup 30 "all;memh;rv64;loader;forza" SCRIPT "run_zqm_mbox_setup.sh")
+add_forza_test(forza_zqm_mbox_setup forza_zqm_mbox_setup 30 "all;memh;rv64;loader;forza" "hartsperzap=1;zaps=1;zones=2;precincts=1")
+
+#add_forza_test(forza_zen_setup forza_zen_setup 30 "all;memh;rv64;loader;forza" "hartsperzap=1;zaps=4;zones=2;precincts=1")
+#add_forza_test(forza_zen_setup_cxx forza_zen_setup 30 "all;memh;rv64;loader;forza" "hartsperzap=1;zaps=4;zones=2;precincts=1")
+# replaced by above zqm test
+#add_forza_test(forza_zqm_setup forza_zqm_setup 30 "all;memh;rv64;loader;forza" "hartsperzap=4;zaps=4;zones=2;precincts=1")
 
 add_forza_test(forza_python1 forza_python 30 "all;memh;rv64;loader;forza" "hartsperzap=1;zaps=1;zones=1;precincts=8;shape=2,2:4;program=ex2")
 add_forza_test(forza_python2 forza_python 30 "all;memh;rv64;loader;forza" "hartsperzap=512;zaps=1;zones=1;precincts=8;shape=2,2:4;program=ex2")
@@ -215,7 +220,8 @@ add_forza_test(forza_python4 forza_python 60 "all;memh;rv64;loader;forza" "harts
 add_forza_test(forza_python5 forza_python 120 "all;memh;rv64;loader;forza" "hartsperzap=512;zaps=2;zones=4;precincts=8;shape=2,2:4;program=ex2")
 
 add_forza_test(forza_harts_per_zap forza_config_syscalls 30 "all;memh;rv64;loader;forza" "hartsperzap=128;zaps=1;zones=1;precincts=1;program=ex2;progargs=128")
-add_forza_test(forza_config_syscalls forza_config_syscalls 60 "all;memh;rv64;loader;forza" "hartsperzap=64;zaps=1;zones=1;precincts=1;program=config_ecalls;progargs=64 1 8 3 0 0 0")
+# Args in config_syscalls are harts per zap, zaps per zone, zones per precinct, num precincts, then the executing program's zap ID, zone ID, and precinct ID
+add_forza_test(forza_config_syscalls forza_config_syscalls 60 "all;memh;rv64;loader;forza" "hartsperzap=64;zaps=1;zones=1;precincts=1;program=config_ecalls;progargs=64 1 1 1 0 0 0")
 
 add_forza_test(forza_argc forza_argc 30 "all;memh;rv64;loader;forza" "hartsperzap=1;zaps=1;zones=1;precincts=1;progargs=one")
 
@@ -223,9 +229,15 @@ add_forza_test(forza_barrier1 forza_barrier 30 "all;memh;rv64;loader;forza" "har
 add_forza_test(forza_barrier2 forza_barrier 30 "all;memh;rv64;loader;forza" "hartsperzap=1;zaps=4;zones=1;precincts=1;program=forza_barrier_test_4zap")
 add_forza_test(forza_barrier_multi forza_barrier 30 "all;memh;rv64;loader;forza" "hartsperzap=1;zaps=4;zones=1;precincts=1;program=forza_barrier_test_multi_barrier")
 
-add_forza_test(forza_zen_flow forza_zen_flow 60 "all;memh;rv64;loader;forza" "hartsperzap=1;zaps=2;zones=1;precincts=1")
+# this does a simple one packet send from zap 0 -> zap 1
+# will need to remove scratchpad calls, do zqm_mbox setup and then do basic send/recv testing
+# could probably kill the separate zqm_mbox setup if we wanted to do so
+# aside: should probably rename this test
+#add_forza_test(forza_zen_flow forza_zen_flow 60 "all;memh;rv64;loader;forza" "hartsperzap=1;zaps=2;zones=1;precincts=1")
 
-add_forza_test(forza_multisend forza_multisend 60 "all;memh;rv64;loader;forza" "hartsperzap=1;zaps=2;zones=1;precincts=1")
+# this extends the previous test and sends messages between two threads in different zaps; will need to do
+# many of the same updates as in in forza_zen_flow
+#add_forza_test(forza_multisend forza_multisend 60 "all;memh;rv64;loader;forza" "hartsperzap=1;zaps=2;zones=1;precincts=1")
 
 #NOTE: security related tests are still using original rev test with custom script
 #Security related test
