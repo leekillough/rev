@@ -200,7 +200,7 @@ add_forza_test(forza_noc_discovery3 forza_noc_discovery 120 "all;memh;rv64;loade
 
 add_forza_test(forza_amoadd_c forza_amoadd_c 30 "all;memh;rv64;loader;forza" "hartsperzap=1;zaps=1;zones=1;precincts=1;program=amoadd_c")
 add_forza_test(forza_recv forza_recv 30 "all;memh;rv64;loader;forza" "hartsperzap=1;zaps=1;zones=1;precincts=1")
-add_forza_test(forza_send forza_send 30 "all;memh;rv64;loader;forza" "hartsperzap=1;zaps=1;zones=1;precincts=1")
+add_forza_test(forza_send forza_send 30 "all;memh;rv64;loader;forza" "hartsperzap=1;zaps=2;zones=1;precincts=1")
 # TODO: convert below
 #add_rev_test(forza_send_twozone forza_send_twozone 30 "all;memh;rv64;loader;forza" SCRIPT "run_send.sh")
 add_forza_test(forza_send_twozone forza_send_twozone 30 "all;memh;rv64;loader;forza" "hartsperzap=1;zaps=1;zones=2;precincts=1;program=forza_send")
