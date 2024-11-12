@@ -1006,7 +1006,7 @@ void RevCPU::handleZOPMessageZAP( Forza::zopEvent* zev ) {
   switch( zev->getType() ) {
   case Forza::zopMsgT::Z_RESP:
     if( !Mem->handleRZAResponse( zev ) ) {
-      output.fatal( CALL_INFO, -1, "[FORZA][ZAP] Could not handle response for message ID=%" PRIu8 "\n", zev->getID() );
+      output.fatal( CALL_INFO, -1, "[FORZA][ZAP] Could not handle response for message ID=%" PRIu16 "\n", zev->getID() );
     }
     break;
   case Forza::zopMsgT::Z_EXCP:
@@ -1046,7 +1046,10 @@ void RevCPU::handleZOPMessage( Event* ev ) {
 
 void RevCPU::handleRingMsg( Event* ev ) {
   output.verbose( CALL_INFO, 9, 0, "[FORZA][%s] Received Ring Message\n", getName().c_str() );
-  Forza::ringEvent* ring_ev = static_cast<Forza::ringEvent*>( ev );
+  if( ev == nullptr ) {
+    output.fatal( CALL_INFO, -1, "[FORZA][handleRingMessage] : event is null\n" );
+  }
+  auto* ring_ev = static_cast<Forza::ringEvent*>( ev );
 
   if( ring_ev->getDestComp() != zoneRing->getEndpointType() ) {
     output.verbose(
@@ -1074,11 +1077,7 @@ void RevCPU::handleRingMsg( Event* ev ) {
     );
   }
 
-  if( ring_ev == nullptr ) {
-    output.fatal( CALL_INFO, -1, "[FORZA][handleRingMessage] : ringEvent is null\n" );
-  } else {
-    Procs[0]->handleRingReadData( ring_ev );
-  }
+  Procs[0]->handleRingReadData( ring_ev );
 }
 
 void RevCPU::handleMessage( Event* ev ) {

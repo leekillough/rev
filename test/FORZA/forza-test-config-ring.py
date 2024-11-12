@@ -307,7 +307,7 @@ class FORZA:
         self.hartsPerZap = hartsPerZap
         self.clock = clock
         self.program = program
-        self.progArg = progArgs
+        self.progArgs = progArgs
         self.memSize = memSize
         self.memAccessTime = memAccessTime
         self.reqPerCycle = reqPerCycle
