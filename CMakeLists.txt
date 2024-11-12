@@ -20,6 +20,7 @@ execute_process(COMMAND_ERROR_IS_FATAL ANY COMMAND_ECHO STDERR COMMAND ${CMAKE_C
 option(CTEST_BLAS_REQUIRED_TESTS "Enable tests which require BLAS headers" OFF)
 option(CTEST_MULTILIB_TESTS "Enable 32-bit tests" ON)
 # Tests requiring FORZA
+# TODO : seems to be an unused option
 option(CTEST_FORZA_TESTS "Enable tests which require FORZA" OFF)
 
 # SST Setup
