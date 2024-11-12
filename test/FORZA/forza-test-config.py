@@ -306,7 +306,7 @@ class FORZA:
         self.hartsPerZap = hartsPerZap
         self.clock = clock
         self.program = program
-        self.progArg = progArgs
+        self.progArgs = progArgs
         self.memSize = memSize
         self.memAccessTime = memAccessTime
         self.reqPerCycle = reqPerCycle
@@ -641,7 +641,7 @@ class FORZA:
                   "memSize": memSizeRza,
                   "machine": "[CORES:RV64G]",
                   "program": self.program,
-                  "args": self.progArg,
+                  "args": self.progArgs,
                   "enableZoneNIC": 1,
                   "enableRZA": 1,
                   "precinctId": i,
@@ -724,7 +724,7 @@ class FORZA:
                       "machine": "[CORES:RV64GC]",
                       # "startAddr" : "[CORES:0x00000000]",
                       "program": self.program,
-                      "args": self.progArg,
+                      "args": self.progArgs,
                       "enableZoneNIC": 1,
                       "enableRZA": 0,
                       "precinctId": i,
