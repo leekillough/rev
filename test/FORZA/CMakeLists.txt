@@ -7,6 +7,13 @@
 # appended. If the program option is not included in config_vals, it defaults
 # to an all lower-case version of test_name. If the shape option is not included,
 # it defaults to 1,1:1 (the most common test case).
+# Tentative shape parameter advice: shape parameter takes form <downs>,<ups>:<levels>.
+# level 2 tree can scale to "24,24:24" for maximum
+# 576 endpoints. Level 3 can scale to "24,24:24,24:24" for max 1152. For smaller tests,
+# a 1-to-1 ratio should be maintained (ups=downs). Ex: "24,24:2" yields 48 endpoints.
+# Endpoints should be the number of ZIPs in the
+# design, which should be number of Precincts as long as ZIPs are 1 per precinct.
+#
 macro(add_forza_test test_name test_dir timeout labels config_vals)
   string(TOLOWER ${test_dir} test_dir_lower)
   string(TOLOWER ${test_name} test_name_lower)
@@ -213,11 +220,11 @@ add_forza_test(forza_zqm_mbox_setup forza_zqm_mbox_setup 30 "all;memh;rv64;loade
 # replaced by above zqm test
 #add_forza_test(forza_zqm_setup forza_zqm_setup 30 "all;memh;rv64;loader;forza" "hartsperzap=4;zaps=4;zones=2;precincts=1")
 
-add_forza_test(forza_python1 forza_python 30 "all;memh;rv64;loader;forza" "hartsperzap=1;zaps=1;zones=1;precincts=8;shape=2,2:4;program=ex2")
-add_forza_test(forza_python2 forza_python 30 "all;memh;rv64;loader;forza" "hartsperzap=512;zaps=1;zones=1;precincts=8;shape=2,2:4;program=ex2")
-add_forza_test(forza_python3 forza_python 60 "all;memh;rv64;loader;forza" "hartsperzap=512;zaps=2;zones=1;precincts=8;shape=2,2:4;program=ex2")
+add_forza_test(forza_python1 forza_python 30 "all;memh;rv64;loader;forza" "hartsperzap=1;zaps=1;zones=1;precincts=8;shape=1,1:8;program=ex2")
+add_forza_test(forza_python2 forza_python 30 "all;memh;rv64;loader;forza" "hartsperzap=512;zaps=1;zones=1;precincts=8;shape=1,1:8;program=ex2")
+add_forza_test(forza_python3 forza_python 60 "all;memh;rv64;loader;forza" "hartsperzap=512;zaps=2;zones=1;precincts=8;shape=1,1:8;program=ex2")
 add_forza_test(forza_python4 forza_python 60 "all;memh;rv64;loader;forza" "hartsperzap=512;zaps=2;zones=2;precincts=8;shape=2,2:4;program=ex2")
-add_forza_test(forza_python5 forza_python 120 "all;memh;rv64;loader;forza" "hartsperzap=512;zaps=2;zones=4;precincts=8;shape=2,2:4;program=ex2")
+add_forza_test(forza_python5 forza_python 120 "all;memh;rv64;loader;forza" "hartsperzap=512;zaps=2;zones=4;precincts=8;shape=4,4:2;program=ex2")
 
 add_forza_test(forza_harts_per_zap forza_config_syscalls 30 "all;memh;rv64;loader;forza" "hartsperzap=128;zaps=1;zones=1;precincts=1;program=ex2;progargs=128")
 # Args in config_syscalls are harts per zap, zaps per zone, zones per precinct, num precincts, then the executing program's zap ID, zone ID, and precinct ID
