@@ -93,19 +93,21 @@ endif
 ARCH      := rv64gcv
 ABI       := -mabi=lp64d
 
-# Test Specific Customization
-# $(OUTDIR)/vadd_e16_m1.64.32/run.log: SPIKE_OPTS += --varch="vlen:64,elen:32"
-# $(OUTDIR)/vadd_e16_m1.32.16/run.log: SPIKE_OPTS += --varch="vlen:32,elen:16"
+# TODO enable mem hierarchy
+# MEMH = --enableMemH=1
 
+# Test Specific Customization
 # Default VLEN=128, ELEN=64 for both spike and rev
-# TODO add all supported combinations
+# TODO generate all supported combinations
 $(OUTDIR)/%.64.32/run.log: SPIKE_OPTS += --varch="vlen:64,elen:32"
 $(OUTDIR)/%.32.16/run.log: SPIKE_OPTS += --varch="vlen:32,elen:16"
+
+$(OUTDIR)/%.64.32/run.log: REV_OPTS += --vlen=64 --elen=32
+$(OUTDIR)/%.32.16/run.log: REV_OPTS += --vlen=32 --elen=16
 
 # The magical run commands
 ifndef USE_SPIKE
 # run rev
-# MEMH = --enableMemH=1
 %.log: compile
 	@mkdir -p $(@D)
 	@$(eval app = $(notdir $(@D)))
@@ -113,7 +115,7 @@ ifndef USE_SPIKE
 	@$(eval statf = $(basename $@).status)
 	@rm -f $(statf)
 	@echo Running $(basename $@)
-	$(SST) $(SSTOPTS) $(SSTCFG) -- --rvv --verbose=5 --trcStartCycle=1 --machine=CORES:$(ARCH)_zicntr --program=$(exe) $(MEMH) --statDir=$(@D)> $@ && (echo "pass" > $(statf))
+	$(SST) $(SSTOPTS) $(SSTCFG) -- --rvv --verbose=5 --trcStartCycle=1 --machine=CORES:$(ARCH)_zicntr --program=$(exe) $(REV_OPTS)$(MEMH) --statDir=$(@D)> $@ && (echo "pass" > $(statf))
 
 # To run all with all failures use this instead
 #  > $@ && echo "pass" > $(statf) || echo "fail" > $(statf)
@@ -168,7 +170,7 @@ help:
 
 .SECONDARY:
 
-.PRECIOUS: %.log %.printlog
+.PRECIOUS: %.log %.printlog %.dis %.sections
 
 #-- EOF
 

@@ -21,6 +21,8 @@ memSize = 1024*1024*1024-1
 # Setup argument parser
 parser = argparse.ArgumentParser(description="Run Rev SST Simulation")
 parser.add_argument("--rvv", help="Enable Vector Instructions", action="store_true")
+parser.add_argument("--vlen", type=int, help="Vector Length", default=128)
+parser.add_argument("--elen", type=int, help="Vector Element Length", default=64)
 parser.add_argument("--numCores", type=int, help="Number of Rev Cores per RevCPU", default=1)
 parser.add_argument("--numHarts", type=int, help="Number of HARTs per Rev Core", default=1)
 parser.add_argument("--program", help="The program executable to run in the simulation", default="a.out")
@@ -70,7 +72,9 @@ if args.rvv:
     coproc = comp_cpu.setSubComponent("co_proc", "revcpu.RevVectorCoProc")
     coproc.addParams({
         "verbose": args.verbose,
-        "clockFreq": clock
+        "clockFreq": clock,
+        "vlen": args.vlen,
+        "elen": args.elen,
     })
 
 os.makedirs(args.statDir, exist_ok=True)

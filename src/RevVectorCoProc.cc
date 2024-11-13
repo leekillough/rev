@@ -18,6 +18,9 @@ namespace SST::RevCPU {
 RevVectorCoProc::RevVectorCoProc( ComponentId_t id, Params& params, RevCore* parent )
   : RevCoProc( id, params, parent ), num_instRetired( 0 ) {
 
+  vlen                  = params.find<uint16_t>( "vlen", 128 );
+  elen                  = params.find<uint16_t>( "elen", 64 );
+
   std::string ClockFreq = params.find<std::string>( "clock", "1Ghz" );
   cycleCount            = 0;
 
@@ -32,7 +35,7 @@ RevVectorCoProc::RevVectorCoProc( ComponentId_t id, Params& params, RevCore* par
   if( !LoadInstructionTable() )
     output->fatal( CALL_INFO, -1, "Error : failed to load instruction tables\n" );
 
-  vregfile = new RevVRegFile( 128, 64 );
+  vregfile = new RevVRegFile( vlen, elen );
 }
 
 RevVectorCoProc::~RevVectorCoProc() {
@@ -242,15 +245,14 @@ RevVecInst::RevVecInst( uint32_t inst ) : Inst( inst ) {
   opcode = Inst & 0x7f;
   if( opcode == 0b0000111 ) {  // LOAD-FP
     format = RevInstF::RVVTypeLd;
-    funct3 = 8;
   } else if( opcode == 0b0100111 ) {  // STORE-FP
     format = RevInstF::RVVTypeSt;
-    funct3 = 8;
   } else if( opcode == 0b1010111 ) {  // OP-V
     format = RevInstF::RVVTypeOp;
-    funct3 = ( Inst >> 12 ) & 7;
   }
-  Enc = funct3 << 8 | opcode;
+  // Funct3 selects width for vl*/vs* and op-v for vector arith/set*vl*
+  funct3 = ( Inst >> 12 ) & 7;
+  Enc    = funct3 << 8 | opcode;
 }
 
 void RevVecInst::DecodeBase() {

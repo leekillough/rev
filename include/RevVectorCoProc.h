@@ -37,8 +37,8 @@ public:
   SST_ELI_DOCUMENT_PARAMS(
     { "verbose", "Set the verbosity of output for the co-processor", "0" },
     { "clock", "Sets the clock frequency of the co-processor", "1Ghz" },
-    { "ELEN", "Maximum number of bits of a vector element that any operation can produce or consume", "64" },
-    { "VLEN", "Max number of bits in a single vector register", "128" },
+    { "elen", "Maximum number of bits of a vector element that any operation can produce or consume", "64" },
+    { "vlen", "Max number of bits in a single vector register", "128" },
   );
 
   // Register any subcomponents used by this element
@@ -89,6 +89,8 @@ public:
   virtual bool IsDone() { return InstQ.empty(); }
 
 private:
+  uint16_t   vlen    = 0;
+  uint16_t   elen    = 0;
   RevVecInst VecInst = {};
 
   struct RevCoProcInst {

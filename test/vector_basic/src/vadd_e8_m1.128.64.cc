@@ -45,8 +45,8 @@ elem_t s1[AVL]              = { 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 
 void check_result( elem_t result[] ) {
   for( unsigned i = 0; i < AVL; i++ ) {
     elem_t expected = ( i + 1 ) + ( ( i + 0x11 ) );
-#if 0
-    printf("Checking i=%d 0x%x\n", i, (unsigned) expected);
+#if 1
+    printf( "Checking i=%d 0x%x\n", i, (unsigned) expected );
 #endif
     if( expected != result[i] ) {
       printf( "Error: 0x%x != 0x%x\n", expected, (unsigned) result[i] );

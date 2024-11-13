@@ -15,61 +15,72 @@ namespace SST::RevCPU {
 RevVRegFile::RevVRegFile( uint16_t vlen, uint16_t elen ) : VLEN( vlen ), ELEN( elen ) {
   assert( VLEN <= 128 );  // Practical limit matching current V standard
   assert( vlen > ELEN );  // Not supporting VLEN==ELEN (max(ELEN)==64)
-  bytesPerReg  = VLEN >> 3;
-  bytesPerElem = ELEN >> 3;
-  elemsPerReg  = VLEN / ELEN;
-  vreg.resize( 32, std::vector<uint8_t>( bytesPerReg ) );
-  elemMaskInfo.resize( elemsPerReg );
+  vlenb       = VLEN >> 3;
+  elenb       = ELEN >> 3;
+  elemsPerReg = VLEN / ELEN;
+  vreg.resize( 32, std::vector<uint8_t>( vlenb ) );
+  elemValid.resize( elemsPerReg );
+#if 1
+  std::cout << "*V VLEN=" << std::dec << VLEN << " ELEN=" << ELEN << std::endl;
+  std::cout << "*V vlenb=" << vlenb << " bytes/elem=" << elenb << " elems/reg=" << elemsPerReg << std::endl;
+#endif
+  // Initialize CSRs
+  vcsrmap[RevCSR::vlenb] = vlenb;
+  vcsrmap[RevCSR::vtype] = 1ULL << 63;  // vii = 1ULL<<63; // vii
 }
 
 void RevVRegFile::Configure( reg_vtype_t vt ) {
   // Iterations over vector registers
   switch( vt.f.vlmul ) {
-  case 0: iters = 1; break;
-  case 1: iters = 2; break;
-  case 2: iters = 4; break;
-  case 3: iters = 8; break;
+  case 0: itersOverLMUL = 1; break;
+  case 1: itersOverLMUL = 2; break;
+  case 2: itersOverLMUL = 4; break;
+  case 3: itersOverLMUL = 8; break;
   //case 4:
   case 5:  //mf8
   case 6:  //mf4
   case 7:  //mf2
-    iters = 1;
+    itersOverLMUL = 1;
     break;
   default: assert( false ); break;
   }
 
-  // bytes active for each element (for loads/stores)
+  // Iterations over an element
+  unsigned sewbytes = 1 << vt.f.vsew;
+  unsigned sewbits  = sewbytes << 3;
+  assert( sewbits <= ELEN );
+  itersOverElement = ELEN / sewbits;
+
+  // Fraactional LMUL support
+  // vlen=64, elen=8 ( vlen/elen = 8 )
+  //              e7 e6 e5 e4 e3 e2 e1 e0
+  // m[1248]      1  1  1  1  1  1  1  1   elems=8
+  // mf2 lmul=7   0  0  0  0  1  1  1  1   elems=4 eshift=4
+  // mf4 lmul=6   0  0  0  0  0  0  1  1   elems=2 eshift=2
+  // mf8 lmul=5   0  0  0  0  0  0  0  1   elems=1 eshift=1
+  //
+
   for( unsigned e = 0; e < elemsPerReg; e++ ) {
-    assert( elemsPerReg == 2 );
-    assert( bytesPerElem == 8 );
-    elemMaskInfo[e] = std::make_pair( bytesPerElem, -1ULL );
-    if( vt.f.vlmul >= 5 ) {
-      if( e == 1 ) {
-        elemMaskInfo[e] = std::pair( 0, 0ULL );
+    assert( vt.f.vlmul != 4 );  // reserved value
+    if( vt.f.vlmul <= 3 ) {
+      elemValid[e] = true;
+    } else {
+      // Fractional LMUL
+      // ELEN * LMUL >= SEW
+      unsigned eshift = 8 - vt.f.vlmul;  // mf2:1 mf4:2 mf8:3
+      if( ( ELEN >> eshift ) < sewbits ) {
+        vcsrmap[vtype] |= ( 1ULL < 63 );  // vtype.vii
+        std::cout << "V* Illegal lmul " << vt.f.vlmul << " for elen=" << std::dec << ELEN << " and sew=e" << sewbits << std::endl;
+        assert( false );
+      }
+      if( e < ( elemsPerReg >> eshift ) ) {
+        elemValid[e] = true;
       } else {
-        uint8_t  bytes = bytesPerElem >> ( 7 - vt.f.vlmul );
-        uint64_t mask  = 0;
-        for( int b = 0; b < bytes; b++ )
-          mask |= ( 0xffULL << ( b << 3 ) );
-        elemMaskInfo[e] = std::make_pair( bytes, mask );
+        elemValid[e] = false;
+        std::cout << "*V Suppressing element " << e << std::endl;
       }
     }
   }
-}
-
-void RevVRegFile::SetElem( uint64_t vd, unsigned e, uint64_t d ) {
-  uint64_t res   = d & ElemMask( e );
-  size_t   bytes = sizeof( uint64_t );
-  assert( ( e * bytes ) < bytesPerReg );
-  memcpy( &( vreg[vd][e * bytes] ), &res, bytes );
-}
-
-uint64_t RevVRegFile::GetElem( uint64_t vs, unsigned e ) {
-  uint64_t res   = 0;
-  size_t   bytes = sizeof( uint64_t );
-  assert( ( e * bytes ) < bytesPerReg );
-  memcpy( &res, &( vreg[vs][e * bytes] ), bytes );
-  return res & ElemMask( e );
 }
 
 uint64_t RevVRegFile::GetVCSR( uint16_t csr ) {
@@ -82,24 +93,24 @@ void RevVRegFile::SetVCSR( uint16_t csr, uint64_t d ) {
   vcsrmap[csr] = d;
 }
 
-uint8_t RevVRegFile::BytesPerReg() {
-  return bytesPerReg;
+uint16_t RevVRegFile::BytesPerReg() {
+  return vlenb;
 }
 
-uint8_t RevVRegFile::ElemsPerReg() {
+uint16_t RevVRegFile::ElemsPerReg() {
   return elemsPerReg;
 }
 
-uint8_t RevVRegFile::Iters() {
-  return iters;
+uint16_t RevVRegFile::ItersOverLMUL() {
+  return itersOverLMUL;
 }
 
-uint8_t RevVRegFile::ElemBytes( unsigned e ) {
-  return elemMaskInfo[e].first;
+uint16_t RevVRegFile::ItersOverElement() {
+  return itersOverElement;
 }
 
-uint64_t RevVRegFile::ElemMask( unsigned e ) {
-  return elemMaskInfo[e].second;
+bool RevVRegFile::ElemValid( unsigned e ) {
+  return elemValid[e];
 }
 
 }  //namespace SST::RevCPU

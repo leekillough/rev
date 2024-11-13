@@ -1,5 +1,5 @@
 /*
- * vadd_e32_m1.128.64.cc
+ * vadd_e32_mf4.128.64.cc
  *
  * Copyright (C) 2017-2024 Tactical Computing Laboratories, LLC
  * All Rights Reserved
@@ -18,28 +18,34 @@
 #include "rev.h"
 
 // Vector test configuration
-typedef uint32_t elem_t;            // Element Type
-const unsigned   VLEN       = 128;  // Width of register file entry
-const unsigned   ELEN       = 64;   // Maximum bits per operation on vector element
-const unsigned   SEW        = 32;   // Selected Element Width for adds
-const unsigned   LMUL       = 1;    // Length multiplier
-const unsigned   VLMAX      = 4;    // Max vector length LMUL * VLEN / SEW
-const unsigned   AVL        = 16;   // Application Vector Length (elements)
-//const unsigned   VL         = 4;    // Elements operated on by a vector instruction (<=VLMAX, <=AVL)
+typedef uint32_t elem_t;              // Element Type
+const unsigned   VLEN       = 128;    // Width of register file entry
+const unsigned   ELEN       = 64;     // Maximum bits per operation on vector element
+const unsigned   SEW        = 16;     // Selected Element Width for adds
+const float      LMUL       = 1 / 4;  // Length multiplier
+const unsigned   VLMAX      = 1;      // Max vector length LMUL * VLEN / SEW
+const unsigned   AVL        = 1;      // Application Vector Length (elements)
+//const unsigned   VL         = 1;    // Elements operated on by a vector instruction (<=VLMAX, <=AVL)
+
+// for LMUL<1 we still want to operate on full vector register
+const unsigned VELEM        = 16;
+
+// Illegal AVL <= VLMAX? // TODO find reference in specification. Seems like this should be ok
 
 // counter 0 = cycles
 // counter 1 = instructions
 unsigned counters_scalar[2] = { 0 };
 unsigned counters_vector[2] = { 0 };
 
-elem_t s0[AVL]              = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10 };
-elem_t s1[AVL]              = {
+// For LMUL=1/2 we still use the full vector element size for testing
+elem_t s0[VELEM]            = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10 };
+elem_t s1[VELEM]            = {
   0x0100, 0x0200, 0x0300, 0x0400, 0x0500, 0x0600, 0x0700, 0x0800, 0x0900, 0x0a00, 0x0b00, 0x0c00, 0x0d00, 0x0e00, 0x0f00, 0x1000
 };
 
 void check_result( elem_t result[] ) {
-  for( unsigned i = 0; i < AVL; i++ ) {
-    elem_t expected = ( i + 1 ) + ( ( i + 1 ) << 8 );
+  for( unsigned i = 0; i < VELEM; i++ ) {
+    elem_t expected = i < AVL ? ( i + 1 ) + ( ( i + 1 ) << 8 ) : 0;
 #if 1
     printf( "Checking i=%d 0x%x\n", i, expected );
 #endif
@@ -74,7 +80,7 @@ void vadd_array( elem_t a[], elem_t b[], elem_t c[] ) {
 #else
   unsigned time0, time1, inst0, inst1;
   int      rc    = 0x99;
-  unsigned ITERS = 4;  // AVL/VLMAX = 16/4
+  unsigned ITERS = 1;  // AVL/VLMAX = 1/1
   elem_t*  pa    = &( a[0] );
   elem_t*  pb    = &( b[0] );
   elem_t*  pc    = &( c[0] );
@@ -86,17 +92,17 @@ void vadd_array( elem_t a[], elem_t b[], elem_t c[] ) {
                 "add  a3, zero, %4  \n\t"  // Load pointer to c
                 "add  a4, zero, %5  \n\t"  // Load expected iterations
                 "_vadd_loop: \n\t"
-                //            AVL,    SEW, LMUL=1, tail/mask agnostic
-                "vsetvli t0,  a0,     e32,     m1,  ta, ma  \n\t"
+                //            AVL,    SEW, LMUL=1/4, tail/mask agnostic
+                "vsetvli t0,  a0,     e16,     mf4,  ta, ma  \n\t"
                 //
-                "vle32.v v0, (a1)     \n\t"  // Get first vector
+                "vle16.v v0, (a1)     \n\t"  // Get first vector
                 "sub a0, a0, t0       \n\t"  // Decrement N
                 "slli t0, t0, 2       \n\t"  // Divide by number of bytes per element
                 "add a1, a1, t0       \n\t"  // Bump pointer to a
-                "vle32.v v1, (a2)     \n\t"  // Get second vector
+                "vle16.v v1, (a2)     \n\t"  // Get second vector
                 "add a2, a2, t0       \n\t"  // Bump pointer to b
                 "vadd.vv v2, v0, v1   \n\t"  // Sum Vectors
-                "vse32.v v2, (a3)     \n\t"  // Store result
+                "vse16.v v2, (a3)     \n\t"  // Store result
                 "add a3, a3, t0       \n\t"  // Bump pointer to c
                 "addi a4, a4, -1      \n\t"  // Decrement expected iterations
                 "bltz a4, _vadd_done  \n\t"  // Fail on overrun
@@ -114,7 +120,7 @@ void vadd_array( elem_t a[], elem_t b[], elem_t c[] ) {
   counters_vector[1] = inst1 - inst0;
 
   if( rc ) {
-    printf( "Error: vadd_e32_m1.128.64 rc=%d\n", rc );
+    printf( "Error: vadd_e32_mf4.128.64 rc=%d\n", rc );
     assert( 0 );
   }
 
@@ -124,20 +130,20 @@ void vadd_array( elem_t a[], elem_t b[], elem_t c[] ) {
 int main( int argc, char** argv ) {
 
   // Scalar
-  elem_t r_scalar[AVL] = { 0 };
+  elem_t r_scalar[VELEM] = { 0 };
   add_array( s0, s1, r_scalar );
   check_result( r_scalar );
 
   // Vector
-  elem_t r_vector[AVL] = { 0 };
+  elem_t r_vector[VELEM] = { 0 };
   vadd_array( s0, s1, r_vector );
   check_result( r_vector );
 
 #ifndef USE_SPIKE
-  printf( "[vadd_e32_m1.128.64 rev cycles] scalar=%d vector=%d\n", counters_scalar[0], counters_vector[0] );
-  printf( "[vadd_e32_m1.128.64 rev instrs] scalar=%d vector=%d\n", counters_scalar[1], counters_vector[1] );
+  printf( "[vadd_e32_mf4.128.64 rev cycles] scalar=%d vector=%d\n", counters_scalar[0], counters_vector[0] );
+  printf( "[vadd_e32_mf4.128.64 rev instrs] scalar=%d vector=%d\n", counters_scalar[1], counters_vector[1] );
 #else
-  printf( "[vadd_e32_m1.128.64 spike cycles] scalar=%d vector=%d\n", counters_scalar[0], counters_vector[0] );
-  printf( "[vadd_e32_m1.128.64 spike instrs] scalar=%d vector=%d\n", counters_scalar[1], counters_vector[1] );
+  printf( "[vadd_e32_mf4.128.64 spike cycles] scalar=%d vector=%d\n", counters_scalar[0], counters_vector[0] );
+  printf( "[vadd_e32_mf4.128.64 spike instrs] scalar=%d vector=%d\n", counters_scalar[1], counters_vector[1] );
 #endif
 }

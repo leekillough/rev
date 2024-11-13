@@ -76,7 +76,7 @@ int main( int argc, char** argv ) {
   CHECKU64( vcsr, 0UL );
   CHECKU64( vl.v, 0UL );
   CHECKU64( vtype.v, 0x8000000000000000UL );
-  CHECKU64( vlenb, 16UL );
+  CHECKU64( vlenb, 8UL );
 
   // Part 1: Check vsetvli, vsetivli, vsetvl instructions
 
@@ -85,15 +85,15 @@ int main( int argc, char** argv ) {
   uint64_t newvl = 0;
   uint64_t avl   = 128;
   VSETVLI( newvl, avl, e8, m1, ta, ma );
-  CHECKU64( newvl, 16UL );
+  CHECKU64( newvl, 8UL );
   read_and_dump_registers();
   CHECKU64( vstart.v, 0UL );
   CHECKU64( vxsat, 0UL );
   CHECKU64( vxrm, 0UL );
   CHECKU64( vcsr, 0UL );
-  CHECKU64( vl.v, 0x10UL );
+  CHECKU64( vl.v, 0x8UL );
   CHECKU64( vtype.v, 0xc0UL );
-  CHECKU64( vlenb, 16UL );
+  CHECKU64( vlenb, 8UL );
 
   printf( "\nvsetivli: avl=8, e32, m8, tu, ma\n" );
   VSETIVLI( newvl, 8, e32, m8, tu, ma );
@@ -105,13 +105,14 @@ int main( int argc, char** argv ) {
   CHECKU64( vcsr, 0UL );
   CHECKU64( vl.v, 0x8UL );
   CHECKU64( vtype.v, 0x93UL );
-  CHECKU64( vlenb, 16UL );
+  CHECKU64( vlenb, 8UL );
 
   reg_vtype_t vt2 = {};
-  printf( "\nvsetvl: avl=10, sew=e32, mf2, ta, mu\n" );
+
+  printf( "\nvsetvl: avl=10, sew=e16, mf2, ta, mu\n" );
   avl         = 10;
   vt2.f.vlmul = vlmul::mf2;
-  vt2.f.vsew  = vsew::e32;
+  vt2.f.vsew  = vsew::e16;
   vt2.f.vta   = 1;
   vt2.f.vma   = 0;
   vt2.f.vii   = 0;
@@ -123,16 +124,16 @@ int main( int argc, char** argv ) {
   CHECKU64( vxrm, 0UL );
   CHECKU64( vcsr, 0UL );
   CHECKU64( vl.v, 0x2UL );
-  CHECKU64( vtype.v, 0x57UL );
-  CHECKU64( vlenb, 16UL );
+  CHECKU64( vtype.v, 0x4fUL );
+  CHECKU64( vlenb, 8UL );
 
 #if 0
-  // vtype.vii[63] VLEN=128, ELEN=64, SEW=64 so we cannot divide further
-  printf( "\nvsetvl: avl=10, sew=e64, mf2, tu, ma\n" );
+  // sets vtype.vii[63]. VLEN=64, ELEN=32, SEW=32. Cannot divide further
+  printf( "\nvsetvl: avl=10, sew=e32, mf2, tu, ma\n" );
   avl = 10;
   vt2 = {};
   vt2.f.vlmul = vlmul::mf2;
-  vt2.f.vsew  = vsew::e64;
+  vt2.f.vsew  = vsew::e32;
   vt2.f.vta   = 0;
   vt2.f.vma   = 1;
   vt2.f.vii   = 0;
@@ -145,7 +146,7 @@ int main( int argc, char** argv ) {
   CHECKU64( vcsr, 0UL );
   CHECKU64( vl.v, 0x0UL );
   CHECKU64( vtype.v, (1ULL<<63) );
-  CHECKU64( vlenb, 16UL );
+  CHECKU64( vlenb, 8UL );
 #endif
 
   // Part 2
@@ -158,20 +159,21 @@ int main( int argc, char** argv ) {
   vt2.f.vsew  = 0UL;
   vt2.f.vlmul = 3;
   asm volatile( "vsetvl %0, x0, %1\n\t" : "=r"( newvl ) : "r"( vt2 ) );
-  CHECKU64( newvl, 0x80UL );
+  CHECKU64( newvl, 0x40UL );
   read_and_dump_registers();
   CHECKU64( vstart.v, 0UL );
   CHECKU64( vxsat, 0UL );
   CHECKU64( vxrm, 0UL );
   CHECKU64( vcsr, 0UL );
-  CHECKU64( vl.v, 0x80UL );
+  CHECKU64( vl.v, 0x40UL );
   CHECKU64( vtype.v, 0x43UL );
-  CHECKU64( vlenb, 16UL );
+  CHECKU64( vlenb, 8UL );
 
   // put back to previous value
   avl         = 10;
-  vt2.f.vlmul = 1;
-  vt2.f.vsew  = 3;
+  vt2         = {};
+  vt2.f.vlmul = vlmul::m1;
+  vt2.f.vsew  = vsew::e32;
   vt2.f.vta   = 1;
   vt2.f.vma   = 0;
   vt2.f.vii   = 0;
@@ -179,6 +181,20 @@ int main( int argc, char** argv ) {
 
   printf( "\vsetvl x0 x0 ...\n" );
   asm volatile( "vsetvl x0, x0, %0\n\t" : : "r"( vt2 ) );
+  CHECKU64( newvl, 0x2UL );
+  read_and_dump_registers();
+  CHECKU64( vstart.v, 0UL );
+  CHECKU64( vxsat, 0UL );
+  CHECKU64( vxrm, 0UL );
+  CHECKU64( vcsr, 0UL );
+  CHECKU64( vl.v, 0x2UL );
+  CHECKU64( vtype.v, 0x50UL );
+  CHECKU64( vlenb, 8UL );
+
+  // Part 3: check CSR's after vector add operations
+  avl = 32;
+  printf( "\nvsetvli: avl=32, e16, m1, ta, ma\n" );
+  VSETVLI( newvl, avl, e16, m1, ta, ma );
   CHECKU64( newvl, 0x4UL );
   read_and_dump_registers();
   CHECKU64( vstart.v, 0UL );
@@ -186,22 +202,8 @@ int main( int argc, char** argv ) {
   CHECKU64( vxrm, 0UL );
   CHECKU64( vcsr, 0UL );
   CHECKU64( vl.v, 0x4UL );
-  CHECKU64( vtype.v, 0x59UL );
-  CHECKU64( vlenb, 16UL );
-
-  // Part 3: check CSR's after vector add operations
-  avl = 32;
-  printf( "\nvsetvli: avl=32, e16, m1, ta, ma\n" );
-  VSETVLI( newvl, avl, e16, m1, ta, ma );
-  CHECKU64( newvl, 0x8UL );
-  read_and_dump_registers();
-  CHECKU64( vstart.v, 0UL );
-  CHECKU64( vxsat, 0UL );
-  CHECKU64( vxrm, 0UL );
-  CHECKU64( vcsr, 0UL );
-  CHECKU64( vl.v, 0x8UL );
   CHECKU64( vtype.v, 0xc8UL );
-  CHECKU64( vlenb, 16UL );
+  CHECKU64( vlenb, 8UL );
   printf( "\nperforming vector add\n" );
   VL( e16.v, v0, s0 );
   VL( e16.v, v2, s1 );
@@ -211,9 +213,9 @@ int main( int argc, char** argv ) {
   CHECKU64( vxsat, 0UL );
   CHECKU64( vxrm, 0UL );
   CHECKU64( vcsr, 0UL );
-  CHECKU64( vl.v, 0x8UL );
+  CHECKU64( vl.v, 0x4UL );
   CHECKU64( vtype.v, 0xc8UL );
-  CHECKU64( vlenb, 16UL );
+  CHECKU64( vlenb, 8UL );
 
   printf( "\ncsr.128.64 completed normally\n" );
 }

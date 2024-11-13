@@ -21,8 +21,8 @@
 typedef uint32_t elem_t;              // Element Type
 const unsigned   VLEN       = 128;    // Width of register file entry
 const unsigned   ELEN       = 64;     // Maximum bits per operation on vector element
-const unsigned   SEW        = 32;     // Selected Element Width for adds
-const float      LMUL       = 1 / 4;  // Length multiplier
+const unsigned   SEW        = 8;      // Selected Element Width for adds
+const float      LMUL       = 1 / 8;  // Length multiplier
 const unsigned   VLMAX      = 1;      // Max vector length LMUL * VLEN / SEW
 const unsigned   AVL        = 1;      // Application Vector Length (elements)
 //const unsigned   VL         = 1;    // Elements operated on by a vector instruction (<=VLMAX, <=AVL)
@@ -92,17 +92,17 @@ void vadd_array( elem_t a[], elem_t b[], elem_t c[] ) {
                 "add  a3, zero, %4  \n\t"  // Load pointer to c
                 "add  a4, zero, %5  \n\t"  // Load expected iterations
                 "_vadd_loop: \n\t"
-                //            AVL,    SEW, LMUL=1/4, tail/mask agnostic
-                "vsetvli t0,  a0,     e32,     mf4,  ta, ma  \n\t"
+                //            AVL,    SEW, LMUL=1/8, tail/mask agnostic
+                "vsetvli t0,  a0,     e8,     mf8,  ta, ma  \n\t"
                 //
-                "vle32.v v0, (a1)     \n\t"  // Get first vector
+                "vle8.v v0, (a1)     \n\t"   // Get first vector
                 "sub a0, a0, t0       \n\t"  // Decrement N
                 "slli t0, t0, 2       \n\t"  // Divide by number of bytes per element
                 "add a1, a1, t0       \n\t"  // Bump pointer to a
-                "vle32.v v1, (a2)     \n\t"  // Get second vector
+                "vle8.v v1, (a2)     \n\t"   // Get second vector
                 "add a2, a2, t0       \n\t"  // Bump pointer to b
                 "vadd.vv v2, v0, v1   \n\t"  // Sum Vectors
-                "vse32.v v2, (a3)     \n\t"  // Store result
+                "vse8.v v2, (a3)     \n\t"   // Store result
                 "add a3, a3, t0       \n\t"  // Bump pointer to c
                 "addi a4, a4, -1      \n\t"  // Decrement expected iterations
                 "bltz a4, _vadd_done  \n\t"  // Fail on overrun

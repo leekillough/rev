@@ -108,12 +108,16 @@
   } while( 0 )
 
 // CSR Types
+enum vsew { e8 = 0, e16 = 1, e32 = 2, e64 = 3 };
+
+enum vlmul { m1 = 0, m2 = 1, m4 = 2, m8 = 3, mf8 = 5, mf4 = 6, mf2 = 7 };
+
 union reg_vtype_t {
   uint64_t v = 0x0UL;
 
   struct {
-    uint64_t vlmul : 3;   // [2:0]
-    uint64_t vsew  : 3;   // [5:3]
+    uint64_t vlmul : 3;   // [2:0] 0:mf1 1:mf2 2:m4 3:mf8 4:x 5:mf8 6:mf4 7:mf2
+    uint64_t vsew  : 3;   // [5:3] 0:e8 1:e16 2:e32 3:e64
     uint64_t vta   : 1;   // [6]
     uint64_t vma   : 1;   // [7]
     uint64_t zero  : 55;  // [62:8]
@@ -129,7 +133,6 @@ union reg_vl_t {
   uint64_t v = 0UL;
 
   struct {
-    // VLEN=128, SEW=8, LMUL=8, VLMAX = 8*128/8 = 128, 2**7=128
     uint64_t l : 7;  // [6:0]
   } f;
 
@@ -149,14 +152,14 @@ union reg_vl_t {
 // #define csr_vlenb   0xc22
 
 // Vector Load/Store (VLE16.v/VSE16.v ...)
-#define VL( VTYPE, SRC, RS1 )                                                  \
-  do {                                                                         \
-    asm volatile( " vs" str( VTYPE ) " " str( SRC ) ", (%0)" : : "r"( RS1 ) ); \
+#define VL( VTYPE, VD, RS1 )                                                  \
+  do {                                                                        \
+    asm volatile( " vl" str( VTYPE ) " " str( VD ) ", (%0)" : : "r"( RS1 ) ); \
   } while( 0 )
 
-#define VS( VTYPE, SUFFIX, SRC, RS1 )                                          \
+#define VS( VTYPE, SUFFIX, VS3, RS1 )                                          \
   do {                                                                         \
-    asm volatile( " vs" str( VTYPE ) " " str( SRC ) ", (%0)" : : "r"( RS1 ) ); \
+    asm volatile( " vs" str( VTYPE ) " " str( VS3 ) ", (%0)" : : "r"( RS1 ) ); \
   } while( 0 )
 
 // Vector Integer operations

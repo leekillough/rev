@@ -29,7 +29,16 @@ union reg_vtype_t {
   } f;
 
   reg_vtype_t( uint64_t _v ) : v( _v ) {};
+
+  // This causes an exception - why?
+  // friend std::ostream& operator<<( std::ostream& os, const reg_vtype_t& vt ) {
+  //   os << "vlmul=" << vt.f.vlmul << " vsew=" << vt.f.vsew << " vta=" << vt.f.vta << " vma=" << vt.f.vma << " vii=" << vt.f.vii;
+  // };
 };
+
+enum vsew { e8 = 0, e16 = 1, e32 = 2, e64 = 3 };
+
+enum vlmul { m1 = 0, m2 = 1, m4 = 2, m8 = 3, mf8 = 5, mf4 = 6, mf2 = 7 };
 
 /// RISC-V Vector Register Mnemonics
 // clang-format off
@@ -64,35 +73,55 @@ public:
   void     Configure( reg_vtype_t vt );
   uint64_t GetVCSR( uint16_t csr );
   void     SetVCSR( uint16_t csr, uint64_t d );
-  void     SetElem( uint64_t vd, unsigned e, uint64_t d );
-  uint64_t GetElem( uint64_t vs, unsigned e );
 
-  uint8_t  BytesPerReg();
-  uint8_t  ElemsPerReg();
-  uint8_t  Iters();
-  uint8_t  ElemBytes( unsigned e );
-  uint64_t ElemMask( unsigned e );
+  uint16_t BytesPerReg();
+  uint16_t ElemsPerReg();
+  uint16_t ItersOverLMUL();
+  uint16_t ItersOverElement();
+  bool     ElemValid( unsigned e );
+
+  template<typename T>
+  void SetElem( uint64_t vd, unsigned e, T d ) {
+    //T res   = d & ElemMask( e );
+    T      res   = d;
+    size_t bytes = sizeof( T );
+    assert( ( e * bytes ) <= vlenb );
+    memcpy( &( vreg[vd][e * bytes] ), &res, bytes );
+  };
+
+  template<typename T>
+  T GetElem( uint64_t vs, unsigned e ) {
+    T      res   = 0;
+    size_t bytes = sizeof( T );
+    assert( ( e * bytes ) <= vlenb );
+    memcpy( &res, &( vreg[vs][e * bytes] ), bytes );
+    //return res & ElemMask( e ); // TODO nix mit dem ElemMask
+    return res;
+  };
 
 private:
-  uint16_t                                  VLEN;
-  uint16_t                                  ELEN;
-  uint8_t                                   bytesPerReg;
-  uint8_t                                   bytesPerElem;
-  uint8_t                                   elemsPerReg;
-  std::vector<std::vector<uint8_t>>         vreg         = {};
-  std::vector<std::pair<uint8_t, uint64_t>> elemMaskInfo = {};
-  uint8_t                                   iters        = 0;
+  uint16_t VLEN;
+  uint16_t ELEN;
+  uint16_t vlenb;
+  uint16_t elenb;
+  uint16_t elemsPerReg;
+  uint16_t itersOverLMUL                      = 0;
+  uint16_t itersOverElement                   = 0;
+
+  std::vector<std::vector<uint8_t>> vreg      = {};
+  std::vector<bool>                 elemValid = {};
+
   ///< RevVRegFile: CSRs residing in vector coprocessor
   std::map<uint16_t, uint64_t> vcsrmap{
     // URW
-    {0x008,             0}, // vstart
-    {0x009,             0}, // vxsat
-    {0x00a,             0}, // vxrm
-    {0x00f,             0}, // vxcsr
+    {0x008, 0}, // vstart
+    {0x009, 0}, // vxsat
+    {0x00a, 0}, // vxrm
+    {0x00f, 0}, // vxcsr
     // URO
-    {0xc20,             0}, // vl
-    {0xc21,    1ULL << 63}, // vtype
-    {0xc22, 128ULL / 8ULL}, // vlenb
+    {0xc20, 0}, // vl
+    {0xc21, 0}, // vtype
+    {0xc22, 0}, // vlenb
   };
 };  //class RevVRegFile
 
