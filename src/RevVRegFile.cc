@@ -42,47 +42,12 @@ void RevVRegFile::Configure( reg_vtype_t vt ) {
   default: assert( false ); break;
   }
 
-  // Iterations over an element
+  // Elements per register
   unsigned sewbytes = 1 << vt.f.vsew;
   unsigned sewbits  = sewbytes << 3;
   assert( sewbits <= ELEN );
-  itersOverElement = ELEN / sewbits;
-
-  // Elements per register
-  elemsPerReg      = VLEN / sewbits;
+  elemsPerReg = VLEN / sewbits;
   assert( elemsPerReg > 0 );
-  elemValid.resize( elemsPerReg );
-
-  // Fraactional LMUL support
-  // vlen=64, elen=8 ( vlen/elen = 8 )
-  //              e7 e6 e5 e4 e3 e2 e1 e0
-  // m[1248]      1  1  1  1  1  1  1  1   elems=8
-  // mf2 lmul=7   0  0  0  0  1  1  1  1   elems=4 eshift=4
-  // mf4 lmul=6   0  0  0  0  0  0  1  1   elems=2 eshift=2
-  // mf8 lmul=5   0  0  0  0  0  0  0  1   elems=1 eshift=1
-  //
-
-  for( unsigned e = 0; e < elemsPerReg; e++ ) {
-    assert( vt.f.vlmul != 4 );  // reserved value
-    if( vt.f.vlmul <= 3 ) {
-      elemValid[e] = true;
-    } else {
-      // Fractional LMUL
-      // ELEN * LMUL >= SEW
-      unsigned eshift = 8 - vt.f.vlmul;  // mf2:1 mf4:2 mf8:3
-      if( ( ELEN >> eshift ) < sewbits ) {
-        vcsrmap[vtype] |= ( 1ULL < 63 );  // vtype.vii
-        std::cout << "V* Illegal lmul " << vt.f.vlmul << " for elen=" << std::dec << ELEN << " and sew=e" << sewbits << std::endl;
-        assert( false );
-      }
-      if( e < ( elemsPerReg >> eshift ) ) {
-        elemValid[e] = true;
-      } else {
-        elemValid[e] = false;
-        std::cout << "*V Suppressing element " << e << std::endl;
-      }
-    }
-  }
 }
 
 uint64_t RevVRegFile::GetVCSR( uint16_t csr ) {
@@ -95,24 +60,12 @@ void RevVRegFile::SetVCSR( uint16_t csr, uint64_t d ) {
   vcsrmap[csr] = d;
 }
 
-uint16_t RevVRegFile::BytesPerReg() {
-  return vlenb;
-}
-
 uint16_t RevVRegFile::ElemsPerReg() {
   return elemsPerReg;
 }
 
 uint16_t RevVRegFile::ItersOverLMUL() {
   return itersOverLMUL;
-}
-
-uint16_t RevVRegFile::ItersOverElement() {
-  return itersOverElement;
-}
-
-bool RevVRegFile::ElemValid( unsigned e ) {
-  return elemValid[e];
 }
 
 }  //namespace SST::RevCPU

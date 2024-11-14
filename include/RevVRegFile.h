@@ -74,15 +74,11 @@ public:
   uint64_t GetVCSR( uint16_t csr );
   void     SetVCSR( uint16_t csr, uint64_t d );
 
-  uint16_t BytesPerReg();
-  uint16_t ElemsPerReg();
-  uint16_t ItersOverLMUL();
-  uint16_t ItersOverElement();
-  bool     ElemValid( unsigned e );
+  uint16_t ElemsPerReg();    ///< RevVRegFile: VLEN/SEW
+  uint16_t ItersOverLMUL();  ///< RevVREgFile: LMUL conversion to iterations
 
   template<typename T>
   void SetElem( uint64_t vd, unsigned e, T d ) {
-    //T res   = d & ElemMask( e );
     T      res   = d;
     size_t bytes = sizeof( T );
     assert( ( e * bytes ) <= vlenb );
@@ -95,19 +91,16 @@ public:
     size_t bytes = sizeof( T );
     assert( ( e * bytes ) <= vlenb );
     memcpy( &res, &( vreg[vs][e * bytes] ), bytes );
-    //return res & ElemMask( e ); // TODO nix mit dem ElemMask
     return res;
   };
 
 private:
   uint16_t VLEN;
   uint16_t ELEN;
-  uint16_t elemsPerReg;
-  uint16_t itersOverLMUL                      = 0;
-  uint16_t itersOverElement                   = 0;
+  uint16_t elemsPerReg                   = 0;
+  uint16_t itersOverLMUL                 = 0;
 
-  std::vector<std::vector<uint8_t>> vreg      = {};
-  std::vector<bool>                 elemValid = {};
+  std::vector<std::vector<uint8_t>> vreg = {};
 
   ///< RevVRegFile: CSRs residing in vector coprocessor
   std::map<uint16_t, uint64_t> vcsrmap{
