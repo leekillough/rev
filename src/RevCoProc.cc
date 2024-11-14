@@ -540,27 +540,48 @@ RZAAMOCoProc::~RZAAMOCoProc() {
 
 void RZAAMOCoProc::registerStats() {
   for( auto* stat : {
-         "HZOP_32_BASE_ADD",   "HZOP_32_BASE_AND",  "HZOP_32_BASE_OR",    "HZOP_32_BASE_XOR",  "HZOP_32_BASE_SMAX",
-         "HZOP_32_BASE_MAX",   "HZOP_32_BASE_SMIN", "HZOP_32_BASE_MIN",   "HZOP_32_BASE_SWAP", "HZOP_32_BASE_CAS",
-         "HZOP_32_BASE_FADD",  "HZOP_32_BASE_FSUB", "HZOP_32_BASE_FRSUB", "HZOP_64_BASE_ADD",  "HZOP_64_BASE_AND",
-         "HZOP_64_BASE_OR",    "HZOP_64_BASE_XOR",  "HZOP_64_BASE_SMAX",  "HZOP_64_BASE_MAX",  "HZOP_64_BASE_SMIN",
-         "HZOP_64_BASE_MIN",   "HZOP_64_BASE_SWAP", "HZOP_64_BASE_CAS",   "HZOP_64_BASE_FADD", "HZOP_64_BASE_FSUB",
-         "HZOP_64_BASE_FRSUB", "HZOP_32_M_ADD",     "HZOP_32_M_AND",      "HZOP_32_M_OR",      "HZOP_32_M_XOR",
-         "HZOP_32_M_SMAX",     "HZOP_32_M_MAX",     "HZOP_32_M_SMIN",     "HZOP_32_M_MIN",     "HZOP_32_M_SWAP",
-         "HZOP_32_M_CAS",      "HZOP_32_M_FADD",    "HZOP_32_M_FSUB",     "HZOP_32_M_FRSUB",   "HZOP_64_M_ADD",
-         "HZOP_64_M_AND",      "HZOP_64_M_OR",      "HZOP_64_M_XOR",      "HZOP_64_M_SMAX",    "HZOP_64_M_MAX",
-         "HZOP_64_M_SMIN",     "HZOP_64_M_MIN",     "HZOP_64_M_SWAP",     "HZOP_64_M_CAS",     "HZOP_64_M_FADD",
-         "HZOP_64_M_FSUB",     "HZOP_64_M_FRSUB",   "HZOP_32_S_ADD",      "HZOP_32_S_AND",     "HZOP_32_S_OR",
-         "HZOP_32_S_XOR",      "HZOP_32_S_SMAX",    "HZOP_32_S_MAX",      "HZOP_32_S_SMIN",    "HZOP_32_S_MIN",
-         "HZOP_32_S_SWAP",     "HZOP_32_S_CAS",     "HZOP_32_S_FADD",     "HZOP_32_S_FSUB",    "HZOP_32_S_FRSUB",
-         "HZOP_64_S_ADD",      "HZOP_64_S_AND",     "HZOP_64_S_OR",       "HZOP_64_S_XOR",     "HZOP_64_S_SMAX",
-         "HZOP_64_S_MAX",      "HZOP_64_S_SMIN",    "HZOP_64_S_MIN",      "HZOP_64_S_SWAP",    "HZOP_64_S_CAS",
-         "HZOP_64_S_FADD",     "HZOP_64_S_FSUB",    "HZOP_64_S_FRSUB",    "HZOP_32_MS_ADD",    "HZOP_32_MS_AND",
-         "HZOP_32_MS_OR",      "HZOP_32_MS_XOR",    "HZOP_32_MS_SMAX",    "HZOP_32_MS_MAX",    "HZOP_32_MS_SMIN",
-         "HZOP_32_MS_MIN",     "HZOP_32_MS_SWAP",   "HZOP_32_MS_CAS",     "HZOP_32_MS_FADD",   "HZOP_32_MS_FSUB",
-         "HZOP_32_MS_FRSUB",   "HZOP_64_MS_ADD",    "HZOP_64_MS_AND",     "HZOP_64_MS_OR",     "HZOP_64_MS_XOR",
-         "HZOP_64_MS_SMAX",    "HZOP_64_MS_MAX",    "HZOP_64_MS_SMIN",    "HZOP_64_MS_MIN",    "HZOP_64_MS_SWAP",
-         "HZOP_64_MS_CAS",     "HZOP_64_MS_FADD",   "HZOP_64_MS_FSUB",    "HZOP_64_MS_FRSUB",
+         "HZOP_8_BASE_ADD",    "HZOP_8_BASE_AND",    "HZOP_8_BASE_OR",    "HZOP_8_BASE_XOR",    "HZOP_8_BASE_SMAX",
+         "HZOP_8_BASE_MAX",    "HZOP_8_BASE_SMIN",   "HZOP_8_BASE_MIN",   "HZOP_8_BASE_SWAP",   "HZOP_8_BASE_CAS",
+         "HZOP_8_BASE_FADD",   "HZOP_8_BASE_FSUB",   "HZOP_8_BASE_FRSUB", "HZOP_16_BASE_ADD",   "HZOP_16_BASE_AND",
+         "HZOP_16_BASE_OR",    "HZOP_16_BASE_XOR",   "HZOP_16_BASE_SMAX", "HZOP_16_BASE_MAX",   "HZOP_16_BASE_SMIN",
+         "HZOP_16_BASE_MIN",   "HZOP_16_BASE_SWAP",  "HZOP_16_BASE_CAS",  "HZOP_16_BASE_FADD",  "HZOP_16_BASE_FSUB",
+         "HZOP_16_BASE_FRSUB", "HZOP_32_BASE_ADD",   "HZOP_32_BASE_AND",  "HZOP_32_BASE_OR",    "HZOP_32_BASE_XOR",
+         "HZOP_32_BASE_SMAX",  "HZOP_32_BASE_MAX",   "HZOP_32_BASE_SMIN", "HZOP_32_BASE_MIN",   "HZOP_32_BASE_SWAP",
+         "HZOP_32_BASE_CAS",   "HZOP_32_BASE_FADD",  "HZOP_32_BASE_FSUB", "HZOP_32_BASE_FRSUB", "HZOP_64_BASE_ADD",
+         "HZOP_64_BASE_AND",   "HZOP_64_BASE_OR",    "HZOP_64_BASE_XOR",  "HZOP_64_BASE_SMAX",  "HZOP_64_BASE_MAX",
+         "HZOP_64_BASE_SMIN",  "HZOP_64_BASE_MIN",   "HZOP_64_BASE_SWAP", "HZOP_64_BASE_CAS",   "HZOP_64_BASE_FADD",
+         "HZOP_64_BASE_FSUB",  "HZOP_64_BASE_FRSUB", "HZOP_8_M_ADD",      "HZOP_8_M_AND",       "HZOP_8_M_OR",
+         "HZOP_8_M_XOR",       "HZOP_8_M_SMAX",      "HZOP_8_M_MAX",      "HZOP_8_M_SMIN",      "HZOP_8_M_MIN",
+         "HZOP_8_M_SWAP",      "HZOP_8_M_CAS",       "HZOP_8_M_FADD",     "HZOP_8_M_FSUB",      "HZOP_8_M_FRSUB",
+         "HZOP_16_M_ADD",      "HZOP_16_M_AND",      "HZOP_16_M_OR",      "HZOP_16_M_XOR",      "HZOP_16_M_SMAX",
+         "HZOP_16_M_MAX",      "HZOP_16_M_SMIN",     "HZOP_16_M_MIN",     "HZOP_16_M_SWAP",     "HZOP_16_M_CAS",
+         "HZOP_16_M_FADD",     "HZOP_16_M_FSUB",     "HZOP_16_M_FRSUB",   "HZOP_32_M_ADD",      "HZOP_32_M_AND",
+         "HZOP_32_M_OR",       "HZOP_32_M_XOR",      "HZOP_32_M_SMAX",    "HZOP_32_M_MAX",      "HZOP_32_M_SMIN",
+         "HZOP_32_M_MIN",      "HZOP_32_M_SWAP",     "HZOP_32_M_CAS",     "HZOP_32_M_FADD",     "HZOP_32_M_FSUB",
+         "HZOP_32_M_FRSUB",    "HZOP_64_M_ADD",      "HZOP_64_M_AND",     "HZOP_64_M_OR",       "HZOP_64_M_XOR",
+         "HZOP_64_M_SMAX",     "HZOP_64_M_MAX",      "HZOP_64_M_SMIN",    "HZOP_64_M_MIN",      "HZOP_64_M_SWAP",
+         "HZOP_64_M_CAS",      "HZOP_64_M_FADD",     "HZOP_64_M_FSUB",    "HZOP_64_M_FRSUB",    "HZOP_8_S_ADD",
+         "HZOP_8_S_AND",       "HZOP_8_S_OR",        "HZOP_8_S_XOR",      "HZOP_8_S_SMAX",      "HZOP_8_S_MAX",
+         "HZOP_8_S_SMIN",      "HZOP_8_S_MIN",       "HZOP_8_S_SWAP",     "HZOP_8_S_CAS",       "HZOP_8_S_FADD",
+         "HZOP_8_S_FSUB",      "HZOP_8_S_FRSUB",     "HZOP_16_S_ADD",     "HZOP_16_S_AND",      "HZOP_16_S_OR",
+         "HZOP_16_S_XOR",      "HZOP_16_S_SMAX",     "HZOP_16_S_MAX",     "HZOP_16_S_SMIN",     "HZOP_16_S_MIN",
+         "HZOP_16_S_SWAP",     "HZOP_16_S_CAS",      "HZOP_16_S_FADD",    "HZOP_16_S_FSUB",     "HZOP_16_S_FRSUB",
+         "HZOP_32_S_ADD",      "HZOP_32_S_AND",      "HZOP_32_S_OR",      "HZOP_32_S_XOR",      "HZOP_32_S_SMAX",
+         "HZOP_32_S_MAX",      "HZOP_32_S_SMIN",     "HZOP_32_S_MIN",     "HZOP_32_S_SWAP",     "HZOP_32_S_CAS",
+         "HZOP_32_S_FADD",     "HZOP_32_S_FSUB",     "HZOP_32_S_FRSUB",   "HZOP_64_S_ADD",      "HZOP_64_S_AND",
+         "HZOP_64_S_OR",       "HZOP_64_S_XOR",      "HZOP_64_S_SMAX",    "HZOP_64_S_MAX",      "HZOP_64_S_SMIN",
+         "HZOP_64_S_MIN",      "HZOP_64_S_SWAP",     "HZOP_64_S_CAS",     "HZOP_64_S_FADD",     "HZOP_64_S_FSUB",
+         "HZOP_64_S_FRSUB",    "HZOP_8_MS_ADD",      "HZOP_8_MS_AND",     "HZOP_8_MS_OR",       "HZOP_8_MS_XOR",
+         "HZOP_8_MS_SMAX",     "HZOP_8_MS_MAX",      "HZOP_8_MS_SMIN",    "HZOP_8_MS_MIN",      "HZOP_8_MS_SWAP",
+         "HZOP_8_MS_CAS",      "HZOP_8_MS_FADD",     "HZOP_8_MS_FSUB",    "HZOP_8_MS_FRSUB",    "HZOP_16_MS_ADD",
+         "HZOP_16_MS_AND",     "HZOP_16_MS_OR",      "HZOP_16_MS_XOR",    "HZOP_16_MS_SMAX",    "HZOP_16_MS_MAX",
+         "HZOP_16_MS_SMIN",    "HZOP_16_MS_MIN",     "HZOP_16_MS_SWAP",   "HZOP_16_MS_CAS",     "HZOP_16_MS_FADD",
+         "HZOP_16_MS_FSUB",    "HZOP_16_MS_FRSUB",   "HZOP_32_MS_ADD",    "HZOP_32_MS_AND",     "HZOP_32_MS_OR",
+         "HZOP_32_MS_XOR",     "HZOP_32_MS_SMAX",    "HZOP_32_MS_MAX",    "HZOP_32_MS_SMIN",    "HZOP_32_MS_MIN",
+         "HZOP_32_MS_SWAP",    "HZOP_32_MS_CAS",     "HZOP_32_MS_FADD",   "HZOP_32_MS_FSUB",    "HZOP_32_MS_FRSUB",
+         "HZOP_64_MS_ADD",     "HZOP_64_MS_AND",     "HZOP_64_MS_OR",     "HZOP_64_MS_XOR",     "HZOP_64_MS_SMAX",
+         "HZOP_64_MS_MAX",     "HZOP_64_MS_SMIN",    "HZOP_64_MS_MIN",    "HZOP_64_MS_SWAP",    "HZOP_64_MS_CAS",
+         "HZOP_64_MS_FADD",    "HZOP_64_MS_FSUB",    "HZOP_64_MS_FRSUB",
        } ) {
     stats.push_back( registerStatistic<uint64_t>( stat ) );
   }
@@ -631,6 +652,8 @@ bool RZAAMOCoProc::handleHZOP( Forza::zopEvent* zev, bool& flag ) {
   Alloc.SetX( Rs2, 0x00ull );
   zev->setMemReq( req );
 
+  // TODO: Add 8 and 16 bit cases to the below switch statement
+  // TODO: Handle the other (non-BASE) cases
   switch( zev->getOpc() ) {
   // 32bit base
   case Forza::zopOpc::Z_HAC_32_BASE_ADD:

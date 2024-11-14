@@ -111,28 +111,6 @@ namespace SST::Forza {
  * [63:60] - aid
  * Don't need anything for zone id (since the zqm here will have that info)
  */
-// TODO: remove these defines; use the ZQMMBOXREG defines below
-#define R_SHIFT_MBXSUSED           0  // do this now in case it changes later
-#define R_SHIFT_LOGICALPE          8
-#define R_SHIFT_PHYSHART           19
-#define R_SHIFT_PHYSZAP            28
-#define R_SHIFT_AID                60
-
-#define R_MASK_MBXSUSED            0x0FF
-#define R_MASK_LOGICALPE           0x7FF
-#define R_MASK_PHYSHART            0x1FF
-#define R_MASK_PHYSZAP             0x0F
-#define R_MASK_AID                 0x0F
-
-/**
- * Assumed format when updating the ZQM MBOXREG CSR:
- * [7:0] - mboxes used (bit mask) - 8b
- * [18:8] - logical PE - 11b
- * [27:19] - physical hart - 9b
- * [31:28] - physical zap - 4b
- * [63:60] - aid
- * Don't need anything for zone id (since the zqm here will have that info)
- */
 
 #define ZQMMBOXREG_SHIFT_MBXSUSED  0  // do this now in case it changes later
 #define ZQMMBOXREG_SHIFT_LOGICALPE 8
@@ -260,12 +238,12 @@ public:
   // ringEvent: event serializer
   void serialize_order( SST::Core::Serialization::serializer& ser ) override {
     Event::serialize_order( ser );
-    ser& SrcComp;
-    ser& Hart;
-    ser& DestComp;
-    ser& Type;
-    ser& CSR;
-    ser& Datum;
+    ser & SrcComp;
+    ser & Hart;
+    ser & DestComp;
+    ser & Type;
+    ser & CSR;
+    ser & Datum;
   }
 
   // ringEvent: implements the nic serialization
