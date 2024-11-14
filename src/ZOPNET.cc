@@ -283,8 +283,6 @@ void zopNIC::send_zone_barrier( unsigned Hart, unsigned endpoints ) {
       // create the packet
       zopEvent* ev  = new zopEvent();
       ev->setType( SST::Forza::zopMsgT::Z_MSG );
-      ev->setNB( 0 );
-      ev->setCredit( 0 );
       ev->setOpc( SST::Forza::zopOpc::Z_MSG_ZBAR );
       ev->setAppID( 0 );
       ev->setDestHart( 0 );                                            // ignored
@@ -378,8 +376,8 @@ void zopNIC::send( zopEvent* ev, zopCompID dest, zopPrecID zone, unsigned prec )
 #endif
   auto realDest = 0;
   if( ( (unsigned) zone == Zone ) && ( prec == Precinct ) ) {
-    if( ev->getDestZCID() <= (uint8_t) SST::Forza::zopCompID::Z_ZAP7 && ev->getType() == SST::Forza::zopMsgT::Z_MSG ) {
-      if( ev->getOpc() == SST::Forza::zopOpc::Z_MSG_SENDP || ev->getOpc() == SST::Forza::zopOpc::Z_MSG_SENDAS )
+    if( ev->getDestZCID() <= (uint8_t) SST::Forza::zopCompID::Z_ZAP3 && ev->getType() == SST::Forza::zopMsgT::Z_MSG ) {
+      if( ev->getOpc() == SST::Forza::zopOpc::Z_MSG_SENDP )
         TmpDest = zopCompID::Z_ZQM;  // any send message so go to a zqm
       else if( ev->getOpc() == SST::Forza::zopOpc::Z_MSG_ACK || ev->getOpc() == SST::Forza::zopOpc::Z_MSG_NACK )
         TmpDest = zopCompID::Z_ZEN;  // any msg ack/nack goes to a zen
@@ -516,8 +514,7 @@ bool zopNIC::msgNotify( int vn ) {
   // otherwise, ignore the packet
   if( ( ev->getType() == Forza::zopMsgT::Z_MSG ) && ( ev->getOpc() == Forza::zopOpc::Z_MSG_ZBAR ) ) {
     if( Type == Forza::zopCompID::Z_ZAP0 || Type == Forza::zopCompID::Z_ZAP1 || Type == Forza::zopCompID::Z_ZAP2 ||
-        Type == Forza::zopCompID::Z_ZAP3 || Type == Forza::zopCompID::Z_ZAP4 || Type == Forza::zopCompID::Z_ZAP5 ||
-        Type == Forza::zopCompID::Z_ZAP6 || Type == Forza::zopCompID::Z_ZAP7 ) {
+        Type == Forza::zopCompID::Z_ZAP3 ) {
       return handleBarrier( ev );
     } else {
       // not a ZAP device, ignore the packet
@@ -539,8 +536,7 @@ bool zopNIC::msgNotify( int vn ) {
   // if this is a ZAP device and a thread migration or mzop (scratchpad req, methinks - tjd, 6-sept-24),
   // send it to the RevCPU handler
   if( ( Type == Forza::zopCompID::Z_ZAP0 || Type == Forza::zopCompID::Z_ZAP1 || Type == Forza::zopCompID::Z_ZAP2 ||
-        Type == Forza::zopCompID::Z_ZAP3 || Type == Forza::zopCompID::Z_ZAP4 || Type == Forza::zopCompID::Z_ZAP5 ||
-        Type == Forza::zopCompID::Z_ZAP6 || Type == Forza::zopCompID::Z_ZAP7 ) &&
+        Type == Forza::zopCompID::Z_ZAP3 ) &&
       ( ev->getType() == Forza::zopMsgT::Z_TMIG || ev->getType() == Forza::zopMsgT::Z_MZOP ) ) {
     ( *msgHandler )( ev );
     return true;
@@ -691,8 +687,7 @@ unsigned zopNIC::getNumZaps() {
     if( ( (unsigned) std::get<_HM_ZID>( t ) != Zone ) || ( std::get<_HM_PID>( t ) != Precinct ) )
       continue;
     zopCompID zc = std::get<_HM_ENDP_T>( t );
-    if( ( zc == zopCompID::Z_ZAP0 ) || ( zc == zopCompID::Z_ZAP1 ) || ( zc == zopCompID::Z_ZAP2 ) || ( zc == zopCompID::Z_ZAP3 ) ||
-        ( zc == zopCompID::Z_ZAP4 ) || ( zc == zopCompID::Z_ZAP5 ) || ( zc == zopCompID::Z_ZAP6 ) || ( zc == zopCompID::Z_ZAP7 ) )
+    if( ( zc == zopCompID::Z_ZAP0 ) || ( zc == zopCompID::Z_ZAP1 ) || ( zc == zopCompID::Z_ZAP2 ) || ( zc == zopCompID::Z_ZAP3 ) )
       count++;
   }
   return count;

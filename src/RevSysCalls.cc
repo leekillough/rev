@@ -4427,19 +4427,17 @@ EcallStatus RevCore::ECALL_forza_remote_update() {
   );
 
   // Get a message ID
-  uint16_t msg_id           = 0;
+  uint16_t msg_id      = 0;
   //uint16_t msg_id = zNicMsgIds->getMsgId();
   //if (msg_id == Z_MAX_MSG_IDS)
   //  output->fatal(CALL_INFO, -2, "[FORZA][ZAP]: no valid msg_ids\n");
 
   // create a new event
-  SST::Forza::zopEvent* zev = new SST::Forza::zopEvent();
+  Forza::zopEvent* zev = new Forza::zopEvent();
 
   // set all the fields
   zev->setType( SST::Forza::zopMsgT::Z_MZOP );
-  zev->setNB( 0 );
   zev->setID( msg_id );
-  zev->setCredit( 0 );
   zev->setOpc( Forza::zopOpc::Z_MZOP_SD );
   zev->setAppID( 0 );
   zev->setDestHart( Z_MZOP_PIPE_HART );

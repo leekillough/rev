@@ -215,7 +215,7 @@ void RevMem::AddToTLB( uint64_t vAddr, uint64_t physAddr ) {
     // Insert the vAddr and physAddr into the TLB and LRU list
     LRUQueue.push_front( vAddr );
     TLB.insert( {
-      vAddr, {physAddr, LRUQueue.begin()}
+      vAddr, { physAddr, LRUQueue.begin() }
     } );
   }
 }
@@ -970,9 +970,7 @@ bool RevMem::ZOP_AMOMem( unsigned Hart, uint64_t Addr, size_t Len, void* Data, v
 
   // set all the fields
   zev->setType( SST::Forza::zopMsgT::Z_HZOPAC );
-  zev->setNB( 0 );
   zev->setID( Hart );  // -- we set this to the Hart temporarily.  The zNic will set the actual message ID
-  zev->setCredit( 0 );
   zev->setOpc( flagToZOP( (uint32_t) ( flags ), Len ) );
   zev->setAppID( 0 );
   zev->setDestHart( Z_HZOP_PIPE_HART );
@@ -1011,9 +1009,7 @@ bool RevMem::ZOP_READMem( unsigned Hart, uint64_t Addr, size_t Len, void* Target
 
   // set all the fields : FIXME
   zev->setType( SST::Forza::zopMsgT::Z_MZOP );
-  zev->setNB( 0 );
   zev->setID( Hart );  // -- we set this to the Hart temporarily.  The zNic will set the actual message ID
-  zev->setCredit( 0 );
   zev->setOpc( memToZOP( (uint32_t) ( flags ), Len, false ) );
   zev->setAppID( 0 );
   zev->setDestHart( Z_MZOP_PIPE_HART );
@@ -1168,9 +1164,7 @@ bool RevMem::__ZOP_WRITEMemBase(
 
   // set all the fields : FIXME
   zev->setType( SST::Forza::zopMsgT::Z_MZOP );
-  zev->setNB( 0 );
   zev->setID( Hart );  // -- we set this to the Hart temporarily.  The zNic will set the actual message ID
-  zev->setCredit( 0 );
   zev->setOpc( opc );
   zev->setAppID( 0 );
   zev->setDestHart( Z_MZOP_PIPE_HART );
@@ -1249,9 +1243,7 @@ bool RevMem::__ZOP_FENCEHart( unsigned Hart ) {
 
   // set all the fields : FIXME
   zev->setType( SST::Forza::zopMsgT::Z_FENCE );
-  zev->setNB( 0 );
   zev->setID( Hart );  // -- we set this to the Hart temporarily.  The zNic will set the actual message ID
-  zev->setCredit( 0 );
   zev->setOpc( SST::Forza::zopOpc::Z_FENCE_HART );
   zev->setAppID( 0 );
   zev->setDestHart( Z_MZOP_PIPE_HART );
@@ -1304,9 +1296,7 @@ bool RevMem::ZOP_ThreadMigrate( unsigned Hart, std::vector<uint64_t> Payload, un
 
   // set all the fields
   zev->setType( SST::Forza::zopMsgT::Z_TMIG );
-  zev->setNB( 0 );
   zev->setID( Hart );
-  zev->setCredit( 0 );
   zev->setOpc( SST::Forza::zopOpc::Z_TMIG_INTREGS );  // FIXME - depends on payload length
   zev->setAppID( 0 );
   zev->setDestZCID( (uint8_t) ( SST::Forza::zopCompID::Z_ZQM ) );

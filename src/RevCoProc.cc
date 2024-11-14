@@ -41,9 +41,7 @@ bool RevCoProc::sendSuccessResp( Forza::zopAPI* zNic, Forza::zopEvent* zev, uint
 
   // set all the fields
   rsp_zev->setType( SST::Forza::zopMsgT::Z_RESP );
-  rsp_zev->setNB( 0 );
   rsp_zev->setID( zev->getID() );
-  rsp_zev->setCredit( 0 );
   rsp_zev->setOpc( SST::Forza::zopOpc::Z_RESP_SACK );
   rsp_zev->setAppID( 0 );
   rsp_zev->setDestHart( zev->getSrcHart() );
@@ -82,9 +80,7 @@ bool RevCoProc::sendSuccessResp( Forza::zopAPI* zNic, Forza::zopEvent* zev, uint
 
   // set all the fields
   rsp_zev->setType( SST::Forza::zopMsgT::Z_RESP );
-  rsp_zev->setNB( 0 );
   rsp_zev->setID( zev->getID() );
-  rsp_zev->setCredit( 0 );
   rsp_zev->setOpc( SST::Forza::zopOpc::Z_RESP_LR );
   rsp_zev->setAppID( 0 );
   rsp_zev->setDestHart( zev->getSrcHart() );

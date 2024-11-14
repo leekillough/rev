@@ -1183,7 +1183,7 @@ RevInst RevCore::DecodeJInst( uint32_t Inst, unsigned Entry ) const {
 
   // immA
   DInst.imm = ( ( Inst >> 11 ) & 0b100000000000000000000 ) |  // imm[20]
-              ( (Inst) &0b11111111000000000000 ) |            // imm[19:12]
+              ( ( Inst ) & 0b11111111000000000000 ) |         // imm[19:12]
               ( ( Inst >> 9 ) & 0b100000000000 ) |            // imm[11]
               ( ( Inst >> 20 ) & 0b11111111110 );             // imm[10:1]
 
@@ -1537,7 +1537,8 @@ bool RevCore::DependencyCheck( unsigned HartID, const RevInst* I ) const {
   // For ECALL, check for any outstanding dependencies on a0-a7
   if( I->opcode == 0b1110011 && I->imm == 0 && I->funct3 == 0 && I->rd == 0 && I->rs1 == 0 ) {
     for( RevReg reg : { RevReg::a7, RevReg::a0, RevReg::a1, RevReg::a2, RevReg::a3, RevReg::a4, RevReg::a5, RevReg::a6 } ) {
-      if( LSQCheck( HartToDecodeID, RegFile, uint16_t( reg ), RevRegClass::RegGPR ) || ScoreboardCheck( RegFile, uint16_t( reg ), RevRegClass::RegGPR ) ) {
+      if( LSQCheck( HartToDecodeID, RegFile, uint16_t( reg ), RevRegClass::RegGPR ) ||
+          ScoreboardCheck( RegFile, uint16_t( reg ), RevRegClass::RegGPR ) ) {
         return true;
       }
     }
@@ -1663,7 +1664,6 @@ void RevCore::ReqThreadFromZqm() {
 
   // set all the fields
   zev->setType(SST::Forza::zopMsgT::Z_TMIG);
-  zev->setNB(0);
   zev->setID(UINT16_MAX);
   zev->setCredit(0);
   zev->setOpc(SST::Forza::zopOpc::Z_TMIG_REQUEST);
@@ -1778,7 +1778,8 @@ bool RevCore::ClockTick( SST::Cycle_t currentCycle ) {
     // -- BEGIN new pipelining implementation
     Pipeline.emplace_back( std::make_pair( HartToExecID, Inst ) );
 
-    if( ( Ext->GetName() == "RV32F" ) || ( Ext->GetName() == "RV32D" ) || ( Ext->GetName() == "RV64F" ) || ( Ext->GetName() == "RV64D" ) ) {
+    if( ( Ext->GetName() == "RV32F" ) || ( Ext->GetName() == "RV32D" ) || ( Ext->GetName() == "RV64F" ) ||
+        ( Ext->GetName() == "RV64D" ) ) {
       Stats.floatsExec++;
     }
 
@@ -1867,7 +1868,9 @@ bool RevCore::ClockTick( SST::Cycle_t currentCycle ) {
       RegFile->IncrementInstRet();
 
       // Only clear the dependency if there is no outstanding load
-      if( ( RegFile->GetLSQueue()->count( LSQHash( Pipeline.front().second.rd, InstTable[Pipeline.front().second.entry].rdClass, HartID ) ) ) == 0 ) {
+      if( ( RegFile->GetLSQueue()->count(
+            LSQHash( Pipeline.front().second.rd, InstTable[Pipeline.front().second.entry].rdClass, HartID )
+          ) ) == 0 ) {
         DependencyClear( HartID, &( Pipeline.front().second ) );
       }
       Pipeline.pop_front();
