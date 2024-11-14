@@ -1,5 +1,5 @@
 /*
- * vadd_e8_m1.128.64.cc
+ * vadd_e8_mf8.128.64.cc
  *
  * Copyright (C) 2017-2024 Tactical Computing Laboratories, LLC
  * All Rights Reserved
@@ -22,10 +22,10 @@ typedef uint8_t elem_t;             // Element Type
 const unsigned  VLEN        = 128;  // Width of register file entry
 const unsigned  ELEN        = 64;   // Maximum bits per operation on vector element
 const unsigned  SEW         = 8;    // Selected Element Width for adds
-const unsigned  LMUL        = 1;    // Length multiplier
-const unsigned  VLMAX       = 16;   // Max vector length LMUL * VLEN / SEW
-const unsigned  AVL         = 64;   // Application Vector Length (elements)
-//const unsigned   VL         = 16;    // Elements operated on by a vector instruction (<=VLMAX, <=AVL)
+// LMUL       = 1 / 8;  // Length multiplier
+const unsigned VLMAX        = 2;   // Max vector length LMUL * VLEN / SEW
+const unsigned AVL          = 64;  // Application Vector Length (elements)
+//  VL         = 2;    // Elements operated on by a vector instruction (<=VLMAX, <=AVL)
 
 // counter 0 = cycles
 // counter 1 = instructions
@@ -91,17 +91,17 @@ void vadd_array( elem_t a[], elem_t b[], elem_t c[] ) {
                 "add  a3, zero, %4  \n\t"  // Load pointer to c
                 "add  a4, zero, %5  \n\t"  // Load expected iterations
                 "_vadd_loop: \n\t"
-                //            AVL,    SEW, LMUL, tail/mask agnostic
-                "vsetvli t0,  a0,     e8,     m1,  ta, ma  \n\t"
+                //            AVL,    SEW,   LMUL, tail/mask agnostic
+                "vsetvli t0,  a0,     e8,     mf8,  ta, ma  \n\t"
                 //
-                "vle8.v v0, (a1)     \n\t"   // Get first vector
+                "vle8.v v0, (a1)      \n\t"  // Get first vector
                 "sub a0, a0, t0       \n\t"  // Decrement N
                 "slli t0, t0, 0       \n\t"  // Divide by number of bytes per element
                 "add a1, a1, t0       \n\t"  // Bump pointer to a
-                "vle8.v v1, (a2)     \n\t"   // Get second vector
+                "vle8.v v1, (a2)      \n\t"  // Get second vector
                 "add a2, a2, t0       \n\t"  // Bump pointer to b
                 "vadd.vv v2, v0, v1   \n\t"  // Sum Vectors
-                "vse8.v v2, (a3)     \n\t"   // Store result
+                "vse8.v v2, (a3)      \n\t"  // Store result
                 "add a3, a3, t0       \n\t"  // Bump pointer to c
                 "addi a4, a4, -1      \n\t"  // Decrement expected iterations
                 "bltz a4, _vadd_done  \n\t"  // Fail on overrun
@@ -119,7 +119,7 @@ void vadd_array( elem_t a[], elem_t b[], elem_t c[] ) {
   counters_vector[1] = inst1 - inst0;
 
   if( rc ) {
-    printf( "Error: vadd_e8_m1.128.64 rc=%d\n", rc );
+    printf( "Error: vadd_e8_mf8.128.64 rc=%d\n", rc );
     assert( 0 );
   }
 
@@ -139,10 +139,10 @@ int main( int argc, char** argv ) {
   check_result( r_vector );
 
 #ifndef USE_SPIKE
-  printf( "[vadd_e8_m1.128.64 rev cycles] scalar=%d vector=%d\n", counters_scalar[0], counters_vector[0] );
-  printf( "[vadd_e8_m1.128.64 rev instrs] scalar=%d vector=%d\n", counters_scalar[1], counters_vector[1] );
+  printf( "[vadd_e8_mf8.128.64 rev cycles] scalar=%d vector=%d\n", counters_scalar[0], counters_vector[0] );
+  printf( "[vadd_e8_mf8.128.64 rev instrs] scalar=%d vector=%d\n", counters_scalar[1], counters_vector[1] );
 #else
-  printf( "[vadd_e8_m1.128.64 spike cycles] scalar=%d vector=%d\n", counters_scalar[0], counters_vector[0] );
-  printf( "[vadd_e8_m1.128.64 spike instrs] scalar=%d vector=%d\n", counters_scalar[1], counters_vector[1] );
+  printf( "[vadd_e8_mf8.128.64 spike cycles] scalar=%d vector=%d\n", counters_scalar[0], counters_vector[0] );
+  printf( "[vadd_e8_mf8.128.64 spike instrs] scalar=%d vector=%d\n", counters_scalar[1], counters_vector[1] );
 #endif
 }

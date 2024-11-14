@@ -76,7 +76,7 @@ void vadd_array( elem_t a[], elem_t b[], elem_t c[] ) {
 #else
   unsigned time0, time1, inst0, inst1;
   int      rc    = 0x99;
-  unsigned ITERS = 4;  // AVL=32, VLMAX=8
+  unsigned ITERS = AVL / VLMAX;
   elem_t*  pa    = &( a[0] );
   elem_t*  pb    = &( b[0] );
   elem_t*  pc    = &( c[0] );
@@ -88,7 +88,7 @@ void vadd_array( elem_t a[], elem_t b[], elem_t c[] ) {
                 "add  a3, zero, %4  \n\t"  // Load pointer to c
                 "add  a4, zero, %5  \n\t"  // Load expected iterations
                 "_vadd_loop: \n\t"
-                //            AVL,    SEW, LMUL=2, tail/mask agnostic
+                //            AVL,    SEW, LMUL, tail/mask agnostic
                 "vsetvli t0,  a0,     e32,     m2,  ta, ma  \n\t"
                 //
                 "vle32.v v0, (a1)     \n\t"  // Get first vector (v0,v1)
