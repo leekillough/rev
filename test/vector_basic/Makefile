@@ -50,13 +50,17 @@ SECTIONS := $(patsubst %.exe,%.sections,$(EXES))
 # Targets
 LOGS    := $(addsuffix /run.log,$(addprefix $(OUTDIR)/,$(TLIST)))
 PRINTLOGS := $(addsuffix /run.printlog,$(addprefix $(OUTDIR)/,$(TLIST)))
-TARGS   := $(LOGS) $(EXES) $(DIASMS) $(SECTIONS) $(PRINTLOGS)
+ifndef USE_SPIKE
+VLOGS := $(addsuffix /run.vlog,$(addprefix $(OUTDIR)/,$(TLIST)))
+endif
+TARGS   := $(LOGS) $(EXES) $(DIASMS) $(SECTIONS) $(PRINTLOGS) $(VLOGS)
 
 # Recipes
 all: $(TARGS)
 run: $(LOGS)
 compile: $(EXES) $(DIASMS)
 printlog: $(PRINTLOGS)
+vlog: $(VLOGS)
 
 # Rev toolchain
 CC=riscv64-unknown-elf-g++
@@ -114,7 +118,7 @@ ifndef USE_SPIKE
 	$(eval exe = $(shell if [ -z ${REV_EXE} ]; then echo $(OUTDIR)/bin/$(app).exe; else echo ${REV_EXE}; fi))
 	@$(eval statf = $(basename $@).status)
 	@rm -f $(statf)
-	@echo Running $(basename $@)
+	@echo Running Rev in $(basename $@)
 	$(SST) $(SSTOPTS) $(SSTCFG) -- --rvv --verbose=5 --trcStartCycle=1 --machine=CORES:$(ARCH)_zicntr --program=$(exe) $(REV_OPTS)$(MEMH) --statDir=$(@D)> $@ && (echo "pass" > $(statf))
 
 # To run all with all failures use this instead
@@ -123,6 +127,10 @@ ifndef USE_SPIKE
 
 %.printlog: %.log FORCE
 	@ $(REVPRINT) -l $< > $@
+	cat $@
+
+%.vlog: %.log FORCE
+	@ grep '*V ' $< > $@
 	cat $@
 
 else
@@ -134,7 +142,7 @@ else
 	@$(eval statf = $(basename $@).status)
 	@$(eval printlog = $(basename $@).printlog)
 	@rm -f $(statf) $(printlog)
-	@echo Running $(basename $@)
+	@echo Running Spike in $(basename $@)
 	$(SPIKE) $(SPIKE_OPTS) -l --log=$@ --isa=$(ARCH)_zicntr pk $(exe) > $(printlog) && (echo "pass" > $(statf))
 
 %.printlog: %.log FORCE
