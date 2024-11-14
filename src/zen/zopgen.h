@@ -65,8 +65,6 @@ namespace SST::Forza{
     void sendMsgToRZA(uint64_t addr, uint64_t size);
     void processLoad(SST::Forza::zopEvent *ev);
     void sendLoadToRZA(uint64_t addr, uint64_t size) ;
-    uint64_t getReadACS(uint64_t acs_pair) ;
-    uint64_t getWriteACS(uint64_t acs_pair) ;
     void sendCreditsToZEN(int i);
   private:
     // private class members

@@ -54,7 +54,7 @@ void ZOPGen_prec::setup() {
   std::vector<uint64_t> payload;
   SST::Forza::zopEvent *zopgenMsg = new SST::Forza::zopEvent();
   zopgenMsg->setType(SST::Forza::zopMsgT::Z_MSG);
-  zopgenMsg->setOpc(SST::Forza::zopOpc::Z_MSG_ZENSET);
+  //zopgenMsg->setOpc(SST::Forza::zopOpc::Z_MSG_ZENSET);
   zopgenMsg->setSrcZCID(0);
   zopgenMsg->setSrcHart(0);
   payload.push_back(100);

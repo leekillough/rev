@@ -163,11 +163,11 @@ bool ZIP::aggregatePackets(uint16_t DestPrec, ZIPMemTarget* Target, bool* hasSta
         // construct new Z_MSG_CREDIT zopEvent with credits equal to the total number of flits to go to the source ZEN of sentZop
         zopEvent* creditZop = new zopEvent();
         creditZop->setType(zopMsgT::Z_MSG);
-        creditZop->setOpc(zopOpc::Z_MSG_CREDIT);
+        //creditZop->setOpc(zopOpc::Z_MSG_CREDIT);
         creditZop->setSrcZCID(zopCompID::Z_PREC_ZIP);
         creditZop->setSrcPCID((uint8_t)zopPrecID::Z_ZIP);
         creditZop->setSrcPrec(link_NOC->getPrecinctID());
-        creditZop->setCredit(sentZop.getLength()+Z_NUM_HEADER_FLITS);
+        //creditZop->setCredit(sentZop.getLength()+Z_NUM_HEADER_FLITS);
 
         // send credits back to source ZEN
         creditZop->encodeEvent();
@@ -226,11 +226,11 @@ bool ZIP::aggregateRVPackets(uint16_t DestPrec, ZIPMemTarget* Target, bool* hasS
           // construct new Z_MSG_CREDIT zopEvent with credits equal to the total number of flits to go to the source ZEN of sentZop
           zopEvent* creditZop = new zopEvent();
           creditZop->setType(zopMsgT::Z_MSG);
-          creditZop->setOpc(zopOpc::Z_MSG_CREDIT);
+          //creditZop->setOpc(zopOpc::Z_MSG_CREDIT);
           creditZop->setSrcZCID(zopCompID::Z_PREC_ZIP);
           creditZop->setSrcPCID((uint8_t)zopPrecID::Z_ZIP);
           creditZop->setSrcPrec(link_NOC->getPrecinctID());
-          creditZop->setCredit(sentZop.getLength()+Z_NUM_HEADER_FLITS);
+          //creditZop->setCredit(sentZop.getLength()+Z_NUM_HEADER_FLITS);
 
           // send credits back to source ZEN
           creditZop->encodeEvent();
@@ -352,11 +352,13 @@ void ZIP::handleNOCEvent(SST::Event* ev) {
     output.verbose(CALL_INFO, 9, 0, "handleNOCEvent: Type %hhu, SrcHart %d, SrcZCID %d, SrcPCID %d, SrcPrec %d, DestHart %d, DestZCID %d, DestPCID %d, DestPrec %d\n", (uint8_t)(event->getType()), event->getSrcHart(), event->getSrcZCID(), event->getSrcPCID(), event->getSrcPrec(), event->getDestHart(), event->getDestZCID(), event->getDestPCID(), event->getDestPrec());
 
     // if the zopEvent is a Z_MSG_CREDIT, update credits for the source ZEN
+#if 0
     if (event->getOpc() == zopOpc::Z_MSG_CREDIT) {
-      inCredit[event->getSrcPCID()] += event->getCredit();
-      output.verbose(CALL_INFO, 9, 0, "handleNOCEvent: received %" PRIu8 " credits for %" PRIu8 ", now at %" PRIu64 "\n", event->getCredit(), event->getSrcPCID(), inCredit[event->getSrcPCID()]);
+      inCredit[event->getSrcPCID()] += event->getMbxID();
+      output.verbose(CALL_INFO, 9, 0, "handleNOCEvent: received %" PRIu8 " credits for %" PRIu8 ", now at %" PRIu64 "\n", event->getMbxID(), event->getSrcPCID(), inCredit[event->getSrcPCID()]);
     // otherwise add the zopEvent to the outgoing buffer for the destination precinct
     } else {
+#endif
       uint16_t DestPrec = event->getDestPrec();
 
       // store zopEvent in the buffer
@@ -368,7 +370,7 @@ void ZIP::handleNOCEvent(SST::Event* ev) {
         output.verbose(CALL_INFO, 9, 0, "handleNOCEvent: DestPrec %d buffer out of space, aggregating packet\n", DestPrec);
         addToOutQ(DestPrec);
       }
-    }
+    //} // need to comment out due to if-else block above
   }
 }
 

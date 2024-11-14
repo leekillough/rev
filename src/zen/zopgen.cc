@@ -119,12 +119,16 @@ void ZOPGen::handleIncomingZOP(SST::Event *event) {
     processMZOPSDMA(ev);
   } else if (ev->getType() == SST::Forza::zopMsgT::Z_MZOP && ev->getOpc() == SST::Forza::zopOpc::Z_MZOP_SD) {
     processMZOP(ev);
-  } else if (ev->getType() == SST::Forza::zopMsgT::Z_MZOP && ev->getOpc() == SST::Forza::zopOpc::Z_MZOP_SCSD) {
+  }
+#if 0 // scratchpad removed
+  else if (ev->getType() == SST::Forza::zopMsgT::Z_MZOP && ev->getOpc() == SST::Forza::zopOpc::Z_MZOP_SCSD) {
     output.verbose(CALL_INFO, 1, 0,
       "Dest %" PRIu64 " notified, scratch addr: 0x%" PRIx64 ", addr: 0x%" PRIx64 ", size: %" PRIu64 "\n",
       int_id, ev->getPayload()[0], ev->getPayload()[2],  ev->getPayload()[1]);
     sendLoadToRZA(ev->getPayload()[2], ev->getPayload()[1]);
-  } else if (ev->getType() == SST::Forza::zopMsgT::Z_MZOP && ev->getOpc() == SST::Forza::zopOpc::Z_MZOP_LD) {
+  }
+#endif
+  else if (ev->getType() == SST::Forza::zopMsgT::Z_MZOP && ev->getOpc() == SST::Forza::zopOpc::Z_MZOP_LD) {
     processLoad(ev);
   } else if (ev->getType() == SST::Forza::zopMsgT::Z_RESP) {
     std::vector<uint64_t> payload = ev->getPayload();
@@ -176,7 +180,6 @@ void ZOPGen::sendLoadToRZA(uint64_t addr, uint64_t size) {
   //rzaMsg->setRead();
   //rzaMsg->setMsgId(4);
   // fake acs
-  payload.push_back(getReadACS(100));
   payload.push_back(addr);
  // payload.push_back(size);
   rzaMsg->setPayload(payload);
@@ -248,20 +251,12 @@ void ZOPGen::sendMZOPAckToZOPGen(SST::Forza::zopEvent *ev) {
 
 }
 
-uint64_t ZOPGen::getWriteACS(uint64_t acs_pair) {
-	  return acs_pair & Z_ACS_WRITE;
-}
-
-uint64_t ZOPGen::getReadACS(uint64_t acs_pair) {
-	  return (acs_pair & Z_ACS_READ) >> 32;
-}
-
 void ZOPGen::sendSetupToZOPGen() {
   std::vector<uint64_t> payload;
   SST::Forza::zopEvent *zopgenMsg = new SST::Forza::zopEvent();
   zopgenMsg->setType(SST::Forza::zopMsgT::Z_MSG);
   zopgenMsg->setID(msg_id);
-  zopgenMsg->setOpc(SST::Forza::zopOpc::Z_MSG_ZENSET);
+  //zopgenMsg->setOpc(SST::Forza::zopOpc::Z_MSG_ZENSET);
   zopgenMsg->setSrcZCID(int_id);
   zopgenMsg->setSrcHart(int_id);
   zopgenMsg->setSrcPCID(m_zop_iface->getZoneID());
@@ -289,8 +284,7 @@ void ZOPGen::sendCreditsToZEN(int i) {
   SST::Forza::zopEvent *zopgenMsg = new SST::Forza::zopEvent();
   zopgenMsg->setType(SST::Forza::zopMsgT::Z_MSG);
   zopgenMsg->setID(msg_id);
-  zopgenMsg->setOpc(SST::Forza::zopOpc::Z_MSG_CREDIT);
-  zopgenMsg->setCredit(8);
+  //zopgenMsg->setOpc(SST::Forza::zopOpc::Z_MSG_CREDIT);
   zopgenMsg->setSrcZCID(int_id);
   zopgenMsg->setSrcHart(int_id);
   // TODO: Update with RZA id

@@ -318,8 +318,8 @@ void ZEN::sendMsgZop(OutgoingMessage* msg, bool is_msg, uint16_t zop_msg_id)
   auto aid = ( ctrl_word >> ZENEQC_SHIFT_MSGAID ) & ZENEQC_MASK_MSGAID;
   zop->setAppID(aid);
   auto mbox_id = ( ctrl_word >> ZENEQC_SHIFT_DESTMBOX ) & ZENEQC_MASK_DESTMBOX;
-  zop->setCredit(mbox_id);
-  zop->setPktRes(msg->msg_id);
+  zop->setMboxID(mbox_id);
+  zop->setID(msg->msg_id);
 
   if ( is_msg ){
     // going to dest zone/precinct
@@ -388,9 +388,9 @@ void ZEN::handleMsgAck(zopEvent *ack)
   ack->decodeEvent();
   // Reduce the mailbox counter
   auto &regs = PerHartCSRs[ack->getDestZCID()][ack->getDestHart()];
-  auto &cntr = regs.mbox_cntrs[ack->getCredit()];
+  auto &cntr = regs.mbox_cntrs[ack->getMbxID()];
   output.verbose(CALL_INFO, 9, 0, "ZEN[%s]; Counter=%u; packet %s to %s; credit=%u \n", getName().c_str(), cntr,
-                 ack->getSrcString().c_str(), ack->getDestString().c_str(), ack->getCredit());
+                 ack->getSrcString().c_str(), ack->getDestString().c_str(), ack->getMbxID());
   
   // Sanity check
   if (cntr == 0){
@@ -399,10 +399,10 @@ void ZEN::handleMsgAck(zopEvent *ack)
   }
   cntr--;
   // we've reduced the counter (no longer saturated), so the busy bit for this mbox should be cleared (active sending is handled with the is_sending flag)
-  uint64_t mask = ~( 1UL << ack->getCredit() );
+  uint64_t mask = ~( 1UL << ack->getMbxID() );
   regs.status &= mask;
 
-  auto retry_num = ack->getPktRes();
+  auto retry_num = ack->getID();
   // Return the retry number to the list
   if ( SeqNumMgrList[retry_num] ) {
     SeqNumMgrList[retry_num] = false;
