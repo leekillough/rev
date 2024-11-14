@@ -229,11 +229,11 @@ void ZQM::handleRingMboxReg( SST::Forza::ringEvent *ev )
 
     // But then we have to map that to some kind of state as to the status of the 
     // message buffers
-    uint8_t aid = ( x >> R_SHIFT_AID ) & R_MASK_AID;
-    uint8_t phys_zap = ( x >> R_SHIFT_PHYSZAP ) & R_MASK_PHYSZAP;
-    uint16_t phys_hart = ( x >> R_SHIFT_PHYSHART ) & R_MASK_PHYSHART;
-    uint16_t logic_pe = ( x >> R_SHIFT_LOGICALPE ) & R_MASK_LOGICALPE;
-    uint8_t mbx_bitmap = ( x >> R_SHIFT_MBXSUSED ) & R_MASK_MBXSUSED;
+    uint8_t aid = ( x >> ZQMMBOXREG_SHIFT_AID ) & ZQMMBOXREG_MASK_AID;
+    uint8_t phys_zap = ( x >> ZQMMBOXREG_SHIFT_PHYSZAP ) & ZQMMBOXREG_MASK_PHYSZAP;
+    uint16_t phys_hart = ( x >> ZQMMBOXREG_SHIFT_PHYSHART ) & ZQMMBOXREG_MASK_PHYSHART;
+    uint16_t logic_pe = ( x >> ZQMMBOXREG_SHIFT_LOGICALPE ) & ZQMMBOXREG_MASK_LOGICALPE;
+    uint8_t mbx_bitmap = ( x >> ZQMMBOXREG_SHIFT_MBXSUSED ) & ZQMMBOXREG_MASK_MBXSUSED;
     output.verbose(CALL_INFO, 7, 0, "[ZQM] %s; handling a mailbox registration message; datum = 0x%" PRIx64 "\n", getName().c_str(), x );
     output.flush();
 
