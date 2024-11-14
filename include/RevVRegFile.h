@@ -102,8 +102,6 @@ public:
 private:
   uint16_t VLEN;
   uint16_t ELEN;
-  uint16_t vlenb;
-  uint16_t elenb;
   uint16_t elemsPerReg;
   uint16_t itersOverLMUL                      = 0;
   uint16_t itersOverElement                   = 0;
@@ -123,6 +121,7 @@ private:
     {0xc21, 0}, // vtype
     {0xc22, 0}, // vlenb
   };
+
 };  //class RevVRegFile
 
 };  //namespace SST::RevCPU

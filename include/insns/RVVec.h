@@ -177,12 +177,9 @@ public:
   }
 
   static bool _vsetvl( uint16_t avl, uint64_t newvtype, RevRegFile* R, RevVRegFile* V, const RevVecInst& Inst ) {
-    // Configure the vtype csr
-    reg_vtype_t vt = newvtype & 0xffULL;
-    V->SetVCSR( RevCSR::vtype, vt.v );
-#if 1
-    std::cout << "*V vtype: 0x" << std::hex << vt.v << std::endl;
-#endif
+    // Set vtype and configure vector execution state
+    V->SetVCSR( RevCSR::vtype, newvtype );
+    V->Configure( newvtype );
     // Configure the vl csr
     uint64_t newvl = 0;
     if( avl != 0 ) {
@@ -206,8 +203,6 @@ public:
     std::cout << "*V vl: 0x" << std::hex << newvl << std::endl;
 #endif
 
-    // Configure vector register file based on new vtype
-    V->Configure( vt );
     return true;
   }
 
@@ -248,19 +243,16 @@ public:
     uint64_t vd  = Inst.vd;
     uint64_t vs1 = Inst.vs1;
     uint64_t vs2 = Inst.vs2;
-    for( unsigned i = 0; i < V->ItersOverLMUL(); i++ ) {
-      unsigned sewpos = 0;
-      for( unsigned elem = 0; elem < V->ElemsPerReg(); elem++ ) {
-        for( unsigned se = 0; se < V->ItersOverElement(); se++ ) {
-          SEWTYPE res = V->GetElem<SEWTYPE>( vs1, sewpos ) + V->GetElem<SEWTYPE>( vs2, sewpos );
-          V->SetElem<SEWTYPE>( vd, sewpos, res );
-          std::cout << "*V v" << std::dec << vd << "." << elem << "." << se << " <- 0x" << std::hex << (uint64_t) res << std::endl;
-          sewpos++;
-        }
+    for( unsigned vecElem = 0; vecElem < V->GetVCSR( RevCSR::vl ); vecElem++ ) {
+      unsigned el  = vecElem % V->ElemsPerReg();
+      SEWTYPE  res = V->GetElem<SEWTYPE>( vs1, el ) + V->GetElem<SEWTYPE>( vs2, el );
+      V->SetElem<SEWTYPE>( vd, el, res );
+      std::cout << "*V v" << std::dec << vd << "." << el << " <- 0x" << std::hex << (uint64_t) res << std::endl;
+      if( ( ( el + 1 ) % V->ElemsPerReg() ) == 0 ) {
+        vd++;
+        vs1++;
+        vs2++;
       }
-      vd++;
-      vs1++;
-      vs2++;
     }
     return true;
   }
@@ -291,20 +283,15 @@ public:
   static bool vs( const RevFeature* F, RevRegFile* R, RevVRegFile* V, RevMem* M, const RevVecInst& Inst ) {
     uint64_t addr = R->GetX<uint64_t>( Inst.rs1 );
     uint64_t vs3  = Inst.vs3;
-    for( unsigned i = 0; i < V->ItersOverLMUL(); i++ ) {
-      for( unsigned elem = 0; elem < V->ElemsPerReg(); elem++ ) {
-        bool evalid = V->ElemValid( elem );
-        for( unsigned se = 0; se < V->ItersOverElement(); se++ ) {
-          if( evalid ) {
-            SEWTYPE d = V->GetElem<SEWTYPE>( vs3, se + elem * V->ItersOverElement() );
-            M->WriteMem( 0, addr, sizeof( SEWTYPE ), &d );
-            std::cout << "*V M[0x" << std::hex << addr << "] <- 0x" << std::hex << (uint64_t) d << " <- v" << std::dec << vs3 << "."
-                      << std::dec << elem << "." << se << std::endl;
-          }
-          addr += sizeof( SEWTYPE );
-        }
-      }
-      vs3++;
+    for( unsigned vecElem = 0; vecElem < V->GetVCSR( RevCSR::vl ); vecElem++ ) {
+      unsigned el = vecElem % V->ElemsPerReg();
+      SEWTYPE  d  = V->GetElem<SEWTYPE>( vs3, el );
+      M->WriteMem( 0, addr, sizeof( SEWTYPE ), &d );
+      std::cout << "*V M[0x" << std::hex << addr << "] <- 0x" << std::hex << (uint64_t) d << " <- v" << std::dec << vs3 << "."
+                << std::dec << el << std::endl;
+      addr += sizeof( SEWTYPE );
+      if( ( ( el + 1 ) % V->ElemsPerReg() ) == 0 )
+        vs3++;
     }
     return true;
   }
@@ -317,21 +304,18 @@ public:
   static bool vl( const RevFeature* F, RevRegFile* R, RevVRegFile* V, RevMem* M, const RevVecInst& Inst ) {
     uint64_t addr = R->GetX<uint64_t>( Inst.rs1 );
     uint64_t vd   = Inst.vd;
-    for( unsigned i = 0; i < V->ItersOverLMUL(); i++ ) {
-      for( unsigned elem = 0; elem < V->ElemsPerReg(); elem++ ) {
-        for( unsigned se = 0; se < V->ItersOverElement(); se++ ) {
-          SEWTYPE d = 0;
-          MemReq  req0( addr, RevReg::zero, RevRegClass::RegGPR, 0, MemOp::MemOpREAD, true, R->GetMarkLoadComplete() );
-          M->ReadVal<SEWTYPE>( 0, addr, &d, req0, RevFlag::F_NONE );
-          std::stringstream s;
-          s << "0x" << std::hex << (uint64_t) d << " <- M[0x" << addr << "]";
-          V->SetElem<SEWTYPE>( vd, se + elem * V->ItersOverElement(), d );
-          std::cout << "*V v" << std::dec << vd << "." << elem << "." << se << " <- 0x" << std::hex << (uint64_t) d << " "
-                    << s.str() << std::endl;
-          addr += sizeof( SEWTYPE );
-        }
-      }
-      vd++;
+    for( unsigned vecElem = 0; vecElem < V->GetVCSR( RevCSR::vl ); vecElem++ ) {
+      unsigned el = vecElem % V->ElemsPerReg();
+      SEWTYPE  d  = 0;
+      MemReq   req0( addr, RevReg::zero, RevRegClass::RegGPR, 0, MemOp::MemOpREAD, true, R->GetMarkLoadComplete() );
+      M->ReadVal<SEWTYPE>( 0, addr, &d, req0, RevFlag::F_NONE );
+      std::stringstream s;
+      s << "0x" << std::hex << (uint64_t) d << " <- M[0x" << addr << "]";
+      V->SetElem<SEWTYPE>( vd, el, d );
+      std::cout << "*V v" << std::dec << vd << "." << el << " <- 0x" << std::hex << (uint64_t) d << " " << s.str() << std::endl;
+      addr += sizeof( SEWTYPE );
+      if( ( ( el + 1 ) % V->ElemsPerReg() ) == 0 )
+        vd++;
     }
     return true;
   }

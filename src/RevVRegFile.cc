@@ -15,18 +15,15 @@ namespace SST::RevCPU {
 RevVRegFile::RevVRegFile( uint16_t vlen, uint16_t elen ) : VLEN( vlen ), ELEN( elen ) {
   assert( VLEN <= 128 );  // Practical limit matching current V standard
   assert( vlen > ELEN );  // Not supporting VLEN==ELEN (max(ELEN)==64)
-  vlenb       = VLEN >> 3;
-  elenb       = ELEN >> 3;
-  elemsPerReg = VLEN / ELEN;
-  vreg.resize( 32, std::vector<uint8_t>( vlenb ) );
-  elemValid.resize( elemsPerReg );
 #if 1
   std::cout << "*V VLEN=" << std::dec << VLEN << " ELEN=" << ELEN << std::endl;
-  std::cout << "*V vlenb=" << vlenb << " bytes/elem=" << elenb << " elems/reg=" << elemsPerReg << std::endl;
 #endif
-  // Initialize CSRs
+  // Initialize non-zero CSRs
+  uint64_t vlenb         = VLEN >> 3;
+  vcsrmap[RevCSR::vtype] = 1ULL << 63;  // vii = 1
   vcsrmap[RevCSR::vlenb] = vlenb;
-  vcsrmap[RevCSR::vtype] = 1ULL << 63;  // vii = 1ULL<<63; // vii
+  // Initialize vector register file
+  vreg.resize( 32, std::vector<uint8_t>( vlenb ) );
 }
 
 void RevVRegFile::Configure( reg_vtype_t vt ) {
@@ -50,6 +47,11 @@ void RevVRegFile::Configure( reg_vtype_t vt ) {
   unsigned sewbits  = sewbytes << 3;
   assert( sewbits <= ELEN );
   itersOverElement = ELEN / sewbits;
+
+  // Elements per register
+  elemsPerReg      = VLEN / sewbits;
+  assert( elemsPerReg > 0 );
+  elemValid.resize( elemsPerReg );
 
   // Fraactional LMUL support
   // vlen=64, elen=8 ( vlen/elen = 8 )
