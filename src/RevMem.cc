@@ -867,6 +867,24 @@ uint64_t RevMem::ExpandHeap( uint64_t Size ) {
 SST::Forza::zopOpc RevMem::flagToZOP( uint32_t flags, size_t Len ) {
 
   static const std::tuple<RevCPU::RevFlag, size_t, Forza::zopOpc> table[] = {
+    { RevCPU::RevFlag::F_AMOADD, 1,   Forza::zopOpc::Z_HAC_8_BASE_ADD},
+    { RevCPU::RevFlag::F_AMOXOR, 1,   Forza::zopOpc::Z_HAC_8_BASE_XOR},
+    { RevCPU::RevFlag::F_AMOAND, 1,   Forza::zopOpc::Z_HAC_8_BASE_AND},
+    {  RevCPU::RevFlag::F_AMOOR, 1,    Forza::zopOpc::Z_HAC_8_BASE_OR},
+    {RevCPU::RevFlag::F_AMOSWAP, 1,  Forza::zopOpc::Z_HAC_8_BASE_SWAP},
+    { RevCPU::RevFlag::F_AMOMIN, 1,  Forza::zopOpc::Z_HAC_8_BASE_SMIN},
+    { RevCPU::RevFlag::F_AMOMAX, 1,  Forza::zopOpc::Z_HAC_8_BASE_SMAX},
+    {RevCPU::RevFlag::F_AMOMINU, 1,   Forza::zopOpc::Z_HAC_8_BASE_MIN},
+    {RevCPU::RevFlag::F_AMOMAXU, 1,   Forza::zopOpc::Z_HAC_8_BASE_MAX},
+    { RevCPU::RevFlag::F_AMOADD, 2,  Forza::zopOpc::Z_HAC_16_BASE_ADD},
+    { RevCPU::RevFlag::F_AMOXOR, 2,  Forza::zopOpc::Z_HAC_16_BASE_XOR},
+    { RevCPU::RevFlag::F_AMOAND, 2,  Forza::zopOpc::Z_HAC_16_BASE_AND},
+    {  RevCPU::RevFlag::F_AMOOR, 2,   Forza::zopOpc::Z_HAC_16_BASE_OR},
+    {RevCPU::RevFlag::F_AMOSWAP, 2, Forza::zopOpc::Z_HAC_16_BASE_SWAP},
+    { RevCPU::RevFlag::F_AMOMIN, 2, Forza::zopOpc::Z_HAC_16_BASE_SMIN},
+    { RevCPU::RevFlag::F_AMOMAX, 2, Forza::zopOpc::Z_HAC_16_BASE_SMAX},
+    {RevCPU::RevFlag::F_AMOMINU, 2,  Forza::zopOpc::Z_HAC_16_BASE_MIN},
+    {RevCPU::RevFlag::F_AMOMAXU, 2,  Forza::zopOpc::Z_HAC_16_BASE_MAX},
     { RevCPU::RevFlag::F_AMOADD, 4,  Forza::zopOpc::Z_HAC_32_BASE_ADD},
     { RevCPU::RevFlag::F_AMOXOR, 4,  Forza::zopOpc::Z_HAC_32_BASE_XOR},
     { RevCPU::RevFlag::F_AMOAND, 4,  Forza::zopOpc::Z_HAC_32_BASE_AND},
@@ -981,14 +999,13 @@ bool RevMem::ZOP_AMOMem( unsigned Hart, uint64_t Addr, size_t Len, void* Data, v
   zev->setSrcZCID( (uint8_t) ( zNic->getEndpointType() ) );
   zev->setSrcPCID( (uint8_t) ( zNic->getPCID( zNic->getZoneID() ) ) );
   zev->setSrcPrec( (uint8_t) ( zNic->getPrecinctID() ) );
+  zev->setAddr( Addr );
 
   zev->setMemReq( req );
   zev->setTarget( static_cast<uint64_t*>( Target ) );
 
   // set the payload
   std::vector<uint64_t> payload;
-  payload.push_back( 0x00ull );  //  ACS: FIXME
-  payload.push_back( Addr );     //  address
   payload.push_back( 0 );
   memcpy( &payload.back(), Data, sizeof( uint64_t ) );
   zev->setPayload( std::move( payload ) );
@@ -1020,15 +1037,12 @@ bool RevMem::ZOP_READMem( unsigned Hart, uint64_t Addr, size_t Len, void* Target
   zev->setSrcZCID( (uint8_t) ( zNic->getEndpointType() ) );
   zev->setSrcPCID( (uint8_t) ( zNic->getPCID( zNic->getZoneID() ) ) );
   zev->setSrcPrec( (uint8_t) ( zNic->getPrecinctID() ) );
+  zev->setAddr( Addr );
 
   zev->setMemReq( req );
   zev->setTarget( static_cast<uint64_t*>( Target ) );
 
-  // set the payload
-  std::vector<uint64_t> payload;
-  payload.push_back( 0x00ull );  //  ACS: FIXME
-  payload.push_back( Addr );     //  address
-  zev->setPayload( payload );
+  // no payload
 
   // inject the new packet
   zNic->send( zev, SST::Forza::zopCompID::Z_RZA );
@@ -1175,11 +1189,10 @@ bool RevMem::__ZOP_WRITEMemBase(
   zev->setSrcZCID( (uint8_t) ( zNic->getEndpointType() ) );
   zev->setSrcPCID( (uint8_t) ( zNic->getPCID( zNic->getZoneID() ) ) );
   zev->setSrcPrec( (uint8_t) ( zNic->getPrecinctID() ) );
+  zev->setAddr( Addr );
 
   // set the payload
   std::vector<uint64_t> payload;
-  payload.push_back( 0x00ull );  //  ACS: FIXME
-  payload.push_back( Addr );     //  address
 
   // build the payload
   if( Len == 1 ) {

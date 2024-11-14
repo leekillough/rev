@@ -295,7 +295,7 @@ void zopNIC::send_zone_barrier( unsigned Hart, unsigned endpoints ) {
       ev->setSrcPrec( (uint8_t) ( getPrecinctID() ) );
 
       std::vector<uint64_t> payload;
-      payload.push_back( (uint64_t) ( barrierSense[Hart] ) );
+      payload.push_back( barrierSense[Hart] );
       ev->setPayload( payload );
       ev->encodeEvent();
 

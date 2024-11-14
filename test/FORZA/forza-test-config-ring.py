@@ -297,7 +297,8 @@ class FORZA:
                  program="test.exe", progArgs="", memSize=1073741823,
                  memAccessTime="100ns", reqPerCycle=1,
                  inputBufSize="2048B", outputBufSize="2048B",
-                 linkBW="100GB/s", flitSize="8B", linkLatency="100ns",
+                 linkBW="100GB/s", nocFlitSize="88B",
+                 ringFlitSize="16B", linkLatency="100ns",
                  xbarBW="800GB/s", verbose="9"):
         print("Initializing FORZA")
         self.name = name
@@ -314,7 +315,8 @@ class FORZA:
         self.inputBufSize = inputBufSize
         self.outputBufSize = outputBufSize
         self.linkBW = linkBW
-        self.flitSize = flitSize
+        self.nocFlitSize = nocFlitSize
+        self.ringFlitSize = ringFlitSize
         self.linkLatency = linkLatency
         self.xbarBW = xbarBW
         self.verbose = verbose
@@ -429,12 +431,20 @@ class FORZA:
         self._linkBW = value
 
     @property
-    def flitSize(self):
-        return self._flitSize
+    def nocFlitSize(self):
+        return self._nocFlitSize
 
-    @flitSize.setter
-    def flitSize(self, value):
-        self._flitSize = value
+    @nocFlitSize.setter
+    def nocFlitSize(self, value):
+        self._nocFlitSize = value
+
+    @property
+    def ringFlitSize(self):
+        return self._ringFlitSize
+
+    @ringFlitSize.setter
+    def ringFlitSize(self, value):
+        self._ringFlitSize = value
 
     @property
     def linkLatency(self):
@@ -487,7 +497,7 @@ class FORZA:
               "output_buf_size": self.outputBufSize,
               "link_bw": self.linkBW,
               "xbar_bw": self.xbarBW,
-              "flit_size": self.flitSize,
+              "flit_size": self.nocFlitSize,
               "num_ports": self.zones+1,
               "id": 0
             })
@@ -551,7 +561,7 @@ class FORZA:
                   "output_buf_size": self.outputBufSize,
                   "link_bw": self.linkBW,
                   "xbar_bw": self.xbarBW,
-                  "flit_size": self.flitSize,
+                  "flit_size": self.nocFlitSize,
                   "num_ports": self.zapsPerZone+3,
                   "id": 0
                 })
@@ -563,7 +573,7 @@ class FORZA:
                   "output_buf_size": self.outputBufSize,
                   "link_bw": self.linkBW,
                   "xbar_bw": self.xbarBW,
-                  "flit_size": self.flitSize,
+                  "flit_size": self.ringFlitSize,
                   "num_ports": self.zapsPerZone+2,
                   "id": 0
                 })

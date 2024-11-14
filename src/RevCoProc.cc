@@ -53,10 +53,7 @@ bool RevCoProc::sendSuccessResp( Forza::zopAPI* zNic, Forza::zopEvent* zev, uint
   rsp_zev->setSrcPCID( (uint8_t) ( zNic->getPCID( zNic->getZoneID() ) ) );
   rsp_zev->setSrcPrec( (uint8_t) ( zNic->getPrecinctID() ) );
 
-  // set the payload
-  std::vector<uint64_t> payload;
-  payload.push_back( 0x00ull );  // ACS
-  rsp_zev->setPayload( payload );
+  // no payload
 
   // inject the packet
   zNic->send( rsp_zev, ( SST::Forza::zopCompID )( zev->getSrcZCID() ) );
@@ -94,8 +91,7 @@ bool RevCoProc::sendSuccessResp( Forza::zopAPI* zNic, Forza::zopEvent* zev, uint
 
   // set the payload
   std::vector<uint64_t> payload;
-  payload.push_back( 0x00ull );  // ACS
-  payload.push_back( Data );     // load response data
+  payload.push_back( Data );  // load response data
   rsp_zev->setPayload( payload );
 
   // inject the packet
@@ -264,13 +260,12 @@ void RZALSCoProc::MarkLoadComplete( const MemReq& req ) {
 bool RZALSCoProc::handleMZOP( Forza::zopEvent* zev, bool& flag ) {
   unsigned Rs1         = _UNDEF_REG;
   unsigned Rs2         = _UNDEF_REG;
-  uint64_t Addr        = 0x00ull;  // -- FLIT 3
-  uint64_t Data        = 0x00ull;  // -- FLIT 4
+  uint64_t Addr        = 0x00ull;  // -- Z_FLIT_ADDR: FLIT 2
+  uint64_t Data        = 0x00ull;  // -- Z_FLIT_DATA: FLIT 3
 
   // this is the actual number of data flits
-  // this does not include the ACS field (flit=0) and the address
   // these variables are only used for the DMA store operations
-  unsigned RealFlitLen = (unsigned) ( zev->getLength() - 2 );
+  unsigned RealFlitLen = (unsigned) ( zev->getLength() - Z_NUM_HEADER_FLITS );
   uint8_t* Buf         = nullptr;
   unsigned i, j, cur = 0;
 
@@ -598,8 +593,8 @@ bool RZAAMOCoProc::handleHZOP( Forza::zopEvent* zev, bool& flag ) {
   flag          = false;  // these are handled as READ requests; eg they hazard
   unsigned Rs1  = _UNDEF_REG;
   unsigned Rs2  = _UNDEF_REG;
-  uint64_t Addr = 0x00ull;  // -- FLIT 3
-  uint64_t Data = 0x00ull;  // -- FLIT 4
+  uint64_t Addr = 0x00ull;  // -- Z_FLIT_ADDR: FLIT 2
+  uint64_t Data = 0x00ull;  // -- Z_FLIT_DATA: FLIT 3
 
   // get some registers
   if( !Alloc.getRegs( Rs1, Rs2 ) ) {
@@ -789,7 +784,6 @@ bool RZAAMOCoProc::handleHZOP( Forza::zopEvent* zev, bool& flag ) {
 }
 
 bool RZAAMOCoProc::InjectZOP( Forza::zopEvent* zev, bool& flag ) {
-  //if( ( zev->getType() != Forza::zopMsgT::Z_HZOPAC ) && ( zev->getType() != Forza::zopMsgT::Z_HZOPV ) ) {
   if( zev->getType() != Forza::zopMsgT::Z_HZOPAC ) {
     // wrong ZOP type injected
     output->fatal(

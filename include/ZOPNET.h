@@ -84,10 +84,10 @@ namespace SST::Forza {
 #define Z_FLIT_DEST        0
 #define Z_FLIT_SRC         1
 
-#define Z_FLIT_ADDR        3  //2
-#define Z_FLIT_DATA        4  //3
+#define Z_FLIT_ADDR        2  //3 -- original
+#define Z_FLIT_DATA        3  //4 -- original
 #define Z_FLIT_DATA_RESP   3
-#define Z_FLIT_SENSE       2  //3
+#define Z_FLIT_SENSE       3  //2 - original
 
 #define Z_MZOP_PIPE_HART   0
 #define Z_HZOP_PIPE_HART   1
@@ -529,9 +529,8 @@ private:
 // --------------------------------------------
 class zopEvent : public SST::Event {
 public:
-  // TODO: constructor should create 3+ words
-  // Note: all constructors create two full FLITs
-  // This is comprised of 2 x 64bit words
+  // Note: all constructors create three full FLITs
+  // This is comprised of 3 x 64bit words
 
   /// zopEvent: init broadcast constructor
   //  This constructor is ONLY utilized for initialization
@@ -547,9 +546,11 @@ public:
   explicit zopEvent() : Event() {
     Packet.push_back( 0x00ull );
     Packet.push_back( 0x00ull );
+    Packet.push_back( 0x00ull );
   }
 
   explicit zopEvent( zopMsgT T, zopOpc O ) : Event() {
+    Packet.push_back( 0x00ul );
     Packet.push_back( 0x00ul );
     Packet.push_back( 0x00ul );
     Type = T;
@@ -657,7 +658,7 @@ public:
   /// zopEvent: retrieve the data payload from the packet
   std::vector<uint64_t> getPayload() {
     std::vector<uint64_t> P;
-    for( unsigned i = 2; i < Packet.size(); i++ ) {
+    for( unsigned i = Z_NUM_HEADER_FLITS; i < Packet.size(); i++ ) {
       P.push_back( Packet[i] );
     }
     return P;
@@ -748,7 +749,8 @@ public:
   bool getFLIT( unsigned flit, uint64_t* F ) {
     if( flit > ( Packet.size() - 1 ) ) {
       return false;
-    } else if( F == nullptr ) {
+    }
+    if( F == nullptr ) {
       return false;
     }
 
