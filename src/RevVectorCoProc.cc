@@ -35,7 +35,7 @@ RevVectorCoProc::RevVectorCoProc( ComponentId_t id, Params& params, RevCore* par
   if( !LoadInstructionTable() )
     output->fatal( CALL_INFO, -1, "Error : failed to load instruction tables\n" );
 
-  vregfile = new RevVRegFile( vlen, elen );
+  vregfile = new RevVRegFile( output, vlen, elen );
 }
 
 RevVectorCoProc::~RevVectorCoProc() {
@@ -113,10 +113,9 @@ bool RevVectorCoProc::InitTableMapping() {
   for( unsigned i = 0; i < InstTable.size(); i++ ) {
     NameToEntry.insert( std::pair<std::string, unsigned>( ExtractMnemonic( InstTable[i] ), i ) );
     // map normal instruction
-    EncToEntry.insert( std::pair<uint64_t, unsigned>( CompressEncoding( InstTable[i] ), i ) );
-    output->verbose(
-      CALL_INFO, 6, 0, "Table Entry %" PRIu32 " = %s\n", CompressEncoding( InstTable[i] ), ExtractMnemonic( InstTable[i] ).data()
-    );
+    uint64_t enc = CompressEncoding( InstTable[i] );
+    EncToEntry.insert( std::pair<uint64_t, unsigned>( enc, i ) );
+    output->verbose( CALL_INFO, 6, 0, "Table Entry 0x%" PRIx32 " = %s\n", enc, ExtractMnemonic( InstTable[i] ).data() );
   }
   return true;
 }
@@ -129,8 +128,13 @@ std::string RevVectorCoProc::ExtractMnemonic( const RevVecInstEntry& Entry ) {
 }
 
 uint32_t RevVectorCoProc::CompressEncoding( const RevVecInstEntry& Entry ) {
+  // Must be consistent with RevVecInst::RevVecInst( uint32_t inst )
   uint32_t Value = Entry.opcode;
   Value |= uint32_t( Entry.funct3 ) << 8;
+  if( ( Entry.format == RVVTypeLd ) || ( Entry.format == RVVTypeSt ) ) {
+    Value |= (uint32_t) ( Entry.umop ) << 14;
+    Value |= (uint32_t) ( Entry.mop ) << 16;
+  }
   return Value;
 }
 
@@ -242,6 +246,7 @@ void RevVectorCoProc::Exec( RevCoProcInst rec ) {
 
 //RevVecInst::RevVecInst( uint32_t inst, RevVRegFile* vrf ) : Inst( inst ), vregfile( vrf ) {
 RevVecInst::RevVecInst( uint32_t inst ) : Inst( inst ) {
+  // Must be consistent with RevVectorCoProc::CompressEncoding
   opcode = Inst & 0x7f;
   if( opcode == 0b0000111 ) {  // LOAD-FP
     format = RevInstF::RVVTypeLd;
@@ -253,6 +258,11 @@ RevVecInst::RevVecInst( uint32_t inst ) : Inst( inst ) {
   // Funct3 selects width for vl*/vs* and op-v for vector arith/set*vl*
   funct3 = ( Inst >> 12 ) & 7;
   Enc    = funct3 << 8 | opcode;
+  if( ( format == RevInstF::RVVTypeLd ) || ( format == RevInstF::RVVTypeSt ) ) {
+    umop = ( Inst >> 20 ) & 0b11111;
+    mop  = ( Inst >> 26 ) & 0b11;
+    Enc |= ( umop << 14 ) | ( mop << 16 );
+  }
 }
 
 void RevVecInst::DecodeBase() {

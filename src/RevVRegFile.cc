@@ -12,7 +12,7 @@
 
 namespace SST::RevCPU {
 
-RevVRegFile::RevVRegFile( uint16_t vlen, uint16_t elen ) : VLEN( vlen ), ELEN( elen ) {
+RevVRegFile::RevVRegFile( SST::Output* o, uint16_t vlen, uint16_t elen ) : output( o ), VLEN( vlen ), ELEN( elen ) {
   assert( VLEN <= 128 );  // Practical limit matching current V standard
   assert( vlen > ELEN );  // Not supporting VLEN==ELEN (max(ELEN)==64)
 #if 1

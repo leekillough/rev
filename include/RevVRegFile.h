@@ -52,7 +52,9 @@ enum class VRevReg : uint16_t {
 
 class RevVRegFile : public RevCSR {
 public:
-  RevVRegFile( uint16_t vlen, uint16_t elen );
+  RevVRegFile( SST::Output* output, uint16_t vlen, uint16_t elen );
+
+  SST::Output* Output() { return output; };
 
   RevCore* GetCore() const override {
     assert( false );
@@ -95,10 +97,11 @@ public:
   };
 
 private:
-  uint16_t VLEN;
-  uint16_t ELEN;
-  uint16_t elemsPerReg                   = 0;
-  uint16_t itersOverLMUL                 = 0;
+  SST::Output* output;
+  uint16_t     VLEN;
+  uint16_t     ELEN;
+  uint16_t     elemsPerReg               = 0;
+  uint16_t     itersOverLMUL             = 0;
 
   std::vector<std::vector<uint8_t>> vreg = {};
 
