@@ -3794,7 +3794,7 @@ EcallStatus RevCore::ECALL_forza_read_zen_status() {
   );
 
   SST::Forza::ringEvent* ring_ev = new SST::Forza::ringEvent(
-    zNic->getEndpointType(), HartToExecID, SST::Forza::zopCompID::Z_ZEN, SST::Forza::ringMsgT::R_READ, R_ZENSTAT, 0xdefafUL
+    zNic->getEndpointType(), HartToExecID, SST::Forza::zopCompID::Z_ZEN, SST::Forza::ringMsgT::R_READ, Forza::R_ZENSTAT, 0xdefafUL
   );
 
   if( zoneRing ) {
@@ -3830,7 +3830,7 @@ EcallStatus RevCore::ECALL_forza_read_zqm_status() {
   );
 
   SST::Forza::ringEvent* ring_ev = new SST::Forza::ringEvent(
-    zNic->getEndpointType(), HartToExecID, SST::Forza::zopCompID::Z_ZQM, SST::Forza::ringMsgT::R_READ, R_ZQMSTAT, 0xdefafUL
+    zNic->getEndpointType(), HartToExecID, SST::Forza::zopCompID::Z_ZQM, SST::Forza::ringMsgT::R_READ, Forza::R_ZQMSTAT, 0xdefafUL
   );
 
   if( zoneRing ) {
@@ -3882,16 +3882,16 @@ EcallStatus RevCore::ECALL_forza_send_word() {
 
   // Using values in RingNet.h
 #if 0
-  uint64_t outreg = ( ( mbox_mask & ZQMMBOXREG_MASK_MBXSUSED ) << ZQMMBOXREG_SHIFT_MBXSUSED );
-  outreg |= ( ( logical_pe & ZQMMBOXREG_MASK_LOGICALPE ) << ZQMMBOXREG_SHIFT_LOGICALPE );
-  outreg |= ( ( HartToExecID & ZQMMBOXREG_MASK_PHYSHART ) << ZQMMBOXREG_SHIFT_PHYSHART );
-  outreg |= ( ( zap & ZQMMBOXREG_MASK_PHYSZAP ) << ZQMMBOXREG_SHIFT_PHYSZAP );
-  outreg |= ( ( aid & ZQMMBOXREG_MASK_AID ) << ZQMMBOXREG_SHIFT_AID );
+  uint64_t outreg = ( ( mbox_mask & Forza::ZQMMBOXREG_MASK_MBXSUSED ) << Forza::ZQMMBOXREG_SHIFT_MBXSUSED );
+  outreg |= ( ( logical_pe & Forza::ZQMMBOXREG_MASK_LOGICALPE ) << Forza::ZQMMBOXREG_SHIFT_LOGICALPE );
+  outreg |= ( ( HartToExecID & Forza::ZQMMBOXREG_MASK_PHYSHART ) << Forza::ZQMMBOXREG_SHIFT_PHYSHART );
+  outreg |= ( ( zap & Forza::ZQMMBOXREG_MASK_PHYSZAP ) << Forza::ZQMMBOXREG_SHIFT_PHYSZAP );
+  outreg |= ( ( aid & Forza::ZQMMBOXREG_MASK_AID ) << Forza::ZQMMBOXREG_SHIFT_AID );
 #endif
 
   output->verbose( CALL_INFO, 5, 0, "Arguments: data value=0x%" PRIx64 "\n", data );
 
-  uint16_t dest_reg              = ( is_ctrl_wd ) ? R_ZENEQC : R_ZENEQD;
+  uint16_t dest_reg              = ( is_ctrl_wd ) ? Forza::R_ZENEQC : Forza::R_ZENEQD;
 
   SST::Forza::ringEvent* ring_ev = new SST::Forza::ringEvent(
     zNic->getEndpointType(), HartToExecID, SST::Forza::zopCompID::Z_ZEN, SST::Forza::ringMsgT::R_UPDATE, dest_reg, data
@@ -4117,7 +4117,7 @@ EcallStatus RevCore::ECALL_forza_receive_word() {
   output->flush();
   uint64_t mbox_id               = (uint64_t) RegFile->GetX<uint64_t>( RevReg::a0 );
   // TODO: ensure mbox_id 0 <= mbox_id <= 7
-  uint64_t reg_id                = R_ZQMDQ_0 + mbox_id;
+  uint64_t reg_id                = Forza::R_ZQMDQ_0 + mbox_id;
 
   SST::Forza::ringEvent* ring_ev = new SST::Forza::ringEvent(
     zNic->getEndpointType(), HartToExecID, SST::Forza::zopCompID::Z_ZQM, SST::Forza::ringMsgT::R_READ, reg_id, 0
@@ -4156,7 +4156,7 @@ EcallStatus RevCore::ECALL_forza_zen_get_cntrs() {
   );
 
   SST::Forza::ringEvent* ring_ev = new SST::Forza::ringEvent(
-    zNic->getEndpointType(), HartToExecID, SST::Forza::zopCompID::Z_ZEN, SST::Forza::ringMsgT::R_READ, R_ZENOMC, 0xdefafUL
+    zNic->getEndpointType(), HartToExecID, SST::Forza::zopCompID::Z_ZEN, SST::Forza::ringMsgT::R_READ, Forza::R_ZENOMC, 0xdefafUL
   );
 
   if( zoneRing ) {
@@ -4205,11 +4205,11 @@ EcallStatus RevCore::ECALL_forza_zqm_setup() {
 
   // Using values in RingNet.h
 #if 1
-  uint64_t outreg = ( ( mbox_mask & ZQMMBOXREG_MASK_MBXSUSED ) << ZQMMBOXREG_SHIFT_MBXSUSED );
-  outreg |= ( ( logical_pe & ZQMMBOXREG_MASK_LOGICALPE ) << ZQMMBOXREG_SHIFT_LOGICALPE );
-  outreg |= ( ( HartToExecID & ZQMMBOXREG_MASK_PHYSHART ) << ZQMMBOXREG_SHIFT_PHYSHART );
-  outreg |= ( ( zap & ZQMMBOXREG_MASK_PHYSZAP ) << ZQMMBOXREG_SHIFT_PHYSZAP );
-  outreg |= ( ( aid & ZQMMBOXREG_MASK_AID ) << ZQMMBOXREG_SHIFT_AID );
+  uint64_t outreg = ( ( mbox_mask & Forza::ZQMMBOXREG_MASK_MBXSUSED ) << Forza::ZQMMBOXREG_SHIFT_MBXSUSED );
+  outreg |= ( ( logical_pe & Forza::ZQMMBOXREG_MASK_LOGICALPE ) << Forza::ZQMMBOXREG_SHIFT_LOGICALPE );
+  outreg |= ( ( HartToExecID & Forza::ZQMMBOXREG_MASK_PHYSHART ) << Forza::ZQMMBOXREG_SHIFT_PHYSHART );
+  outreg |= ( ( zap & Forza::ZQMMBOXREG_MASK_PHYSZAP ) << Forza::ZQMMBOXREG_SHIFT_PHYSZAP );
+  outreg |= ( ( aid & Forza::ZQMMBOXREG_MASK_AID ) << Forza::ZQMMBOXREG_SHIFT_AID );
 #endif
 
   output->verbose(
@@ -4223,7 +4223,7 @@ EcallStatus RevCore::ECALL_forza_zqm_setup() {
   );
 
   SST::Forza::ringEvent* ring_ev = new SST::Forza::ringEvent(
-    zNic->getEndpointType(), HartToExecID, SST::Forza::zopCompID::Z_ZQM, SST::Forza::ringMsgT::R_UPDATE, R_ZQMMBOXREG, outreg
+    zNic->getEndpointType(), HartToExecID, SST::Forza::zopCompID::Z_ZQM, SST::Forza::ringMsgT::R_UPDATE, Forza::R_ZQMMBOXREG, outreg
   );
 
   if( zoneRing ) {
@@ -4440,7 +4440,7 @@ EcallStatus RevCore::ECALL_forza_remote_update() {
   zev->setID( msg_id );
   zev->setOpc( Forza::zopOpc::Z_MZOP_SD );
   zev->setAppID( 0 );
-  zev->setDestHart( Z_MZOP_PIPE_HART );
+  zev->setDestHart( Forza::Z_MZOP_PIPE_HART );
   zev->setDestZCID( (uint8_t) ( SST::Forza::zopCompID::Z_RZA ) );
   zev->setDestPCID( (uint8_t) ( dest_zone ) );
   zev->setDestPrec( (uint8_t) ( dest_prec ) );

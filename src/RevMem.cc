@@ -991,7 +991,7 @@ bool RevMem::ZOP_AMOMem( unsigned Hart, uint64_t Addr, size_t Len, void* Data, v
   zev->setID( Hart );  // -- we set this to the Hart temporarily.  The zNic will set the actual message ID
   zev->setOpc( flagToZOP( (uint32_t) ( flags ), Len ) );
   zev->setAppID( 0 );
-  zev->setDestHart( Z_HZOP_PIPE_HART );
+  zev->setDestHart( Forza::Z_HZOP_PIPE_HART );
   zev->setDestZCID( (uint8_t) ( SST::Forza::zopCompID::Z_RZA ) );
   zev->setDestPCID( (uint8_t) ( zNic->getPCID( zNic->getZoneID() ) ) );
   zev->setDestPrec( (uint8_t) ( zNic->getPrecinctID() ) );
@@ -1029,7 +1029,7 @@ bool RevMem::ZOP_READMem( unsigned Hart, uint64_t Addr, size_t Len, void* Target
   zev->setID( Hart );  // -- we set this to the Hart temporarily.  The zNic will set the actual message ID
   zev->setOpc( memToZOP( (uint32_t) ( flags ), Len, false ) );
   zev->setAppID( 0 );
-  zev->setDestHart( Z_MZOP_PIPE_HART );
+  zev->setDestHart( Forza::Z_MZOP_PIPE_HART );
   zev->setDestZCID( (uint8_t) ( SST::Forza::zopCompID::Z_RZA ) );
   zev->setDestPCID( (uint8_t) ( zNic->getPCID( zNic->getZoneID() ) ) );
   zev->setDestPrec( (uint8_t) ( zNic->getPrecinctID() ) );
@@ -1110,7 +1110,7 @@ bool RevMem::__ZOP_WRITEMemLarge( unsigned Hart, uint64_t Addr, size_t Len, cons
 #ifdef _REV_DEBUG_
   std::cout << "ZOP_WRITE_LARGE of " << Len << " Bytes Starting at 0x" << std::hex << Addr << std::dec << std::endl;
 #endif
-  if( Len < Z_MZOP_DMA_MAX ) {
+  if( Len < Forza::Z_MZOP_DMA_MAX ) {
     if( ( Len % 8 ) == 0 ) {
       // aligned to a FLIT
       return __ZOP_WRITEMemBase( Hart, Addr, Len, Data, flags, SST::Forza::zopOpc::Z_MZOP_SDMA );
@@ -1135,18 +1135,18 @@ bool RevMem::__ZOP_WRITEMemLarge( unsigned Hart, uint64_t Addr, size_t Len, cons
       }
     }
   } else {
-    // huge memory write of > Z_MZOP_DMA_MAX bytes
+    // huge memory write of > Forza::Z_MZOP_DMA_MAX bytes
     // break it up into a large DMA request, followed by a set of additional tail requests
-    if( !__ZOP_WRITEMemLarge( Hart, Addr, Z_MZOP_DMA_MAX, Data, flags ) ) {
+    if( !__ZOP_WRITEMemLarge( Hart, Addr, Forza::Z_MZOP_DMA_MAX, Data, flags ) ) {
       return false;
     }
 
     // second "set" of requests will handle the tail
     if( !ZOP_WRITEMem(
           Hart,
-          Addr + (uint64_t) ( Z_MZOP_DMA_MAX ),
-          Len - (size_t) ( Z_MZOP_DMA_MAX ),
-          (void*) ( reinterpret_cast<uint64_t>( Data ) + (uint64_t) ( Z_MZOP_DMA_MAX ) ),
+          Addr + (uint64_t) ( Forza::Z_MZOP_DMA_MAX ),
+          Len - (size_t) ( Forza::Z_MZOP_DMA_MAX ),
+          (void*) ( reinterpret_cast<uint64_t>( Data ) + (uint64_t) ( Forza::Z_MZOP_DMA_MAX ) ),
           flags
         ) ) {
       return false;
@@ -1181,7 +1181,7 @@ bool RevMem::__ZOP_WRITEMemBase(
   zev->setID( Hart );  // -- we set this to the Hart temporarily.  The zNic will set the actual message ID
   zev->setOpc( opc );
   zev->setAppID( 0 );
-  zev->setDestHart( Z_MZOP_PIPE_HART );
+  zev->setDestHart( Forza::Z_MZOP_PIPE_HART );
   zev->setDestZCID( (uint8_t) ( SST::Forza::zopCompID::Z_RZA ) );
   zev->setDestPCID( (uint8_t) ( zNic->getPCID( zNic->getZoneID() ) ) );
   zev->setDestPrec( (uint8_t) ( zNic->getPrecinctID() ) );
@@ -1259,7 +1259,7 @@ bool RevMem::__ZOP_FENCEHart( unsigned Hart ) {
   zev->setID( Hart );  // -- we set this to the Hart temporarily.  The zNic will set the actual message ID
   zev->setOpc( SST::Forza::zopOpc::Z_FENCE_HART );
   zev->setAppID( 0 );
-  zev->setDestHart( Z_MZOP_PIPE_HART );
+  zev->setDestHart( Forza::Z_MZOP_PIPE_HART );
   zev->setDestZCID( (uint8_t) ( SST::Forza::zopCompID::Z_RZA ) );
   zev->setDestPCID( (uint8_t) ( zNic->getPCID( zNic->getZoneID() ) ) );
   zev->setDestPrec( (uint8_t) ( zNic->getPrecinctID() ) );

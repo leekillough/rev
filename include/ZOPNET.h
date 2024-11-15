@@ -35,67 +35,67 @@ namespace SST::Forza {
 // --------------------------------------------
 // Preprocessor defs
 // --------------------------------------------
-#define Z_NUM_HEADER_FLITS 3
+inline constexpr uint64_t Z_NUM_HEADER_FLITS = 3;
 
 // Src/Dest shifts
-#define Z_SHIFT_HARTID     0
-#define Z_SHIFT_ZCID       11
-#define Z_SHIFT_PCID       15
-#define Z_SHIFT_PRECINCT   19
+inline constexpr uint64_t Z_SHIFT_HARTID     = 0;
+inline constexpr uint64_t Z_SHIFT_ZCID       = 11;
+inline constexpr uint64_t Z_SHIFT_PCID       = 15;
+inline constexpr uint64_t Z_SHIFT_PRECINCT   = 19;
 // Rest of flit 0
-#define Z_SHIFT_OPC        32
-#define Z_SHIFT_MBXID      40
-#define Z_SHIFT_SEQNUM     43
-#define Z_SHIFT_FLITLEN    47
-#define Z_SHIFT_TYPE       59
+inline constexpr uint64_t Z_SHIFT_OPC        = 32;
+inline constexpr uint64_t Z_SHIFT_MBXID      = 40;
+inline constexpr uint64_t Z_SHIFT_SEQNUM     = 43;
+inline constexpr uint64_t Z_SHIFT_FLITLEN    = 47;
+inline constexpr uint64_t Z_SHIFT_TYPE       = 59;
 // Rest of flit 1
-#define Z_SHIFT_APPID      32
-#define Z_SHIFT_RINGLVL    36
-#define Z_SHIFT_MSGID      38
+inline constexpr uint64_t Z_SHIFT_APPID      = 32;
+inline constexpr uint64_t Z_SHIFT_RINGLVL    = 36;
+inline constexpr uint64_t Z_SHIFT_MSGID      = 38;
 // Addr flit
-#define Z_SHIFT_ADDR       0
+inline constexpr uint64_t Z_SHIFT_ADDR       = 0;
 
 // Src/Dest masks
-#define Z_MASK_HARTID      0b11111111111
-#define Z_MASK_ZCID        0b1111
-#define Z_MASK_PCID        0b1111
-#define Z_MASK_PRECINCT    0b1111111111111
+inline constexpr uint64_t Z_MASK_HARTID      = 0b11111111111;
+inline constexpr uint64_t Z_MASK_ZCID        = 0b1111;
+inline constexpr uint64_t Z_MASK_PCID        = 0b1111;
+inline constexpr uint64_t Z_MASK_PRECINCT    = 0b1111111111111;
 // Rest of flit 0
-#define Z_MASK_OPC         0b11111111
-#define Z_MASK_MBXID       0b111
-#define Z_MASK_SEQNUM      0b1111
-#define Z_MASK_FLITLEN     0b1111
-#define Z_MASK_TYPE        0b11111
+inline constexpr uint64_t Z_MASK_OPC         = 0b11111111;
+inline constexpr uint64_t Z_MASK_MBXID       = 0b111;
+inline constexpr uint64_t Z_MASK_SEQNUM      = 0b1111;
+inline constexpr uint64_t Z_MASK_FLITLEN     = 0b1111;
+inline constexpr uint64_t Z_MASK_TYPE        = 0b11111;
 // Rest of flit 1
-#define Z_MASK_APPID       0b1111
-#define Z_MASK_RINGLVL     0b11
-#define Z_MASK_MSGID       0b1111111111111
+inline constexpr uint64_t Z_MASK_APPID       = 0b1111;
+inline constexpr uint64_t Z_MASK_RINGLVL     = 0b11;
+inline constexpr uint64_t Z_MASK_MSGID       = 0b1111111111111;
 // Addr flit
-#define Z_MASK_ADDR        0x7FFFFFFFFF  //39 bit field
+inline constexpr uint64_t Z_MASK_ADDR        = 0x7FFFFFFFFF;  //39 bit field
 
-#define Z_FLIT_OPC         0
-#define Z_FLIT_MBXID       0
-#define Z_FLIT_SEQNUM      0
-#define Z_FLIT_FLITLEN     0
-#define Z_FLIT_TYPE        0
-#define Z_FLIT_APPID       1
-#define Z_FLIT_RINGLVL     1
-#define Z_FLIT_MSGID       1
-#define Z_FLIT_DEST        0
-#define Z_FLIT_SRC         1
+inline constexpr uint64_t Z_FLIT_OPC         = 0;
+inline constexpr uint64_t Z_FLIT_MBXID       = 0;
+inline constexpr uint64_t Z_FLIT_SEQNUM      = 0;
+inline constexpr uint64_t Z_FLIT_FLITLEN     = 0;
+inline constexpr uint64_t Z_FLIT_TYPE        = 0;
+inline constexpr uint64_t Z_FLIT_APPID       = 1;
+inline constexpr uint64_t Z_FLIT_RINGLVL     = 1;
+inline constexpr uint64_t Z_FLIT_MSGID       = 1;
+inline constexpr uint64_t Z_FLIT_DEST        = 0;
+inline constexpr uint64_t Z_FLIT_SRC         = 1;
 
-#define Z_FLIT_ADDR        2  //3 -- original
-#define Z_FLIT_DATA        3  //4 -- original
-#define Z_FLIT_DATA_RESP   3
-#define Z_FLIT_SENSE       3  //2 - original
+inline constexpr uint64_t Z_FLIT_ADDR        = 2;
+inline constexpr uint64_t Z_FLIT_DATA        = 3;
+inline constexpr uint64_t Z_FLIT_DATA_RESP   = 3;
+inline constexpr uint64_t Z_FLIT_SENSE       = 3;
 
-#define Z_MZOP_PIPE_HART   0
-#define Z_HZOP_PIPE_HART   1
-#define Z_RZOP_PIPE_HART   2
+inline constexpr uint64_t Z_MZOP_PIPE_HART   = 0;
+inline constexpr uint64_t Z_HZOP_PIPE_HART   = 1;
+inline constexpr uint64_t Z_RZOP_PIPE_HART   = 2;
 
-#define Z_MZOP_DMA_MAX     2040
+inline constexpr uint64_t Z_MZOP_DMA_MAX     = 2040;
 
-#define Z_MAX_MSG_IDS      8192
+inline constexpr uint64_t Z_MAX_MSG_IDS      = 8192;
 
 // --------------------------------------------
 // zopMsgT : ZOP Type

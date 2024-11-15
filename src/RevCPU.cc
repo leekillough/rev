@@ -274,7 +274,8 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params ) : SST::Compon
       Procs.push_back( std::move( tmpNewRevCore ) );
     }
 
-    RevCoProc* LSProc = loadUserSubComponent<RevCoProc>( "rza_ls", SST::ComponentInfo::SHARE_NONE, Procs[Z_MZOP_PIPE_HART].get() );
+    RevCoProc* LSProc =
+      loadUserSubComponent<RevCoProc>( "rza_ls", SST::ComponentInfo::SHARE_NONE, Procs[Forza::Z_MZOP_PIPE_HART].get() );
     if( !LSProc ) {
       output.fatal( CALL_INFO, -1, "Error : failed to initialize the RZA LS pipeline\n" );
     }
@@ -282,7 +283,7 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params ) : SST::Compon
     LSProc->setZNic( zNic );
 
     RevCoProc* AMOProc =
-      loadUserSubComponent<RevCoProc>( "rza_amo", SST::ComponentInfo::SHARE_NONE, Procs[Z_HZOP_PIPE_HART].get() );
+      loadUserSubComponent<RevCoProc>( "rza_amo", SST::ComponentInfo::SHARE_NONE, Procs[Forza::Z_HZOP_PIPE_HART].get() );
     if( !AMOProc ) {
       output.fatal( CALL_INFO, -1, "Error : failed to initialize the RZA AMO pipeline\n" );
     }
@@ -291,8 +292,8 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params ) : SST::Compon
 
     CoProcs.push_back( std::unique_ptr<RevCoProc>( LSProc ) );
     CoProcs.push_back( std::unique_ptr<RevCoProc>( AMOProc ) );
-    Procs[Z_MZOP_PIPE_HART]->SetCoProc( LSProc );
-    Procs[Z_HZOP_PIPE_HART]->SetCoProc( AMOProc );
+    Procs[Forza::Z_MZOP_PIPE_HART]->SetCoProc( LSProc );
+    Procs[Forza::Z_HZOP_PIPE_HART]->SetCoProc( AMOProc );
   } else {
     // Create the processor objects
     Procs.reserve( Procs.size() + numCores );
@@ -607,7 +608,7 @@ void RevCPU::processZOPQ() {
 
   for( unsigned i = 0; i < ZIQ.size(); i++ ) {
     auto zev = ZIQ[i];
-    if( !zev->getFLIT( Z_FLIT_ADDR, &Addr ) ) {
+    if( !zev->getFLIT( Forza::Z_FLIT_ADDR, &Addr ) ) {
       output.fatal(
         CALL_INFO,
         -1,
@@ -628,13 +629,13 @@ void RevCPU::processZOPQ() {
       switch( zev->getType() ) {
       case Forza::zopMsgT::Z_MZOP:
         // send to the MZOP pipeline
-        if( !CoProcs[Z_MZOP_PIPE_HART]->InjectZOP( zev, flag ) ) {
+        if( !CoProcs[Forza::Z_MZOP_PIPE_HART]->InjectZOP( zev, flag ) ) {
           output.fatal( CALL_INFO, -1, "[FORZA][RZA] Failed to inject MZOP into pipeline; ID=%" PRIu16 "\n", zev->getID() );
         }
         break;
       case Forza::zopMsgT::Z_HZOPAC:
         // send to the HZOP pipeline
-        if( !CoProcs[Z_HZOP_PIPE_HART]->InjectZOP( zev, flag ) ) {
+        if( !CoProcs[Forza::Z_HZOP_PIPE_HART]->InjectZOP( zev, flag ) ) {
           output.fatal( CALL_INFO, -1, "[FORZA][RZA] Failed to inject HZOP into pipeline; ID=%" PRIu16 "\n", zev->getID() );
         }
         break;
@@ -708,7 +709,7 @@ void RevCPU::handleZOPMZOP( Forza::zopEvent* zev ) {
   MemReq req{ addr, 0x00, RevRegClass::RegGPR, zev->getSrcHart(), MemOp::MemOpREAD, true, LocalMarkLoadCompleteFunc };
 
   // retrieve the address
-  if( !zev->getFLIT( Z_FLIT_ADDR, &addr ) ) {
+  if( !zev->getFLIT( Forza::Z_FLIT_ADDR, &addr ) ) {
     output.fatal(
       CALL_INFO,
       -1,
