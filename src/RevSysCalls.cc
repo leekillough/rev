@@ -4448,11 +4448,10 @@ EcallStatus RevCore::ECALL_forza_remote_update() {
   zev->setSrcZCID( (uint8_t) ( zNic->getEndpointType() ) );
   zev->setSrcPCID( (uint8_t) ( zNic->getPCID( zNic->getZoneID() ) ) );
   zev->setSrcPrec( (uint8_t) ( zNic->getPrecinctID() ) );
+  zev->setAddr( dest_addr );
 
   // set the payload
   std::vector<uint64_t> payload;
-  payload.push_back( 0x00ull );    //  ACS: FIXME
-  payload.push_back( dest_addr );  //  address
   payload.push_back( data );
   zev->setPayload( payload );
 
