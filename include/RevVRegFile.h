@@ -83,15 +83,25 @@ public:
   void SetElem( uint64_t vd, unsigned e, T d ) {
     T      res   = d;
     size_t bytes = sizeof( T );
-    assert( ( e * bytes ) <= vlenb );
+    assert( ( e * bytes ) <= GetVCSR( vlenb ) );
     memcpy( &( vreg[vd][e * bytes] ), &res, bytes );
+  };
+
+  void SetMaskReg( uint64_t vd, uint64_t d ) {
+    // TODO this needs to be better generalized
+    // This needs to write entire VLEN. What about LMUL case?
+    unsigned vlb = GetVCSR( vlenb );
+    memset( &( vreg[vd][0] ), 0, vlb );
+    size_t bytes = vlb < sizeof( uint64_t ) ? vlb : sizeof( uint64_t );
+    memcpy( &( vreg[vd][0] ), &d, bytes );
+    std::cout << "*V SetMaskReg v" << std::dec << vd << " <- 0x" << std::hex << d << std::endl;
   };
 
   template<typename T>
   T GetElem( uint64_t vs, unsigned e ) {
     T      res   = 0;
     size_t bytes = sizeof( T );
-    assert( ( e * bytes ) <= vlenb );
+    assert( ( e * bytes ) <= GetVCSR( vlenb ) );
     memcpy( &res, &( vreg[vs][e * bytes] ), bytes );
     return res;
   };

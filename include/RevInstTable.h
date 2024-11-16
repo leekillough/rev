@@ -67,7 +67,7 @@ enum RevInstF : int {  ///< Rev CPU Instruction Formats
   RVCTypeCB     = 17,  ///< RevInstF: Compressed CB-Type
   RVCTypeCJ     = 18,  ///< RevInstF: Compressed CJ-Type
   // -- Vector Formats
-  RVVTypeOp     = 32,  ///< RevInstF: OPV
+  RVVTypeOpv    = 32,  ///< RevInstF: OPV
   RVVTypeLd     = 33,  ///< RevInstF: LOAD-FP
   RVVTypeSt     = 34,  ///< RevInstF: STORE-FP
 };

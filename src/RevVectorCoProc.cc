@@ -129,12 +129,14 @@ std::string RevVectorCoProc::ExtractMnemonic( const RevVecInstEntry& Entry ) {
 
 uint32_t RevVectorCoProc::CompressEncoding( const RevVecInstEntry& Entry ) {
   // Must be consistent with RevVecInst::RevVecInst( uint32_t inst )
-  uint32_t Value = Entry.opcode;
-  Value |= uint32_t( Entry.funct3 ) << 8;
+  uint32_t Value = Entry.opcode;           // 7-bits
+  Value |= uint32_t( Entry.funct3 ) << 8;  // 3 bits
   if( ( Entry.format == RVVTypeLd ) || ( Entry.format == RVVTypeSt ) ) {
-    Value |= (uint32_t) ( Entry.umop ) << 14;
-    Value |= (uint32_t) ( Entry.mop ) << 16;
+    Value |= (uint32_t) ( Entry.umop ) << 14;  // 5 bits
+    Value |= (uint32_t) ( Entry.mop ) << 16;   // 2 bits
   }
+  Value |= (uint32_t) ( Entry.funct6 ) << 18;  // 6 bits
+
   return Value;
 }
 
@@ -188,7 +190,7 @@ bool RevVectorCoProc::IssueInst( const RevFeature* F, RevRegFile* R, RevMem* M, 
     // Decode the full instruction
     if( VecInst.revInstEntry ) {
       switch( VecInst.revInstEntry->format ) {
-      case RVVTypeOp: VecInst.DecodeRVVTypeOp(); break;
+      case RVVTypeOpv: VecInst.DecodeRVVTypeOp(); break;
       case RVVTypeLd: VecInst.DecodeRVVTypeLd(); break;
       case RVVTypeSt: VecInst.DecodeRVVTypeSt(); break;
       default: output->fatal( CALL_INFO, -1, "Error: failed to decode instruction 0x%" PRIx32 ".", Inst );
@@ -253,7 +255,7 @@ RevVecInst::RevVecInst( uint32_t inst ) : Inst( inst ) {
   } else if( opcode == 0b0100111 ) {  // STORE-FP
     format = RevInstF::RVVTypeSt;
   } else if( opcode == 0b1010111 ) {  // OP-V
-    format = RevInstF::RVVTypeOp;
+    format = RevInstF::RVVTypeOpv;
   }
   // Funct3 selects width for vl*/vs* and op-v for vector arith/set*vl*
   funct3 = ( Inst >> 12 ) & 7;
@@ -262,6 +264,10 @@ RevVecInst::RevVecInst( uint32_t inst ) : Inst( inst ) {
     umop = ( Inst >> 20 ) & 0b11111;
     mop  = ( Inst >> 26 ) & 0b11;
     Enc |= ( umop << 14 ) | ( mop << 16 );
+  } else if( ( format == RevInstF::RVVTypeOpv ) && ( funct3 != RVVec::OPV::CFG ) ) {
+    // funct6 selects operation for integer arithmetic
+    uint64_t funct6 = ( Inst >> 26 ) & 0b111111;
+    Enc |= ( funct6 << 18 );
   }
 }
 
