@@ -27,7 +27,7 @@ std::vector<zopEvent> ZIPAggEvent::getZOPs() {
     uint8_t Length = ((payload[i+Z_FLIT_FLITLEN] >> Z_SHIFT_FLITLEN) & Z_MASK_FLITLEN);
     // construct new packet based on zopEvent length
     std::vector<uint64_t> newPacket;
-    for (int j=0; j<Z_NUM_HEADER_FLITS+Length; j++) {
+    for (uint64_t j=0; j<Z_NUM_HEADER_FLITS+Length; j++) {
       newPacket.push_back(payload[i]);
       i++;
     }

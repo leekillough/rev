@@ -283,9 +283,9 @@ bool ZIP::disaggregatePackets(uint16_t SrcPrec, ZIPMemTarget* Target, bool RV) {
       } else{
         t_c2 = true;
         if (RV) {
-          output.verbose(CALL_INFO, 10, 0, "disaggregateRVPackets: need %" PRIu8 " credits for %" PRIu8 " and only have %" PRIu64 "\n", receivedZop.getLength()+Z_NUM_HEADER_FLITS, receivedZop.getDestPCID(), inCreditCopy[receivedZop.getDestPCID()]);
+          output.verbose(CALL_INFO, 10, 0, "disaggregateRVPackets: need %" PRIu64 " credits for %" PRIu8 " and only have %" PRIu64 "\n", receivedZop.getLength()+Z_NUM_HEADER_FLITS, receivedZop.getDestPCID(), inCreditCopy[receivedZop.getDestPCID()]);
 	} else {
-          output.verbose(CALL_INFO, 10, 0, "disaggregatePackets: need %" PRIu8 " credits for %" PRIu8 " and only have %" PRIu64 "\n", receivedZop.getLength()+Z_NUM_HEADER_FLITS, receivedZop.getDestPCID(), inCreditCopy[receivedZop.getDestPCID()]);
+          output.verbose(CALL_INFO, 10, 0, "disaggregatePackets: need %" PRIu64 " credits for %" PRIu8 " and only have %" PRIu64 "\n", receivedZop.getLength()+Z_NUM_HEADER_FLITS, receivedZop.getDestPCID(), inCreditCopy[receivedZop.getDestPCID()]);
 	}
         return false;
       }
