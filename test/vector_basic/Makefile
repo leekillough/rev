@@ -131,7 +131,6 @@ ifndef USE_SPIKE
 
 %.vlog: %.log FORCE
 	@ grep '*V ' $< > $@
-	cat $@
 
 else
 # run spike

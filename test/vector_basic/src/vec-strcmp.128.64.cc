@@ -50,16 +50,20 @@ int vec_strcmp( const char* src1, const char* src2 ) {
   return rc;
 }
 
-// counter 0 = cycles
-// counter 1 = instructions
-unsigned counters_scalar[2] = { 0 };
-unsigned counters_vector[2] = { 0 };
-
+#if 0
 const char* test_str        = "The quick brown fox jumped over the lazy dog";
 const char* same_str        = "The quick brown fox jumped over the lazy dog";
 const char* diff_str        = "The quick brown fox jumped over the lazy cat";
-
+#else
+char test_str[64] = "The quick brown fox jumped over the lazy dog";
+char same_str[64] = "The quick brown fox jumped over the lazy dog";
+char diff_str[64] = "The quick brown fox jumped over the lazy cat";
+#endif
 int main( int argc, char** argv ) {
+
+  // counter 0 = cycles
+  // counter 1 = instructions
+  unsigned counters_vector[2] = { 0 };
 
   unsigned time0, time1, inst0, inst1;
   RDTIME( time0 );
@@ -76,10 +80,10 @@ int main( int argc, char** argv ) {
   counters_vector[1] = inst1 - inst0;
 
 #ifndef USE_SPIKE
-  printf( "[vec-strcmp.128.64 rev cycles] scalar=%d vector=%d\n", counters_scalar[0], counters_vector[0] );
-  printf( "[vec-strcmp.128.64 rev instrs] scalar=%d vector=%d\n", counters_scalar[1], counters_vector[1] );
+  printf( "[vec-strcmp.128.64 rev cycles] %d\n", counters_vector[0] );
+  printf( "[vec-strcmp.128.64 rev instrs] %d\n", counters_vector[1] );
 #else
-  printf( "[vec-strcmp.128.64 spike cycles] scalar=%d vector=%d\n", counters_scalar[0], counters_vector[0] );
-  printf( "[vec-strcmp.128.64 spike instrs] scalar=%d vector=%d\n", counters_scalar[1], counters_vector[1] );
+  printf( "[vec-strcmp.128.64 spike cycles] %d\n", counters_vector[0] );
+  printf( "[vec-strcmp.128.64 spike instrs] %d\n", counters_vector[1] );
 #endif
 }
