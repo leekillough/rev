@@ -25,7 +25,7 @@ if [ $? -ne 0 ]; then
 fi
 
 # test under development
-# make clean; make TLIST=
+# make clean; make TLIST=vec-daxpy.128.64
 
 mv output output-rev
 echo "Rev passed: see output-rev"

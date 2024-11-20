@@ -370,7 +370,6 @@ public:
     return true;
   }
 
-  
   /// The vfirst instruction finds the lowest-numbered active element of the source mask vector that has the
   /// value 1 and writes that element’s index to a GPR. If no active element has the value 1, -1 is written to the
   /// GPR.
@@ -379,6 +378,12 @@ public:
     std::cout << "*V r" << Inst.rd << " <- 0x" << std::hex << res << std::endl;
     R->SetX<uint64_t>(Inst.rd,res);
     return true;
+  }
+
+  /// Vector Floating Point
+  static bool vfmacc( const RevFeature* F, RevRegFile* R, RevVRegFile* V, RevMem* M, const RevVecInst& Inst ) {
+    assert(false);
+    return false;
   }
 
   // Arithmetic operators
@@ -513,6 +518,10 @@ public:
   RevVecInstDefaults().SetMnemonic("vmor.mm %vd, %vs2, %vs1"       ).SetFunct3(OPV::MVV).SetFunct6(0b011010).SetImplFunc(&vmormm ).SetrdClass(RevRegClass::RegVEC).Setrs1Class(RevRegClass::RegVEC    ).Setrs2Class(RevRegClass::RegVEC).SetFormat(RVVTypeOpv).SetOpcode(0b1010111),
   //funct6=010000 V VWXUNARY0 {VS1,op} {0b00000,vmv.x.s} {0b10000,vcpop} {0b10001,vfirst}
   RevVecInstDefaults().SetMnemonic("vfirst.m %rd, %vs2, %vm"       ).SetFunct3(OPV::MVV).SetFunct6(0b010000).SetImplFunc(&vfirstm).SetrdClass(RevRegClass::RegGPR).Setrs1Class(RevRegClass::RegUNKNOWN).Setrs2Class(RevRegClass::RegVEC).SetFormat(RVVTypeOpv).SetOpcode(0b1010111) .SetPredicate( []( uint32_t Inst ){ return ((Inst >> 15) & 0x1f)  == 0b10001; } ),
+
+  // Vector Floating Point OPFVV, OPFVF
+  RevVecInstDefaults().SetMnemonic("vfmacc.vv %vd, %vs1, %vs2, %vm").SetFunct3(OPV::FVV).SetFunct6(0b101100).SetImplFunc(&vfmacc).SetrdClass(RevRegClass::RegVEC).Setrs1Class(RevRegClass::RegVEC     ).Setrs2Class(RevRegClass::RegVEC).SetFormat(RVVTypeOpv).SetOpcode(0b1010111),
+  RevVecInstDefaults().SetMnemonic("vfmacc.vf %vd, %rs1, %vs2, %vm").SetFunct3(OPV::FVF).SetFunct6(0b101100).SetImplFunc(&vfmacc).SetrdClass(RevRegClass::RegVEC).Setrs1Class(RevRegClass::RegFLOAT   ).Setrs2Class(RevRegClass::RegVEC).SetFormat(RVVTypeOpv).SetOpcode(0b1010111),
 
   // Vector Config     OPV:   Funct3=0x7
   RevVecInstDefaults().SetMnemonic("vsetvli %rd, %rs1, %zimm11"    ).SetFunct3(OPV::CFG).SetImplFunc(&vsetvli       ).SetrdClass(RevRegClass::RegGPR    ).Setrs1Class(RevRegClass::RegGPR    ).Setrs2Class(RevRegClass::RegUNKNOWN)      .SetFormat(RVVTypeOpv).SetOpcode(0b1010111).SetPredicate( []( uint32_t Inst ){ return ((Inst >> 31) & 0x1)  == 0x00; } ),
