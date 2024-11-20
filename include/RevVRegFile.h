@@ -54,7 +54,7 @@ class RevVRegFile : public RevCSR {
 public:
   RevVRegFile( SST::Output* output, uint16_t vlen, uint16_t elen );
 
-  SST::Output* Output() { return output; };
+  SST::Output* output() { return output_; };
 
   RevCore* GetCore() const override {
     assert( false );
@@ -71,13 +71,17 @@ public:
     return true;
   }
 
-public:
-  void     Configure( reg_vtype_t vt );
+  uint16_t vlen() { return vlen_; }
+
+  uint16_t elen() { return elen_; }
+
+  uint16_t vlmax() { return vlmax_; }
+
+  void     Configure( reg_vtype_t vt, uint16_t vlmax );
   uint64_t GetVCSR( uint16_t csr );
   void     SetVCSR( uint16_t csr, uint64_t d );
 
-  uint16_t ElemsPerReg();    ///< RevVRegFile: VLEN/SEW
-  uint16_t ItersOverLMUL();  ///< RevVREgFile: LMUL conversion to iterations
+  uint16_t ElemsPerReg();  ///< RevVRegFile: VLEN/SEW
 
   template<typename T>
   void SetElem( uint64_t vd, unsigned e, T d ) {
@@ -85,16 +89,6 @@ public:
     size_t bytes = sizeof( T );
     assert( ( e * bytes ) <= GetVCSR( vlenb ) );
     memcpy( &( vreg[vd][e * bytes] ), &res, bytes );
-  };
-
-  void SetMaskReg( uint64_t vd, uint64_t d ) {
-    // TODO this needs to be better generalized
-    // This needs to write entire VLEN. What about LMUL case?
-    unsigned vlb = GetVCSR( vlenb );
-    memset( &( vreg[vd][0] ), 0, vlb );
-    size_t bytes = vlb < sizeof( uint64_t ) ? vlb : sizeof( uint64_t );
-    memcpy( &( vreg[vd][0] ), &d, bytes );
-    std::cout << "*V SetMaskReg v" << std::dec << vd << " <- 0x" << std::hex << d << std::endl;
   };
 
   template<typename T>
@@ -106,12 +100,21 @@ public:
     return res;
   };
 
+  // Write entire mask register
+  void SetMaskReg( uint64_t vd, uint64_t d );
+
+  /// return index of first 1 in bit field or -1 if all are 0.
+  uint64_t vfirst( uint64_t vs );
+
 private:
-  SST::Output* output;
-  uint16_t     VLEN;
-  uint16_t     ELEN;
-  uint16_t     elemsPerReg               = 0;
-  uint16_t     itersOverLMUL             = 0;
+  SST::Output* output_;
+  uint16_t     vlen_;
+  uint16_t     elen_;
+  uint16_t     vlmax_;
+  uint16_t     elemsPerReg_              = 0;
+  unsigned     sewbytes                  = 0;
+  unsigned     sewbits                   = 0;
+  uint64_t     sewmask                   = 0;
 
   std::vector<std::vector<uint8_t>> vreg = {};
 

@@ -216,11 +216,12 @@ public:
   static bool _vsetvl( uint16_t avl, uint64_t newvtype, RevRegFile* R, RevVRegFile* V, const RevVecInst& Inst ) {
     // Set vtype and configure vector execution state
     V->SetVCSR( RevCSR::vtype, newvtype );
-    V->Configure( newvtype );
+    
+    uint16_t vlmax = RVVec::CalculateVLMAX( V );
+    V->Configure( newvtype, vlmax );
     // Configure the vl csr
     uint64_t newvl = 0;
     if( avl != 0 ) {
-      uint16_t vlmax = RVVec::CalculateVLMAX( V );
       if( avl <= vlmax ) {
         newvl = avl;
       } else if( avl < ( 2 * vlmax ) ) {
@@ -229,7 +230,7 @@ public:
         newvl = vlmax;
       }
     } else if( ( Inst.rd != 0 ) && ( avl == 0 ) ) {
-      newvl = RVVec::CalculateVLMAX( V );
+      newvl = vlmax;
     } else if( ( Inst.rd == 0 ) && ( avl == 0 ) ) {
       newvl = V->GetVCSR( RevCSR::vl );
     }
@@ -272,8 +273,26 @@ public:
     return true;
   }
 
-  // Immediate, Scalar, Vector
+  // Immediate, Scalar, Vector?
   enum VecOpKind { Imm, Reg, VReg };
+
+  /// Vector Integer Operator Entry Template
+  template<template<class> class VOP, VecOpKind KIND, bool DST_IS_MASK>
+  static bool vec_oper( const RevFeature* F, RevRegFile* R, RevVRegFile* V, RevMem* M, const RevVecInst& Inst ) {
+    reg_vtype_t vt = V->GetVCSR( RevCSR::vtype );
+    if( vt.f.vsew == vsew::e64 )
+      return vec_int_op<uint64_t, VOP, KIND, DST_IS_MASK>( F, R, V, M, Inst );
+    else if( vt.f.vsew == vsew::e32 )
+      return vec_int_op<uint32_t, VOP, KIND, DST_IS_MASK>( F, R, V, M, Inst );
+    else if( vt.f.vsew == vsew::e16 )
+      return vec_int_op<uint16_t, VOP, KIND, DST_IS_MASK>( F, R, V, M, Inst );
+    else if( vt.f.vsew == vsew::e8 )
+      return vec_int_op<uint8_t, VOP, KIND, DST_IS_MASK>( F, R, V, M, Inst );
+    else {
+      assert( false );
+    }
+    return false;
+  }
 
   template<typename SEWTYPE, template<class> class VOP, VecOpKind KIND, bool DST_IS_MASK>
   static bool vec_int_op( const RevFeature* F, RevRegFile* R, RevVRegFile* V, RevMem* M, const RevVecInst& Inst ) {
@@ -291,8 +310,8 @@ public:
       }
       if( DST_IS_MASK ) {
         assert( vecElem < 64 );  // TODO
-        //std::cout << "*V " << vecElem << " " << std::hex <<  V->GetElem<SEWTYPE>( vs2, el ) << std::endl;
-        mask |= ( res & 1 ) << vecElem;
+        mask |= ( (res!=0) & 1 ) << vecElem;
+        // std::cout << "*V " << std::hex << " " << V->GetElem<SEWTYPE>( vs2, el ) << " " << mask << std::endl;
       } else {
         V->SetElem<SEWTYPE>( vd, el, res );
         std::cout << "*V v" << std::dec << vd << "." << el << " <- 0x" << std::hex << (uint64_t) res << std::endl;
@@ -304,27 +323,62 @@ public:
       }
     }
     if( DST_IS_MASK ) {
+      //TODO: Fix. Assumes only 64-bits of mask generated
       V->SetMaskReg( Inst.vd, mask );
+      std::cout << "*V v" << std::dec << Inst.vd << " <- 0x" << std::hex << (uint64_t) mask << std::endl;
     }
-
     return true;
   }
 
-  /// Vector Integer Operation template
-  template<template<class> class VOP, VecOpKind KIND, bool DST_IS_MASK>
-  static bool vec_oper( const RevFeature* F, RevRegFile* R, RevVRegFile* V, RevMem* M, const RevVecInst& Inst ) {
+  /// Vector Mask Operator Entry Template
+  template<template<class> class VOP>
+  static bool vmask_oper( const RevFeature* F, RevRegFile* R, RevVRegFile* V, RevMem* M, const RevVecInst& Inst ) {
+    // Mask operations affect a single vector register.
+    //TODO test: The number of elements should be VLMAX so it can span multiple registers when VLMAX > VLEN.
+    // To stay sane, and maybe this is the intent, traverse VLMAX elements using the programmed SEW.
     reg_vtype_t vt = V->GetVCSR( RevCSR::vtype );
     if( vt.f.vsew == vsew::e64 )
-      return vec_int_op<uint64_t, VOP, KIND, DST_IS_MASK>( F, R, V, M, Inst );
+      return vec_mask_op<uint64_t, VOP>( F, R, V, M, Inst );
     else if( vt.f.vsew == vsew::e32 )
-      return vec_int_op<uint32_t, VOP, KIND, DST_IS_MASK>( F, R, V, M, Inst );
+      return vec_mask_op<uint32_t, VOP>( F, R, V, M, Inst );
     else if( vt.f.vsew == vsew::e16 )
-      return vec_int_op<uint16_t, VOP, KIND, DST_IS_MASK>( F, R, V, M, Inst );
+      return vec_mask_op<uint16_t, VOP>( F, R, V, M, Inst );
     else if( vt.f.vsew == vsew::e8 )
-      return vec_int_op<uint8_t, VOP, KIND, DST_IS_MASK>( F, R, V, M, Inst );
+      return vec_mask_op<uint8_t, VOP>( F, R, V, M, Inst );
     else {
       assert( false );
     }
+    return false;
+  }
+
+  template<typename SEWTYPE, template<class> class VOP>
+  static bool vec_mask_op( const RevFeature* F, RevRegFile* R, RevVRegFile* V, RevMem* M, const RevVecInst& Inst ) {
+    uint64_t vd  = Inst.vd;
+    uint64_t vs1 = Inst.vs1;
+    uint64_t vs2 = Inst.vs2;
+    for( unsigned vecElem = 0; vecElem < V->GetVCSR( RevCSR::vl ); vecElem++ ) {
+      unsigned el  = vecElem % V->ElemsPerReg();
+      SEWTYPE  res = VOP()( V->GetElem<SEWTYPE>( vs2, el ), V->GetElem<SEWTYPE>( vs1, el ) );
+      V->SetElem<SEWTYPE>( vd, el, res );
+      std::cout << "*V v" << std::dec << vd << "." << el << " <- 0x" << std::hex << (uint64_t) res << std::endl;
+      if( ( ( el + 1 ) % V->ElemsPerReg() ) == 0 ) {
+        vd++;
+        vs1++;
+        vs2++;
+      }
+    }
+    return true;
+  }
+
+  
+  /// The vfirst instruction finds the lowest-numbered active element of the source mask vector that has the
+  /// value 1 and writes that element’s index to a GPR. If no active element has the value 1, -1 is written to the
+  /// GPR.
+  static bool vfirstm( const RevFeature* F, RevRegFile* R, RevVRegFile* V, RevMem* M, const RevVecInst& Inst ) {
+    uint64_t res = V->vfirst(Inst.vs2);
+    std::cout << "*V r" << Inst.rd << " <- 0x" << std::hex << res << std::endl;
+    R->SetX<uint64_t>(Inst.rd,res);
+    return true;
   }
 
   // Arithmetic operators
@@ -341,81 +395,8 @@ public:
   static constexpr auto& vmsnevv = vec_oper<std::not_equal_to, VecOpKind::VReg, true>;
   static constexpr auto& vmsnevi = vec_oper<std::not_equal_to, VecOpKind::Imm, true>;
   static constexpr auto& vmsnevx = vec_oper<std::not_equal_to, VecOpKind::Reg, true>;
-
-  template<typename SEWTYPE>
-  static SEWTYPE ElemIntOp( uint8_t funct6, SEWTYPE s1, SEWTYPE s2 ) {
-    switch( funct6 ) {
-    case( 0b000000 ): return s2 + s1;           // vadd
-    case( 0b000010 ): return s2 - s1;           // vsub
-    case( 0b011000 ): return s2 == s1 ? 1 : 0;  // vmseq // TODO these write to the vector mask bit
-    case( 0b011001 ): return s2 != s1 ? 1 : 0;  // vmsne
-    default: assert( false );
-    }
-    assert( false );
-    return 0;
-  }
-
-  template<typename SEWTYPE>
-  static SEWTYPE ElemMskOp( uint8_t funct6, SEWTYPE s1, SEWTYPE s2 ) {
-    switch( funct6 ) {
-    case( 0b011010 ): return s2 | s1;  // vmor
-    default: assert( false );
-    }
-    assert( false );
-    return 0;
-  }
-
-  /// Old Vector Integer Operation template
-  template<typename SEWTYPE>
-  static bool VecIntOp_OLD( const RevFeature* F, RevRegFile* R, RevVRegFile* V, RevMem* M, const RevVecInst& Inst ) {
-    uint64_t vd     = Inst.vd;
-    uint64_t vs1    = Inst.vs1;
-    uint64_t vs2    = Inst.vs2;
-    uint64_t uimm5  = ( Inst.Inst >> 15 ) & 0x1f;
-    uint8_t  funct6 = ( Inst.Inst >> 26 ) & 0x3f;
-    for( unsigned vecElem = 0; vecElem < V->GetVCSR( RevCSR::vl ); vecElem++ ) {
-      unsigned el  = vecElem % V->ElemsPerReg();
-      SEWTYPE  res = 0;
-      switch( Inst.funct3 ) {
-      case OPV::IVV: res = ElemIntOp( funct6, V->GetElem<SEWTYPE>( vs2, el ), V->GetElem<SEWTYPE>( vs1, el ) ); break;
-      case OPV::IVI: res = ElemIntOp( funct6, V->GetElem<SEWTYPE>( vs2, el ), (SEWTYPE) uimm5 ); break;
-      case OPV::IVX: res = ElemIntOp( funct6, V->GetElem<SEWTYPE>( vs2, el ), R->GetX<SEWTYPE>( Inst.rs1 ) ); break;
-      case OPV::MVV: res = ElemMskOp( funct6, V->GetElem<SEWTYPE>( vs2, el ), V->GetElem<SEWTYPE>( vs1, el ) ); break;
-      default: V->Output()->fatal( CALL_INFO, -1, "Vector arithmetic func3 %" PRIu64 " not supported\n", Inst.funct3 );
-      }
-      // if (destIsMaskReg) {
-      //   mskreg  |= ((res & 1) << mskpos++);
-      // } else {
-      V->SetElem<SEWTYPE>( vd, el, res );
-      std::cout << "*V v" << std::dec << vd << "." << el << " <- 0x" << std::hex << (uint64_t) res << std::endl;
-      // }
-      if( ( ( el + 1 ) % V->ElemsPerReg() ) == 0 ) {
-        vd++;
-        vs1++;
-        vs2++;
-      }
-    }
-    return true;
-  }
-
-  static bool vintop_old( const RevFeature* F, RevRegFile* R, RevVRegFile* V, RevMem* M, const RevVecInst& Inst ) {
-    reg_vtype_t vt = V->GetVCSR( RevCSR::vtype );
-    if( vt.f.vsew == vsew::e64 )
-      return VecIntOp_OLD<uint64_t>( F, R, V, M, Inst );
-    else if( vt.f.vsew == vsew::e32 )
-      return VecIntOp_OLD<uint32_t>( F, R, V, M, Inst );
-    else if( vt.f.vsew == vsew::e16 )
-      return VecIntOp_OLD<uint16_t>( F, R, V, M, Inst );
-    else if( vt.f.vsew == vsew::e8 )
-      return VecIntOp_OLD<uint8_t>( F, R, V, M, Inst );
-    else {
-      assert( false );
-    }
-  }
-
-  static bool vmor_mm( const RevFeature* F, RevRegFile* R, RevVRegFile* V, RevMem* M, const RevVecInst& Inst ) {
-    return vintop_old( F, R, V, M, Inst );
-  }
+  // Vector Mask Instructions
+  static constexpr auto& vmormm  = vmask_oper<std::bit_or>;
 
   // VS*
   // 31 29  28  27 26  25  24 20  19 15  14 12  11 7   6     0
@@ -497,7 +478,7 @@ public:
   template<typename SEWTYPE>
   static bool vlff( const RevFeature* F, RevRegFile* R, RevVRegFile* V, RevMem* M, const RevVecInst& Inst ) {
     // TODO fault-only first behavior
-    V->Output()->verbose(
+    V->output()->verbose(
       CALL_INFO, 1, 0, "Warning: vector load fault-only first not implemented and will behave has a normal vector load\n"
     );
     return _vl<SEWTYPE>( F, R, V, M, Inst );
@@ -529,8 +510,11 @@ public:
   RevVecInstDefaults().SetMnemonic("vmsne.vx %vd, %vs2, %vs1, %vm" ).SetFunct3(OPV::IVX).SetFunct6(0b011001).SetImplFunc(&vmsnevx).SetrdClass(RevRegClass::RegVEC).Setrs1Class(RevRegClass::RegGPR    ).Setrs2Class(RevRegClass::RegVEC).SetFormat(RVVTypeOpv).SetOpcode(0b1010111),
 
   // Vector Mask Inst  OPMVV: Funct3=0x2
-  RevVecInstDefaults().SetMnemonic("vmor.mm %vd, %vs2, %vs1"       ).SetFunct3(OPV::MVV).SetFunct6(0b011010).SetImplFunc(&vmor_mm).SetrdClass(RevRegClass::RegVEC).Setrs1Class(RevRegClass::RegVEC).Setrs2Class(RevRegClass::RegVEC).SetFormat(RVVTypeOpv).SetOpcode(0b1010111),
-// Vector Config     OPV:   Funct3=0x7
+  RevVecInstDefaults().SetMnemonic("vmor.mm %vd, %vs2, %vs1"       ).SetFunct3(OPV::MVV).SetFunct6(0b011010).SetImplFunc(&vmormm ).SetrdClass(RevRegClass::RegVEC).Setrs1Class(RevRegClass::RegVEC    ).Setrs2Class(RevRegClass::RegVEC).SetFormat(RVVTypeOpv).SetOpcode(0b1010111),
+  //funct6=010000 V VWXUNARY0 {VS1,op} {0b00000,vmv.x.s} {0b10000,vcpop} {0b10001,vfirst}
+  RevVecInstDefaults().SetMnemonic("vfirst.m %rd, %vs2, %vm"       ).SetFunct3(OPV::MVV).SetFunct6(0b010000).SetImplFunc(&vfirstm).SetrdClass(RevRegClass::RegGPR).Setrs1Class(RevRegClass::RegUNKNOWN).Setrs2Class(RevRegClass::RegVEC).SetFormat(RVVTypeOpv).SetOpcode(0b1010111) .SetPredicate( []( uint32_t Inst ){ return ((Inst >> 15) & 0x1f)  == 0b10001; } ),
+
+  // Vector Config     OPV:   Funct3=0x7
   RevVecInstDefaults().SetMnemonic("vsetvli %rd, %rs1, %zimm11"    ).SetFunct3(OPV::CFG).SetImplFunc(&vsetvli       ).SetrdClass(RevRegClass::RegGPR    ).Setrs1Class(RevRegClass::RegGPR    ).Setrs2Class(RevRegClass::RegUNKNOWN)      .SetFormat(RVVTypeOpv).SetOpcode(0b1010111).SetPredicate( []( uint32_t Inst ){ return ((Inst >> 31) & 0x1)  == 0x00; } ),
   RevVecInstDefaults().SetMnemonic("vsetivli %rd, %zimm, %zimm10"  ).SetFunct3(OPV::CFG).SetImplFunc(&vsetivli      ).SetrdClass(RevRegClass::RegGPR    ).Setrs1Class(RevRegClass::RegUNKNOWN).Setrs2Class(RevRegClass::RegUNKNOWN)      .SetFormat(RVVTypeOpv).SetOpcode(0b1010111).SetPredicate( []( uint32_t Inst ){ return ((Inst >> 30) & 0x3)  == 0x03; } ),
   RevVecInstDefaults().SetMnemonic("vsetvl %rd, %rs1, %rs2"        ).SetFunct3(OPV::CFG).SetImplFunc(&vsetvl        ).SetrdClass(RevRegClass::RegGPR    ).Setrs1Class(RevRegClass::RegGPR    ).Setrs2Class(RevRegClass::RegGPR    )      .SetFormat(RVVTypeOpv).SetOpcode(0b1010111).SetPredicate( []( uint32_t Inst ){ return ((Inst >> 25) & 0x7f) == 0x40; } ),

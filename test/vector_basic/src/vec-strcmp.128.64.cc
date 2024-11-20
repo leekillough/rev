@@ -35,7 +35,7 @@ int vec_strcmp( const char* src1, const char* src2 ) {
                 "vmsne.vv v1, v8, v16 \n\t"  // Flag if src1 != src2
                 "vmor.mm v0, v0, v1   \n\t"  // Combine exit conditions
                 "vfirst.m a2, v0      \n\t"  // ==0 or != ?
-                "csrr t1, vl          \n\t"  // Get number of bytes fetched
+                "csrrsi t1, vl, 0     \n\t"  // Get number of bytes fetched
                 "bltz a2, loop        \n\t"  // Loop if all same and no zero byte
                 "add a0, a0, a2       \n\t"  // Get src1 element address
                 "lbu a3, (a0)         \n\t"  // Get src1 byte from memory
