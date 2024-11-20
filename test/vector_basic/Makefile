@@ -127,7 +127,7 @@ ifndef USE_SPIKE
 
 %.printlog: %.log FORCE
 	@ $(REVPRINT) -l $< > $@
-	cat $@
+	@ cat $@
 
 %.vlog: %.log FORCE
 	@ grep '*V ' $< > $@
@@ -145,7 +145,7 @@ else
 	$(SPIKE) $(SPIKE_OPTS) -l --log=$@ --isa=$(ARCH)_zicntr pk $(exe) > $(printlog) && (echo "pass" > $(statf))
 
 %.printlog: %.log FORCE
-	cat $@
+	@ cat $@
 endif
 
 FORCE:

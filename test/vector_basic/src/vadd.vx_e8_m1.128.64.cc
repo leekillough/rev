@@ -41,7 +41,7 @@ void check_result( elem_t result[] ) {
   unsigned count = 5;
   for( unsigned i = 0; i < AVL; i++ ) {
     elem_t expected = i + 1 + count;
-#if 1
+#if 0
     printf( "Checking i=%d 0x%x\n", i, (unsigned) expected );
 #endif
     if( expected != result[i] ) {

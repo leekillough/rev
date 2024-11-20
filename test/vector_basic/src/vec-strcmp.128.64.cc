@@ -51,6 +51,7 @@ int vec_strcmp( const char* src1, const char* src2 ) {
 }
 
 #if 0
+// using vector load on const char [45] results in page fault on spike
 const char* test_str        = "The quick brown fox jumped over the lazy dog";
 const char* same_str        = "The quick brown fox jumped over the lazy dog";
 const char* diff_str        = "The quick brown fox jumped over the lazy cat";
