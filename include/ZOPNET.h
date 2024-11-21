@@ -449,6 +449,7 @@ enum class zopCompID : uint8_t {
   Z_ZAP2     = 0b00000010,  /// zopCompID: ZAP2
   Z_ZAP3     = 0b00000011,  /// zopCompID: ZAP3
   Z_RZA      = 0b00001000,  /// zopCompID: RZA
+  Z_RZA1     = 0b00001001,  /// zopCompID: RZA1 - for ZEN and ZQM
   // TODO: Eventually add multiple RZAs
   Z_ZQM      = 0b00001010,  /// zopCompID: ZQM // RTL value is 9
   Z_ZEN      = 0b00001100,  /// zopCompID: ZEN // RTL value is 8
