@@ -84,11 +84,24 @@ public:
   uint16_t ElemsPerReg();  ///< RevVRegFile: VLEN/SEW
 
   template<typename T>
-  void SetElem( uint64_t vd, unsigned e, T d ) {
-    T      res   = d;
+  void SetElem( uint64_t base, uint64_t vd, unsigned e, T d, bool vm ) {
     size_t bytes = sizeof( T );
     assert( ( e * bytes ) <= GetVCSR( vlenb ) );
+    if( !vm ) {
+      assert( e <= 64 );
+      //TODO a pure byte array wrapped with some access functions might be simpler
+      // Just take the base address and the element number.
+      // but this works for now...
+      uint64_t* pmask = (uint64_t*) ( &( vreg[0][0] ) );
+      unsigned  shift = ( ( vd - base ) * elemsPerReg_ ) + e;
+      if( ( ( *pmask ) >> shift & 1 ) == 0 ) {
+        std::cout << "*V " << vd << "." << e << " ... masked (0x" << ( *pmask ) << ")" << std::endl;
+        return;
+      }
+    }
+    T res = d;
     memcpy( &( vreg[vd][e * bytes] ), &res, bytes );
+    std::cout << "*V v" << std::dec << vd << "." << e << " <- 0x" << std::hex << (uint64_t) d << std::endl;
   };
 
   template<typename T>

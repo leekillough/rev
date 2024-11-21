@@ -277,44 +277,44 @@ public:
   enum VecOpKind { Imm, Reg, VReg };
 
   /// Vector Integer Operator Entry Template
-  template<template<class> class VOP, VecOpKind KIND, bool DST_IS_MASK>
+  template<template<class> class VOP, VecOpKind KIND, bool DST_IS_MASK = false, bool FORCE_VS2_ZERO = false>
   static bool vec_oper( const RevFeature* F, RevRegFile* R, RevVRegFile* V, RevMem* M, const RevVecInst& Inst ) {
     reg_vtype_t vt = V->GetVCSR( RevCSR::vtype );
     if( vt.f.vsew == vsew::e64 )
-      return vec_oper_exec<uint64_t, VOP, KIND, DST_IS_MASK>( F, R, V, M, Inst );
+      return vec_oper_exec<uint64_t, VOP, KIND, DST_IS_MASK, FORCE_VS2_ZERO>( F, R, V, M, Inst );
     else if( vt.f.vsew == vsew::e32 )
-      return vec_oper_exec<uint32_t, VOP, KIND, DST_IS_MASK>( F, R, V, M, Inst );
+      return vec_oper_exec<uint32_t, VOP, KIND, DST_IS_MASK, FORCE_VS2_ZERO>( F, R, V, M, Inst );
     else if( vt.f.vsew == vsew::e16 )
-      return vec_oper_exec<uint16_t, VOP, KIND, DST_IS_MASK>( F, R, V, M, Inst );
+      return vec_oper_exec<uint16_t, VOP, KIND, DST_IS_MASK, FORCE_VS2_ZERO>( F, R, V, M, Inst );
     else if( vt.f.vsew == vsew::e8 )
-      return vec_oper_exec<uint8_t, VOP, KIND, DST_IS_MASK>( F, R, V, M, Inst );
+      return vec_oper_exec<uint8_t, VOP, KIND, DST_IS_MASK, FORCE_VS2_ZERO>( F, R, V, M, Inst );
     else {
       assert( false );
     }
     return false;
   }
 
-  template<typename SEWTYPE, template<class> class VOP, VecOpKind KIND, bool DST_IS_MASK>
+  template<typename SEWTYPE, template<class> class VOP, VecOpKind KIND, bool DST_IS_MASK, bool FORCE_VS2_ZERO>
   static bool vec_oper_exec( const RevFeature* F, RevRegFile* R, RevVRegFile* V, RevMem* M, const RevVecInst& Inst ) {
     uint64_t vd   = Inst.vd;
     uint64_t vs1  = Inst.vs1;
     uint64_t vs2  = Inst.vs2;
     uint64_t mask = 0;
+    bool vm = ((Inst.Inst >> 25) & 1 == 1);
     for( unsigned vecElem = 0; vecElem < V->GetVCSR( RevCSR::vl ); vecElem++ ) {
       unsigned el  = vecElem % V->ElemsPerReg();
       SEWTYPE  res = 0;
+      auto s2 = FORCE_VS2_ZERO ? 0 : V->GetElem<SEWTYPE>(vs2,el);
       switch( KIND ) {
-      case VReg: res = VOP()( V->GetElem<SEWTYPE>( vs2, el ), V->GetElem<SEWTYPE>( vs1, el ) ); break;
-      case Imm: res = VOP()( V->GetElem<SEWTYPE>( vs2, el ), ( Inst.Inst >> 15 ) & 0x1f ); break;
-      case Reg: res = VOP()( V->GetElem<SEWTYPE>( vs2, el ), R->GetX<SEWTYPE>( Inst.rs1 ) ); break;
+      case VReg: res = VOP()( s2, V->GetElem<SEWTYPE>( vs1, el ) ); break;
+      case Imm: res = VOP()( s2, ( Inst.Inst >> 15 ) & 0x1f ); break;
+      case Reg: res = VOP()( s2, R->GetX<SEWTYPE>( Inst.rs1 ) ); break;
       }
       if( DST_IS_MASK ) {
         assert( vecElem < 64 );  // TODO
         mask |= ( (res!=0) & 1 ) << vecElem;
-        // std::cout << "*V " << std::hex << " " << V->GetElem<SEWTYPE>( vs2, el ) << " " << mask << std::endl;
       } else {
-        V->SetElem<SEWTYPE>( vd, el, res );
-        std::cout << "*V v" << std::dec << vd << "." << el << " <- 0x" << std::hex << (uint64_t) res << std::endl;
+        V->SetElem<SEWTYPE>( Inst.vd, vd, el, res, vm );
       }
       if( ( ( el + 1 ) % V->ElemsPerReg() ) == 0 ) {
         vd++;
@@ -325,7 +325,6 @@ public:
     if( DST_IS_MASK ) {
       //TODO: Fix. Assumes only 64-bits of mask generated
       V->SetMaskReg( Inst.vd, mask );
-      std::cout << "*V v" << std::dec << Inst.vd << " <- 0x" << std::hex << (uint64_t) mask << std::endl;
     }
     return true;
   }
@@ -349,6 +348,7 @@ public:
     uint64_t vd   = Inst.vd;
     uint64_t vs1  = Inst.vs1;
     uint64_t vs2  = Inst.vs2;
+    bool vm = ((Inst.Inst >> 25) & 1 == 1);
     // vfmacc.vv vd, vs1, vs2, vm # vd[i] = +(vs1[i] * vs2[i]) + vd[i]
     // vfmacc.vf vd, rs1, vs2, vm # vd[i] = +(f[rs1] * vs2[i]) + vd[i]
     for( unsigned vecElem = 0; vecElem < V->GetVCSR( RevCSR::vl ); vecElem++ ) {
@@ -357,7 +357,7 @@ public:
       FTYPE s2 = V->GetElem<FTYPE>(vs2, el);
       FTYPE dst = V->GetElem<FTYPE>(vd, el);
       FTYPE res = s1 * s2 + dst;
-      V->SetElem<FTYPE>(vd, el, res);
+      V->SetElem<FTYPE>(Inst.vd, vd, el, res, vm);
       if( ( ( el + 1 ) % V->ElemsPerReg() ) == 0 ) {
         vd++;
         vs1++;
@@ -393,11 +393,11 @@ public:
     uint64_t vd  = Inst.vd;
     uint64_t vs1 = Inst.vs1;
     uint64_t vs2 = Inst.vs2;
+    bool vm = ((Inst.Inst >> 25) & 1 == 1);
     for( unsigned vecElem = 0; vecElem < V->GetVCSR( RevCSR::vl ); vecElem++ ) {
       unsigned el  = vecElem % V->ElemsPerReg();
       SEWTYPE  res = VOP()( V->GetElem<SEWTYPE>( vs2, el ), V->GetElem<SEWTYPE>( vs1, el ) );
-      V->SetElem<SEWTYPE>( vd, el, res );
-      std::cout << "*V v" << std::dec << vd << "." << el << " <- 0x" << std::hex << (uint64_t) res << std::endl;
+      V->SetElem<SEWTYPE>( Inst.vd, vd, el, res, vm );
       if( ( ( el + 1 ) % V->ElemsPerReg() ) == 0 ) {
         vd++;
         vs1++;
@@ -418,19 +418,45 @@ public:
   }
 
   // Arithmetic operators
-  static constexpr auto& vaddvv  = vec_oper<std::plus, VecOpKind::VReg, false>;
-  static constexpr auto& vaddvi  = vec_oper<std::plus, VecOpKind::Imm, false>;
-  static constexpr auto& vaddvx  = vec_oper<std::plus, VecOpKind::Reg, false>;
-  static constexpr auto& vsubvv  = vec_oper<std::minus, VecOpKind::VReg, false>;
-  static constexpr auto& vsubvi  = vec_oper<std::minus, VecOpKind::Imm, false>;
-  static constexpr auto& vsubvx  = vec_oper<std::minus, VecOpKind::Reg, false>;
+  static constexpr auto& vaddvv  = vec_oper<std::plus, VecOpKind::VReg>;
+  static constexpr auto& vaddvx  = vec_oper<std::plus, VecOpKind::Reg>;
+  static constexpr auto& vaddvi  = vec_oper<std::plus, VecOpKind::Imm>;
+  static constexpr auto& vsubvv  = vec_oper<std::minus, VecOpKind::VReg>;
+  static constexpr auto& vsubvx  = vec_oper<std::minus, VecOpKind::Reg>;
+  static constexpr auto& vsubvi  = vec_oper<std::minus, VecOpKind::Imm>;
+
+  static constexpr auto& vmvvv   = vec_oper<std::plus, VecOpKind::VReg, false, true>;
+  static constexpr auto& vmvvx   = vec_oper<std::plus, VecOpKind::Reg, false, true>;
+  static constexpr auto& vmvvi   = vec_oper<std::plus, VecOpKind::Imm, false, true>;
+
   // Comparisons
   static constexpr auto& vmseqvv = vec_oper<std::equal_to, VecOpKind::VReg, true>;
-  static constexpr auto& vmseqvi = vec_oper<std::equal_to, VecOpKind::Imm, true>;
   static constexpr auto& vmseqvx = vec_oper<std::equal_to, VecOpKind::Reg, true>;
+  static constexpr auto& vmseqvi = vec_oper<std::equal_to, VecOpKind::Imm, true>;
   static constexpr auto& vmsnevv = vec_oper<std::not_equal_to, VecOpKind::VReg, true>;
-  static constexpr auto& vmsnevi = vec_oper<std::not_equal_to, VecOpKind::Imm, true>;
   static constexpr auto& vmsnevx = vec_oper<std::not_equal_to, VecOpKind::Reg, true>;
+  static constexpr auto& vmsnevi = vec_oper<std::not_equal_to, VecOpKind::Imm, true>;
+
+  // static constexpr auto& vmsltuvv = vec_oper<std::tbd, VecOpKind::VReg, true>;
+  // static constexpr auto& vmsltuvx = vec_oper<std::tbd, VecOpKind::Reg, true>;
+
+  // static constexpr auto& vmsltvv = vec_oper<std::tbd, VecOpKind::VReg, true>;
+  // static constexpr auto& vmsltvx = vec_oper<std::tbd, VecOpKind::Reg, true>;
+
+  // static constexpr auto& vmsleuvv = vec_oper<std::tbd, VecOpKind::VReg, true>;
+  // static constexpr auto& vmsleuvx = vec_oper<std::tbd, VecOpKind::Reg, true>;
+  // static constexpr auto& vmsleuvi = vec_oper<std::tbd, VecOpKind::Imm, true>;
+
+  static constexpr auto& vmslevv = vec_oper<std::less_equal, VecOpKind::VReg, true>;
+  static constexpr auto& vmslevx = vec_oper<std::less_equal, VecOpKind::Reg, true>;
+  static constexpr auto& vmslevi = vec_oper<std::less_equal, VecOpKind::Imm, true>;
+
+  // static constexpr auto& vmsgtuvx = vec_oper<std::tbd, VecOpKind::Reg, true>;
+  // static constexpr auto& vmsgtuvi = vec_oper<std::tbd, VecOpKind::Imm, true>;
+
+  // static constexpr auto& vmsgtvx = vec_oper<std::tbd, VecOpKind::Reg, true>;
+  // static constexpr auto& vmsgtvi = vec_oper<std::tbd, VecOpKind::Imm, true>;
+
   // Vector Mask Instructions
   static constexpr auto& vmormm  = vmask_oper<std::bit_or>;
 
@@ -488,15 +514,16 @@ public:
   static bool _vl( const RevFeature* F, RevRegFile* R, RevVRegFile* V, RevMem* M, const RevVecInst& Inst ) {
     uint64_t addr = R->GetX<uint64_t>( Inst.rs1 );
     uint64_t vd   = Inst.vd;
-    for( unsigned vecElem = 0; vecElem < V->GetVCSR( RevCSR::vl ); vecElem++ ) {
+    uint64_t vl = V->GetVCSR( RevCSR::vl );
+    bool vm = ((Inst.Inst >> 25) & 1 == 1);
+    for( unsigned vecElem = 0; vecElem < vl; vecElem++ ) {
       unsigned el = vecElem % V->ElemsPerReg();
       SEWTYPE  d  = 0;
       MemReq   req0( addr, RevReg::zero, RevRegClass::RegGPR, 0, MemOp::MemOpREAD, true, R->GetMarkLoadComplete() );
       M->ReadVal<SEWTYPE>( 0, addr, &d, req0, RevFlag::F_NONE );
       std::stringstream s;
-      s << "0x" << std::hex << (uint64_t) d << " <- M[0x" << addr << "]";
-      V->SetElem<SEWTYPE>( vd, el, d );
-      std::cout << "*V v" << std::dec << vd << "." << el << " <- 0x" << std::hex << (uint64_t) d << " " << s.str() << std::endl;
+      s << "0x" << std::hex << (uint64_t) d << " <- M[0x" << addr << "]" << std::endl;
+      V->SetElem<SEWTYPE>( Inst.vd, vd, el, d, vm );
       addr += sizeof( SEWTYPE );
       if( ( ( el + 1 ) % V->ElemsPerReg() ) == 0 )
         vd++;
@@ -529,21 +556,31 @@ public:
 
   // Vector Arithmetic OPVIVV, OPVIVI, OPVIVX
   RevVecInstDefaults().SetMnemonic("vadd.vv %vd, %vs2, %vs1, %vm"  ).SetFunct3(OPV::IVV).SetFunct6(0b000000).SetImplFunc(&vaddvv).SetrdClass(RevRegClass::RegVEC ).Setrs1Class(RevRegClass::RegVEC    ).Setrs2Class(RevRegClass::RegVEC).SetFormat(RVVTypeOpv).SetOpcode(0b1010111),
-  RevVecInstDefaults().SetMnemonic("vadd.vi %vd, %vs2, %vs1, %vm"  ).SetFunct3(OPV::IVI).SetFunct6(0b000000).SetImplFunc(&vaddvi).SetrdClass(RevRegClass::RegVEC ).Setrs1Class(RevRegClass::RegUNKNOWN).Setrs2Class(RevRegClass::RegVEC).SetFormat(RVVTypeOpv).SetOpcode(0b1010111),
-  RevVecInstDefaults().SetMnemonic("vadd.vx %vd, %vs2, %vs1, %vm"  ).SetFunct3(OPV::IVX).SetFunct6(0b000000).SetImplFunc(&vaddvx).SetrdClass(RevRegClass::RegVEC ).Setrs1Class(RevRegClass::RegGPR    ).Setrs2Class(RevRegClass::RegVEC).SetFormat(RVVTypeOpv).SetOpcode(0b1010111),
+  RevVecInstDefaults().SetMnemonic("vadd.vx %vd, %vs2, %rs1, %vm"  ).SetFunct3(OPV::IVX).SetFunct6(0b000000).SetImplFunc(&vaddvx).SetrdClass(RevRegClass::RegVEC ).Setrs1Class(RevRegClass::RegGPR    ).Setrs2Class(RevRegClass::RegVEC).SetFormat(RVVTypeOpv).SetOpcode(0b1010111),
+  RevVecInstDefaults().SetMnemonic("vadd.vi %vd, %vs2, %zimm5, %vm").SetFunct3(OPV::IVI).SetFunct6(0b000000).SetImplFunc(&vaddvi).SetrdClass(RevRegClass::RegVEC ).Setrs1Class(RevRegClass::RegUNKNOWN).Setrs2Class(RevRegClass::RegVEC).SetFormat(RVVTypeOpv).SetOpcode(0b1010111),
 
   RevVecInstDefaults().SetMnemonic("vsub.vv %vd, %vs2, %vs1, %vm"  ).SetFunct3(OPV::IVV).SetFunct6(0b000010).SetImplFunc(&vsubvv).SetrdClass(RevRegClass::RegVEC ).Setrs1Class(RevRegClass::RegVEC    ).Setrs2Class(RevRegClass::RegVEC).SetFormat(RVVTypeOpv).SetOpcode(0b1010111),
-  RevVecInstDefaults().SetMnemonic("vsub.vi %vd, %vs2, %vs1, %vm"  ).SetFunct3(OPV::IVI).SetFunct6(0b000010).SetImplFunc(&vsubvi).SetrdClass(RevRegClass::RegVEC ).Setrs1Class(RevRegClass::RegUNKNOWN).Setrs2Class(RevRegClass::RegVEC).SetFormat(RVVTypeOpv).SetOpcode(0b1010111),
-  RevVecInstDefaults().SetMnemonic("vsub.vx %vd, %vs2, %vs1, %vm"  ).SetFunct3(OPV::IVX).SetFunct6(0b000010).SetImplFunc(&vsubvx).SetrdClass(RevRegClass::RegVEC ).Setrs1Class(RevRegClass::RegGPR    ).Setrs2Class(RevRegClass::RegVEC).SetFormat(RVVTypeOpv).SetOpcode(0b1010111),
+  RevVecInstDefaults().SetMnemonic("vsub.vx %vd, %vs2, %rs1, %vm"  ).SetFunct3(OPV::IVX).SetFunct6(0b000010).SetImplFunc(&vsubvx).SetrdClass(RevRegClass::RegVEC ).Setrs1Class(RevRegClass::RegGPR    ).Setrs2Class(RevRegClass::RegVEC).SetFormat(RVVTypeOpv).SetOpcode(0b1010111),
+  RevVecInstDefaults().SetMnemonic("vsub.vi %vd, %vs2, %zimm5, %vm").SetFunct3(OPV::IVI).SetFunct6(0b000010).SetImplFunc(&vsubvi).SetrdClass(RevRegClass::RegVEC ).Setrs1Class(RevRegClass::RegUNKNOWN).Setrs2Class(RevRegClass::RegVEC).SetFormat(RVVTypeOpv).SetOpcode(0b1010111),
 
-  RevVecInstDefaults().SetMnemonic("vmseq.vv %vd, %vs2, %vs1, %vm" ).SetFunct3(OPV::IVV).SetFunct6(0b011000).SetImplFunc(&vmseqvv).SetrdClass(RevRegClass::RegVEC).Setrs1Class(RevRegClass::RegVEC    ).Setrs2Class(RevRegClass::RegVEC).SetFormat(RVVTypeOpv).SetOpcode(0b1010111),
-  RevVecInstDefaults().SetMnemonic("vmseq.vi %vd, %vs2, %vs1, %vm" ).SetFunct3(OPV::IVI).SetFunct6(0b011000).SetImplFunc(&vmseqvi).SetrdClass(RevRegClass::RegVEC).Setrs1Class(RevRegClass::RegUNKNOWN).Setrs2Class(RevRegClass::RegVEC).SetFormat(RVVTypeOpv).SetOpcode(0b1010111),
-  RevVecInstDefaults().SetMnemonic("vmseq.vx %vd, %vs2, %vs1, %vm" ).SetFunct3(OPV::IVX).SetFunct6(0b011000).SetImplFunc(&vmseqvx).SetrdClass(RevRegClass::RegVEC).Setrs1Class(RevRegClass::RegGPR    ).Setrs2Class(RevRegClass::RegVEC).SetFormat(RVVTypeOpv).SetOpcode(0b1010111),
+  // Vector Integer Move Instructions
+  RevVecInstDefaults().SetMnemonic("vmv.v.v %vd, %vs1"             ).SetFunct3(OPV::IVV).SetFunct6(0b010111).SetImplFunc(&vmvvv ).SetrdClass(RevRegClass::RegVEC ).Setrs1Class(RevRegClass::RegVEC    ).Setrs2Class(RevRegClass::RegVEC).SetFormat(RVVTypeOpv).SetOpcode(0b1010111).SetPredicate( []( uint32_t Inst ){ return ((Inst >> 20) & 0x1f)  == 0; } ),
+  RevVecInstDefaults().SetMnemonic("vmv.v.x %vd, %rs1"             ).SetFunct3(OPV::IVX).SetFunct6(0b010111).SetImplFunc(&vmvvx ).SetrdClass(RevRegClass::RegVEC ).Setrs1Class(RevRegClass::RegGPR    ).Setrs2Class(RevRegClass::RegVEC).SetFormat(RVVTypeOpv).SetOpcode(0b1010111).SetPredicate( []( uint32_t Inst ){ return ((Inst >> 20) & 0x1f)  == 0; } ),
+  RevVecInstDefaults().SetMnemonic("vmv.v.i %vd, zimm5"            ).SetFunct3(OPV::IVI).SetFunct6(0b010111).SetImplFunc(&vmvvi ).SetrdClass(RevRegClass::RegVEC ).Setrs1Class(RevRegClass::RegUNKNOWN).Setrs2Class(RevRegClass::RegVEC).SetFormat(RVVTypeOpv).SetOpcode(0b1010111).SetPredicate( []( uint32_t Inst ){ return ((Inst >> 20) & 0x1f)  == 0; } ),
 
-  RevVecInstDefaults().SetMnemonic("vmsne.vv %vd, %vs2, %vs1, %vm" ).SetFunct3(OPV::IVV).SetFunct6(0b011001).SetImplFunc(&vmsnevv).SetrdClass(RevRegClass::RegVEC).Setrs1Class(RevRegClass::RegVEC    ).Setrs2Class(RevRegClass::RegVEC).SetFormat(RVVTypeOpv).SetOpcode(0b1010111),
-  RevVecInstDefaults().SetMnemonic("vmsne.vi %vd, %vs2, %vs1, %vm" ).SetFunct3(OPV::IVI).SetFunct6(0b011001).SetImplFunc(&vmsnevi).SetrdClass(RevRegClass::RegVEC).Setrs1Class(RevRegClass::RegUNKNOWN).Setrs2Class(RevRegClass::RegVEC).SetFormat(RVVTypeOpv).SetOpcode(0b1010111),
-  RevVecInstDefaults().SetMnemonic("vmsne.vx %vd, %vs2, %vs1, %vm" ).SetFunct3(OPV::IVX).SetFunct6(0b011001).SetImplFunc(&vmsnevx).SetrdClass(RevRegClass::RegVEC).Setrs1Class(RevRegClass::RegGPR    ).Setrs2Class(RevRegClass::RegVEC).SetFormat(RVVTypeOpv).SetOpcode(0b1010111),
+  // Vector Integer Comparisons
+  RevVecInstDefaults().SetMnemonic("vmseq.vv %vd, %vs2, %vs1, %vm"  ).SetFunct3(OPV::IVV).SetFunct6(0b011000).SetImplFunc(&vmseqvv).SetrdClass(RevRegClass::RegVEC).Setrs1Class(RevRegClass::RegVEC    ).Setrs2Class(RevRegClass::RegVEC).SetFormat(RVVTypeOpv).SetOpcode(0b1010111),
+  RevVecInstDefaults().SetMnemonic("vmseq.vx %vd, %vs2, %rs1, %vm"  ).SetFunct3(OPV::IVX).SetFunct6(0b011000).SetImplFunc(&vmseqvx).SetrdClass(RevRegClass::RegVEC).Setrs1Class(RevRegClass::RegGPR    ).Setrs2Class(RevRegClass::RegVEC).SetFormat(RVVTypeOpv).SetOpcode(0b1010111),
+  RevVecInstDefaults().SetMnemonic("vmseq.vi %vd, %vs2, %zimm5, %vm").SetFunct3(OPV::IVI).SetFunct6(0b011000).SetImplFunc(&vmseqvi).SetrdClass(RevRegClass::RegVEC).Setrs1Class(RevRegClass::RegUNKNOWN).Setrs2Class(RevRegClass::RegVEC).SetFormat(RVVTypeOpv).SetOpcode(0b1010111),
 
+  RevVecInstDefaults().SetMnemonic("vmsne.vv %vd, %vs2, %vs1, %vm"  ).SetFunct3(OPV::IVV).SetFunct6(0b011001).SetImplFunc(&vmsnevv).SetrdClass(RevRegClass::RegVEC).Setrs1Class(RevRegClass::RegVEC    ).Setrs2Class(RevRegClass::RegVEC).SetFormat(RVVTypeOpv).SetOpcode(0b1010111),
+  RevVecInstDefaults().SetMnemonic("vmsne.vx %vd, %vs2, %rs1, %vm"  ).SetFunct3(OPV::IVX).SetFunct6(0b011001).SetImplFunc(&vmsnevx).SetrdClass(RevRegClass::RegVEC).Setrs1Class(RevRegClass::RegGPR    ).Setrs2Class(RevRegClass::RegVEC).SetFormat(RVVTypeOpv).SetOpcode(0b1010111),
+  RevVecInstDefaults().SetMnemonic("vmsne.vi %vd, %vs2, %zimm5, %vm").SetFunct3(OPV::IVI).SetFunct6(0b011001).SetImplFunc(&vmsnevi).SetrdClass(RevRegClass::RegVEC).Setrs1Class(RevRegClass::RegUNKNOWN).Setrs2Class(RevRegClass::RegVEC).SetFormat(RVVTypeOpv).SetOpcode(0b1010111),
+
+  RevVecInstDefaults().SetMnemonic("vmsle.vv %vd, %vs2, %vs1, %vm"  ).SetFunct3(OPV::IVV).SetFunct6(0b011101).SetImplFunc(&vmslevv).SetrdClass(RevRegClass::RegVEC).Setrs1Class(RevRegClass::RegVEC    ).Setrs2Class(RevRegClass::RegVEC).SetFormat(RVVTypeOpv).SetOpcode(0b1010111),
+  RevVecInstDefaults().SetMnemonic("vmsle.vx %vd, %vs2, %rs1, %vm"  ).SetFunct3(OPV::IVX).SetFunct6(0b011101).SetImplFunc(&vmslevx).SetrdClass(RevRegClass::RegVEC).Setrs1Class(RevRegClass::RegGPR    ).Setrs2Class(RevRegClass::RegVEC).SetFormat(RVVTypeOpv).SetOpcode(0b1010111),
+  RevVecInstDefaults().SetMnemonic("vmsle.vi %vd, %vs2, %zimm5, %vm").SetFunct3(OPV::IVI).SetFunct6(0b011101).SetImplFunc(&vmslevi).SetrdClass(RevRegClass::RegVEC).Setrs1Class(RevRegClass::RegUNKNOWN).Setrs2Class(RevRegClass::RegVEC).SetFormat(RVVTypeOpv).SetOpcode(0b1010111),
+ 
   // Vector Mask Inst  OPMVV: Funct3=0x2
   RevVecInstDefaults().SetMnemonic("vmor.mm %vd, %vs2, %vs1"       ).SetFunct3(OPV::MVV).SetFunct6(0b011010).SetImplFunc(&vmormm ).SetrdClass(RevRegClass::RegVEC).Setrs1Class(RevRegClass::RegVEC    ).Setrs2Class(RevRegClass::RegVEC).SetFormat(RVVTypeOpv).SetOpcode(0b1010111),
   //funct6=010000 V VWXUNARY0 {VS1,op} {0b00000,vmv.x.s} {0b10000,vcpop} {0b10001,vfirst}
