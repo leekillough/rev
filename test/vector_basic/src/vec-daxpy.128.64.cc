@@ -24,7 +24,7 @@
 // Input/Reference Data
 
 typedef double data_t;
-#include "dataset1.h"
+#include "vec-daxpy.h"
 
 // void
 // vec_daxpy(size_t n, const double a, const double *x, const double *y, double* z)

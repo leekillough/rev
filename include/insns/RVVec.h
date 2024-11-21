@@ -333,10 +333,19 @@ public:
   /// Vector Multiply-Acc
   static bool vfmacc_oper( const RevFeature* F, RevRegFile* R, RevVRegFile* V, RevMem* M, const RevVecInst& Inst ) {
     reg_vtype_t vt = V->GetVCSR( RevCSR::vtype );
-    if( vt.f.vsew != vsew::e64 ) {
-      V->output()->fatal(CALL_INFO, -1, "Only supporting 64-bit element for vector floating point operations\n");
+    if( vt.f.vsew == vsew::e64 ) {
+      vfmacc_oper_exec<double>(F, R, V, M, Inst);
+    } else if (vt.f.vsew == vsew::e32) {
+      vfmacc_oper_exec<float>(F, R, V, M, Inst);
+    } else {
+      V->output()->fatal(CALL_INFO, -1, "Only supporting e64 or e32 for vector floating point operations\n");
       return false;
     }
+    return true;
+  }
+
+  template<typename FTYPE>
+  static bool vfmacc_oper_exec( const RevFeature* F, RevRegFile* R, RevVRegFile* V, RevMem* M, const RevVecInst& Inst ) {
     uint64_t vd   = Inst.vd;
     uint64_t vs1  = Inst.vs1;
     uint64_t vs2  = Inst.vs2;
@@ -344,11 +353,11 @@ public:
     // vfmacc.vf vd, rs1, vs2, vm # vd[i] = +(f[rs1] * vs2[i]) + vd[i]
     for( unsigned vecElem = 0; vecElem < V->GetVCSR( RevCSR::vl ); vecElem++ ) {
       unsigned el  = vecElem % V->ElemsPerReg();
-      double s1 = R->GetFP<double>(Inst.rs1);
-      double s2 = V->GetElem<double>(vs2, el);
-      double dst = V->GetElem<double>(vd, el);
-      double res = s1 * s2 + dst;
-      V->SetElem<double>(vd, el, res);
+      FTYPE s1 = R->GetFP<FTYPE>(Inst.rs1);
+      FTYPE s2 = V->GetElem<FTYPE>(vs2, el);
+      FTYPE dst = V->GetElem<FTYPE>(vd, el);
+      FTYPE res = s1 * s2 + dst;
+      V->SetElem<FTYPE>(vd, el, res);
       if( ( ( el + 1 ) % V->ElemsPerReg() ) == 0 ) {
         vd++;
         vs1++;
