@@ -319,7 +319,7 @@ void ZEN::sendMsgZop(OutgoingMessage* msg, bool is_msg, uint16_t zop_msg_id)
   zop->setAppID(aid);
   auto mbox_id = ( ctrl_word >> ZENEQC_SHIFT_DESTMBOX ) & ZENEQC_MASK_DESTMBOX;
   zop->setMboxID(mbox_id);
-  zop->setID(msg->msg_id);
+  //zop->setID(msg->msg_id); // redundant
 
   if ( is_msg ){
     // going to dest zone/precinct
@@ -330,8 +330,8 @@ void ZEN::sendMsgZop(OutgoingMessage* msg, bool is_msg, uint16_t zop_msg_id)
     // Need to divide the 11 bit dest logical PE to a 9 bit hart and 2 bit "zcid"
     // zopnet.cc should ensure all packets of this type are delivered to the zqm
     // so we can use this bit of hackery - provided we can reassemble properly
-    zop->setDestHart( (dest_logic_pe & 0x1FF) );
-    zop->setDestZCID( ((dest_logic_pe >> 9) & 0x3) );
+    zop->setDestHart( dest_logic_pe );
+    zop->setDestZCID( zopCompID::Z_ZQM );
     zop->setDestPCID(dest_zone);
     zop->setDestPrec(dest_prec);
   } else {

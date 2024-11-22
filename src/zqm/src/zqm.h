@@ -4,22 +4,10 @@
 
 /** STATUS **/
 /**
- * 
- * 5-sept-2024: updated rev - definitely need more info on the spawn process and how everything fits together
- * as I'm sure there are bugs.  Next up - handling msg_ids across zopnet both send and ack'ing
- * 
- * 3-sept-2024: Most of the basic thread spawn/mig support is in here, haven't touched rev yet (that's tomorrow);
- * will need to get rid of the fatal error that exists in the top level zop handler
- * 
- * 30-aug-2024: need to add support for incoming spawned threads (well, migrating too); however,
- * this is going to require a mechanism for the Rev cores to track the number of harts available and
- * inform the zen/zqm about it..or some other hackery to allow it....
- * 
- * 28-aug-2024: Much like the ZEN at this time, this needs the actual ring interface to finish
- * up (and add the ring response code); currently this will only handle receiving messages and send
- * acks.  We don't actually send any memory zops for handling messages - everything is handled by 
- * structures here in the ZQM.  No support for migrations or spawns as of yet.  Will need to update
- * the test programs.
+ * 20-nov-2024: some support for spawns and the run queue (have been prioritizing messaging), but mostly
+ * commented out.  currently this will only handle receiving messages and send
+ * acks.  We don't actually send any memory zops for handling messages - everything is handled by
+ * structures here in the ZQM (moving these messages to memory is next on the hit list)
  */
 
 #ifndef _ZQM_H_
@@ -186,10 +174,11 @@ namespace SST::Forza{
 
 enum class msgBuffState : uint8_t {
     IDLE,
-    FILLING, // unused for now
+    FILLING,
     READY
 };
 
+// TODO: Delete class once msgs go to memory
 class ZqmMsgBuffer {
 public:
     void setMsg( std::vector<uint64_t> P ){
@@ -201,6 +190,16 @@ public:
     std::vector<uint64_t> msg;
     uint8_t msg_cur_word{1};
     msgBuffState buff_state{msgBuffState::IDLE};
+    uint64_t mem_addr;
+};
+
+// There will be one of these per mbox within a per-hart register
+class ZqmMboxBuffer {
+    public:
+    uint8_t num_entries;
+    uint8_t cur_wr_entry;
+    uint8_t cur_rd_entry;
+    std::vector<msgBuffState> buff_state{msgBuffState::IDLE};
 };
 
 class ZqmPerHartRegs {
@@ -215,34 +214,39 @@ public:
   uint64_t status{0};
   uint16_t logical_pe{UINT16_MAX};
   uint8_t aid{UINT8_MAX};
+  uint64_t mem_base_addr{UINT64_MAX};
+
   std::bitset<NUM_MBOXES> active_mboxes;
-  std::array<ZqmMsgBuffer, NUM_MBOXES> mbox_buffs;
-  //std::queue<SST::Forza::zopEvent*> incoming_zop_q;
+  std::array<ZqmMsgBuffer, NUM_MBOXES> mbox_buffs; // TODO: delete once msgs are in memory
+  std::array<ZqmMboxBuffer, NUM_MBOXES> mbox_buff_state;
 };
 
-class ZQM : public SST::Component{
+class ZQM : public SST::Component {
 public:
     // register the component
     SST_ELI_REGISTER_COMPONENT(
     ZQM,                                    // component class
     "forzazqm",                             // component libary
     "ZQM",                                  // component name
-    SST_ELI_ELEMENT_VERSION(0,0,1),         // Version of the component
+    SST_ELI_ELEMENT_VERSION(0,0,2), // Version of the component
     "ZQM: Forza ZQM component",             // description
     COMPONENT_CATEGORY_PROCESSOR            // category
     )
 
     // describe the parameters
     SST_ELI_DOCUMENT_PARAMS(
-    { "verbose",    "Sets the output verbsoity", 0 },
+    { "verbose",    "Sets the output verbsoity", "7" },
     { "clockFreq",  "ZQM core clock frequency", "1GHz" },
-    { "clockTicks", "Ticks to exec (TESTING)", "100" },
-    { "numCores",        "Number of RISC-V cores (ZAPs)",                 "1" },
-    { "numHarts",        "Number of harts (per core/ZAP) to instantiate", "1" },
-    { "precinctId",      "[FORZA] The precinct ID of the local device",   "0" },
-    { "zoneId",          "[FORZA] The zone ID of the local device",       "0" },
-    { "processPerCycle", "[FORZA] Messages to process per cycle",         "10" },
-    { "msgQueueDepth",   "[FORZA] Depth of the incoming message queue",   "8192"},
+    { "numCores",         "Number of RISC-V cores (ZAPs)",                    "1" },
+    { "numHarts",         "Number of harts (per core/ZAP) to instantiate",    "1" },
+    { "precinctId",       "[FORZA] The precinct ID of the local device",      "0" },
+    { "zoneId",           "[FORZA] The zone ID of the local device",          "0" },
+    { "processPerCycle",  "[FORZA] Messages to process per cycle",            "10" },
+    { "msgQueueDepth",    "[FORZA] Depth of the incoming message queue",      "512" },
+    { "memStartAddr",     "[FORZA] Start address for message buffers",        "0" },
+    { "msgsPerMbox",      "[FORZA] Number of messages per mailbox per Hart",  "2" },
+    { "cyclesPerRecycle", "[FORZA] Cycles before recycling incoming msg",     "100"}, // TODO: check w/RTL folks
+    { "recyclesToNack",   "[FORZA] Recycles before NACKing incoming msg",     "16"} // TODO: check w/RTL folks
     )
 
     // describe the ports
@@ -298,7 +302,12 @@ private:
     uint16_t numHarts;
     unsigned PrecinctId;
     unsigned ZoneId;
-    unsigned process_per_cycle;
+    unsigned processPerCycle;
+    uint32_t msgQueueDepth;
+    uint64_t memStartAddr;
+    uint32_t msgsPerMbox;
+    uint32_t cyclesPerRecycle;
+    uint32_t recyclesToNack;
 
     std::string my_name;
     SST::Forza::zopAPI* zone_nic{};      ///< ZQM: zone zop NoC
@@ -316,14 +325,11 @@ private:
     // std::vector<SST::Forza::zopEvent*> rza_responses;
     // std::map<uint8_t, std::pair<uint64_t, uint64_t> > outstanding_rza_reqs; // TODO: WTH is the pair?
 
-    // [numCores][numHarts]
-    std::vector<std::vector<bool>> zap_hart_status; //TODO: Put this into the PerHartCSRs
-
     // Internal structures - ring architecture
     // key pair<aid, logical PE>, value pair<zap, phys_hart>
     std::map<std::pair<uint8_t, uint16_t>, std::pair<uint8_t, uint16_t>> LogicalToPhysicalMap;
     std::vector<std::vector<ZqmPerHartRegs>> PerHartCSRs;
-    std::queue<SST::Forza::zopEvent*> IncomingMsgQueue;
+    std::vector< std::queue< std::pair<zopEvent*, uint16_t> > > IncomingMsgQueue; // .second=retry cntr
     //std::vector<std::queue<SST::Forza::zopEvent*> > MailboxQueues; // TODO: Add an AID dimension - can hold all of our messages here to start with
 
     std::queue<uint8_t> AwaitingThreadsQueue; // ZAPs waiting for threads
@@ -335,6 +341,9 @@ private:
     //std::queue<SST::Forza::zopEvent*> to_rza_q;
     //std::map<uint16_t, MemReturnEntry*> rza_ret_wait_map;
 
+    // Internal state
+    uint8_t cur_incoming_msg_queue{}; // Incoming msg queue to process next
+
     /// ZQM: clock handler
     bool clock(SST::Cycle_t cycle);
 
@@ -344,6 +353,15 @@ private:
 
     void processRzaMsgs();  // invoked by clock handler
     //void processRzaThreadDataReturn(SST::Forza::zopEvent *ev);
+
+    void convertLogicPEToPhysPE( zopEvent* msg );
+
+    void updateCurIncomingMsgQueue() {
+        if ( (cur_incoming_msg_queue + 1) == NUM_MBOXES)
+            cur_incoming_msg_queue = 0;
+        else
+            cur_incoming_msg_queue++;
+    }
     
     // tdysart, 27-june-2024 removing thread management for now
 #if 0
