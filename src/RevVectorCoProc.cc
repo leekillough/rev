@@ -269,6 +269,8 @@ RevVecInst::RevVecInst( uint32_t inst ) : Inst( inst ) {
     uint64_t funct6 = ( Inst >> 26 ) & 0b111111;
     Enc |= ( funct6 << 18 );
   }
+  // vector mask bit
+  vm = (Inst>>25) & 1;
 }
 
 void RevVecInst::DecodeBase() {

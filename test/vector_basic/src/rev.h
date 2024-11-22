@@ -151,6 +151,12 @@ union reg_vl_t {
 // #define csr_vl      0xc20
 // #define csr_vlenb   0xc22
 
+// Vector Move Immediate
+#define VMV_V_I( VD, IMM5 )                                 \
+  do {                                                      \
+    asm volatile( " vmv.v.i " str( VD ) ", " str( IMM5 ) ); \
+  } while( 0 )
+
 // Vector Load/Store (VLE16.v/VSE16.v ...)
 #define VL( VTYPE, VD, RS1 )                                                  \
   do {                                                                        \

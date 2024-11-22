@@ -36,9 +36,11 @@ union reg_vtype_t {
   // };
 };
 
-enum vsew { e8 = 0, e16 = 1, e32 = 2, e64 = 3 };
+// SEW
+enum sew_t { e8 = 0, e16 = 1, e32 = 2, e64 = 3 };
 
-enum vlmul { m1 = 0, m2 = 1, m4 = 2, m8 = 3, mf8 = 5, mf4 = 6, mf2 = 7 };
+// VLMUL
+enum lmul_t { m1 = 0, m2 = 1, m4 = 2, m8 = 3, mf8 = 5, mf4 = 6, mf2 = 7 };
 
 /// RISC-V Vector Register Mnemonics
 // clang-format off
@@ -89,9 +91,10 @@ public:
     assert( ( e * bytes ) <= GetVCSR( vlenb ) );
     if( !vm ) {
       assert( e <= 64 );
-      //TODO a pure byte array wrapped with some access functions might be simpler
+      assert( vd > 0 );  // v0 is always the mask register
+      //TODO a pure byte array wrapped with some access functions might make this easier
       // Just take the base address and the element number.
-      // but this works for now...
+      // While inefficient, this works for now
       uint64_t* pmask = (uint64_t*) ( &( vreg[0][0] ) );
       unsigned  shift = ( ( vd - base ) * elemsPerReg_ ) + e;
       if( ( ( *pmask ) >> shift & 1 ) == 0 ) {
@@ -112,6 +115,30 @@ public:
     memcpy( &res, &( vreg[vs][e * bytes] ), bytes );
     return res;
   };
+
+  // Vector loads and stores have an EEW encoded directly in the instruction. The corresponding EMUL is
+  // calculated as EMUL = (EEW/SEW)*LMUL. If the EMUL would be out of range (EMUL>8 or EMUL<1/8),
+  // the instruction encoding is reserved. The vector register groups must have legal register specifiers for the
+  // selected EMUL, otherwise the instruction encoding is reserved.
+  template<typename EEW, typename SEW>
+  std::pair<unsigned, bool> emul() {
+    reg_vtype_t vt      = vcsrmap[vtype];
+    size_t      eew     = sizeof( EEW ) << 3;
+    size_t      sew     = sizeof( SEW ) << 3;
+
+    // m1=0, m2=1, m4=2, m8=3,  mf8=5, mf4=6, mf2=7
+    int      m          = vt.f.vlmul < 4 ? eew << vt.f.vlmul : eew >> ( 8 - vt.f.vlmul );
+    unsigned em         = m / sew;  // hopefully compiler makes this a shift
+    bool     fractional = false;
+    if( em == 0 ) {
+      assert( m > 0 );
+      em         = sew / m;  // TODO shift to replace divide?
+      fractional = true;
+      assert( em != 1 );
+    }
+    assert( em == 1 || em == 2 || em == 4 || em == 8 );
+    return std::make_pair( em, fractional );
+  }
 
   // Write entire mask register
   void SetMaskReg( uint64_t vd, uint64_t d );

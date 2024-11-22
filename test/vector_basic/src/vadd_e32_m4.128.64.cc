@@ -32,7 +32,6 @@ const unsigned   AVL        = 64;   // Application Vector Length (elements)
 unsigned counters_scalar[2] = { 0 };
 unsigned counters_vector[2] = { 0 };
 
-// LMUL=2 so 2 vector registers
 elem_t s0[AVL]              = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10,
                                 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f, 0x20,
                                 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x28, 0x29, 0x2a, 0x2b, 0x2c, 0x2d, 0x2e, 0x2f, 0x30,
@@ -47,7 +46,7 @@ void check_result( elem_t result[] ) {
   for( unsigned i = 0; i < AVL; i++ ) {
     elem_t expected = ( i + 1 ) + ( ( i + 1 ) << 8 );
 #if 0
-    printf("Checking i=%d 0x%x\n", i, expected);
+    printf( "Checking i=%d 0x%x\n", i, expected );
 #endif
     if( expected != result[i] ) {
       printf( "Error: 0x%x != 0x%x\n", expected, result[i] );
@@ -95,7 +94,7 @@ void vadd_array( elem_t a[], elem_t b[], elem_t c[] ) {
                 //            AVL,    SEW, LMUL, tail/mask agnostic
                 "vsetvli t0,  a0,     e32,     m4,  ta, ma  \n\t"
                 //
-                "vle32.v v0, (a1)     \n\t"  // Get first vector (v[0:3])
+                "vle32.v v0, (a1)     \n\t"  // Get first vector
                 "sub a0, a0, t0       \n\t"  // Decrement N
                 "slli t0, t0, 2       \n\t"  // Divide by number of bytes per element
                 "add a1, a1, t0       \n\t"  // Bump pointer to a
