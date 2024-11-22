@@ -56,10 +56,10 @@ inline constexpr uint64_t Z_SHIFT_MSGID      = 38;
 inline constexpr uint64_t Z_SHIFT_ADDR       = 0;
 
 // Src/Dest masks
-inline constexpr uint64_t Z_MASK_HARTID      = 0b11111111111;
+inline constexpr uint64_t Z_MASK_HARTID      = 0b11111111111;  //0x7ff
 inline constexpr uint64_t Z_MASK_ZCID        = 0b1111;
 inline constexpr uint64_t Z_MASK_PCID        = 0b1111;
-inline constexpr uint64_t Z_MASK_PRECINCT    = 0b1111111111111;
+inline constexpr uint64_t Z_MASK_PRECINCT    = 0b1111111111111;  //0x1fff
 // Rest of flit 0
 inline constexpr uint64_t Z_MASK_OPC         = 0b11111111;
 inline constexpr uint64_t Z_MASK_MBXID       = 0b111;
@@ -811,7 +811,8 @@ public:
 
   std::string getSrcString() {
     std::stringstream opc_ss;
-    opc_ss << "0x" << std::hex << RevCPU::safe_static_cast<uint8_t>( Opc );
+    // Note - casting Opc to a uint8_t makes the string output ugly on my mac (tdysart-22nov2024)
+    opc_ss << "0x" << std::hex << RevCPU::safe_static_cast<uint16_t>( Opc );
     std::string str = "Src[hart:zcid:pcid:type:opc]=[";
     str += std::to_string( SrcHart ) + ":";
     str += ZCIDToStr( SrcZCID ) + ":";
@@ -838,6 +839,7 @@ public:
     case zopCompID::Z_ZAP2: return "ZAP2";
     case zopCompID::Z_ZAP3: return "ZAP3";
     case zopCompID::Z_RZA: return "RZA";
+    case zopCompID::Z_RZA1: return "MSGRZA";
     case zopCompID::Z_ZEN: return "ZEN";
     case zopCompID::Z_ZQM: return "ZQM";
     case zopCompID::Z_PREC_ZIP: return "PREC_ZIP";

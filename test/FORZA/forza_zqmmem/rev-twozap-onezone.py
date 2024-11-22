@@ -167,6 +167,7 @@ memory.addParams({
 
 # --------------------------
 # SETUP THE MESSAGING RZA
+# TODO: MAKE THE PARAMS HERE MATCH AN HBM
 # --------------------------
 rzaMsg = sst.Component("rzaMsg", "revcpu.RevCPU")
 rzaMsg.addParams({

@@ -30,7 +30,7 @@ namespace SST::Forza {
 // Preprocessor defs
 // --------------------------------------------
 
-inline constexpr uint64_t NUM_MBOXES                 = 8;
+inline constexpr uint8_t  NUM_MBOXES                 = 8;
 inline constexpr uint64_t ACTOR_MSG_LENGTH           = 8;
 
 // CSR registers used by the ZEN
