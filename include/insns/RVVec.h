@@ -280,24 +280,24 @@ public:
   enum MaskOpMod { None, Not, NotVS1 };
 
   /// Vector Integer Operator Entry Template
-  template<template<class> class VOP, VecOpKind KIND, bool DST_IS_MASK = false, bool FORCE_VS2_ZERO = false>
+  template<template<class> class VOP, VecOpKind KIND, bool DST_IS_MASK = false, bool FORCE_VS2_ZERO = false, bool REVERSE = false>
   static bool vec_oper( const RevFeature* F, RevRegFile* R, RevVRegFile* V, RevMem* M, const RevVecInst& Inst ) {
     reg_vtype_t vt = V->GetVCSR( RevCSR::vtype );
     if( vt.f.vsew == vsew::e64 )
-      return vec_oper_exec<uint64_t, VOP, KIND, DST_IS_MASK, FORCE_VS2_ZERO>( F, R, V, M, Inst );
+      return vec_oper_exec<uint64_t, VOP, KIND, DST_IS_MASK, FORCE_VS2_ZERO, REVERSE>( F, R, V, M, Inst );
     else if( vt.f.vsew == vsew::e32 )
-      return vec_oper_exec<uint32_t, VOP, KIND, DST_IS_MASK, FORCE_VS2_ZERO>( F, R, V, M, Inst );
+      return vec_oper_exec<uint32_t, VOP, KIND, DST_IS_MASK, FORCE_VS2_ZERO, REVERSE>( F, R, V, M, Inst );
     else if( vt.f.vsew == vsew::e16 )
-      return vec_oper_exec<uint16_t, VOP, KIND, DST_IS_MASK, FORCE_VS2_ZERO>( F, R, V, M, Inst );
+      return vec_oper_exec<uint16_t, VOP, KIND, DST_IS_MASK, FORCE_VS2_ZERO, REVERSE>( F, R, V, M, Inst );
     else if( vt.f.vsew == vsew::e8 )
-      return vec_oper_exec<uint8_t, VOP, KIND, DST_IS_MASK, FORCE_VS2_ZERO>( F, R, V, M, Inst );
+      return vec_oper_exec<uint8_t, VOP, KIND, DST_IS_MASK, FORCE_VS2_ZERO,  REVERSE>( F, R, V, M, Inst );
     else {
       assert( false );
     }
     return false;
   }
 
-  template<typename SEWTYPE, template<class> class VOP, VecOpKind KIND, bool DST_IS_MASK, bool FORCE_VS2_ZERO>
+  template<typename SEWTYPE, template<class> class VOP, VecOpKind KIND, bool DST_IS_MASK, bool FORCE_VS2_ZERO, bool REVERSE>
   static bool vec_oper_exec( const RevFeature* F, RevRegFile* R, RevVRegFile* V, RevMem* M, const RevVecInst& Inst ) {
     uint64_t vd   = Inst.vd;
     uint64_t vs1  = Inst.vs1;
@@ -306,13 +306,15 @@ public:
     bool vm = ((Inst.Inst >> 25) & 1 == 1);
     for( unsigned vecElem = 0; vecElem < V->GetVCSR( RevCSR::vl ); vecElem++ ) {
       unsigned el  = vecElem % V->ElemsPerReg();
-      SEWTYPE  res = 0;
-      auto s2 = FORCE_VS2_ZERO ? 0 : V->GetElem<SEWTYPE>(vs2,el);
+      SEWTYPE res = 0;
+      SEWTYPE s2 = FORCE_VS2_ZERO ? 0 : V->GetElem<SEWTYPE>(vs2,el);
+      SEWTYPE s1;
       switch( KIND ) {
-      case VReg: res = VOP()( s2, V->GetElem<SEWTYPE>( vs1, el ) ); break;
-      case Imm: res = VOP()( s2, ( Inst.Inst >> 15 ) & 0x1f ); break;
-      case Reg: res = VOP()( s2, R->GetX<SEWTYPE>( Inst.rs1 ) ); break;
+      case VReg: s1 = V->GetElem<SEWTYPE>( vs1, el ); break;
+      case Imm:  s1 = (Inst.Inst >> 15) & 0x1f; break;
+      case Reg:  s1 = R->GetX<SEWTYPE>( Inst.rs1 ); break;
       }
+      res = REVERSE ? VOP()(s1,s2) : VOP()(s2, s1);
       if( DST_IS_MASK ) {
         assert( vecElem < 64 );  // TODO
         mask |= ( (res!=0) & 1 ) << vecElem;
@@ -429,7 +431,8 @@ public:
   static constexpr auto& vaddvi  = vec_oper<std::plus, VecOpKind::Imm>;
   static constexpr auto& vsubvv  = vec_oper<std::minus, VecOpKind::VReg>;
   static constexpr auto& vsubvx  = vec_oper<std::minus, VecOpKind::Reg>;
-  static constexpr auto& vsubvi  = vec_oper<std::minus, VecOpKind::Imm>;
+  static constexpr auto& vrsubvx = vec_oper<std::minus, VecOpKind::Reg, false, false, true>;
+  static constexpr auto& vrsubvi = vec_oper<std::minus, VecOpKind::Imm, false, false, true>;
 
   static constexpr auto& vmvvv   = vec_oper<std::plus, VecOpKind::VReg, false, true>;
   static constexpr auto& vmvvx   = vec_oper<std::plus, VecOpKind::Reg, false, true>;
@@ -445,21 +448,16 @@ public:
 
   // static constexpr auto& vmsltuvv = vec_oper<std::tbd, VecOpKind::VReg, true>;
   // static constexpr auto& vmsltuvx = vec_oper<std::tbd, VecOpKind::Reg, true>;
-
   // static constexpr auto& vmsltvv = vec_oper<std::tbd, VecOpKind::VReg, true>;
   // static constexpr auto& vmsltvx = vec_oper<std::tbd, VecOpKind::Reg, true>;
-
   // static constexpr auto& vmsleuvv = vec_oper<std::tbd, VecOpKind::VReg, true>;
   // static constexpr auto& vmsleuvx = vec_oper<std::tbd, VecOpKind::Reg, true>;
   // static constexpr auto& vmsleuvi = vec_oper<std::tbd, VecOpKind::Imm, true>;
-
   static constexpr auto& vmslevv = vec_oper<std::less_equal, VecOpKind::VReg, true>;
   static constexpr auto& vmslevx = vec_oper<std::less_equal, VecOpKind::Reg, true>;
   static constexpr auto& vmslevi = vec_oper<std::less_equal, VecOpKind::Imm, true>;
-
   // static constexpr auto& vmsgtuvx = vec_oper<std::tbd, VecOpKind::Reg, true>;
   // static constexpr auto& vmsgtuvi = vec_oper<std::tbd, VecOpKind::Imm, true>;
-
   // static constexpr auto& vmsgtvx = vec_oper<std::tbd, VecOpKind::Reg, true>;
   // static constexpr auto& vmsgtvi = vec_oper<std::tbd, VecOpKind::Imm, true>;
 
@@ -568,13 +566,15 @@ public:
   std::vector<RevVecInstEntry> RVVTable = {
 
   // Vector Arithmetic OPVIVV, OPVIVI, OPVIVX
+  // Vector Single-Width Integer Add and Subtract
   RevVecInstDefaults().SetMnemonic("vadd.vv %vd, %vs2, %vs1, %vm"  ).SetFunct3(OPV::IVV).SetFunct6(0b000000).SetImplFunc(&vaddvv).SetrdClass(RevRegClass::RegVEC ).Setrs1Class(RevRegClass::RegVEC    ).Setrs2Class(RevRegClass::RegVEC).SetFormat(RVVTypeOpv).SetOpcode(0b1010111),
   RevVecInstDefaults().SetMnemonic("vadd.vx %vd, %vs2, %rs1, %vm"  ).SetFunct3(OPV::IVX).SetFunct6(0b000000).SetImplFunc(&vaddvx).SetrdClass(RevRegClass::RegVEC ).Setrs1Class(RevRegClass::RegGPR    ).Setrs2Class(RevRegClass::RegVEC).SetFormat(RVVTypeOpv).SetOpcode(0b1010111),
   RevVecInstDefaults().SetMnemonic("vadd.vi %vd, %vs2, %zimm5, %vm").SetFunct3(OPV::IVI).SetFunct6(0b000000).SetImplFunc(&vaddvi).SetrdClass(RevRegClass::RegVEC ).Setrs1Class(RevRegClass::RegUNKNOWN).Setrs2Class(RevRegClass::RegVEC).SetFormat(RVVTypeOpv).SetOpcode(0b1010111),
-
   RevVecInstDefaults().SetMnemonic("vsub.vv %vd, %vs2, %vs1, %vm"  ).SetFunct3(OPV::IVV).SetFunct6(0b000010).SetImplFunc(&vsubvv).SetrdClass(RevRegClass::RegVEC ).Setrs1Class(RevRegClass::RegVEC    ).Setrs2Class(RevRegClass::RegVEC).SetFormat(RVVTypeOpv).SetOpcode(0b1010111),
   RevVecInstDefaults().SetMnemonic("vsub.vx %vd, %vs2, %rs1, %vm"  ).SetFunct3(OPV::IVX).SetFunct6(0b000010).SetImplFunc(&vsubvx).SetrdClass(RevRegClass::RegVEC ).Setrs1Class(RevRegClass::RegGPR    ).Setrs2Class(RevRegClass::RegVEC).SetFormat(RVVTypeOpv).SetOpcode(0b1010111),
-  RevVecInstDefaults().SetMnemonic("vsub.vi %vd, %vs2, %zimm5, %vm").SetFunct3(OPV::IVI).SetFunct6(0b000010).SetImplFunc(&vsubvi).SetrdClass(RevRegClass::RegVEC ).Setrs1Class(RevRegClass::RegUNKNOWN).Setrs2Class(RevRegClass::RegVEC).SetFormat(RVVTypeOpv).SetOpcode(0b1010111),
+  RevVecInstDefaults().SetMnemonic("vrsub.vx %vd, %vs2, %vs1, %vm" ).SetFunct3(OPV::IVV).SetFunct6(0b000011).SetImplFunc(&vrsubvx).SetrdClass(RevRegClass::RegVEC ).Setrs1Class(RevRegClass::RegVEC    ).Setrs2Class(RevRegClass::RegVEC).SetFormat(RVVTypeOpv).SetOpcode(0b1010111),
+  RevVecInstDefaults().SetMnemonic("vrsub.vi %vd, %vs2, %rs1, %vm" ).SetFunct3(OPV::IVX).SetFunct6(0b000011).SetImplFunc(&vrsubvi).SetrdClass(RevRegClass::RegVEC ).Setrs1Class(RevRegClass::RegGPR    ).Setrs2Class(RevRegClass::RegVEC).SetFormat(RVVTypeOpv).SetOpcode(0b1010111),
+
 
   // Vector Integer Move Instructions
   RevVecInstDefaults().SetMnemonic("vmv.v.v %vd, %vs1"             ).SetFunct3(OPV::IVV).SetFunct6(0b010111).SetImplFunc(&vmvvv ).SetrdClass(RevRegClass::RegVEC ).Setrs1Class(RevRegClass::RegVEC    ).Setrs2Class(RevRegClass::RegVEC).SetFormat(RVVTypeOpv).SetOpcode(0b1010111).SetPredicate( []( uint32_t Inst ){ return ((Inst >> 20) & 0x1f)  == 0; } ),
