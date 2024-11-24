@@ -280,7 +280,7 @@ public:
   enum VecOpKind { Imm, Reg, VReg };
 
   // Vector load/store flavors
-  enum VecMemOpKind { UnitStride, Strided, Indexed, FaultOnlyFirst, Segment, WholeRegister };
+  enum VecMemOpKind { UnitStride, UnitStrideMask, Strided, Indexed, FaultOnlyFirst, Segment, WholeRegister };
 
   // Mask op modifier
   enum MaskOpMod { None, Not, NotVS1 };
@@ -324,7 +324,7 @@ public:
         assert( vecElem < 64 );  // TODO
         mask |= ( (res!=0) & 1 ) << vecElem;
       } else {
-        V->SetElem<SEWTYPE>( Inst.vd, vd, el, res, Inst.vm );
+        V->SetElem<SEWTYPE>( Inst.vd, vd, vecElem, el, res, Inst.vm );
       }
       if( ( ( el + 1 ) % V->ElemsPerReg() ) == 0 ) {
         vd++;
@@ -366,7 +366,7 @@ public:
       FTYPE s2 = V->GetElem<FTYPE>(vs2, el);
       FTYPE dst = V->GetElem<FTYPE>(vd, el);
       FTYPE res = s1 * s2 + dst;
-      V->SetElem<FTYPE>(Inst.vd, vd, el, res, Inst.vm);
+      V->SetElem<FTYPE>(Inst.vd, vd, vecElem, el, res, Inst.vm);
       if( ( ( el + 1 ) % V->ElemsPerReg() ) == 0 ) {
         vd++;
         vs1++;
@@ -408,7 +408,7 @@ public:
       if (MOD==NotVS1) s1 = ~s1;
       SEWTYPE  res = VOP()( V->GetElem<SEWTYPE>( vs2, el ), s1 );
       if (MOD==Not) res = ~res;
-      V->SetElem<SEWTYPE>( Inst.vd, vd, el, res, Inst.vm );
+      V->SetElem<SEWTYPE>( Inst.vd, vd, vecElem, el, res, Inst.vm );
       if( ( ( el + 1 ) % V->ElemsPerReg() ) == 0 ) {
         vd++;
         vs1++;
@@ -507,21 +507,29 @@ public:
 
 
   // container for parameters common to vector loads and stores
-  template<typename EEW, typename SEW> 
+  template<typename EEW, typename SEW, VecMemOpKind KIND> 
   struct memopParams_t {
     uint64_t addr;
     uint64_t vd;
     uint64_t vs3; // stores only
     uint64_t evl;
     unsigned elemsPerReg;
+    bool evm;
     memopParams_t<EEW, SEW>(RevRegFile* R, RevVRegFile* V, const RevVecInst& Inst) {
       addr = R->GetX<uint64_t>( Inst.rs1 );
       vd   = Inst.vd;
       vs3  = Inst.vs3;
-      evl = V->GetVCSR( RevCSR::vl ) * sizeof(SEW) / sizeof(EEW);
-      elemsPerReg = V->ElemsPerReg() * sizeof(SEW) / sizeof(EEW);
-      // We need to check if emul is valid but unsure if we need to use it
-      V->emul<EEW,SEW>();
+      evm = Inst.vm;
+      unsigned vl = V->GetVCSR( RevCSR::vl );
+      if (KIND==UnitStrideMask) {
+        evl = vl>0 ? ((vl-1)>>3) + 1 : 0;   // ceil(vl/8)
+        elemsPerReg = evl;
+      } else {
+        evl = vl * sizeof(SEW) / sizeof(EEW); // todo ceiling
+        elemsPerReg = V->ElemsPerReg() * sizeof(SEW) / sizeof(EEW);
+        // We need to check if emul is valid but unsure if we need to use it
+        V->emul<EEW,SEW>();
+      }
     }
   };
 
@@ -546,7 +554,7 @@ public:
   template<typename EEW, typename SEW, VecMemOpKind KIND>
   static bool vload_exec( const RevFeature* F, RevRegFile* R, RevVRegFile* V, RevMem* M, const RevVecInst& Inst ) {
 
-    memopParams_t params = memopParams_t<EEW, SEW>(R, V, Inst);
+    memopParams_t params = memopParams_t<EEW, SEW, KIND>(R, V, Inst);
 
     if (KIND==FaultOnlyFirst) {
       //TODO
@@ -563,7 +571,7 @@ public:
       // Writing to vector registers uses the SEW 
       std::stringstream s;
       s << "0x" << std::hex << (uint64_t) d << " <- M[0x" << params.addr << "]" << std::endl;
-      V->SetElem<EEW>( Inst.vd, params.vd, el, d, Inst.vm );
+      V->SetElem<EEW>( Inst.vd, params.vd, vecElem, el, d, params.evm );
       params.addr += sizeof( EEW );
       if( ( ( el + 1 ) % params.elemsPerReg ) == 0 )
         params.vd++;
@@ -605,7 +613,7 @@ public:
   // Vector Store Template
   template<typename EEW, typename SEW, VecMemOpKind KIND>
   static bool vstore_exec( const RevFeature* F, RevRegFile* R, RevVRegFile* V, RevMem* M, const RevVecInst& Inst ) {
-    memopParams_t params = memopParams_t<EEW, SEW>(R, V, Inst);
+    memopParams_t params = memopParams_t<EEW, SEW, KIND>(R, V, Inst);
     for( unsigned vecElem = 0; vecElem < params.evl; vecElem++ ) {
       unsigned el = vecElem % params.elemsPerReg;
       EEW  d  = V->GetElem<EEW>( params.vs3, el );
@@ -649,14 +657,18 @@ public:
 
   /* Vector Loads and Stores*/
   // Vector Unit-Stride Instructions
-  RevVecInstDefaults().SetMnemonic("vle64.v %vd, (%rs1), %vm"      ).SetFunct3(MSZ::u64).SetImplFunc(&vload<uint64_t,  UnitStride>).SetrdClass(RevRegClass::RegVEC    ).Setrs1Class(RevRegClass::RegGPR    ).Setrs2Class(RevRegClass::RegUNKNOWN)                                     .SetFormat(RVVTypeLd).SetOpcode(0b0000111).SetMop(0b00).SetUmop(0b00000),
-  RevVecInstDefaults().SetMnemonic("vle32.v %vd, (%rs1), %vm"      ).SetFunct3(MSZ::u32).SetImplFunc(&vload<uint32_t,  UnitStride>).SetrdClass(RevRegClass::RegVEC    ).Setrs1Class(RevRegClass::RegGPR    ).Setrs2Class(RevRegClass::RegUNKNOWN)                                     .SetFormat(RVVTypeLd).SetOpcode(0b0000111).SetMop(0b00).SetUmop(0b00000),
-  RevVecInstDefaults().SetMnemonic("vle16.v %vd, (%rs1), %vm"      ).SetFunct3(MSZ::u16).SetImplFunc(&vload<uint16_t,  UnitStride>).SetrdClass(RevRegClass::RegVEC    ).Setrs1Class(RevRegClass::RegGPR    ).Setrs2Class(RevRegClass::RegUNKNOWN)                                     .SetFormat(RVVTypeLd).SetOpcode(0b0000111).SetMop(0b00).SetUmop(0b00000),
-  RevVecInstDefaults().SetMnemonic("vle8.v %vd, (%rs1), %vm"       ).SetFunct3(MSZ::u8 ).SetImplFunc(&vload<uint8_t,   UnitStride>).SetrdClass(RevRegClass::RegVEC    ).Setrs1Class(RevRegClass::RegGPR    ).Setrs2Class(RevRegClass::RegUNKNOWN)                                     .SetFormat(RVVTypeLd).SetOpcode(0b0000111).SetMop(0b00).SetUmop(0b00000),
-  RevVecInstDefaults().SetMnemonic("vse64.v %vs3, (%rs1), %vm"     ).SetFunct3(MSZ::u64).SetImplFunc(&vstore<uint64_t, UnitStride>).SetrdClass(RevRegClass::RegUNKNOWN).Setrs1Class(RevRegClass::RegGPR    ).Setrs2Class(RevRegClass::RegUNKNOWN)  .Setrs3Class(RevRegClass::RegVEC)  .SetFormat(RVVTypeSt).SetOpcode(0b0100111).SetMop(0b00).SetUmop(0b00000),
-  RevVecInstDefaults().SetMnemonic("vse32.v %vs3, (%rs1), %vm"     ).SetFunct3(MSZ::u32).SetImplFunc(&vstore<uint32_t, UnitStride>).SetrdClass(RevRegClass::RegUNKNOWN).Setrs1Class(RevRegClass::RegGPR    ).Setrs2Class(RevRegClass::RegUNKNOWN)  .Setrs3Class(RevRegClass::RegVEC)  .SetFormat(RVVTypeSt).SetOpcode(0b0100111).SetMop(0b00).SetUmop(0b00000),
-  RevVecInstDefaults().SetMnemonic("vse16.v %vs3, (%rs1), %vm"     ).SetFunct3(MSZ::u16).SetImplFunc(&vstore<uint16_t, UnitStride>).SetrdClass(RevRegClass::RegUNKNOWN).Setrs1Class(RevRegClass::RegGPR    ).Setrs2Class(RevRegClass::RegUNKNOWN)  .Setrs3Class(RevRegClass::RegVEC)  .SetFormat(RVVTypeSt).SetOpcode(0b0100111).SetMop(0b00).SetUmop(0b00000),
-  RevVecInstDefaults().SetMnemonic("vse8.v %vs3, (%rs1), %vm "     ).SetFunct3(MSZ::u8 ).SetImplFunc(&vstore<uint8_t,  UnitStride>) .SetrdClass(RevRegClass::RegUNKNOWN).Setrs1Class(RevRegClass::RegGPR    ).Setrs2Class(RevRegClass::RegUNKNOWN)  .Setrs3Class(RevRegClass::RegVEC)  .SetFormat(RVVTypeSt).SetOpcode(0b0100111).SetMop(0b00).SetUmop(0b00000),
+  RevVecInstDefaults().SetMnemonic("vle64.v %vd, (%rs1), %vm"      ).SetFunct3(MSZ::u64).SetImplFunc(&vload<uint64_t,  UnitStride>    ).SetrdClass(RevRegClass::RegVEC    ).Setrs1Class(RevRegClass::RegGPR    ).Setrs2Class(RevRegClass::RegUNKNOWN)                                     .SetFormat(RVVTypeLd).SetOpcode(0b0000111).SetMop(0b00).SetUmop(0b00000),
+  RevVecInstDefaults().SetMnemonic("vle32.v %vd, (%rs1), %vm"      ).SetFunct3(MSZ::u32).SetImplFunc(&vload<uint32_t,  UnitStride>    ).SetrdClass(RevRegClass::RegVEC    ).Setrs1Class(RevRegClass::RegGPR    ).Setrs2Class(RevRegClass::RegUNKNOWN)                                     .SetFormat(RVVTypeLd).SetOpcode(0b0000111).SetMop(0b00).SetUmop(0b00000),
+  RevVecInstDefaults().SetMnemonic("vle16.v %vd, (%rs1), %vm"      ).SetFunct3(MSZ::u16).SetImplFunc(&vload<uint16_t,  UnitStride>    ).SetrdClass(RevRegClass::RegVEC    ).Setrs1Class(RevRegClass::RegGPR    ).Setrs2Class(RevRegClass::RegUNKNOWN)                                     .SetFormat(RVVTypeLd).SetOpcode(0b0000111).SetMop(0b00).SetUmop(0b00000),
+  RevVecInstDefaults().SetMnemonic("vle8.v %vd, (%rs1), %vm"       ).SetFunct3(MSZ::u8 ).SetImplFunc(&vload<uint8_t,   UnitStride>    ).SetrdClass(RevRegClass::RegVEC    ).Setrs1Class(RevRegClass::RegGPR    ).Setrs2Class(RevRegClass::RegUNKNOWN)                                     .SetFormat(RVVTypeLd).SetOpcode(0b0000111).SetMop(0b00).SetUmop(0b00000),
+  RevVecInstDefaults().SetMnemonic("vse64.v %vs3, (%rs1), %vm"     ).SetFunct3(MSZ::u64).SetImplFunc(&vstore<uint64_t, UnitStride>    ).SetrdClass(RevRegClass::RegUNKNOWN).Setrs1Class(RevRegClass::RegGPR    ).Setrs2Class(RevRegClass::RegUNKNOWN)  .Setrs3Class(RevRegClass::RegVEC)  .SetFormat(RVVTypeSt).SetOpcode(0b0100111).SetMop(0b00).SetUmop(0b00000),
+  RevVecInstDefaults().SetMnemonic("vse32.v %vs3, (%rs1), %vm"     ).SetFunct3(MSZ::u32).SetImplFunc(&vstore<uint32_t, UnitStride>    ).SetrdClass(RevRegClass::RegUNKNOWN).Setrs1Class(RevRegClass::RegGPR    ).Setrs2Class(RevRegClass::RegUNKNOWN)  .Setrs3Class(RevRegClass::RegVEC)  .SetFormat(RVVTypeSt).SetOpcode(0b0100111).SetMop(0b00).SetUmop(0b00000),
+  RevVecInstDefaults().SetMnemonic("vse16.v %vs3, (%rs1), %vm"     ).SetFunct3(MSZ::u16).SetImplFunc(&vstore<uint16_t, UnitStride>    ).SetrdClass(RevRegClass::RegUNKNOWN).Setrs1Class(RevRegClass::RegGPR    ).Setrs2Class(RevRegClass::RegUNKNOWN)  .Setrs3Class(RevRegClass::RegVEC)  .SetFormat(RVVTypeSt).SetOpcode(0b0100111).SetMop(0b00).SetUmop(0b00000),
+  RevVecInstDefaults().SetMnemonic("vse8.v %vs3, (%rs1), %vm "     ).SetFunct3(MSZ::u8 ).SetImplFunc(&vstore<uint8_t,  UnitStride>    ).SetrdClass(RevRegClass::RegUNKNOWN).Setrs1Class(RevRegClass::RegGPR    ).Setrs2Class(RevRegClass::RegUNKNOWN)  .Setrs3Class(RevRegClass::RegVEC)  .SetFormat(RVVTypeSt).SetOpcode(0b0100111).SetMop(0b00).SetUmop(0b00000),
+  // Vector Unit-Stride Mask Load/Start
+  RevVecInstDefaults().SetMnemonic("vlm.v %vd, (%rs1)"             ).SetFunct3(MSZ::u8 ).SetImplFunc(&vload<uint8_t,   UnitStrideMask>).SetrdClass(RevRegClass::RegVEC    ).Setrs1Class(RevRegClass::RegGPR    ).Setrs2Class(RevRegClass::RegUNKNOWN)                                     .SetFormat(RVVTypeLd).SetOpcode(0b0000111).SetMop(0b00).SetUmop(0b01011),
+  RevVecInstDefaults().SetMnemonic("vsm.v %vs3, (%rs1) "           ).SetFunct3(MSZ::u8 ).SetImplFunc(&vstore<uint8_t,  UnitStrideMask>).SetrdClass(RevRegClass::RegUNKNOWN).Setrs1Class(RevRegClass::RegGPR    ).Setrs2Class(RevRegClass::RegUNKNOWN)  .Setrs3Class(RevRegClass::RegVEC)  .SetFormat(RVVTypeSt).SetOpcode(0b0100111).SetMop(0b00).SetUmop(0b01011),
+
   //TODO Vector Strided Instructions
   //TODO Vector Indexed Instructions
   // Unit Stride Load Fault-only first

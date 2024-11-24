@@ -1,5 +1,5 @@
 /*
- * vmem1.128.64.cc
+ * vmem1_e16_m8.128.64.cc
  *
  * Copyright (C) 2017-2024 Tactical Computing Laboratories, LLC
  * All Rights Reserved
@@ -30,14 +30,7 @@ const unsigned   AVL        = 128;  // Application Vector Length (elements)
 // counter 1 = instructions
 unsigned counters_vector[2] = { 0 };
 
-elem_t s0[AVL] = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10, 0x11, 0x12, 0x13,
-                   0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f, 0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26,
-                   0x27, 0x28, 0x29, 0x2a, 0x2b, 0x2c, 0x2d, 0x2e, 0x2f, 0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39,
-                   0x3a, 0x3b, 0x3c, 0x3d, 0x3e, 0x3f, 0x40, 0x41, 0x42, 0x43, 0x44, 0x45, 0x46, 0x47, 0x48, 0x49, 0x4a, 0x4b, 0x4c,
-                   0x4d, 0x4e, 0x4f, 0x50, 0x51, 0x52, 0x53, 0x54, 0x55, 0x56, 0x57, 0x58, 0x59, 0x5a, 0x5b, 0x5c, 0x5d, 0x5e, 0x5f,
-                   0x60, 0x61, 0x62, 0x63, 0x64, 0x65, 0x66, 0x67, 0x68, 0x69, 0x6a, 0x6b, 0x6c, 0x6d, 0x6e, 0x6f, 0x70, 0x71, 0x72,
-                   0x73, 0x74, 0x75, 0x76, 0x77, 0x78, 0x79, 0x7a, 0x7b, 0x7c, 0x7d, 0x7e, 0x7f, 0x80 };
-elem_t s1[AVL] = { 0x0100, 0x0200, 0x0300, 0x0400, 0x0500, 0x0600, 0x0700, 0x0800, 0x0900, 0x0a00, 0x0b00, 0x0c00, 0x0d00,
+elem_t s0[AVL] = { 0x0100, 0x0200, 0x0300, 0x0400, 0x0500, 0x0600, 0x0700, 0x0800, 0x0900, 0x0a00, 0x0b00, 0x0c00, 0x0d00,
                    0x0e00, 0x0f00, 0x1000, 0x1100, 0x1200, 0x1300, 0x1400, 0x1500, 0x1600, 0x1700, 0x1800, 0x1900, 0x1a00,
                    0x1b00, 0x1c00, 0x1d00, 0x1e00, 0x1f00, 0x2000, 0x2100, 0x2200, 0x2300, 0x2400, 0x2500, 0x2600, 0x2700,
                    0x2800, 0x2900, 0x2a00, 0x2b00, 0x2c00, 0x2d00, 0x2e00, 0x2f00, 0x3000, 0x3100, 0x3200, 0x3300, 0x3400,
@@ -86,7 +79,7 @@ int vle_sanity() {
   RDTIME( time0 );
   RDINSTRET( inst0 );
 
-  void* p = &( s1[0] );
+  void* p = &( s0[0] );
   set_v0_mask( 0xffffffffffffffffULL );
 
   // Vector loads and stores have an EEW encoded directly in the instruction. The corresponding EMUL is
@@ -313,17 +306,17 @@ int unit_stride_load16( uint64_t mask, elem_t a[], elem_t r[] ) {
 
 void report( int testnum, int rc ) {
   if( rc ) {
-    printf( "Error: vmem1.128.64 test %d rc=%d\n", testnum, rc );
+    printf( "Error: vmem1_e16_m8.128.64 test %d rc=%d\n", testnum, rc );
     assert( 0 );
   } else {
     printf( "test %d OK\n", testnum );
   }
 #ifndef USE_SPIKE
-  printf( "[vmem1.128.64 test%d rev cycles] %d\n", testnum, counters_vector[0] );
-  printf( "[vmem1.128.64 test%d rev instrs] %d\n", testnum, counters_vector[1] );
+  printf( "[vmem1_e16_m8.128.64 test%d rev cycles] %d\n", testnum, counters_vector[0] );
+  printf( "[vmem1_e16_m8.128.64 test%d rev instrs] %d\n", testnum, counters_vector[1] );
 #else
-  printf( "[vmem1.128.64 test%d spike cycles] %d\n", testnum, counters_vector[0] );
-  printf( "[vmem1.128.64 test%d spike instrs] %d\n", testnum, counters_vector[1] );
+  printf( "[vmem1_e16_m8.128.64 test%d spike cycles] %d\n", testnum, counters_vector[0] );
+  printf( "[vmem1_e16_m8.128.64 test%d spike instrs] %d\n", testnum, counters_vector[1] );
   if( counters_vector[0] > 0 ) {
     printf(
       "Warning: Cycles should be 0 indicating something has gone awry in Spike sim.  Likely a vector related memory exception\n"
@@ -336,19 +329,23 @@ int main( int argc, char** argv ) {
   int    rc       = -1;
   elem_t res[AVL] = { 0 };
 
-  printf( "test 1: vle sanity\n" );
+  printf( "test 0: vle sanity\n" );
   rc = vle_sanity();
-  report( 1, rc );
+  report( 0, rc );
 
   // VLMAX=64 ( v0 mask will only user lower 64-bits )
-  printf( "test 2: unit stride load using mask 0xffffffffffffffff\n" );
-  rc = unit_stride_load16( 0xffffffffffffffffULL, s1, res );
+  printf( "test 1: unit stride load using mask 0xffffffffffffffff\n" );
+  rc = unit_stride_load16( 0xffffffffffffffffULL, s0, res );
+  report( 1, rc );
+
+  printf( "test 2: unit stride load using mask 0x0\n" );
+  rc = unit_stride_load16( 0x0ULL, s0, res );
   report( 2, rc );
 
   for( uint64_t bit = 0; bit < 64; bit++ ) {
     uint64_t mask = 1ULL << bit;
-    printf( "test 3.%d: unit stride load using mask 0x%lx\n", bit, mask );
-    rc = unit_stride_load16( bit, s1, res );
+    printf( "test 3.%ld: unit stride load using mask 0x%016lx\n", bit, mask );
+    rc = unit_stride_load16( mask, s0, res );
     report( 3, rc );
   }
 
