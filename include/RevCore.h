@@ -341,8 +341,8 @@ private:
   std::function<uint32_t()> const GetNewThreadID;
 
   // If a given assigned thread experiences a change of state, it sets the corresponding bit
-  std::vector<std::unique_ptr<RevThread>>
-    ThreadsThatChangedState{};  ///< RevCore: used to signal to RevCPU that the thread assigned to HART has changed state
+  std::vector<std::unique_ptr<RevThread>> ThreadsThatChangedState{
+  };  ///< RevCore: used to signal to RevCPU that the thread assigned to HART has changed state
 
 public:
   SST::Output* const output;  ///< RevCore: output handler
@@ -355,8 +355,8 @@ private:
   RevCoreStats                      StatsTotal{};                 ///< RevCore: collection of total performance stats
   std::unique_ptr<RevPrefetcher>    sfetch{};                     ///< RevCore: stream instruction prefetcher
 
-  std::shared_ptr<std::unordered_multimap<uint64_t, MemReq>>
-    LSQueue{};  ///< RevCore: Load / Store queue used to track memory operations. Currently only tracks outstanding loads.
+  std::shared_ptr<std::unordered_multimap<uint64_t, MemReq>> LSQueue{
+  };  ///< RevCore: Load / Store queue used to track memory operations. Currently only tracks outstanding loads.
   TimeConverter* timeConverter{};  ///< RevCore: Time converter for RTC
 
   RevRegFile* RegFile        = nullptr;        ///< RevCore: Initial pointer to HartToDecodeID RegFile
@@ -732,6 +732,7 @@ private:
   EcallStatus ECALL_forza_get_my_precinct();         // 4013, forza_get_my_precinct();
   EcallStatus ECALL_forza_zone_barrier();            // 4014, forza_zone_barrier();
   EcallStatus ECALL_forza_debug_print();             // 4015, forza_debug_print();
+  EcallStatus ECALL_forza_remote_update();           // 4016, forza_debug_print();
 
   /// RevCore: Table of ecall codes w/ corresponding function pointer implementations
   static const std::unordered_map<uint32_t, EcallStatus ( RevCore::* )()> Ecalls;

@@ -30,23 +30,23 @@ namespace SST::Forza {
 // Preprocessor defs
 // --------------------------------------------
 
-#define NUM_MBOXES                 8
-#define ACTOR_MSG_LENGTH           8
+inline constexpr uint64_t NUM_MBOXES                 = 8;
+inline constexpr uint64_t ACTOR_MSG_LENGTH           = 8;
 
 // CSR registers used by the ZEN
-#define R_ZENSTAT                  0x802
+inline constexpr uint64_t R_ZENSTAT                  = 0x802;
 // messaging
-#define R_ZENEQC                   0x840
-#define R_ZENEQD                   0x841
-#define R_ZENEQS                   0x842  // for spawn
-#define R_ZENOMC                   0xcc3
+inline constexpr uint64_t R_ZENEQC                   = 0x840;
+inline constexpr uint64_t R_ZENEQD                   = 0x841;
+inline constexpr uint64_t R_ZENEQS                   = 0x842;  // for spawn
+inline constexpr uint64_t R_ZENOMC                   = 0xcc3;
 // spawning
 
 // CSR registers used by the ZQM
-#define R_ZQMSTAT                  0x803
-#define R_ZQMMBOXREG               0x804
-#define R_ZQMDQ_0                  0x808
-#define R_ZQMDQ_7                  0x80F
+inline constexpr uint64_t R_ZQMSTAT                  = 0x803;
+inline constexpr uint64_t R_ZQMMBOXREG               = 0x804;
+inline constexpr uint64_t R_ZQMDQ_0                  = 0x808;
+inline constexpr uint64_t R_ZQMDQ_7                  = 0x80F;
 
 // encoding for the ring event
 /**
@@ -56,16 +56,16 @@ namespace SST::Forza {
  * [22:11] -- csr number
  * [10:0] -- hart_id
  */
-#define R_SHIFT_HARTID             0
-#define R_SHIFT_CSRNUM             11
-#define R_SHIFT_SRCZCID            23
-#define R_SHIFT_DESTZCID           27
-#define R_SHIFT_CMD                31
+inline constexpr uint64_t R_SHIFT_HARTID             = 0;
+inline constexpr uint64_t R_SHIFT_CSRNUM             = 11;
+inline constexpr uint64_t R_SHIFT_SRCZCID            = 23;
+inline constexpr uint64_t R_SHIFT_DESTZCID           = 27;
+inline constexpr uint64_t R_SHIFT_CMD                = 31;
 
-#define R_MASK_HARTID              0x07ff
-#define R_MASK_CSR                 0x0fff
-#define R_MASK_ZCID                0x0f
-#define R_MASK_CMD                 0x3
+inline constexpr uint64_t R_MASK_HARTID              = 0x07ff;
+inline constexpr uint64_t R_MASK_CSR                 = 0x0fff;
+inline constexpr uint64_t R_MASK_ZCID                = 0x0f;
+inline constexpr uint64_t R_MASK_CMD                 = 0x3;
 
 /*
  The bit assignments of the Control Word fields provided by the ZAP are shown below:
@@ -81,48 +81,26 @@ namespace SST::Forza {
   [60:48] retry seq number; 13b
   // From the Zone & Zap doc - 15-aug-2024
 */
-#define ZENEQC_SHIFT_DESTCOMP      12
-#define ZENEQC_SHIFT_DESTZONE      16
-#define ZENEQC_SHIFT_DESTPREC      20
-#define ZENEQC_SHIFT_DESTMBOX      33
-#define ZENEQC_SHIFT_MSGAID        36
-#define ZENEQC_SHIFT_MSGOPC        40
-#define ZENEQC_SHIFT_RETRYNUM      48
-#define ZENEQC_SHIFT_MSGCLR        63
+inline constexpr uint64_t ZENEQC_SHIFT_DESTCOMP      = 12;
+inline constexpr uint64_t ZENEQC_SHIFT_DESTZONE      = 16;
+inline constexpr uint64_t ZENEQC_SHIFT_DESTPREC      = 20;
+inline constexpr uint64_t ZENEQC_SHIFT_DESTMBOX      = 33;
+inline constexpr uint64_t ZENEQC_SHIFT_MSGAID        = 36;
+inline constexpr uint64_t ZENEQC_SHIFT_MSGOPC        = 40;
+inline constexpr uint64_t ZENEQC_SHIFT_RETRYNUM      = 48;
+inline constexpr uint64_t ZENEQC_SHIFT_MSGCLR        = 63;
 
-#define ZENEQC_MASK_DESTPE         0x0fff
-#define ZENEQC_MASK_DESTCOMP       0x0f
-#define ZENEQC_MASK_DESTZONE       0x0f
-#define ZENEQC_MASK_DESTPREC       0x01fff
-#define ZENEQC_MASK_DESTMBOX       0x07
-#define ZENEQC_MASK_MSGAID         0x0f
-#define ZENEQC_MASK_MSGOPC         0x0ff
-#define ZENEQC_MASK_RETRYNUM       0x01fff
-#define ZENEQC_MASK_MSGCLR         0x1
+inline constexpr uint64_t ZENEQC_MASK_DESTPE         = 0x0fff;
+inline constexpr uint64_t ZENEQC_MASK_DESTCOMP       = 0x0f;
+inline constexpr uint64_t ZENEQC_MASK_DESTZONE       = 0x0f;
+inline constexpr uint64_t ZENEQC_MASK_DESTPREC       = 0x01fff;
+inline constexpr uint64_t ZENEQC_MASK_DESTMBOX       = 0x07;
+inline constexpr uint64_t ZENEQC_MASK_MSGAID         = 0x0f;
+inline constexpr uint64_t ZENEQC_MASK_MSGOPC         = 0x0ff;
+inline constexpr uint64_t ZENEQC_MASK_RETRYNUM       = 0x01fff;
+inline constexpr uint64_t ZENEQC_MASK_MSGCLR         = 0x1;
 
-#define ZENSTAT_SHIFT_SPNBUSY      32
-
-/**
- * Assumed format when updating the ZQM MBOXREG CSR:
- * [7:0] - mboxes used (bit mask) - 8b
- * [18:8] - logical PE - 11b
- * [27:19] - physical hart - 9b
- * [31:28] - physical zap - 4b
- * [63:60] - aid
- * Don't need anything for zone id (since the zqm here will have that info)
- */
-// TODO: remove these defines; use the ZQMMBOXREG defines below
-#define R_SHIFT_MBXSUSED           0  // do this now in case it changes later
-#define R_SHIFT_LOGICALPE          8
-#define R_SHIFT_PHYSHART           19
-#define R_SHIFT_PHYSZAP            28
-#define R_SHIFT_AID                60
-
-#define R_MASK_MBXSUSED            0x0FF
-#define R_MASK_LOGICALPE           0x7FF
-#define R_MASK_PHYSHART            0x1FF
-#define R_MASK_PHYSZAP             0x0F
-#define R_MASK_AID                 0x0F
+inline constexpr uint64_t ZENSTAT_SHIFT_SPNBUSY      = 32;
 
 /**
  * Assumed format when updating the ZQM MBOXREG CSR:
@@ -134,17 +112,17 @@ namespace SST::Forza {
  * Don't need anything for zone id (since the zqm here will have that info)
  */
 
-#define ZQMMBOXREG_SHIFT_MBXSUSED  0  // do this now in case it changes later
-#define ZQMMBOXREG_SHIFT_LOGICALPE 8
-#define ZQMMBOXREG_SHIFT_PHYSHART  19
-#define ZQMMBOXREG_SHIFT_PHYSZAP   28
-#define ZQMMBOXREG_SHIFT_AID       60
+inline constexpr uint64_t ZQMMBOXREG_SHIFT_MBXSUSED  = 0;  // do this now in case it changes later
+inline constexpr uint64_t ZQMMBOXREG_SHIFT_LOGICALPE = 8;
+inline constexpr uint64_t ZQMMBOXREG_SHIFT_PHYSHART  = 19;
+inline constexpr uint64_t ZQMMBOXREG_SHIFT_PHYSZAP   = 28;
+inline constexpr uint64_t ZQMMBOXREG_SHIFT_AID       = 60;
 
-#define ZQMMBOXREG_MASK_MBXSUSED   0x0FF
-#define ZQMMBOXREG_MASK_LOGICALPE  0x7FF
-#define ZQMMBOXREG_MASK_PHYSHART   0x1FF
-#define ZQMMBOXREG_MASK_PHYSZAP    0x0F
-#define ZQMMBOXREG_MASK_AID        0x0F
+inline constexpr uint64_t ZQMMBOXREG_MASK_MBXSUSED   = 0x0FF;
+inline constexpr uint64_t ZQMMBOXREG_MASK_LOGICALPE  = 0x7FF;
+inline constexpr uint64_t ZQMMBOXREG_MASK_PHYSHART   = 0x1FF;
+inline constexpr uint64_t ZQMMBOXREG_MASK_PHYSZAP    = 0x0F;
+inline constexpr uint64_t ZQMMBOXREG_MASK_AID        = 0x0F;
 
 // --------------------------------------------
 // ringMsgT : Ring Msg Type
@@ -260,12 +238,12 @@ public:
   // ringEvent: event serializer
   void serialize_order( SST::Core::Serialization::serializer& ser ) override {
     Event::serialize_order( ser );
-    ser& SrcComp;
-    ser& Hart;
-    ser& DestComp;
-    ser& Type;
-    ser& CSR;
-    ser& Datum;
+    ser & SrcComp;
+    ser & Hart;
+    ser & DestComp;
+    ser & Type;
+    ser & CSR;
+    ser & Datum;
   }
 
   // ringEvent: implements the nic serialization
