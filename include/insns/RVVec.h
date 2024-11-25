@@ -308,8 +308,10 @@ public:
     uint64_t vd   = Inst.vd;
     uint64_t vs1  = Inst.vs1;
     uint64_t vs2  = Inst.vs2;
-    uint64_t mask = 0;
-    for( unsigned vecElem = 0; vecElem < V->GetVCSR( RevCSR::vl ); vecElem++ ) {
+    // TODO perhaps split out mask setting instructions to avoid this overhead on normal operations.
+    uint64_t vmask[2]  = {0};  // actual mask bits assumes max(vlen)=128
+    uint64_t mfield[2] = {0}; // determines which bits to modify in mask register
+    for( unsigned vecElem = V->GetVCSR(RevCSR::vstart); vecElem < V->GetVCSR( RevCSR::vl ); vecElem++ ) {
       unsigned el  = vecElem % V->ElemsPerReg();
       if (DST_IS_MASK || V->v0mask(Inst.vm, vecElem)) {
         SEWTYPE res = 0;
@@ -322,8 +324,14 @@ public:
         }
         res = REVERSE ? VOP()(s1,s2) : VOP()(s2, s1);
         if( DST_IS_MASK ) {
-          assert( vecElem < 64 );  // TODO
-          mask |= ( (res!=0) & 1 ) << vecElem;
+          uint64_t maskbit = ( (res!=0) & 1 );
+          if (vecElem<64) {
+            vmask[0] |= (maskbit<<vecElem);
+            mfield[0] |= (1<<vecElem);
+          } else {
+            vmask[1] |= (maskbit<<(vecElem%64));
+            mfield[1] |= (1<<(vecElem%64));
+          }
         } else {
           V->SetElem<SEWTYPE>( Inst.vd, vd, vecElem, el, res );
         }
@@ -335,8 +343,8 @@ public:
       }
     }
     if( DST_IS_MASK ) {
-      //TODO: Fix. Assumes only 64-bits of mask generated
-      V->SetMaskReg( Inst.vd, mask );
+      // Writing entire mask at end assumes the operation cannot be interrupted.
+      V->SetMaskReg( Inst.vd, vmask, mfield );
     }
     return true;
   }
@@ -358,7 +366,7 @@ public:
   template<typename FTYPE>
   static bool vfmacc_oper_exec( const RevFeature* F, RevRegFile* R, RevVRegFile* V, RevMem* M, const RevVecInst& Inst ) {
     uint64_t vd   = Inst.vd;
-    uint64_t vs1  = Inst.vs1;
+    // uint64_t vs1  = Inst.vs1;
     uint64_t vs2  = Inst.vs2;
     // vfmacc.vv vd, vs1, vs2, vm # vd[i] = +(vs1[i] * vs2[i]) + vd[i]
     // vfmacc.vf vd, rs1, vs2, vm # vd[i] = +(f[rs1] * vs2[i]) + vd[i]
@@ -373,7 +381,7 @@ public:
       }
       if( ( ( el + 1 ) % V->ElemsPerReg() ) == 0 ) {
         vd++;
-        vs1++;
+        // vs1++;
         vs2++;
       }
     }  

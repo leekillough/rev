@@ -55,6 +55,7 @@ enum class VRevReg : uint16_t {
 class RevVRegFile : public RevCSR {
 public:
   RevVRegFile( SST::Output* output, uint16_t vlen, uint16_t elen );
+  virtual ~RevVRegFile() {};
 
   SST::Output* output() { return output_; };
 
@@ -82,20 +83,9 @@ public:
   void     Configure( reg_vtype_t vt, uint16_t vlmax );
   uint64_t GetVCSR( uint16_t csr );
   void     SetVCSR( uint16_t csr, uint64_t d );
-
   uint16_t ElemsPerReg();  ///< RevVRegFile: VLEN/SEW
 
-  /// Retrieve vector mask bit from v0
-  bool v0mask( bool vm, unsigned vecElem ) {
-    if( vm )
-      return true;
-    // Grab 64-bit chunk containing element mask bit.
-    assert( vecElem < vlen_ );
-    unsigned  chunk = vecElem >> 6;
-    unsigned  shift = vecElem % 64;
-    uint64_t* pmask = (uint64_t*) ( &( vreg[0][chunk << 3] ) );
-    return ( ( *pmask ) >> shift ) & 1;
-  }
+  bool v0mask( bool vm, unsigned vecElem );  ///< RevVRegFile: Retrieve vector mask bit from v0
 
   // base is destination register in instruction
   // vd is current destination register
@@ -145,11 +135,9 @@ public:
     return std::make_pair( em, fractional );
   }
 
-  // Write entire mask register
-  void SetMaskReg( uint64_t vd, uint64_t d );
+  void SetMaskReg( uint64_t vd, uint64_t mask[], uint64_t mfield[] );  ///< RevVRegFile: Write entire mask register
 
-  /// return index of first 1 in bit field or -1 if all are 0.
-  uint64_t vfirst( uint64_t vs );
+  uint64_t vfirst( uint64_t vs );  ///< RevVRegFile: return index of first 1 in bit field or -1 if all are 0.
 
 private:
   SST::Output* output_;

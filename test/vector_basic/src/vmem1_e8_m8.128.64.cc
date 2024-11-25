@@ -65,7 +65,7 @@ void set_vectors( uint64_t s ) {
 #endif
 }
 
-void set_v0_mask( uint64_t m[] ) {
+void load_v0_mask( uint64_t m[] ) {
   asm volatile( "vsetvli x0, %0, e8, m8, ta, ma" : : "r"( AVL ) );  // vlmax = 8 * 128 / 8
   asm volatile( "vlm.v  v0, (%0)" : : "r"( m ) );                   // evl = ceil(vl/8)
 }
@@ -80,8 +80,8 @@ int check( elem_t expected, elem_t actual ) {
 int unit_stride_load8( uint64_t mask[], elem_t a[], elem_t r[] ) {
   for( unsigned i = 0; i < AVL; i++ )  // clear result
     r[i] = 0;
-  set_vectors( -1 );    // all bits 1 for all vectors
-  set_v0_mask( mask );  // vector mask
+  set_vectors( -1 );     // all bits 1 for all vectors
+  load_v0_mask( mask );  // vector mask
   elem_t*  pa = &( a[0] );
   elem_t*  pr = &( r[0] );
   unsigned time0, time1, inst0, inst1;
