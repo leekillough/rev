@@ -29,17 +29,17 @@ const unsigned   AVL        = 128;  // Application Vector Length (elements)
 // counter 0 = cycles
 // counter 1 = instructions
 unsigned counters_vector[2] = { 0 };
-
-elem_t s0[AVL] = { 0x0100, 0x0200, 0x0300, 0x0400, 0x0500, 0x0600, 0x0700, 0x0800, 0x0900, 0x0a00, 0x0b00, 0x0c00, 0x0d00,
-                   0x0e00, 0x0f00, 0x1000, 0x1100, 0x1200, 0x1300, 0x1400, 0x1500, 0x1600, 0x1700, 0x1800, 0x1900, 0x1a00,
-                   0x1b00, 0x1c00, 0x1d00, 0x1e00, 0x1f00, 0x2000, 0x2100, 0x2200, 0x2300, 0x2400, 0x2500, 0x2600, 0x2700,
-                   0x2800, 0x2900, 0x2a00, 0x2b00, 0x2c00, 0x2d00, 0x2e00, 0x2f00, 0x3000, 0x3100, 0x3200, 0x3300, 0x3400,
-                   0x3500, 0x3600, 0x3700, 0x3800, 0x3900, 0x3a00, 0x3b00, 0x3c00, 0x3d00, 0x3e00, 0x3f00, 0x4000, 0x4100,
-                   0x4200, 0x4300, 0x4400, 0x4500, 0x4600, 0x4700, 0x4800, 0x4900, 0x4a00, 0x4b00, 0x4c00, 0x4d00, 0x4e00,
-                   0x4f00, 0x5000, 0x5100, 0x5200, 0x5300, 0x5400, 0x5500, 0x5600, 0x5700, 0x5800, 0x5900, 0x5a00, 0x5b00,
-                   0x5c00, 0x5d00, 0x5e00, 0x5f00, 0x6000, 0x6100, 0x6200, 0x6300, 0x6400, 0x6500, 0x6600, 0x6700, 0x6800,
-                   0x6900, 0x6a00, 0x6b00, 0x6c00, 0x6d00, 0x6e00, 0x6f00, 0x7000, 0x7100, 0x7200, 0x7300, 0x7400, 0x7500,
-                   0x7600, 0x7700, 0x7800, 0x7900, 0x7a00, 0x7b00, 0x7c00, 0x7d00, 0x7e00, 0x7f00, 0x8000 };
+elem_t   res[AVL]           = { 0 };
+elem_t   s0[AVL] = { 0x0100, 0x0200, 0x0300, 0x0400, 0x0500, 0x0600, 0x0700, 0x0800, 0x0900, 0x0a00, 0x0b00, 0x0c00, 0x0d00,
+                     0x0e00, 0x0f00, 0x1000, 0x1100, 0x1200, 0x1300, 0x1400, 0x1500, 0x1600, 0x1700, 0x1800, 0x1900, 0x1a00,
+                     0x1b00, 0x1c00, 0x1d00, 0x1e00, 0x1f00, 0x2000, 0x2100, 0x2200, 0x2300, 0x2400, 0x2500, 0x2600, 0x2700,
+                     0x2800, 0x2900, 0x2a00, 0x2b00, 0x2c00, 0x2d00, 0x2e00, 0x2f00, 0x3000, 0x3100, 0x3200, 0x3300, 0x3400,
+                     0x3500, 0x3600, 0x3700, 0x3800, 0x3900, 0x3a00, 0x3b00, 0x3c00, 0x3d00, 0x3e00, 0x3f00, 0x4000, 0x4100,
+                     0x4200, 0x4300, 0x4400, 0x4500, 0x4600, 0x4700, 0x4800, 0x4900, 0x4a00, 0x4b00, 0x4c00, 0x4d00, 0x4e00,
+                     0x4f00, 0x5000, 0x5100, 0x5200, 0x5300, 0x5400, 0x5500, 0x5600, 0x5700, 0x5800, 0x5900, 0x5a00, 0x5b00,
+                     0x5c00, 0x5d00, 0x5e00, 0x5f00, 0x6000, 0x6100, 0x6200, 0x6300, 0x6400, 0x6500, 0x6600, 0x6700, 0x6800,
+                     0x6900, 0x6a00, 0x6b00, 0x6c00, 0x6d00, 0x6e00, 0x6f00, 0x7000, 0x7100, 0x7200, 0x7300, 0x7400, 0x7500,
+                     0x7600, 0x7700, 0x7800, 0x7900, 0x7a00, 0x7b00, 0x7c00, 0x7d00, 0x7e00, 0x7f00, 0x8000 };
 
 void set_vectors( uint64_t s ) {
   //vlmax = 8 * 128 / 64 = 16;
@@ -73,13 +73,14 @@ int check( uint16_t expected, uint16_t actual ) {
   return 1;
 }
 
-int vle_sanity() {
+int vle_sanity( elem_t a[], elem_t r[] ) {
 
   unsigned time0, time1, inst0, inst1;
   RDTIME( time0 );
   RDINSTRET( inst0 );
 
-  void* p = &( s0[0] );
+  elem_t* pa = a;
+  elem_t* pr = r;
   set_v0_mask( 0xffffffffffffffffULL );
 
   // Vector loads and stores have an EEW encoded directly in the instruction. The corresponding EMUL is
@@ -88,174 +89,174 @@ int vle_sanity() {
   // selected EMUL, otherwise the instruction encoding is reserved.
 
   // LMUL=1
-  asm volatile( "vsetivli x0, 2, e64, m1, ta, ma" );       // vlmax = 1*128/64 = 8
-  asm volatile( "vle64.v  v8, (%0), v0.t" : : "r"( p ) );  // EMUL = LMUL*EEW/SEW = 1*64/64 = 1
-  asm volatile( "vle32.v  v8, (%0), v0.t" : : "r"( p ) );  // EMUL = 1*32/64 = 1/2
-  asm volatile( "vle16.v  v8, (%0), v0.t" : : "r"( p ) );  // EMUL = 1*16/64 = 1/4
-  asm volatile( "vle8.v   v8, (%0), v0.t" : : "r"( p ) );  // EMUL = 1*8/64  = 1/8
-  asm volatile( "vse64.v  v8, (%0), v0.t" : : "r"( p ) );
-  asm volatile( "vse32.v  v8, (%0), v0.t" : : "r"( p ) );
-  asm volatile( "vse16.v  v8, (%0), v0.t" : : "r"( p ) );
-  asm volatile( "vse8.v   v8, (%0), v0.t" : : "r"( p ) );
+  asm volatile( "vsetivli x0, 2, e64, m1, ta, ma" );        // vlmax = 1*128/64 = 8
+  asm volatile( "vle64.v  v8, (%0), v0.t" : : "r"( pa ) );  // EMUL = LMUL*EEW/SEW = 1*64/64 = 1
+  asm volatile( "vle32.v  v8, (%0), v0.t" : : "r"( pa ) );  // EMUL = 1*32/64 = 1/2
+  asm volatile( "vle16.v  v8, (%0), v0.t" : : "r"( pa ) );  // EMUL = 1*16/64 = 1/4
+  asm volatile( "vle8.v   v8, (%0), v0.t" : : "r"( pa ) );  // EMUL = 1*8/64  = 1/8
+  asm volatile( "vse64.v  v8, (%0), v0.t" : : "r"( pr ) );
+  asm volatile( "vse32.v  v8, (%0), v0.t" : : "r"( pr ) );
+  asm volatile( "vse16.v  v8, (%0), v0.t" : : "r"( pr ) );
+  asm volatile( "vse8.v   v8, (%0), v0.t" : : "r"( pr ) );
 
-  asm volatile( "vsetivli x0, 4, e32, m1, ta, ma" );       // vlmax = 1*128/32 = 16
-  asm volatile( "vle64.v  v8, (%0), v0.t" : : "r"( p ) );  // EMUL = 1*64/32 = 2
-  asm volatile( "vle32.v  v8, (%0), v0.t" : : "r"( p ) );  // EMUL = 1*32/32 = 1
-  asm volatile( "vle16.v  v8, (%0), v0.t" : : "r"( p ) );  // EMUL = 1/2
-  asm volatile( "vle8.v   v8, (%0), v0.t" : : "r"( p ) );  // EMUL = 1/4
-  asm volatile( "vse64.v  v8, (%0), v0.t" : : "r"( p ) );
-  asm volatile( "vse32.v  v8, (%0), v0.t" : : "r"( p ) );
-  asm volatile( "vse16.v  v8, (%0), v0.t" : : "r"( p ) );
-  asm volatile( "vse8.v   v8, (%0), v0.t" : : "r"( p ) );
+  asm volatile( "vsetivli x0, 4, e32, m1, ta, ma" );        // vlmax = 1*128/32 = 16
+  asm volatile( "vle64.v  v8, (%0), v0.t" : : "r"( pa ) );  // EMUL = 1*64/32 = 2
+  asm volatile( "vle32.v  v8, (%0), v0.t" : : "r"( pa ) );  // EMUL = 1*32/32 = 1
+  asm volatile( "vle16.v  v8, (%0), v0.t" : : "r"( pa ) );  // EMUL = 1/2
+  asm volatile( "vle8.v   v8, (%0), v0.t" : : "r"( pa ) );  // EMUL = 1/4
+  asm volatile( "vse64.v  v8, (%0), v0.t" : : "r"( pr ) );
+  asm volatile( "vse32.v  v8, (%0), v0.t" : : "r"( pr ) );
+  asm volatile( "vse16.v  v8, (%0), v0.t" : : "r"( pr ) );
+  asm volatile( "vse8.v   v8, (%0), v0.t" : : "r"( pr ) );
 
-  asm volatile( "vsetivli x0, 8, e16, m1, ta, ma" );       // vlmax = 1*128/16 = 32
-  asm volatile( "vle64.v  v8, (%0), v0.t" : : "r"( p ) );  // EMUL = 1*64/16 = 4
-  asm volatile( "vle32.v  v8, (%0), v0.t" : : "r"( p ) );  // EMUL = 2
-  asm volatile( "vle16.v  v8, (%0), v0.t" : : "r"( p ) );  // EMUL = 1
-  asm volatile( "vle8.v   v8, (%0), v0.t" : : "r"( p ) );  // EMUL = 1/2
-  asm volatile( "vse64.v  v8, (%0), v0.t" : : "r"( p ) );
-  asm volatile( "vse32.v  v8, (%0), v0.t" : : "r"( p ) );
-  asm volatile( "vse16.v  v8, (%0), v0.t" : : "r"( p ) );
-  asm volatile( "vse8.v   v8, (%0), v0.t" : : "r"( p ) );
+  asm volatile( "vsetivli x0, 8, e16, m1, ta, ma" );        // vlmax = 1*128/16 = 32
+  asm volatile( "vle64.v  v8, (%0), v0.t" : : "r"( pa ) );  // EMUL = 1*64/16 = 4
+  asm volatile( "vle32.v  v8, (%0), v0.t" : : "r"( pa ) );  // EMUL = 2
+  asm volatile( "vle16.v  v8, (%0), v0.t" : : "r"( pa ) );  // EMUL = 1
+  asm volatile( "vle8.v   v8, (%0), v0.t" : : "r"( pa ) );  // EMUL = 1/2
+  asm volatile( "vse64.v  v8, (%0), v0.t" : : "r"( pr ) );
+  asm volatile( "vse32.v  v8, (%0), v0.t" : : "r"( pr ) );
+  asm volatile( "vse16.v  v8, (%0), v0.t" : : "r"( pr ) );
+  asm volatile( "vse8.v   v8, (%0), v0.t" : : "r"( pr ) );
 
-  asm volatile( "vsetivli x0, 16, e8, m1, ta, ma" );       // vlmax = 1*128/8 = 64
-  asm volatile( "vle64.v  v8, (%0), v0.t" : : "r"( p ) );  // EMUL = 8
-  asm volatile( "vle32.v  v8, (%0), v0.t" : : "r"( p ) );  // EMUL = 4
-  asm volatile( "vle16.v  v8, (%0), v0.t" : : "r"( p ) );  // EMUL = 2
-  asm volatile( "vle8.v   v8, (%0), v0.t" : : "r"( p ) );  // EMUL = 1
-  asm volatile( "vse64.v  v8, (%0), v0.t" : : "r"( p ) );
-  asm volatile( "vse32.v  v8, (%0), v0.t" : : "r"( p ) );
-  asm volatile( "vse16.v  v8, (%0), v0.t" : : "r"( p ) );
-  asm volatile( "vse8.v   v8, (%0), v0.t" : : "r"( p ) );
+  asm volatile( "vsetivli x0, 16, e8, m1, ta, ma" );        // vlmax = 1*128/8 = 64
+  asm volatile( "vle64.v  v8, (%0), v0.t" : : "r"( pa ) );  // EMUL = 8
+  asm volatile( "vle32.v  v8, (%0), v0.t" : : "r"( pa ) );  // EMUL = 4
+  asm volatile( "vle16.v  v8, (%0), v0.t" : : "r"( pa ) );  // EMUL = 2
+  asm volatile( "vle8.v   v8, (%0), v0.t" : : "r"( pa ) );  // EMUL = 1
+  asm volatile( "vse64.v  v8, (%0), v0.t" : : "r"( pr ) );
+  asm volatile( "vse32.v  v8, (%0), v0.t" : : "r"( pr ) );
+  asm volatile( "vse16.v  v8, (%0), v0.t" : : "r"( pr ) );
+  asm volatile( "vse8.v   v8, (%0), v0.t" : : "r"( pr ) );
 
   // LMUL=2
-  asm volatile( "vsetivli x0, 4, e64, m2, ta, ma" );       // vlmax = 2*128/64 = 4
-  asm volatile( "vle64.v  v8, (%0), v0.t" : : "r"( p ) );  // EMUL = 2*64/64 = 2
-  asm volatile( "vle32.v  v8, (%0), v0.t" : : "r"( p ) );  // EMUL = 1
-  asm volatile( "vle16.v  v8, (%0), v0.t" : : "r"( p ) );  // EMUL = 1/2
-  asm volatile( "vle8.v   v8, (%0), v0.t" : : "r"( p ) );  // EMUL = 1/4
-  asm volatile( "vse64.v  v8, (%0), v0.t" : : "r"( p ) );
-  asm volatile( "vse32.v  v8, (%0), v0.t" : : "r"( p ) );
-  asm volatile( "vse16.v  v8, (%0), v0.t" : : "r"( p ) );
-  asm volatile( "vse8.v   v8, (%0), v0.t" : : "r"( p ) );
+  asm volatile( "vsetivli x0, 4, e64, m2, ta, ma" );        // vlmax = 2*128/64 = 4
+  asm volatile( "vle64.v  v8, (%0), v0.t" : : "r"( pa ) );  // EMUL = 2*64/64 = 2
+  asm volatile( "vle32.v  v8, (%0), v0.t" : : "r"( pa ) );  // EMUL = 1
+  asm volatile( "vle16.v  v8, (%0), v0.t" : : "r"( pa ) );  // EMUL = 1/2
+  asm volatile( "vle8.v   v8, (%0), v0.t" : : "r"( pa ) );  // EMUL = 1/4
+  asm volatile( "vse64.v  v8, (%0), v0.t" : : "r"( pr ) );
+  asm volatile( "vse32.v  v8, (%0), v0.t" : : "r"( pr ) );
+  asm volatile( "vse16.v  v8, (%0), v0.t" : : "r"( pr ) );
+  asm volatile( "vse8.v   v8, (%0), v0.t" : : "r"( pr ) );
 
-  asm volatile( "vsetivli x0, 8, e32, m2, ta, ma" );       // vlmax = 2*128/32 = 8
-  asm volatile( "vle64.v  v8, (%0), v0.t" : : "r"( p ) );  // EMUL = 4
-  asm volatile( "vle32.v  v8, (%0), v0.t" : : "r"( p ) );  // EMUL = 2
-  asm volatile( "vle16.v  v8, (%0), v0.t" : : "r"( p ) );  // EMUL = 1
-  asm volatile( "vle8.v   v8, (%0), v0.t" : : "r"( p ) );  // EMUL = 1/2
-  asm volatile( "vse64.v  v8, (%0), v0.t" : : "r"( p ) );
-  asm volatile( "vse32.v  v8, (%0), v0.t" : : "r"( p ) );
-  asm volatile( "vse16.v  v8, (%0), v0.t" : : "r"( p ) );
-  asm volatile( "vse8.v   v8, (%0), v0.t" : : "r"( p ) );
+  asm volatile( "vsetivli x0, 8, e32, m2, ta, ma" );        // vlmax = 2*128/32 = 8
+  asm volatile( "vle64.v  v8, (%0), v0.t" : : "r"( pa ) );  // EMUL = 4
+  asm volatile( "vle32.v  v8, (%0), v0.t" : : "r"( pa ) );  // EMUL = 2
+  asm volatile( "vle16.v  v8, (%0), v0.t" : : "r"( pa ) );  // EMUL = 1
+  asm volatile( "vle8.v   v8, (%0), v0.t" : : "r"( pa ) );  // EMUL = 1/2
+  asm volatile( "vse64.v  v8, (%0), v0.t" : : "r"( pr ) );
+  asm volatile( "vse32.v  v8, (%0), v0.t" : : "r"( pr ) );
+  asm volatile( "vse16.v  v8, (%0), v0.t" : : "r"( pr ) );
+  asm volatile( "vse8.v   v8, (%0), v0.t" : : "r"( pr ) );
 
-  asm volatile( "vsetivli x0, 16, e16, m2, ta, ma" );      // vlmax = 2*128/16 = 16
-  asm volatile( "vle64.v  v8, (%0), v0.t" : : "r"( p ) );  // EMUL = 8
-  asm volatile( "vle32.v  v8, (%0), v0.t" : : "r"( p ) );  // EMUL = 4
-  asm volatile( "vle16.v  v8, (%0), v0.t" : : "r"( p ) );  // EMUL = 2
-  asm volatile( "vle8.v   v8, (%0), v0.t" : : "r"( p ) );  // EMUL = 1
-  asm volatile( "vse64.v  v8, (%0), v0.t" : : "r"( p ) );
-  asm volatile( "vse32.v  v8, (%0), v0.t" : : "r"( p ) );
-  asm volatile( "vse16.v  v8, (%0), v0.t" : : "r"( p ) );
-  asm volatile( "vse8.v   v8, (%0), v0.t" : : "r"( p ) );
+  asm volatile( "vsetivli x0, 16, e16, m2, ta, ma" );       // vlmax = 2*128/16 = 16
+  asm volatile( "vle64.v  v8, (%0), v0.t" : : "r"( pa ) );  // EMUL = 8
+  asm volatile( "vle32.v  v8, (%0), v0.t" : : "r"( pa ) );  // EMUL = 4
+  asm volatile( "vle16.v  v8, (%0), v0.t" : : "r"( pa ) );  // EMUL = 2
+  asm volatile( "vle8.v   v8, (%0), v0.t" : : "r"( pa ) );  // EMUL = 1
+  asm volatile( "vse64.v  v8, (%0), v0.t" : : "r"( pr ) );
+  asm volatile( "vse32.v  v8, (%0), v0.t" : : "r"( pr ) );
+  asm volatile( "vse16.v  v8, (%0), v0.t" : : "r"( pr ) );
+  asm volatile( "vse8.v   v8, (%0), v0.t" : : "r"( pr ) );
 
   uint64_t avl = 32;
   asm volatile( "vsetvli  x0, %0, e8, m2, ta, ma" : : "r"( avl ) );  // vlmax = 2*128/8 = 32
-  // asm volatile( "vle64.v  v8, (%0), v0.t" : : "r"(p));   // EMUL = 2*64/8 = 16 ( >e8 ) Illegal
-  asm volatile( "vle32.v  v8, (%0), v0.t" : : "r"( p ) );  // EMUL = 8
-  asm volatile( "vle16.v  v8, (%0), v0.t" : : "r"( p ) );  // EMUL = 4
-  asm volatile( "vle8.v   v8, (%0), v0.t" : : "r"( p ) );  // EMUL = 2
-  // asm volatile( "vse64.v  v8, (%0), v0.t" : : "r"( p ) );
-  asm volatile( "vse32.v  v8, (%0), v0.t" : : "r"( p ) );
-  asm volatile( "vse16.v  v8, (%0), v0.t" : : "r"( p ) );
-  asm volatile( "vse8.v   v8, (%0), v0.t" : : "r"( p ) );
+  // asm volatile( "vle64.v  v8, (%0), v0.t" : : "r"(pa));   // EMUL = 2*64/8 = 16 ( >e8 ) Illegal
+  asm volatile( "vle32.v  v8, (%0), v0.t" : : "r"( pa ) );  // EMUL = 8
+  asm volatile( "vle16.v  v8, (%0), v0.t" : : "r"( pa ) );  // EMUL = 4
+  asm volatile( "vle8.v   v8, (%0), v0.t" : : "r"( pa ) );  // EMUL = 2
+  // asm volatile( "vse64.v  v8, (%0), v0.t" : : "r"( pr ) );
+  asm volatile( "vse32.v  v8, (%0), v0.t" : : "r"( pr ) );
+  asm volatile( "vse16.v  v8, (%0), v0.t" : : "r"( pr ) );
+  asm volatile( "vse8.v   v8, (%0), v0.t" : : "r"( pr ) );
 
   // LMUL=4
-  asm volatile( "vsetivli x0, 8, e64, m4, ta, ma" );       // vlmax = 4*128/64 = 8
-  asm volatile( "vle64.v  v8, (%0), v0.t" : : "r"( p ) );  // EMUL = 4
-  asm volatile( "vle32.v  v8, (%0), v0.t" : : "r"( p ) );  // EMUL = 2
-  asm volatile( "vle16.v  v8, (%0), v0.t" : : "r"( p ) );  // EMUL = 1
-  asm volatile( "vle8.v   v8, (%0), v0.t" : : "r"( p ) );  // EMUL = 1/2
-  asm volatile( "vse64.v  v8, (%0), v0.t" : : "r"( p ) );
-  asm volatile( "vse32.v  v8, (%0), v0.t" : : "r"( p ) );
-  asm volatile( "vse16.v  v8, (%0), v0.t" : : "r"( p ) );
-  asm volatile( "vse8.v   v8, (%0), v0.t" : : "r"( p ) );
+  asm volatile( "vsetivli x0, 8, e64, m4, ta, ma" );        // vlmax = 4*128/64 = 8
+  asm volatile( "vle64.v  v8, (%0), v0.t" : : "r"( pa ) );  // EMUL = 4
+  asm volatile( "vle32.v  v8, (%0), v0.t" : : "r"( pa ) );  // EMUL = 2
+  asm volatile( "vle16.v  v8, (%0), v0.t" : : "r"( pa ) );  // EMUL = 1
+  asm volatile( "vle8.v   v8, (%0), v0.t" : : "r"( pa ) );  // EMUL = 1/2
+  asm volatile( "vse64.v  v8, (%0), v0.t" : : "r"( pr ) );
+  asm volatile( "vse32.v  v8, (%0), v0.t" : : "r"( pr ) );
+  asm volatile( "vse16.v  v8, (%0), v0.t" : : "r"( pr ) );
+  asm volatile( "vse8.v   v8, (%0), v0.t" : : "r"( pr ) );
 
-  asm volatile( "vsetivli x0, 16, e32, m4, ta, ma" );      // vlmax = 4*128/32 = 16
-  asm volatile( "vle64.v  v8, (%0), v0.t" : : "r"( p ) );  // EMUL = 8
-  asm volatile( "vle32.v  v8, (%0), v0.t" : : "r"( p ) );  // EMUL = 4
-  asm volatile( "vle16.v  v8, (%0), v0.t" : : "r"( p ) );  // EMUL = 2
-  asm volatile( "vle8.v   v8, (%0), v0.t" : : "r"( p ) );  // EMUL = 1
-  asm volatile( "vse64.v  v8, (%0), v0.t" : : "r"( p ) );
-  asm volatile( "vse32.v  v8, (%0), v0.t" : : "r"( p ) );
-  asm volatile( "vse16.v  v8, (%0), v0.t" : : "r"( p ) );
-  asm volatile( "vse8.v   v8, (%0), v0.t" : : "r"( p ) );
+  asm volatile( "vsetivli x0, 16, e32, m4, ta, ma" );       // vlmax = 4*128/32 = 16
+  asm volatile( "vle64.v  v8, (%0), v0.t" : : "r"( pa ) );  // EMUL = 8
+  asm volatile( "vle32.v  v8, (%0), v0.t" : : "r"( pa ) );  // EMUL = 4
+  asm volatile( "vle16.v  v8, (%0), v0.t" : : "r"( pa ) );  // EMUL = 2
+  asm volatile( "vle8.v   v8, (%0), v0.t" : : "r"( pa ) );  // EMUL = 1
+  asm volatile( "vse64.v  v8, (%0), v0.t" : : "r"( pr ) );
+  asm volatile( "vse32.v  v8, (%0), v0.t" : : "r"( pr ) );
+  asm volatile( "vse16.v  v8, (%0), v0.t" : : "r"( pr ) );
+  asm volatile( "vse8.v   v8, (%0), v0.t" : : "r"( pr ) );
 
   avl = 32;
   asm volatile( "vsetvli x0, %0, e16, m4, ta, ma" : : "r"( avl ) );  // vlmax = 4*128/16 = 32
-  // asm volatile( "vle64.v  v8, (%0), v0.t" : : "r"(p));   // EMUL = 4*64/16 = 16 ( >e8 ) Illegal
-  asm volatile( "vle32.v  v8, (%0), v0.t" : : "r"( p ) );  // EMUL = 8
-  asm volatile( "vle16.v  v8, (%0), v0.t" : : "r"( p ) );  // EMUL = 4
-  asm volatile( "vle8.v   v8, (%0), v0.t" : : "r"( p ) );  // EMUL = 2
-  // asm volatile( "vse64.v  v8, (%0), v0.t" : : "r"( p ) );
-  asm volatile( "vse32.v  v8, (%0), v0.t" : : "r"( p ) );
-  asm volatile( "vse16.v  v8, (%0), v0.t" : : "r"( p ) );
-  asm volatile( "vse8.v   v8, (%0), v0.t" : : "r"( p ) );
+  // asm volatile( "vle64.v  v8, (%0), v0.t" : : "r"(pa));   // EMUL = 4*64/16 = 16 ( >e8 ) Illegal
+  asm volatile( "vle32.v  v8, (%0), v0.t" : : "r"( pa ) );  // EMUL = 8
+  asm volatile( "vle16.v  v8, (%0), v0.t" : : "r"( pa ) );  // EMUL = 4
+  asm volatile( "vle8.v   v8, (%0), v0.t" : : "r"( pa ) );  // EMUL = 2
+  // asm volatile( "vse64.v  v8, (%0), v0.t" : : "r"( pr ) );
+  asm volatile( "vse32.v  v8, (%0), v0.t" : : "r"( pr ) );
+  asm volatile( "vse16.v  v8, (%0), v0.t" : : "r"( pr ) );
+  asm volatile( "vse8.v   v8, (%0), v0.t" : : "r"( pr ) );
 
   avl = 64;
   asm volatile( "vsetvli  x0, %0, e8, m4, ta, ma" : : "r"( avl ) );  // vlmax = 4*128/8 = 64
-  // asm volatile( "vle64.v  v8, (%0), v0.t" : : "r"(p));   // EMUL = 4*64/8 = 32 Illegal
-  // asm volatile( "vle32.v  v8, (%0), v0.t" : : "r"(p));   // EMUL = 4*32/8 = 16 Illegal
-  asm volatile( "vle16.v  v8, (%0), v0.t" : : "r"( p ) );  // EMUL = 8
-  asm volatile( "vle8.v   v8, (%0), v0.t" : : "r"( p ) );  // EMUL = 4
-  // asm volatile( "vse64.v  v8, (%0), v0.t" : : "r"( p ) );
-  // asm volatile( "vse32.v  v8, (%0), v0.t" : : "r"( p ) );
-  asm volatile( "vse16.v  v8, (%0), v0.t" : : "r"( p ) );
-  asm volatile( "vse8.v   v8, (%0), v0.t" : : "r"( p ) );
+  // asm volatile( "vle64.v  v8, (%0), v0.t" : : "r"(pa));   // EMUL = 4*64/8 = 32 Illegal
+  // asm volatile( "vle32.v  v8, (%0), v0.t" : : "r"(pa));   // EMUL = 4*32/8 = 16 Illegal
+  asm volatile( "vle16.v  v8, (%0), v0.t" : : "r"( pa ) );  // EMUL = 8
+  asm volatile( "vle8.v   v8, (%0), v0.t" : : "r"( pa ) );  // EMUL = 4
+  // asm volatile( "vse64.v  v8, (%0), v0.t" : : "r"( pr ) );
+  // asm volatile( "vse32.v  v8, (%0), v0.t" : : "r"( pr ) );
+  asm volatile( "vse16.v  v8, (%0), v0.t" : : "r"( pr ) );
+  asm volatile( "vse8.v   v8, (%0), v0.t" : : "r"( pr ) );
 
   // LMUL=8
-  asm volatile( "vsetivli x0, 8, e64, m8, ta, ma" );       // vlmax = 8*128/64 = 16
-  asm volatile( "vle64.v  v8, (%0), v0.t" : : "r"( p ) );  // EMUL = 8*64/64 = 8
-  asm volatile( "vle32.v  v8, (%0), v0.t" : : "r"( p ) );  // EMUL = 4
-  asm volatile( "vle16.v  v8, (%0), v0.t" : : "r"( p ) );  // EMUL = 2
-  asm volatile( "vle8.v   v8, (%0), v0.t" : : "r"( p ) );  // EMUL = 1
-  asm volatile( "vse64.v  v8, (%0), v0.t" : : "r"( p ) );
-  asm volatile( "vse32.v  v8, (%0), v0.t" : : "r"( p ) );
-  asm volatile( "vse16.v  v8, (%0), v0.t" : : "r"( p ) );
-  asm volatile( "vse8.v   v8, (%0), v0.t" : : "r"( p ) );
+  asm volatile( "vsetivli x0, 8, e64, m8, ta, ma" );        // vlmax = 8*128/64 = 16
+  asm volatile( "vle64.v  v8, (%0), v0.t" : : "r"( pa ) );  // EMUL = 8*64/64 = 8
+  asm volatile( "vle32.v  v8, (%0), v0.t" : : "r"( pa ) );  // EMUL = 4
+  asm volatile( "vle16.v  v8, (%0), v0.t" : : "r"( pa ) );  // EMUL = 2
+  asm volatile( "vle8.v   v8, (%0), v0.t" : : "r"( pa ) );  // EMUL = 1
+  asm volatile( "vse64.v  v8, (%0), v0.t" : : "r"( pr ) );
+  asm volatile( "vse32.v  v8, (%0), v0.t" : : "r"( pr ) );
+  asm volatile( "vse16.v  v8, (%0), v0.t" : : "r"( pr ) );
+  asm volatile( "vse8.v   v8, (%0), v0.t" : : "r"( pr ) );
 
   avl = 32;
   asm volatile( "vsetvli x0, %0, e32, m8, ta, ma" : : "r"( avl ) );  // vlmax = 8*128/32 = 32
-  // asm volatile( "vle64.v  v8, (%0), v0.t" : : "r"(p));   // EMUL = 8*64/32 = 16 Illegal
-  asm volatile( "vle32.v  v8, (%0), v0.t" : : "r"( p ) );  // EMUL = 8
-  asm volatile( "vle16.v  v8, (%0), v0.t" : : "r"( p ) );  // EMUL = 4
-  asm volatile( "vle8.v   v8, (%0), v0.t" : : "r"( p ) );  // EMUL = 2
-  // asm volatile( "vse64.v  v8, (%0), v0.t" : : "r"( p ) );
-  asm volatile( "vse32.v  v8, (%0), v0.t" : : "r"( p ) );
-  asm volatile( "vse16.v  v8, (%0), v0.t" : : "r"( p ) );
-  asm volatile( "vse8.v   v8, (%0), v0.t" : : "r"( p ) );
+  // asm volatile( "vle64.v  v8, (%0), v0.t" : : "r"(pa));   // EMUL = 8*64/32 = 16 Illegal
+  asm volatile( "vle32.v  v8, (%0), v0.t" : : "r"( pa ) );  // EMUL = 8
+  asm volatile( "vle16.v  v8, (%0), v0.t" : : "r"( pa ) );  // EMUL = 4
+  asm volatile( "vle8.v   v8, (%0), v0.t" : : "r"( pa ) );  // EMUL = 2
+  // asm volatile( "vse64.v  v8, (%0), v0.t" : : "r"( pr ) );
+  asm volatile( "vse32.v  v8, (%0), v0.t" : : "r"( pr ) );
+  asm volatile( "vse16.v  v8, (%0), v0.t" : : "r"( pr ) );
+  asm volatile( "vse8.v   v8, (%0), v0.t" : : "r"( pr ) );
 
   avl = 64;
   asm volatile( "vsetvli x0, %0, e16, m8, ta, ma" : : "r"( avl ) );  // vlmax = 8*128/16 = 64
-  // asm volatile( "vle64.v  v8, (%0), v0.t" : : "r"(p));   // EMUL = 32 Illegal
-  // asm volatile( "vle32.v  v8, (%0), v0.t" : : "r"(p));   // EMUL = 16 Illegal
-  asm volatile( "vle16.v  v8, (%0), v0.t" : : "r"( p ) );  // EMUL = 8
-  asm volatile( "vle8.v   v8, (%0), v0.t" : : "r"( p ) );  // EMUL = 4
-  // asm volatile( "vse64.v  v8, (%0), v0.t" : : "r"( p ) );
-  // asm volatile( "vse32.v  v8, (%0), v0.t" : : "r"( p ) );
-  asm volatile( "vse16.v  v8, (%0), v0.t" : : "r"( p ) );
-  asm volatile( "vse8.v   v8, (%0), v0.t" : : "r"( p ) );
+  // asm volatile( "vle64.v  v8, (%0), v0.t" : : "r"(pa));   // EMUL = 32 Illegal
+  // asm volatile( "vle32.v  v8, (%0), v0.t" : : "r"(pa));   // EMUL = 16 Illegal
+  asm volatile( "vle16.v  v8, (%0), v0.t" : : "r"( pa ) );  // EMUL = 8
+  asm volatile( "vle8.v   v8, (%0), v0.t" : : "r"( pa ) );  // EMUL = 4
+  // asm volatile( "vse64.v  v8, (%0), v0.t" : : "r"( pr ) );
+  // asm volatile( "vse32.v  v8, (%0), v0.t" : : "r"( pr ) );
+  asm volatile( "vse16.v  v8, (%0), v0.t" : : "r"( pr ) );
+  asm volatile( "vse8.v   v8, (%0), v0.t" : : "r"( pr ) );
 
   avl = 128;
   asm volatile( "vsetvli  x0, %0, e8, m8, ta, ma" : : "r"( avl ) );  // vlmax = 8*128/8 = 128
-  // asm volatile( "vle64.v  v8, (%0), v0.t" : : "r"(p));   // EMUL = 64 Illegal
-  // asm volatile( "vle32.v  v8, (%0), v0.t" : : "r"(p));   // EMUL = 32 Illegal
-  // asm volatile( "vle16.v  v8, (%0), v0.t" : : "r"(p));   // EMUL = 16 Illegal
-  asm volatile( "vle8.v   v8, (%0), v0.t" : : "r"( p ) );  // EMUL = 8
-  // asm volatile( "vse64.v  v8, (%0), v0.t" : : "r"( p ) );
-  // asm volatile( "vse32.v  v8, (%0), v0.t" : : "r"( p ) );
-  // asm volatile( "vse16.v  v8, (%0), v0.t" : : "r"( p ) );
-  asm volatile( "vse8.v   v8, (%0), v0.t" : : "r"( p ) );
+  // asm volatile( "vle64.v  v8, (%0), v0.t" : : "r"(pa));   // EMUL = 64 Illegal
+  // asm volatile( "vle32.v  v8, (%0), v0.t" : : "r"(pa));   // EMUL = 32 Illegal
+  // asm volatile( "vle16.v  v8, (%0), v0.t" : : "r"(pa));   // EMUL = 16 Illegal
+  asm volatile( "vle8.v   v8, (%0), v0.t" : : "r"( pa ) );  // EMUL = 8
+  // asm volatile( "vse64.v  v8, (%0), v0.t" : : "r"( pr ) );
+  // asm volatile( "vse32.v  v8, (%0), v0.t" : : "r"( pr ) );
+  // asm volatile( "vse16.v  v8, (%0), v0.t" : : "r"( pr ) );
+  asm volatile( "vse8.v   v8, (%0), v0.t" : : "r"( pr ) );
 
   RDINSTRET( inst1 );
   RDTIME( time1 );
@@ -326,11 +327,10 @@ void report( int testnum, int rc ) {
 }
 
 int main( int argc, char** argv ) {
-  int    rc       = -1;
-  elem_t res[AVL] = { 0 };
+  int rc = -1;
 
   printf( "test 0: vle sanity\n" );
-  rc = vle_sanity();
+  rc = vle_sanity( s0, res );
   report( 0, rc );
 
   // VLMAX=64 ( v0 mask will only user lower 64-bits )

@@ -132,7 +132,7 @@ uint32_t RevVectorCoProc::CompressEncoding( const RevVecInstEntry& Entry ) {
   uint32_t Value = Entry.opcode;           // 7-bits
   Value |= uint32_t( Entry.funct3 ) << 8;  // 3 bits
   if( ( Entry.format == RVVTypeLd ) || ( Entry.format == RVVTypeSt ) ) {
-    Value |= (uint32_t) ( Entry.umop ) << 14;  // 5 bits
+    //Value |= (uint32_t) ( Entry.umop ) << 14;  // 5 bits
     Value |= (uint32_t) ( Entry.mop ) << 16;   // 2 bits
   }
   Value |= (uint32_t) ( Entry.funct6 ) << 18;  // 6 bits
@@ -261,9 +261,10 @@ RevVecInst::RevVecInst( uint32_t inst ) : Inst( inst ) {
   funct3 = ( Inst >> 12 ) & 7;
   Enc    = funct3 << 8 | opcode;
   if( ( format == RevInstF::RVVTypeLd ) || ( format == RevInstF::RVVTypeSt ) ) {
-    umop = ( Inst >> 20 ) & 0b11111;
+    //umop = ( Inst >> 20 ) & 0b11111;
     mop  = ( Inst >> 26 ) & 0b11;
-    Enc |= ( umop << 14 ) | ( mop << 16 );
+    //Enc |= ( umop << 14 ) | ( mop << 16 );
+    Enc |= ( mop << 16 );
   } else if( ( format == RevInstF::RVVTypeOpv ) && ( funct3 != RVVec::OPV::CFG ) ) {
     // funct6 selects operation for integer arithmetic
     uint64_t funct6 = ( Inst >> 26 ) & 0b111111;
