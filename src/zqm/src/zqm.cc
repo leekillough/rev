@@ -229,11 +229,11 @@ void ZQM::handleRingMboxReg( SST::Forza::ringEvent *ev )
 
     // But then we have to map that to some kind of state as to the status of the 
     // message buffers
-    uint8_t aid = ( x >> R_SHIFT_AID ) & R_MASK_AID;
-    uint8_t phys_zap = ( x >> R_SHIFT_PHYSZAP ) & R_MASK_PHYSZAP;
-    uint16_t phys_hart = ( x >> R_SHIFT_PHYSHART ) & R_MASK_PHYSHART;
-    uint16_t logic_pe = ( x >> R_SHIFT_LOGICALPE ) & R_MASK_LOGICALPE;
-    uint8_t mbx_bitmap = ( x >> R_SHIFT_MBXSUSED ) & R_MASK_MBXSUSED;
+    uint8_t aid = ( x >> ZQMMBOXREG_SHIFT_AID ) & ZQMMBOXREG_MASK_AID;
+    uint8_t phys_zap = ( x >> ZQMMBOXREG_SHIFT_PHYSZAP ) & ZQMMBOXREG_MASK_PHYSZAP;
+    uint16_t phys_hart = ( x >> ZQMMBOXREG_SHIFT_PHYSHART ) & ZQMMBOXREG_MASK_PHYSHART;
+    uint16_t logic_pe = ( x >> ZQMMBOXREG_SHIFT_LOGICALPE ) & ZQMMBOXREG_MASK_LOGICALPE;
+    uint8_t mbx_bitmap = ( x >> ZQMMBOXREG_SHIFT_MBXSUSED ) & ZQMMBOXREG_MASK_MBXSUSED;
     output.verbose(CALL_INFO, 7, 0, "[ZQM] %s; handling a mailbox registration message; datum = 0x%" PRIx64 "\n", getName().c_str(), x );
     output.flush();
 
@@ -329,7 +329,7 @@ void ZQM::updateMailboxes()
     auto msg = IncomingMsgQueue.front();
     IncomingMsgQueue.pop();
     auto dest_aid = msg->getAppID();
-    auto dest_mbox = msg->getCredit();
+    auto dest_mbox = msg->getMbxID();
 
     // To match the zen encoding, the dest_logical_pe is an 11b field; bottom 9b are dest_hart in msg
     // upper 2b are lower 2b of dest_zcid in msg
@@ -680,17 +680,7 @@ void ZQM::processMessagingMsgs()
         auto *event = msg_zop_q.front();
         output.verbose(CALL_INFO, 9, 0, "%s: Processing messaging packet id=%u for ZQM\n", my_name.c_str(), event->getID() );
         switch(event->getOpc()){
-            case SST::Forza::zopOpc::Z_MSG_ZQMSET:
-                output.fatal(CALL_INFO, -2, "%s: Received an old ZQM setup message\n", my_name.c_str());
-                break;
-            case SST::Forza::zopOpc::Z_MSG_ZQMHARTDONE:
-                output.fatal(CALL_INFO, -2, "%s: Received an old ZQM HART Done message\n", my_name.c_str());
-                break;
-            case SST::Forza::zopOpc::Z_MSG_ZQMMBOXSET:
-                output.fatal(CALL_INFO, -2, "%s: Received an old ZQM mailbox setup message\n", my_name.c_str());
-                //processMessagingZqmMboxSet(event);
-                break;
-            case SST::Forza::zopOpc::Z_MSG_SENDP:{
+            case zopOpc::Z_MSG_SENDP:{
                 IncomingMsgQueue.push(event);
                 break;}
                 // TODO: Add ZQM Free AID (or equivalent)
@@ -735,8 +725,8 @@ void ZQM::sendZopAck(SST::Forza::zopEvent *event, zopMsgT msg_type, zopOpc msg_o
     setDestFromSrcInfo(ack_msg, event);
     ack_msg->setID(event->getID());
     ack_msg->setAppID(event->getAppID());
-    ack_msg->setCredit(event->getCredit());
-    ack_msg->setPktRes(event->getPktRes());
+    ack_msg->setMboxID(event->getMbxID());
+    ack_msg->setID(event->getID());
 
     zone_nic->send(ack_msg, static_cast<zopCompID>(ack_msg->getDestZCID()));
     std::string str = ack_msg->msgTToStr(msg_type);

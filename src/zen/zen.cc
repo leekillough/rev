@@ -318,8 +318,8 @@ void ZEN::sendMsgZop(OutgoingMessage* msg, bool is_msg, uint16_t zop_msg_id)
   auto aid = ( ctrl_word >> ZENEQC_SHIFT_MSGAID ) & ZENEQC_MASK_MSGAID;
   zop->setAppID(aid);
   auto mbox_id = ( ctrl_word >> ZENEQC_SHIFT_DESTMBOX ) & ZENEQC_MASK_DESTMBOX;
-  zop->setCredit(mbox_id);
-  zop->setPktRes(msg->msg_id);
+  zop->setMboxID(mbox_id);
+  zop->setID(msg->msg_id);
 
   if ( is_msg ){
     // going to dest zone/precinct
@@ -388,9 +388,9 @@ void ZEN::handleMsgAck(zopEvent *ack)
   ack->decodeEvent();
   // Reduce the mailbox counter
   auto &regs = PerHartCSRs[ack->getDestZCID()][ack->getDestHart()];
-  auto &cntr = regs.mbox_cntrs[ack->getCredit()];
+  auto &cntr = regs.mbox_cntrs[ack->getMbxID()];
   output.verbose(CALL_INFO, 9, 0, "ZEN[%s]; Counter=%u; packet %s to %s; credit=%u \n", getName().c_str(), cntr,
-                 ack->getSrcString().c_str(), ack->getDestString().c_str(), ack->getCredit());
+                 ack->getSrcString().c_str(), ack->getDestString().c_str(), ack->getMbxID());
   
   // Sanity check
   if (cntr == 0){
@@ -399,10 +399,10 @@ void ZEN::handleMsgAck(zopEvent *ack)
   }
   cntr--;
   // we've reduced the counter (no longer saturated), so the busy bit for this mbox should be cleared (active sending is handled with the is_sending flag)
-  uint64_t mask = ~( 1UL << ack->getCredit() );
+  uint64_t mask = ~( 1UL << ack->getMbxID() );
   regs.status &= mask;
 
-  auto retry_num = ack->getPktRes();
+  auto retry_num = ack->getID();
   // Return the retry number to the list
   if ( SeqNumMgrList[retry_num] ) {
     SeqNumMgrList[retry_num] = false;
@@ -565,9 +565,7 @@ void ZEN::handleIncomingPrecZOP(SST::Event *event) {
     case SST::Forza::zopMsgT::Z_RESP:
       // RZA Response
       // Put onto zone NoC
-      output.fatal(CALL_INFO, -1, "ZEN %s: received an incoming rza response zop packet (unhandled)\n",
-                   getName().c_str());
-      //to_zone_noc_q.push_back(ev);
+      zone_nic->send( ev, zone_nic->getZCID( ev->getDestZCID(), false ) );
       break;
 
     //case SST::Forza::zopMsgT::Z_HZOPV: [[fallthrough]];
@@ -575,9 +573,7 @@ void ZEN::handleIncomingPrecZOP(SST::Event *event) {
     case SST::Forza::zopMsgT::Z_MZOP: [[fallthrough]];
     case SST::Forza::zopMsgT::Z_HZOPAC:
       // Memory zop type - forward on to zone NoC
-      //to_zone_noc_q.push_back(ev);
-      output.fatal(CALL_INFO, -1, "ZEN %s: received an incoming memory zop packet (unhandled)\n",
-                   getName().c_str());
+      zone_nic->send( ev, zopCompID::Z_RZA );
       break;
 
     case SST::Forza::zopMsgT::Z_TMIG:
@@ -626,25 +622,17 @@ void ZEN::handleIncomingZOP(SST::Event *event) {
       helper_handleMsgZop(ev);
       break;
 
-    case SST::Forza::zopMsgT::Z_RESP:
-      // These can from the RZA and the ZAP scratchpad
-      //mem_acks.push(ev);
-      output.fatal(CALL_INFO, -7, "ZEN %s: received a response packet (unhandled)\n",
-                   getName().c_str());
-      break;
-
     //case SST::Forza::zopMsgT::Z_HZOPV: [[fallthrough]];
     //case SST::Forza::zopMsgT::Z_RZOP: [[fallthrough]];
+    case SST::Forza::zopMsgT::Z_RESP: [[fallthrough]];
     case SST::Forza::zopMsgT::Z_MZOP: [[fallthrough]];
     case SST::Forza::zopMsgT::Z_HZOPAC:
       // Memory zop type - should be strictly outgoing to precinct NoC
-      if (isDestLocal(ev))
+      if ( isDestLocal(ev) )
         output.fatal(CALL_INFO, -2, "ZEN %s: received a memory zop with local dest\n",
                      getName().c_str());
       // Put packet in outgoing queue
-      // to_precinct_noc_q.push_back(ev);
-      output.fatal(CALL_INFO, -3, "ZEN %s: received an outgoing memory zop packet (unhandled)\n",
-                   getName().c_str());
+      m_prec_iface->send( ev, zopCompID::Z_RZA );
       break;
 
     case SST::Forza::zopMsgT::Z_TMIG:
