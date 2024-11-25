@@ -311,20 +311,22 @@ public:
     uint64_t mask = 0;
     for( unsigned vecElem = 0; vecElem < V->GetVCSR( RevCSR::vl ); vecElem++ ) {
       unsigned el  = vecElem % V->ElemsPerReg();
-      SEWTYPE res = 0;
-      SEWTYPE s2 = FORCE_VS2_ZERO ? 0 : V->GetElem<SEWTYPE>(vs2,el);
-      SEWTYPE s1;
-      switch( KIND ) {
-      case VReg: s1 = V->GetElem<SEWTYPE>( vs1, el ); break;
-      case Imm:  s1 = (Inst.Inst >> 15) & 0x1f; break;
-      case Reg:  s1 = R->GetX<SEWTYPE>( Inst.rs1 ); break;
-      }
-      res = REVERSE ? VOP()(s1,s2) : VOP()(s2, s1);
-      if( DST_IS_MASK ) {
-        assert( vecElem < 64 );  // TODO
-        mask |= ( (res!=0) & 1 ) << vecElem;
-      } else {
-        V->SetElem<SEWTYPE>( Inst.vd, vd, vecElem, el, res, Inst.vm );
+      if (DST_IS_MASK || V->v0mask(Inst.vm, vecElem)) {
+        SEWTYPE res = 0;
+        SEWTYPE s2 = FORCE_VS2_ZERO ? 0 : V->GetElem<SEWTYPE>(vs2,el);
+        SEWTYPE s1;
+        switch( KIND ) {
+        case VReg: s1 = V->GetElem<SEWTYPE>( vs1, el ); break;
+        case Imm:  s1 = (Inst.Inst >> 15) & 0x1f; break;
+        case Reg:  s1 = R->GetX<SEWTYPE>( Inst.rs1 ); break;
+        }
+        res = REVERSE ? VOP()(s1,s2) : VOP()(s2, s1);
+        if( DST_IS_MASK ) {
+          assert( vecElem < 64 );  // TODO
+          mask |= ( (res!=0) & 1 ) << vecElem;
+        } else {
+          V->SetElem<SEWTYPE>( Inst.vd, vd, vecElem, el, res );
+        }
       }
       if( ( ( el + 1 ) % V->ElemsPerReg() ) == 0 ) {
         vd++;
@@ -362,11 +364,13 @@ public:
     // vfmacc.vf vd, rs1, vs2, vm # vd[i] = +(f[rs1] * vs2[i]) + vd[i]
     for( unsigned vecElem = 0; vecElem < V->GetVCSR( RevCSR::vl ); vecElem++ ) {
       unsigned el  = vecElem % V->ElemsPerReg();
-      FTYPE s1 = R->GetFP<FTYPE>(Inst.rs1);
-      FTYPE s2 = V->GetElem<FTYPE>(vs2, el);
-      FTYPE dst = V->GetElem<FTYPE>(vd, el);
-      FTYPE res = s1 * s2 + dst;
-      V->SetElem<FTYPE>(Inst.vd, vd, vecElem, el, res, Inst.vm);
+      if ( V->v0mask(Inst.vm, vecElem)) {
+        FTYPE s1 = R->GetFP<FTYPE>(Inst.rs1);
+        FTYPE s2 = V->GetElem<FTYPE>(vs2, el);
+        FTYPE dst = V->GetElem<FTYPE>(vd, el);
+        FTYPE res = s1 * s2 + dst;
+        V->SetElem<FTYPE>(Inst.vd, vd, vecElem, el, res);
+      }
       if( ( ( el + 1 ) % V->ElemsPerReg() ) == 0 ) {
         vd++;
         vs1++;
@@ -408,7 +412,7 @@ public:
       if (MOD==NotVS1) s1 = ~s1;
       SEWTYPE  res = VOP()( V->GetElem<SEWTYPE>( vs2, el ), s1 );
       if (MOD==Not) res = ~res;
-      V->SetElem<SEWTYPE>( Inst.vd, vd, vecElem, el, res, Inst.vm );
+      V->SetElem<SEWTYPE>( Inst.vd, vd, vecElem, el, res );
       if( ( ( el + 1 ) % V->ElemsPerReg() ) == 0 ) {
         vd++;
         vs1++;
@@ -565,13 +569,15 @@ public:
 
     for( unsigned vecElem = 0; vecElem < params.evl; vecElem++ ) {
       unsigned el = vecElem % params.elemsPerReg;
-      EEW  d  = 0;
-      MemReq   req0( params.addr, RevReg::zero, RevRegClass::RegGPR, 0, MemOp::MemOpREAD, true, R->GetMarkLoadComplete() );
-      M->ReadVal<EEW>( 0, params.addr, &d, req0, RevFlag::F_NONE );
-      // Writing to vector registers uses the SEW 
-      std::stringstream s;
-      s << "0x" << std::hex << (uint64_t) d << " <- M[0x" << params.addr << "]" << std::endl;
-      V->SetElem<EEW>( Inst.vd, params.vd, vecElem, el, d, params.evm );
+      if ( V->v0mask(params.evm, vecElem) ) {
+        EEW  d  = 0;
+        MemReq   req0( params.addr, RevReg::zero, RevRegClass::RegGPR, 0, MemOp::MemOpREAD, true, R->GetMarkLoadComplete() );
+        M->ReadVal<EEW>( 0, params.addr, &d, req0, RevFlag::F_NONE );
+        // Writing to vector registers uses the SEW 
+        std::stringstream s;
+        s << "0x" << std::hex << (uint64_t) d << " <- M[0x" << params.addr << "]" << std::endl;
+        V->SetElem<EEW>( Inst.vd, params.vd, vecElem, el, d );
+      }
       params.addr += sizeof( EEW );
       if( ( ( el + 1 ) % params.elemsPerReg ) == 0 )
         params.vd++;
@@ -616,11 +622,13 @@ public:
     memopParams_t params = memopParams_t<EEW, SEW, KIND>(R, V, Inst);
     for( unsigned vecElem = 0; vecElem < params.evl; vecElem++ ) {
       unsigned el = vecElem % params.elemsPerReg;
-      EEW  d  = V->GetElem<EEW>( params.vs3, el );
-      M->WriteMem( 0, params.addr, sizeof( EEW ), &d ); 
-      std::cout << "*V M[0x" << std::hex << params.addr << "] <- 0x" << std::hex << (uint64_t) d << " <- v" << std::dec << params.vs3 << "."
-                << std::dec << el << std::endl;
-      params.addr += sizeof( EEW );
+      if (V->v0mask(params.evm, vecElem)) {
+        EEW  d  = V->GetElem<EEW>( params.vs3, el );
+        M->WriteMem( 0, params.addr, sizeof( EEW ), &d ); 
+        std::cout << "*V M[0x" << std::hex << params.addr << "] <- 0x" << std::hex << (uint64_t) d << " <- v" << std::dec << params.vs3 << "."
+                  << std::dec << el << std::endl;
+        params.addr += sizeof( EEW );
+      }
       if( ( ( el + 1 ) % params.elemsPerReg ) == 0 )
         params.vs3++;
 

@@ -85,6 +85,18 @@ public:
 
   uint16_t ElemsPerReg();  ///< RevVRegFile: VLEN/SEW
 
+  /// Retrieve vector mask bit from v0
+  bool v0mask( bool vm, unsigned vecElem ) {
+    if( vm )
+      return true;
+    // Grab 64-bit chunk containing element mask bit.
+    assert( vecElem < vlen_ );
+    unsigned  chunk = vecElem >> 6;
+    unsigned  shift = vecElem % 64;
+    uint64_t* pmask = (uint64_t*) ( &( vreg[0][chunk << 3] ) );
+    return ( ( *pmask ) >> shift ) & 1;
+  }
+
   // base is destination register in instruction
   // vd is current destination register
   // vecElem is the vector element number relative to base register
@@ -92,60 +104,12 @@ public:
   // d is data
   // vm is vector mask bit
   template<typename T>
-  void SetElem( uint64_t base, uint64_t vd, unsigned vecElem, unsigned el, T d, bool vm ) {
+  void SetElem( uint64_t base, uint64_t vd, unsigned vecElem, unsigned el, T d ) {
     size_t bytes = sizeof( T );
     assert( ( el * bytes ) <= GetVCSR( vlenb ) );
-    if( !vm ) {
-      assert( vd > 0 );  // v0 is always the mask register
-      // Locate bit el in vector register using 64-bits at a time
-      unsigned  chunk = vecElem >> 6;
-      unsigned  shift = vecElem % 64;
-      uint64_t* pmask = (uint64_t*) ( &( vreg[0][chunk << 3] ) );
-      if( ( ( ( *pmask ) >> shift ) & 1 ) == 0 ) {
-        std::cout << "*V " << std::dec << vd << "." << vecElem << " ... masked (0x" << std::hex << ( *pmask ) << ")" << std::endl;
-        return;
-      }
-#if 1
-      else {
-        std::cout << "*V " << std::dec << vd << "." << vecElem << " ... unmasked (0x" << std::hex << ( *pmask ) << ")" << std::endl;
-      }
-#endif
-    }
     T res = d;
     memcpy( &( vreg[vd][el * bytes] ), &res, bytes );
     std::cout << "*V v" << std::dec << vd << "." << el << " <- 0x" << std::hex << (uint64_t) d << std::endl;
-  };
-
-  // Alternative experiment. Use only vector element.
-  template<typename T>
-  void SetElemAlt( uint64_t vd, unsigned vecElem, T d, bool vm ) {
-    if( !vm ) {
-      assert( vd > 0 );  // v0 is always the mask register
-      // Locate bit el in vector register using 64-bits at a time
-      unsigned  chunk = vecElem >> 6;
-      unsigned  shift = vecElem % 64;
-      uint64_t* pmask = (uint64_t*) ( &( vreg[0][chunk] ) );
-      if( ( ( ( *pmask ) >> shift ) & 1 ) == 0 ) {
-        std::cout << "*V " << std::dec << vd << "." << vecElem << " ... masked (0x" << ( *pmask ) << ")" << std::endl;
-        return;
-      }
-#if 1
-      else {
-        std::cout << "*V " << std::dec << vd << "." << vecElem << " ... unmasked (0x" << ( *pmask ) << ")" << std::endl;
-      }
-#endif
-    }
-    // Determine vector index for register based on the vector element
-    unsigned elemsPerReg = vlen_ / ( sizeof( T ) << 3 );
-    unsigned evd         = vd + vecElem / elemsPerReg;
-    assert( evd < 32 );
-    // Locate starting position of element in byte array
-    unsigned el      = vecElem % elemsPerReg;
-    size_t   elemPos = el * sizeof( T );
-    assert( elemPos <= GetVCSR( vlenb ) );
-    // write the element
-    memcpy( &( vreg[evd][elemPos] ), &d, sizeof( T ) );
-    std::cout << "*V v" << std::dec << evd << "." << el << " <- 0x" << std::hex << (uint64_t) d << std::endl;
   };
 
   template<typename T>
