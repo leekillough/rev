@@ -115,7 +115,7 @@ bool RevVectorCoProc::InitTableMapping() {
     // map normal instruction
     uint64_t enc = CompressEncoding( InstTable[i] );
     EncToEntry.insert( std::pair<uint64_t, unsigned>( enc, i ) );
-    output->verbose( CALL_INFO, 6, 0, "Table Entry 0x%" PRIx32 " = %s\n", enc, ExtractMnemonic( InstTable[i] ).data() );
+    output->verbose( CALL_INFO, 6, 0, "Table Entry 0x%" PRIx64 " = %s\n", enc, ExtractMnemonic( InstTable[i] ).data() );
   }
   return true;
 }

@@ -93,4 +93,4 @@ uint64_t RevVRegFile::vfirst( uint64_t vs ) {
   return -1ULL;
 }
 
-}  //namespace SST::RevCPU
+} //namespace SST::RevCPU

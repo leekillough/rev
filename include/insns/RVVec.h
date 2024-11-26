@@ -1,5 +1,5 @@
 //
-// _RVV_h_
+// _RVVEC_h_
 //
 // Copyright (C) 2017-2024 Tactical Computing Laboratories, LLC
 // All Rights Reserved
@@ -431,7 +431,7 @@ public:
   }
 
   /// The vfirst instruction finds the lowest-numbered active element of the source mask vector that has the
-  /// value 1 and writes that element’s index to a GPR. If no active element has the value 1, -1 is written to the
+  /// value 1 and writes that element's index to a GPR. If no active element has the value 1, -1 is written to the
   /// GPR.
   static bool vfirstm( const RevFeature* F, RevRegFile* R, RevVRegFile* V, RevMem* M, const RevVecInst& Inst ) {
     uint64_t res = V->vfirst(Inst.vs2);
