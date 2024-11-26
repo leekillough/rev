@@ -275,10 +275,10 @@ int sanity( elem_t a[], elem_t r[] ) {
 }
 
 int strided_load16( uint64_t mask, elem_t a[], elem_t r[] ) {
-  #if 0
+#if 0
   for (unsigned i=0;i<DSIZE;i++)
     printf("a[%d]=0x%x &=0x%zx\n", i, a[i], &(a[i]));
-  #endif
+#endif
   for( unsigned i = 0; i < AVL; i++ )  // clear result
     r[i] = 0;
   set_vectors( -1 );    // all bits 1 for all vectors
@@ -291,9 +291,9 @@ int strided_load16( uint64_t mask, elem_t a[], elem_t r[] ) {
   int count   = AVL;
   int bstride = STRIDE * sizeof( elem_t );
   while( count > 0 ) {
-    #if 0
+#if 0
     printf("pa=0x%zx pr=0x%zx\n", pa,pr);
-    #endif
+#endif
     unsigned newvl = 0;
     VSETVLI( newvl, AVL, e16, m8, ta, ma );
     asm volatile( "vlse16.v v8, (%0), %1, v0.t \t\n" : : "r"( pa ), "r"( bstride ) );  // EMUL = LMUL*EEW/SEW = 8*16/16 = 8
@@ -346,11 +346,9 @@ void report( int testnum, int rc ) {
 int main( int argc, char** argv ) {
   int rc = -1;
 
-#if 0
   printf( "test 0: sanity\n" );
   rc = sanity( s0, res );
   report( 0, rc );
-#endif
 
   // VLMAX=64 ( v0 mask will only user lower 64-bits )
   printf( "test 1: strided load using mask 0xffffffffffffffff\n" );

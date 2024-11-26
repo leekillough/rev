@@ -523,14 +523,17 @@ public:
   struct memopParams_t {
     uint64_t addr;
     uint64_t vd;
+    uint64_t vs2; // for indexed
     uint64_t vs3; // stores only
     uint64_t evl;
     uint64_t stride = sizeof(EEW);
     unsigned elemsPerReg;
+    unsigned elemsPerIndexReg = 0;
     bool evm;
     memopParams_t(RevRegFile* R, RevVRegFile* V, const RevVecInst& Inst) {
       addr = R->GetX<uint64_t>( Inst.rs1 );
       vd   = Inst.vd;
+      vs2  = Inst.vs2;
       vs3  = Inst.vs3;
       evm = Inst.vm;
       unsigned vl = V->GetVCSR( RevCSR::vl );
@@ -560,6 +563,12 @@ public:
           stride = R->GetX<uint64_t>(Inst.rs2);
           break;
         case Indexed:
+          // data vector uses SEW, index uses EEW
+          evl = vl;
+          elemsPerReg = V->ElemsPerReg();
+          elemsPerIndexReg = elemsPerReg * sizeof(SEW) / sizeof(EEW);
+          V->emul<EEW,SEW>(); 
+          break;
         case Segment:
         case WholeRegister:
           assert(false);
@@ -593,16 +602,29 @@ public:
     for( unsigned vecElem = V->GetVCSR(RevCSR::vstart); vecElem < params.evl; vecElem++ ) {
       unsigned el = vecElem % params.elemsPerReg;
       if ( V->v0mask(params.evm, vecElem) ) {
-        EEW  d  = 0;
-        MemReq   req0( params.addr, RevReg::zero, RevRegClass::RegGPR, 0, MemOp::MemOpREAD, true, R->GetMarkLoadComplete() );
-        M->ReadVal<EEW>( 0, params.addr, &d, req0, RevFlag::F_NONE );
-        // Writing to vector registers uses the SEW 
-        std::cout << "0x" << std::hex << (uint64_t) d << " <- M[0x" << params.addr << "]" << std::endl;
-        V->SetElem<EEW>( Inst.vd, params.vd, vecElem, el, d );
+        if (KIND != Indexed) {
+          EEW  d  = 0;
+          MemReq   req0( params.addr, RevReg::zero, RevRegClass::RegGPR, 0, MemOp::MemOpREAD, true, R->GetMarkLoadComplete() );
+          M->ReadVal<EEW>( 0, params.addr, &d, req0, RevFlag::F_NONE );
+          std::cout << "0x" << std::hex << (uint64_t) d << " <- M[0x" << params.addr << "]" << std::endl;
+          V->SetElem<EEW>( Inst.vd, params.vd, vecElem, el, d );
+        } else {
+          SEW  d  = 0;
+          uint64_t addr = params.addr + V->GetElem<EEW>(params.vs2, el);
+          MemReq   req0( addr, RevReg::zero, RevRegClass::RegGPR, 0, MemOp::MemOpREAD, true, R->GetMarkLoadComplete() );
+          M->ReadVal<SEW>( 0, addr, &d, req0, RevFlag::F_NONE );
+          std::cout << "0x" << std::hex << (uint64_t) d << " <- M[0x" << addr << "]" << std::endl;
+          V->SetElem<SEW>( Inst.vd, params.vd, vecElem, el, d );
+        }
       }
-      params.addr += params.stride;
-      if( ( ( el + 1 ) % params.elemsPerReg ) == 0 )
+      if( ( ( el + 1 ) % params.elemsPerReg ) == 0 ) {
         params.vd++;
+      }
+      if (KIND != Indexed ) {
+        params.addr += params.stride;
+      } else if ( ( el + 1 ) % params.elemsPerIndexReg == 0 ) {
+        params.vs2++;
+      }
     }
     return true;
   }
@@ -646,14 +668,27 @@ public:
     for( unsigned vecElem = 0; vecElem < params.evl; vecElem++ ) {
       unsigned el = vecElem % params.elemsPerReg;
       if (V->v0mask(params.evm, vecElem)) {
-        EEW  d  = V->GetElem<EEW>( params.vs3, el );
-        M->WriteMem( 0, params.addr, sizeof( EEW ), &d ); 
-        std::cout << "*V M[0x" << std::hex << params.addr << "] <- 0x" << std::hex << (uint64_t) d << " <- v" << std::dec << params.vs3 << "."
-                  << std::dec << el << std::endl;
-        params.addr += params.stride;
+        if (KIND != Indexed) {
+          EEW  d  = V->GetElem<EEW>( params.vs3, el );
+          M->WriteMem( 0, params.addr, sizeof( EEW ), &d ); 
+          std::cout << "*V M[0x" << std::hex << params.addr << "] <- 0x" << std::hex << (uint64_t) d << " <- v" << std::dec << params.vs3 << "."
+                    << std::dec << el << std::endl;
+        } else {
+          SEW  d  = V->GetElem<SEW>( params.vs3, el );
+          uint64_t addr = params.addr + V->GetElem<EEW>(params.vs2, el);
+          M->WriteMem( 0, addr, sizeof( SEW ), &d ); 
+          std::cout << "*V M[0x" << std::hex << addr << "] <- 0x" << std::hex << (uint64_t) d << " <- v" << std::dec << params.vs3 << "."
+                    << std::dec << el << std::endl;
+        }
       }
-      if( ( ( el + 1 ) % params.elemsPerReg ) == 0 )
+      if( ( ( el + 1 ) % params.elemsPerReg ) == 0 ) {
         params.vs3++;
+      }
+      if (KIND != Indexed ) {
+        params.addr += params.stride;
+      } else if ( ( el + 1 ) % params.elemsPerIndexReg == 0 ) {
+        params.vs2++;
+      }
 
     }
     return true;
