@@ -107,10 +107,15 @@ ZQM::ZQM(ComponentId_t id, Params& params)
   ZoneId                = params.find<unsigned>( "zoneId", 0 );
   processPerCycle       = params.find<unsigned>( "processPerCycle", 10 );
   msgQueueDepth         = params.find<uint32_t>( "msgQueueDepth", 512 );
-  memStartAddr          = params.find<uint64_t>( "memStartAddr", 0 );
+  memStartAddr          = params.find<uint64_t>( "memStartAddr", 0x400 );
   msgsPerMbox           = params.find<uint32_t>( "msgsPerMbox", 2 );
   cyclesPerRecycle      = params.find<uint32_t>( "cyclesPerRecycle", 100 );
   recyclesToNack        = params.find<uint32_t>( "recyclesToNack", 16 );
+
+  // Validate parameters
+  if ( ( memStartAddr % 0x400 ) != 0 ) {
+    output.fatal( CALL_INFO, -1, "ZQM: memStartAddr is not aligned to 0x400!\n" );
+  }
 
   // setup the zone network
   zone_nic              = loadUserSubComponent<SST::Forza::zopAPI>( "zone_nic" );
@@ -125,6 +130,8 @@ ZQM::ZQM(ComponentId_t id, Params& params)
     output.verbose( CALL_INFO, 4, 0, "ZQM[%s] create zone ring\n", getName().c_str() );
     zone_ring->setMsgHandler( new Event::Handler<ZQM>( this, &ZQM::handleRingMsg ) );
     zone_ring->setEndpointType( zopCompID::Z_ZQM );
+  } else {
+    output.fatal( CALL_INFO, -1, "ZQM requires a zone ring network\n" );
   }
   dma_enabled = true;
 
@@ -136,14 +143,30 @@ ZQM::ZQM(ComponentId_t id, Params& params)
     output.fatal( CALL_INFO, -1, "Insufficient message IDs allocated in constructor\n" );
   }
 
+  // Resize the IncomingMessage vector
+  IncomingMsgQueue.resize( NUM_MBOXES );
+
   // Resize the CSR regs
   PerHartCSRs.resize( numCores );
   for( auto& i : PerHartCSRs ) {
     i.resize( numHarts );
   }
 
-  // Resize the IncomingMessage vector
-  IncomingMsgQueue.resize( NUM_MBOXES );
+  // Init message buffer addresses
+  uint64_t base_addr_increment = NUM_MBOXES * msgsPerMbox * ACTOR_MSG_BYTES;
+  uint64_t base_addr = memStartAddr;
+  for (auto &i : PerHartCSRs) {
+    for (auto &j : i) {
+      j.msgs_per_mbox = msgsPerMbox;
+      j.mem_base_addr = base_addr;
+      base_addr += base_addr_increment;
+    }
+  }
+
+  uint64_t total_msg_mem = numCores * numHarts * base_addr_increment;
+  output.verbose(
+    CALL_INFO, 3, 0, "%s constructed; using 0x%" PRIx64 " bytes for actor msg memory\n", my_name.c_str(), total_msg_mem
+  );
 
   // register with SST
   registerAsPrimaryComponent();
@@ -213,6 +236,7 @@ void ZQM::handleRingStatus( SST::Forza::ringEvent *ev )
   if ( ev->getOp() != SST::Forza::ringMsgT::R_READ )
     output.fatal(CALL_INFO, -1, "[ZQM] %s unexpected optype message; OpType=%" PRIu8 "\n", getName().c_str(), static_cast<uint8_t>(ev->getOp()));
 
+  // TODO: Easier to recompute rather than maintain?
   auto status = PerHartCSRs[ev->getSrcZap()][ev->getHart()].status;
   output.verbose(CALL_INFO, 7, 0, "[ZQM] %s handle ZQMSTAT message; return status=0x%" PRIx64 "\n", getName().c_str(), status);
   sendRingResponse(ev, status);
@@ -224,7 +248,7 @@ void ZQM::handleRingMboxReg( SST::Forza::ringEvent *ev )
     // Writing 0 clears a mapping - ignore for now
     auto x = ev->getDatum();
     if ( x == 0 ){
-        output.verbose(CALL_INFO, 5, 0, "[ERROR] [ZQM] %s; mailbox unregister not handled\n", getName().c_str() );
+        output.verbose(CALL_INFO, 5, 0, "[WARNING] [ZQM] %s; mailbox unregister not handled\n", getName().c_str() );
         delete ev;
         return;
     }
@@ -261,6 +285,11 @@ void ZQM::handleRingMboxReg( SST::Forza::ringEvent *ev )
 
 void ZQM::handleRingDq( SST::Forza::ringEvent *ev )
 {
+  // TODO: Just return the pointer to the proper buffer
+  // Ensure that the address pointer returned has a segment value of 0x0F
+  // RevMem.h has Z_SEG_MASK and Z_SEG_SHIFT that can be used
+  // Then we update the buffer depending on the request type (read vs rmw)
+
     output.verbose(CALL_INFO, 7, 0, "[ZQM] %s; handling a dequeue message\n", getName().c_str() );
     // Maybe use a ZEN like reading scheme for now to get something implemented
     // That would at least let us work on developing s/w
@@ -350,15 +379,6 @@ void ZQM::updateMailboxes()
         IncomingMsgQueue[msg->getMbxID()].push({msg, 0});
     }
 }
-
-/** Handles incoming ZOP events; set as handler in ZQM::setup()
- *  Valid messages into here should be the following:
- * - Messaging with ZQM Setup Opcode - KILL
- * - RZA Response - Yes
- * - Thread Migration - May need to expand since this handles the run queue
- *
- * * @param event
-*/
 
 void ZQM::handleIncomingZOP(SST::Event *event)
 {
@@ -684,8 +704,6 @@ void ZQM::processMessagingMsgs()
                 convertLogicPEToPhysPE(event);
                 IncomingMsgQueue[event->getMbxID()].push({event, 0});
                 break; }
-                // TODO: Add ZQM Free AID (or equivalent)
-                // TODO: Add ZQM Set HART (needed for initial program thread)
             default:
                 output.fatal(CALL_INFO, -1, "%s: Received an invalid messaging packet; opcode = 0x%x, id=%u\n",
                              my_name.c_str(), (uint32_t) event->getOpc(), (uint32_t)event->getID());
@@ -695,24 +713,6 @@ void ZQM::processMessagingMsgs()
             break;
     }
 }
-
-#if 0
-void ZQM::sendACK(SST::Forza::zopEvent *ev, bool to_zone_noc)
-{
-    SST::Forza::zopEvent *ack = new SST::Forza::zopEvent();
-    ack->setType(SST::Forza::zopMsgT::Z_MSG);
-    ack->setOpc(SST::Forza::zopOpc::Z_MSG_ACK);
-    setMeAsZopSrc(ack);
-    setDestFromSrcInfo(ack, ev);
-    ack->setID(ev->getID());
-    ack->encodeEvent();
-    //auto iface = (to_zone_noc) ? zone_nic : m_prec_iface;
-    auto iface = zone_nic;
-    iface->send(ack, (zopCompID)ack->getDestZCID(), (zopPrecID)ack->getDestPCID(), (uint16_t)ack->getDestPrec());
-    output.verbose(CALL_INFO, 9, 0, "[ZQM] %s sending ACK with msg_id=%" PRIu16 " to %s\n",
-                    getName().c_str(), ev->getID(), ack->getDestString().c_str());
-}
-#endif
 
 void ZQM::sendZopAck(SST::Forza::zopEvent *event, zopMsgT msg_type, zopOpc msg_opc)
 {
@@ -727,6 +727,7 @@ void ZQM::sendZopAck(SST::Forza::zopEvent *event, zopMsgT msg_type, zopOpc msg_o
     ack_msg->setID(event->getID());
     ack_msg->setAppID(event->getAppID());
     ack_msg->setMboxID(event->getMbxID());
+    ack_msg->encodeEvent();
 
     zone_nic->send(ack_msg, static_cast<zopCompID>(ack_msg->getDestZCID()));
     std::string str = ack_msg->msgTToStr(msg_type);
