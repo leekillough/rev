@@ -17,7 +17,9 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
-#include <type_traits>
+#include <functional>
+#include <unordered_map>
+#include <utility>
 
 namespace SST::RevCPU {
 
@@ -61,8 +63,10 @@ namespace SST::RevCPU {
 class RevCore;
 
 class RevCSR : public RevZicntr {
-  static constexpr size_t         CSR_LIMIT = 0x1000;
-  std::array<uint64_t, CSR_LIMIT> CSR{};  ///< RegCSR: CSR registers
+  static constexpr size_t                                                  CSR_LIMIT = 0x1000;
+  std::array<uint64_t, CSR_LIMIT>                                          CSR{};  ///< RegCSR: CSR registers
+  std::unordered_map<uint16_t, std::function<uint64_t( const uint64_t& )>> Getter{};
+  std::unordered_map<uint16_t, std::function<bool( uint64_t& )>>           Setter{};
 
 public:
   // CSR Registers
@@ -71,6 +75,14 @@ public:
     fflags         = 0x001,
     frm            = 0x002,
     fcsr           = 0x003,
+
+    // Vector CSR Group 1
+    vstart         = 0x008,
+    vxsat          = 0x009,
+    vxrm           = 0x00a,
+    vcsr           = 0x00f,
+
+    // Performance counters
     cycle          = 0xc00,
     time           = 0xc01,
     instret        = 0xc02,
@@ -103,6 +115,13 @@ public:
     hpmcounter29   = 0xc1d,
     hpmcounter30   = 0xc1e,
     hpmcounter31   = 0xc1f,
+
+    // Vector CSR Group 2
+    vl             = 0xc20,
+    vtype          = 0xc21,
+    vlenb          = 0xc22,
+
+    // Performance counters high 32 bits
     cycleh         = 0xc80,
     timeh          = 0xc81,
     instreth       = 0xc82,
@@ -443,6 +462,16 @@ public:
     dscratch1      = 0x7b3,
   };
 
+  /// Register a custom getter for a particular CSR register
+  void SetCSRGetter( uint16_t csr, std::function<uint64_t( const uint64_t& )> handler ) {
+    Getter.insert_or_assign( csr, std::move( handler ) );
+  }
+
+  /// Register a custom setter for a particular CSR register
+  void SetCSRSetter( uint16_t csr, std::function<bool( uint64_t& )> handler ) {
+    Setter.insert_or_assign( csr, std::move( handler ) );
+  }
+
   /// Get the Floating-Point Rounding Mode
   FRMode GetFRM() const { return static_cast<FRMode>( CSR[fcsr] >> 5 & 0b111 ); }
 
@@ -452,8 +481,16 @@ public:
   /// Get a CSR register
   template<typename XLEN>
   XLEN GetCSR( uint16_t csr ) const {
+
+    // If a custom Getter exists, use it
+    auto it = Getter.find( csr );
+    if( it != Getter.end() ) {
+      return static_cast<XLEN>( it->second( CSR.at( csr ) ) );
+    }
+
     // clang-format off
     switch( csr ) {
+      // Floating Point flags
       case fflags:   return static_cast<XLEN>( CSR[fcsr] >> 0 & 0b00011111 );
       case frm:      return static_cast<XLEN>( CSR[fcsr] >> 5 & 0b00000111 );
       case fcsr:     return static_cast<XLEN>( CSR[fcsr] >> 0 & 0b11111111 );
@@ -466,6 +503,7 @@ public:
       case instret:  return GetPerfCounter<XLEN, Half::Lo, rdinstret>();
       case instreth: return GetPerfCounter<XLEN, Half::Hi, rdinstret>();
 
+      // Default behavior is to read it as an ordinary register with no side effects
       default:       return static_cast<XLEN>( CSR.at( csr ) );
     }
     // clang-format on
@@ -474,16 +512,28 @@ public:
   /// Set a CSR register
   template<typename XLEN>
   bool SetCSR( uint16_t csr, XLEN val ) {
+
     // Read-only CSRs cannot be written to
     if( csr >= 0xc00 && csr < 0xe00 )
       return false;
 
-    switch( csr ) {
-    case fflags: CSR[fcsr] = ( CSR[fcsr] & ~uint64_t{ 0b00011111 } ) | ( val & 0b00011111 ); break;
-    case frm: CSR[fcsr] = ( CSR[fcsr] & ~uint64_t{ 0b11100000 } ) | ( val & 0b00000111 ) << 5; break;
-    case fcsr: CSR[fcsr] = ( CSR[fcsr] & ~uint64_t{ 0b11111111 } ) | ( val & 0b11111111 ); break;
-    default: CSR.at( csr ) = val;
+    // If a custom setter exists, use it
+    auto it = Setter.find( csr );
+    if( it != Setter.end() ) {
+      return it->second( CSR.at( csr ) );
     }
+
+    // clang-format off
+    switch( csr ) {
+      // Floating Point flags
+      case fflags: CSR[fcsr] = ( CSR[fcsr] & ~uint64_t{ 0b00011111 } ) | ( val & 0b00011111 ) << 0; break;
+      case frm:    CSR[fcsr] = ( CSR[fcsr] & ~uint64_t{ 0b11100000 } ) | ( val & 0b00000111 ) << 5; break;
+      case fcsr:   CSR[fcsr] = ( CSR[fcsr] & ~uint64_t{ 0b11111111 } ) | ( val & 0b11111111 ) << 0; break;
+
+      // Default behavior is to write to it as an ordinary register
+      default:     CSR.at( csr ) = val;
+    }
+    // clang-format on
     return true;
   }
 };  // class RevCSR
