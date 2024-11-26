@@ -86,7 +86,7 @@ int sanity( elem_t a[], elem_t r[] ) {
 
   elem_t* pa = a;
   elem_t* pr = r;
-  printf("pa=0x%zx pr=0x%zx\n", pa, pr);
+  printf( "pa=0x%p pr=0x%p\n", (void*) pa, (void*) pr );
 
   set_vectors( 0x10 );  // safe index
   set_v0_mask( 0xffffffffffffffffULL );
