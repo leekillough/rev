@@ -487,7 +487,7 @@ public:
   template<typename CSR, typename = std::enable_if_t<std::is_same_v<CSR, RevCSR>>>
   static std::function<uint64_t( uint16_t )> GetCSRGetter( const CSR* revcsr, uint16_t csr ) {
     auto it = revcsr->Getter.find( csr );
-    if( it == revcsr->Getter.end() ) {
+    if( it == revcsr->Getter.end() || !it->second ) {
       return revcsr->GetCore()->GetCSRGetter( csr );
     } else {
       return it->second;
@@ -499,7 +499,7 @@ public:
   template<typename CSR, typename = std::enable_if_t<std::is_same_v<CSR, RevCSR>>>
   static std::function<uint64_t( uint16_t, uint64_t )> GetCSRSetter( const CSR* revcsr, uint16_t csr ) {
     auto it = revcsr->Setter.find( csr );
-    if( it == revcsr->Setter.end() ) {
+    if( it == revcsr->Setter.end() || !it->second ) {
       return revcsr->GetCore()->GetCSRSetter( csr );
     } else {
       return it->second;
