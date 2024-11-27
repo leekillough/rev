@@ -58,6 +58,16 @@ namespace SST::RevCPU {
 // which makes RevZicntr and RevCSR abstract classes which cannot be
 // instantiated except as a base class of RevRegFile, which defines GetCore().
 //
+// To register a handler to Get or Set a CSR register, call SetCSRGetter() and
+// SetCSRSetter(), supplying it a function. For CSR registers which are not
+// Hart-local but are Core-local, call SetCSRGetter() and SetCSRSetter() in
+// RevCore.
+//
+// The GetCSR() and SetCSR() functions in this class are called at the Hart
+// execution level, and the CSR registers in this class are hart-specific,
+// but the GetCSR() and SetCSR() functions can be overriden to read/write
+// resources outside of this class.
+//
 ////////////////////////////////////////////////////////////////////////////////
 
 class RevCore;

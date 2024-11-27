@@ -27,6 +27,12 @@
 // a particular CSR register does not apply to it (such as RDTIMEH on RV64),
 // then raise an invalid instruction or other exception here.
 //
+// DO NOT enable/disable CSR registers in this file, or make them get decoded
+// by a coprocessor instead of by the tables in here. These 6 instructions are
+// the same for any RISC-V processor with Zicsr. The semantics of specific CSR
+// registers and whether they are supported should not be handled here, but
+// rather in RevCSR.h and its registered SetCSRGetter() and SetCSRSetter().
+//
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef _SST_REVCPU_ZICSR_H_
