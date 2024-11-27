@@ -93,10 +93,14 @@ The suffix (e.g. .64.32.cc) is used to pass VLEN and ELEN into the simulators. T
 
 ## Vector ISA Support
 - Initial Vector Register File (including Vector CSRs), Instruction Decoder, and Instruction Function Table in place
-- 80 Instructions (out of a lot!) coded. Many tested.
+- 80 Instructions (out of a lot!) coded with vector mask support. Many tested.
+- TODO [H] touch remaining categories of instructions so we understand all special cases.
+- TODO [H] non-zero starting elements, AVLs that are non multiple of vlen/sew
+- TODO [L] tail/mask agnostioc/unagnostic 
+- TODO [L] memory alignment and consistency checks
 
 ## Timing
-- Basic infrasture for the  CPU core to issue instructions to the coprocessor instruction queuem is in place. However, instruction execution occurs in 0 cycles with the hand of the almighty reaching back into the core register file.
+- Basic infrasture for the  CPU core to issue instructions to the coprocessor instruction queue is in place. However, instruction execution occurs in 0 cycles with the hand of the almighty reaching back into the core register file.
 - TODO [M] Capture instruction input scalars with instruction in queue and remove pointer to core register file in execution functions.
 - TODO [M] MemHierarchy Support
     - Provide vector register scoreboard (whole register) and completion function to clear scoreboard
@@ -108,7 +112,7 @@ The suffix (e.g. .64.32.cc) is used to pass VLEN and ELEN into the simulators. T
 ## Design Encapsulation
 - Created independent Vector Register file in RevVRegFile.h and Instruction table support in RVVec.h.
 - Vector CSRs reside in the Vector Register file. Core CSR reads are handled has Coprocessor instructions.
-- TODO [L] We want to refactor and relocated all vector code outside of the REV Source tree and provide independent build flow.
+- TODO [L] Eventually, we want to refactor and relocate all vector code outside of the REV Source tree and provide an independent build flow.
 
 ## Current Test Summary
 ### CSR access
@@ -153,6 +157,11 @@ The suffix (e.g. .64.32.cc) is used to pass VLEN and ELEN into the simulators. T
     vmem1_e8_m8.128.64
     vmem_indexed_e16_m8.128.64
     vmem_strided_e16_m8.128.64
+
+TODO more representative code
+
+https://github.com/flame/blis/tree/master/kernels/rviv/3
+https://raw.githubusercontent.com/flame/blis/master/kernels/rviv/3/bli_sdgemm_rviv_asm_4vx4.h
 
 # Instruction Support
 
@@ -207,9 +216,9 @@ This sections lists the instructions that have implementations (and limited test
     vle32ff.v %vd, (%rs1), %vm
     vle64ff.v %vd, (%rs1), %vm
 ### Vector Load/Store Segment Instructions
-    TODO
+    [H] TODO
 ### Vector Load/Store Whole Register Instructions
-    TODO
+    [H] TODO
 ## Vector Arithemetic Instructions 
 ### Vector Single-Width Integer Add and Subtract
     vadd.vv %vd, %vs2, %vs1, %vm
@@ -269,6 +278,7 @@ This sections lists the instructions that have implementations (and limited test
     vmv.v.x %vd, %rs1
     vmv.v.i %vd, zimm5
 ## Vector Fixed-Point Arithmetic Instructions
+    TODO
 ### Vector Single-Width Saturating Add and Subtract
     TODO
 ### Vector Single-Width Averaging Add and Subtract
@@ -280,6 +290,7 @@ This sections lists the instructions that have implementations (and limited test
 ### Vector Narrowing Fixed-Point Clip Instructions
     TODO
 ## Vector Floating-Point Instructions
+    TODO
 ### Vector Single-Width Floating-Point Add/Subtract Instructions
     TODO
 ### Vector Widening Floating-Point Add/Subtract Instructions
@@ -318,6 +329,7 @@ This sections lists the instructions that have implementations (and limited test
 ### Narrowing Floating-Point/Integer Type-Convert Instructions
     TODO
 ## Vector Reduction Operations
+    [H] TODO
 ### Vector Single-Width Integer Reduction Instructions
     TODO
 ### Vector Widening Integer Reduction Instructions
@@ -327,6 +339,7 @@ This sections lists the instructions that have implementations (and limited test
 ### Vector Widening Floating-Point Reduction Instructions
     TODO
 ## Vector Mask Instructions
+    TODO
 ### Vector Mask-Register Logical Instructions
     vmand.mm %vd, %vs2, %vs1
     vmnand.mm %vd, %vs2, %vs1
@@ -351,6 +364,7 @@ This sections lists the instructions that have implementations (and limited test
 ### Vector Element Index Instruction
     TODO
 ## Vector Permutation Instructions
+    TODO
 ### Integer Scalar Move Instructions
     TODO
 ### Floating-Point Scalar Move Instructions
