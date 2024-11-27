@@ -63,12 +63,9 @@ namespace SST::RevCPU {
 class RevCore;
 
 class RevCSR : public RevZicntr {
-  static constexpr size_t                                                  CSR_LIMIT = 0x1000;
-  std::array<uint64_t, CSR_LIMIT>                                          CSR{};  ///< RegCSR: CSR registers
-  std::unordered_map<uint16_t, std::function<uint64_t( const uint64_t& )>> Getter{};
-  std::unordered_map<uint16_t, std::function<bool( uint64_t& )>>           Setter{};
-
 public:
+  static constexpr size_t CSR_LIMIT = 0x1000;
+
   // CSR Registers
   enum : uint16_t {
     // Unprivileged and User-level CSRs
@@ -462,14 +459,41 @@ public:
     dscratch1      = 0x7b3,
   };
 
-  /// Register a custom getter for a particular CSR register
-  void SetCSRGetter( uint16_t csr, std::function<uint64_t( const uint64_t& )> handler ) {
+  ///< RevCSR: Register a custom getter for a particular CSR register
+  void SetCSRGetter( uint16_t csr, std::function<uint64_t( uint16_t )> handler ) {
     Getter.insert_or_assign( csr, std::move( handler ) );
   }
 
-  /// Register a custom setter for a particular CSR register
-  void SetCSRSetter( uint16_t csr, std::function<bool( uint64_t& )> handler ) {
+  ///< RevCSR: Register a custom setter for a particular CSR register
+  void SetCSRSetter( uint16_t csr, std::function<bool( uint16_t, uint64_t )> handler ) {
     Setter.insert_or_assign( csr, std::move( handler ) );
+  }
+
+  // Template allows RevCore to be an incomplete type now
+  // std::enable_if_t<...> makes the functions only match CSR == RevCSR
+
+  ///< RevCSR: Get the custom getter for a particular CSR register
+  // If no custom getter exists for this RevCSR, look for one in the owning core
+  template<typename CSR, typename = std::enable_if_t<std::is_same_v<CSR, RevCSR>>>
+  static std::function<uint64_t( uint16_t )> GetCSRGetter( const CSR* revcsr, uint16_t csr ) {
+    auto it = revcsr->Getter.find( csr );
+    if( it == revcsr->Getter.end() ) {
+      return revcsr->GetCore()->GetCSRGetter( csr );
+    } else {
+      return it->second;
+    }
+  }
+
+  ///< RevCSR: Get the custom setter for a particular CSR register
+  // If no custom setter exists for this RevCSR, look for one in the owning core
+  template<typename CSR, typename = std::enable_if_t<std::is_same_v<CSR, RevCSR>>>
+  static std::function<uint64_t( uint16_t, uint64_t )> GetCSRSetter( const CSR* revcsr, uint16_t csr ) {
+    auto it = revcsr->Setter.find( csr );
+    if( it == revcsr->Setter.end() ) {
+      return revcsr->GetCore()->GetCSRSetter( csr );
+    } else {
+      return it->second;
+    }
   }
 
   /// Get the Floating-Point Rounding Mode
@@ -483,10 +507,9 @@ public:
   XLEN GetCSR( uint16_t csr ) const {
 
     // If a custom Getter exists, use it
-    auto it = Getter.find( csr );
-    if( it != Getter.end() ) {
-      return static_cast<XLEN>( it->second( CSR.at( csr ) ) );
-    }
+    auto getter = GetCSRGetter( this, csr );
+    if( getter )
+      return static_cast<XLEN>( getter( csr ) );
 
     // clang-format off
     switch( csr ) {
@@ -518,10 +541,9 @@ public:
       return false;
 
     // If a custom setter exists, use it
-    auto it = Setter.find( csr );
-    if( it != Setter.end() ) {
-      return it->second( CSR.at( csr ) );
-    }
+    auto setter = GetCSRSetter( this, csr );
+    if( setter )
+      return setter( csr, val );
 
     // clang-format off
     switch( csr ) {
@@ -536,6 +558,14 @@ public:
     // clang-format on
     return true;
   }
+
+private:
+  std::array<uint64_t, CSR_LIMIT>                                         CSR{};     ///< RegCSR: CSR registers
+  std::unordered_map<uint16_t, std::function<uint64_t( uint16_t )>>       Getter{};  ///< RevCSR: CSR Getters
+  std::unordered_map<uint16_t, std::function<bool( uint16_t, uint64_t )>> Setter{};  ///< RevCSR: CSR Setters
+
+  /// RevCSR: Get the core owning this hart
+  virtual RevCore* GetCore() const = 0;
 };  // class RevCSR
 
 }  // namespace SST::RevCPU
