@@ -288,23 +288,15 @@ public:
   }
 
   ///< RevCore: Get the custom getter for a particular CSR register
-  std::function<uint64_t( uint16_t )> GetCSRGetter( uint16_t csr ) const {
+  auto GetCSRGetter( uint16_t csr ) const {
     auto it = Getter.find( csr );
-    if( it == Getter.end() ) {
-      return {};
-    } else {
-      return it->second;
-    }
+    return it != Getter.end() ? it->second : std::function<uint64_t( uint16_t )>{};
   }
 
   ///< RevCore: Get the custom setter for a particular CSR register
-  std::function<uint64_t( uint16_t, uint64_t )> GetCSRSetter( uint16_t csr ) const {
+  auto GetCSRSetter( uint16_t csr ) const {
     auto it = Setter.find( csr );
-    if( it == Setter.end() ) {
-      return {};
-    } else {
-      return it->second;
-    }
+    return it != Setter.end() ? it->second : std::function<bool( uint16_t, uint64_t )>{};
   }
 
 private:

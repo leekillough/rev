@@ -10,6 +10,7 @@
 #ifndef _SST_REVCSR_H_
 #define _SST_REVCSR_H_
 
+#include "RevCommon.h"
 #include "RevFCSR.h"
 #include "RevFeature.h"
 #include "RevZicntr.h"
@@ -18,6 +19,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <functional>
+#include <type_traits>
 #include <unordered_map>
 #include <utility>
 
@@ -479,33 +481,6 @@ public:
     Setter.insert_or_assign( csr, std::move( handler ) );
   }
 
-  // Template allows RevCore to be an incomplete type now
-  // std::enable_if_t<...> makes the functions only match CSR == RevCSR
-
-  ///< RevCSR: Get the custom getter for a particular CSR register
-  // If no custom getter exists for this RevCSR, look for one in the owning core
-  template<typename CSR, typename = std::enable_if_t<std::is_same_v<CSR, RevCSR>>>
-  static std::function<uint64_t( uint16_t )> GetCSRGetter( const CSR* revcsr, uint16_t csr ) {
-    auto it = revcsr->Getter.find( csr );
-    if( it == revcsr->Getter.end() || !it->second ) {
-      return revcsr->GetCore()->GetCSRGetter( csr );
-    } else {
-      return it->second;
-    }
-  }
-
-  ///< RevCSR: Get the custom setter for a particular CSR register
-  // If no custom setter exists for this RevCSR, look for one in the owning core
-  template<typename CSR, typename = std::enable_if_t<std::is_same_v<CSR, RevCSR>>>
-  static std::function<uint64_t( uint16_t, uint64_t )> GetCSRSetter( const CSR* revcsr, uint16_t csr ) {
-    auto it = revcsr->Setter.find( csr );
-    if( it == revcsr->Setter.end() || !it->second ) {
-      return revcsr->GetCore()->GetCSRSetter( csr );
-    } else {
-      return it->second;
-    }
-  }
-
   /// Get the Floating-Point Rounding Mode
   FRMode GetFRM() const { return static_cast<FRMode>( CSR[fcsr] >> 5 & 0b111 ); }
 
@@ -517,7 +492,7 @@ public:
   XLEN GetCSR( uint16_t csr ) const {
 
     // If a custom Getter exists, use it
-    auto getter = GetCSRGetter( this, csr );
+    auto getter = GetCSRGetter( make_dependent<XLEN>( csr ) );
     if( getter )
       return static_cast<XLEN>( getter( csr ) );
 
@@ -551,7 +526,7 @@ public:
       return false;
 
     // If a custom setter exists, use it
-    auto setter = GetCSRSetter( this, csr );
+    auto setter = GetCSRSetter( make_dependent<XLEN>( csr ) );
     if( setter )
       return setter( csr, val );
 
@@ -570,6 +545,22 @@ public:
   }
 
 private:
+  ///< RevCSR: Get the custom getter for a particular CSR register
+  // If no custom getter exists for this RevCSR, look for one in the owning core
+  template<typename CSR>
+  auto GetCSRGetter( CSR csr ) const {
+    auto it = Getter.find( csr );
+    return it != Getter.end() && it->second ? it->second : make_dependent<CSR>( GetCore() )->GetCSRGetter( csr );
+  }
+
+  ///< RevCSR: Get the custom setter for a particular CSR register
+  // If no custom setter exists for this RevCSR, look for one in the owning core
+  template<typename CSR>
+  auto GetCSRSetter( CSR csr ) {
+    auto it = Setter.find( csr );
+    return it != Setter.end() && it->second ? it->second : make_dependent<CSR>( GetCore() )->GetCSRSetter( csr );
+  }
+
   std::array<uint64_t, CSR_LIMIT>                                         CSR{};     ///< RegCSR: CSR registers
   std::unordered_map<uint16_t, std::function<uint64_t( uint16_t )>>       Getter{};  ///< RevCSR: CSR Getters
   std::unordered_map<uint16_t, std::function<bool( uint16_t, uint64_t )>> Setter{};  ///< RevCSR: CSR Setters
