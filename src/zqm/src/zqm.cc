@@ -86,6 +86,13 @@ bool ZqmAidStateTableRow::validateMemBuffSize() {
 }
 #endif
 
+void ZqmMboxInQueue::checkHead() {
+  auto msg_pair = mbox_queue.front();
+  auto zop = msg_pair.first;
+
+}
+
+
 ZQM::ZQM(ComponentId_t id, Params& params)
         : Component(id)
 {

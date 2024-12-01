@@ -243,6 +243,16 @@ public:
  * starting point here), then we can lower the retry cnt
  */
 
+// Or do we just make this a tuple?
+class ZqmMboxInQueue {
+    public:
+    std::queue< std::pair<zopEvent*, uint16_t> > mbox_queue;
+    uint16_t head_check_cycle_cntr{0};
+    bool head_ready{false};
+
+    void checkHead();
+};
+
 class ZQM : public SST::Component {
 public:
     // register the component
@@ -445,16 +455,6 @@ private:
         ev->setDestPCID(ZoneId);
         ev->setDestPrec(PrecinctId);
     }
-
-#if 0
-    ZqmMailboxMetadata* getDestMboxEntry(SST::Forza::zopEvent *ev){
-        auto evt = std::make_tuple( ev->getAppID(), ev->getDestHart(), (uint8_t)ev->getPktRes());
-        auto iter = hart_metadata_table.find(evt);
-        if (iter == hart_metadata_table.end())
-            output.fatal(CALL_INFO, -1, "Could not find table entry for zop.\n"); // TODO: Add add'l debug info if needed
-        return iter->second;
-    }
-#endif
 
 }; // class SST::ZQM
 } // namespace SST::Forza
