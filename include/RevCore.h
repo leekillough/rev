@@ -277,7 +277,32 @@ public:
   ///< RevCore: Returns the number of cycles executed so far
   uint64_t GetCycles() const { return cycles; }
 
+  ///< RevCore: Register a custom getter for a particular CSR register
+  void SetCSRGetter( uint16_t csr, std::function<uint64_t( uint16_t )> handler ) {
+    Getter.insert_or_assign( csr, std::move( handler ) );
+  }
+
+  ///< RevCore: Register a custom setter for a particular CSR register
+  void SetCSRSetter( uint16_t csr, std::function<bool( uint16_t, uint64_t )> handler ) {
+    Setter.insert_or_assign( csr, std::move( handler ) );
+  }
+
+  ///< RevCore: Get the custom getter for a particular CSR register
+  auto GetCSRGetter( uint16_t csr ) const {
+    auto it = Getter.find( csr );
+    return it != Getter.end() ? it->second : std::function<uint64_t( uint16_t )>{};
+  }
+
+  ///< RevCore: Get the custom setter for a particular CSR register
+  auto GetCSRSetter( uint16_t csr ) const {
+    auto it = Setter.find( csr );
+    return it != Setter.end() ? it->second : std::function<bool( uint16_t, uint64_t )>{};
+  }
+
 private:
+  std::unordered_map<uint16_t, std::function<uint64_t( uint16_t )>>       Getter{};
+  std::unordered_map<uint16_t, std::function<bool( uint16_t, uint64_t )>> Setter{};
+
   bool           Halted      = false;  ///< RevCore: determines if the core is halted
   bool           Stalled     = false;  ///< RevCore: determines if the core is stalled on instruction fetch
   bool           SingleStep  = false;  ///< RevCore: determines if we are in a single step

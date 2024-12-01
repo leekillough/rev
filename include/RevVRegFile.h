@@ -12,6 +12,12 @@
 #define _SST_REVCPU_VREVREGFILE_H_
 
 #include "RevCSR.h"
+#include "RevCommon.h"
+#include "SST.h"
+#include <iomanip>
+#include <iostream>
+#include <utility>
+#include <vector>
 
 namespace SST::RevCPU {
 
@@ -28,7 +34,7 @@ union reg_vtype_t {
     uint64_t vii   : 1;   // [63]
   } f;
 
-  reg_vtype_t( uint64_t _v ) : v( _v ) {};
+  reg_vtype_t( uint64_t _v ) : v( _v ){};
 
   // This causes an exception - why?
   // friend std::ostream& operator<<( std::ostream& os, const reg_vtype_t& vt ) {
@@ -52,40 +58,75 @@ enum class VRevReg : uint16_t {
 };
 // clang-format on
 
-class RevVRegFile : public RevCSR {
+class RevCore;
+
+enum class RevVType : uint8_t { vlmul, vsew, vta, vma, vill };
+
+class RevVRegFile {
 public:
-  RevVRegFile( SST::Output* output, uint16_t vlen, uint16_t elen );
-  virtual ~RevVRegFile() {};
+  // Constructor which takes a RevCore to indicate its hart's parent core
+  RevVRegFile( RevCore* parent, SST::Output* output, uint16_t vlen, uint16_t elen );
+  ~RevVRegFile();
 
-  SST::Output* output() { return output_; };
+  bool IsRV64() const { return feature->IsRV64(); }
 
-  RevCore* GetCore() const override {
-    assert( false );
-    return nullptr;
-  };
-
-  uint64_t GetPC() const override {
-    assert( false );
-    return 0;
+  /// Extract a field from VType, returning a strict type depending on field
+  template<RevVType field>
+  auto GetVType( uint64_t vtype ) const {
+    if constexpr( field == RevVType::vlmul ) {
+      return static_cast<RevLMUL>( vtype >> 0 & 0b111 );  // [2:0]
+    } else if constexpr( field == RevVType::vsew ) {
+      return static_cast<RevSEW>( vtype >> 3 & 0b111 );  // [5:3]
+    } else if constexpr( field == RevVType::vta ) {
+      return static_cast<bool>( vtype >> 6 & 0b001 );  // [6]
+    } else if constexpr( field == RevVType::vma ) {
+      return static_cast<bool>( vtype >> 7 & 0b001 );  // [7]
+    } else if constexpr( field == RevVType::vill ) {
+      return static_cast<bool>( vtype >> ( IsRV64() ? 63 : 31 ) & 1 );  // [XLEN-1]
+    } else {
+      static_assert( ( field, false ), "Error: Unrecognized RevVType field" );
+    }
   }
 
-  bool IsRV64() const override {
-    assert( false );  // TODO
-    return true;
+  /// With no arguments, get return the field for the current CSR's VType
+  template<RevVType field>
+  auto GetVType() const {
+    return GetVType<field>( GetCSR( RevCSR::vtype ) );
   }
 
-  uint16_t vlen() { return vlen_; }
+  /// Set a field in a VType
+  template<RevVType field, typename VT, typename T>
+  void SetVType( VT& vtype, T val ) const {
+    if constexpr( field == RevVType::vlmul ) {
+      vtype = ~( ~vtype | 0b111 << 0 ) | ( static_cast<VT>( val ) & 0b111 ) << 0;  // [2:0]
+    } else if constexpr( field == RevVType::vsew ) {
+      vtype = ~( ~vtype | 0b111 << 3 ) | ( static_cast<VT>( val ) & 0b111 ) << 3;  // [5:3]
+    } else if constexpr( field == RevVType::vta ) {
+      vtype = ~( ~vtype | 0b001 << 6 ) | ( static_cast<VT>( val ) & 0b001 ) << 6;  // [6]
+    } else if constexpr( field == RevVType::vma ) {
+      vtype = ~( ~vtype | 0b001 << 7 ) | ( static_cast<VT>( val ) & 0b001 ) << 7;  // [7]
+    } else if constexpr( field == RevVType::vill ) {
+      int vill = IsRV64() ? 63 : 31;
+      assert( vill < sizeof( VT ) * 8 );  // make sure we're writing to large enough vtype
+      vtype = ~( ~vtype | -VT{ 1 } << vill ) | ( static_cast<VT>( val ) & 0b001 ) << vill;  // [XLEN-1]
+    } else {
+      static_assert( ( field, false ), "Error: Unrecognized RevVType field" );
+    }
+  }
 
-  uint16_t elen() { return elen_; }
+  /// With one argument, set a field in the current CSR's VType
+  template<RevVType field, typename T>
+  void SetVType( T val ) {
+    uint64_t vtype = GetCSR( RevCSR::vtype );
+    SetVType<field>( vtype, val );
+    SetCSR( RevCSR::vtype, vtype );
+  }
 
-  uint16_t vlmax() { return vlmax_; }
+  void Configure( uint64_t vtype, uint16_t vlmax );
 
-  void     Configure( reg_vtype_t vt, uint16_t vlmax );
-  uint64_t GetVCSR( uint16_t csr );
-  void     SetVCSR( uint16_t csr, uint64_t d );
-  uint16_t ElemsPerReg();  ///< RevVRegFile: VLEN/SEW
+  uint16_t ElemsPerReg() const { return elemsPerReg; }  ///< RevVRegFile: VLEN/SEW
 
-  bool v0mask( bool vm, unsigned vecElem );  ///< RevVRegFile: Retrieve vector mask bit from v0
+  bool v0mask( bool vm, size_t vecElem ) const;  ///< RevVRegFile: Retrieve vector mask bit from v0
 
   // base is destination register in instruction
   // vd is current destination register
@@ -103,11 +144,11 @@ public:
   };
 
   template<typename T>
-  T GetElem( uint64_t vs, unsigned e ) {
+  T GetElem( uint64_t vs, size_t e ) const {
     T      res   = 0;
     size_t bytes = sizeof( T );
-    assert( ( e * bytes ) <= GetVCSR( vlenb ) );
-    memcpy( &res, &( vreg[vs][e * bytes] ), bytes );
+    assert( e * bytes <= GetCSR( RevCSR::vlenb ) );
+    memcpy( &res, &vreg[vs][e * bytes], bytes );
     return res;
   };
 
@@ -134,36 +175,74 @@ public:
     assert( em == 1 || em == 2 || em == 4 || em == 8 );
     return std::make_pair( em, fractional );
   }
+#else
+// Logarithmic version, returning lg(emul), which is right shift (non-positive) or left shift (non-negative)
+// lg() relies on fast __builtin_clz() and can be computed at compile-time
+template<typename EEW, typename SEW>
+int lgemul() const {
+  auto vlmul = static_cast<uint8_t>( GetVType<RevVType::vlmul>() );  // [2:0]
+  int  lgem  = lg( sizeof( EEW ) ) - lg( sizeof( SEW ) ) + vlmul;
+
+  // m1=0, m2=1, m4=2, m8=3, reserved=4, mf8=5, mf4=6, mf2=7
+  if( vlmul >= 4 )
+    lgem -= 8;
+
+  assert( lgem >= -3 && lgem <= 3 );
+  return lgem;
+}
+#endif
 
   void SetMaskReg( uint64_t vd, uint64_t mask[], uint64_t mfield[] );  ///< RevVRegFile: Write entire mask register
 
-  uint64_t vfirst( uint64_t vs );  ///< RevVRegFile: return index of first 1 in bit field or -1 if all are 0.
+  uint64_t vfirst( uint64_t vs ) const;  ///< RevVRegFile: return index of first 1 in bit field or -1 if all are 0.
+
+  /// Get a vector CSR register
+  uint64_t GetCSR( uint16_t csr ) const;
+
+  /// Set a vector CSR register
+  bool SetCSR( uint16_t csr, uint64_t val );
 
 private:
-  SST::Output* output_;
-  uint16_t     vlen_;
-  uint16_t     elen_;
-  uint16_t     vlmax_;
-  uint16_t     elemsPerReg_              = 0;
-  unsigned     sewbytes                  = 0;
-  unsigned     sewbits                   = 0;
-  uint64_t     sewmask                   = 0;
+  // clang-format off
 
-  std::vector<std::vector<uint8_t>> vreg = {};
+  /// Set the vector CSR Getters to a function which can be nullptr to clear them
+  template<typename PARENT, typename GETTER>
+  static void SetCSRGetters( PARENT* parent, GETTER getter ) {
+    parent->SetCSRGetter( RevCSR::vxsat,  getter );
+    parent->SetCSRGetter( RevCSR::vxrm,   getter );
+    parent->SetCSRGetter( RevCSR::vcsr,   getter );
+    parent->SetCSRGetter( RevCSR::vstart, getter );
+    parent->SetCSRGetter( RevCSR::vl,     getter );
+    parent->SetCSRGetter( RevCSR::vtype,  getter );
+    parent->SetCSRGetter( RevCSR::vlenb,  getter );
+  }
 
-  ///< RevVRegFile: CSRs residing in vector coprocessor
-  std::map<uint16_t, uint64_t> vcsrmap{
-    // URW
-    {0x008, 0}, // vstart
-    {0x009, 0}, // vxsat
-    {0x00a, 0}, // vxrm
-    {0x00f, 0}, // vxcsr
-    // URO
-    {0xc20, 0}, // vl
-    {0xc21, 0}, // vtype
-    {0xc22, 0}, // vlenb
-  };
+  /// Set the vector CSR Setters to a function which can be nullptr to clear them
+  template<typename PARENT, typename SETTER>
+  static void SetCSRSetters( PARENT* parent, SETTER setter ) {
+    // This does not need to set Setters for CSR registers which are read-only in scalar CSR instructions
+    parent->SetCSRSetter( RevCSR::vxsat,  setter );
+    parent->SetCSRSetter( RevCSR::vxrm,   setter );
+    parent->SetCSRSetter( RevCSR::vcsr,   setter );
+    parent->SetCSRSetter( RevCSR::vstart, setter );
+  }
 
+  // clang-format on
+
+public:
+  RevCore* const          parent;
+  const RevFeature* const feature;
+  SST::Output* const      output;
+
+private:
+  uint16_t                          vlen{};
+  uint16_t                          elen{};
+  uint16_t                          vlmax{};
+  uint16_t                          elemsPerReg{};
+  unsigned                          sewbits{};
+  uint64_t                          sewmask{};
+  uint64_t                          CSR[RevCSR::CSR_LIMIT]{};
+  std::vector<std::vector<uint8_t>> vreg{};
 };  //class RevVRegFile
 
 };  //namespace SST::RevCPU

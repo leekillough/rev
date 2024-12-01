@@ -9,6 +9,12 @@
 //
 
 #include "RevVectorCoProc.h"
+#include <memory>
+#include <new>
+#include <string>
+#include <unordered_map>
+#include <utility>
+#include <vector>
 
 namespace SST::RevCPU {
 
@@ -35,12 +41,7 @@ RevVectorCoProc::RevVectorCoProc( ComponentId_t id, Params& params, RevCore* par
   if( !LoadInstructionTable() )
     output->fatal( CALL_INFO, -1, "Error : failed to load instruction tables\n" );
 
-  vregfile = new RevVRegFile( output, vlen, elen );
-}
-
-RevVectorCoProc::~RevVectorCoProc() {
-  if( vregfile )
-    delete vregfile;
+  vregfile = std::make_unique<RevVRegFile>( parent, output, vlen, elen );
 }
 
 void RevVectorCoProc::registerStats() {
@@ -79,7 +80,7 @@ bool RevVectorCoProc::SeedInstructionTable() {
   // The feature pointer is passed into every instruction in the instruction table.
   // Simularly for mem pointer.
 
-  EnableExt( new RVVec( nullptr, nullptr, output ) );
+  EnableExt( new( std::nothrow ) RVVec( nullptr, nullptr, output ) );
   return true;
 }
 
@@ -133,7 +134,7 @@ uint32_t RevVectorCoProc::CompressEncoding( const RevVecInstEntry& Entry ) {
   Value |= uint32_t( Entry.funct3 ) << 8;  // 3 bits
   if( ( Entry.format == RVVTypeLd ) || ( Entry.format == RVVTypeSt ) ) {
     //Value |= (uint32_t) ( Entry.umop ) << 14;  // 5 bits
-    Value |= (uint32_t) ( Entry.mop ) << 16;   // 2 bits
+    Value |= (uint32_t) ( Entry.mop ) << 16;  // 2 bits
   }
   Value |= (uint32_t) ( Entry.funct6 ) << 18;  // 6 bits
 
@@ -164,16 +165,6 @@ bool RevVectorCoProc::Decode( const uint32_t Inst ) {
 
   VecInst = { Inst };  // pre-decode
 
-  // vector csr access instructions
-  // TODO move into vector instruction table
-  csr_inst_t csr_inst( Inst );
-  if( csr_inst.f.opcode == csr_inst_opcode ) {
-    //std::cout << "### " << std::hex << csr_inst.f.csr << std::endl;
-    if( csr_inst.f.csr >= RevCSR::vstart && csr_inst.f.csr <= RevCSR::vcsr )
-      return true;
-    if( csr_inst.f.csr >= RevCSR::vl && csr_inst.f.csr <= RevCSR::vlenb )
-      return true;
-  }
   // RVV instructions
   auto it = matchInst( EncToEntry, VecInst.Enc, InstTable, Inst );
   if( it == EncToEntry.end() ) {
@@ -186,6 +177,7 @@ bool RevVectorCoProc::Decode( const uint32_t Inst ) {
 
 bool RevVectorCoProc::IssueInst( const RevFeature* F, RevRegFile* R, RevMem* M, uint32_t Inst ) {
   // TODO finite instruction queue
+  // TODO It is not clear from here if Decode() is setting anything like VecInst. Better to return VecInst from Decode() or pass by local VecInst variable by reference to Decode() instead of setting a class variable hidden somewhere else.
   if( Decode( Inst ) ) {
     // Decode the full instruction
     if( VecInst.revInstEntry ) {
@@ -195,9 +187,6 @@ bool RevVectorCoProc::IssueInst( const RevFeature* F, RevRegFile* R, RevMem* M, 
       case RVVTypeSt: VecInst.DecodeRVVTypeSt(); break;
       default: output->fatal( CALL_INFO, -1, "Error: failed to decode instruction 0x%" PRIx32 ".", Inst );
       }
-    } else {
-      // special csr access case
-      assert( ( (csr_inst_t) Inst ).f.opcode == csr_inst_opcode );
     }
     // Grab any scalars from core register file. In reality, the core must provided these after its decode pipeline.
     //VecInst.ReadScalars( R );
@@ -227,22 +216,9 @@ bool RevVectorCoProc::ClockTick( SST::Cycle_t cycle ) {
 }
 
 void RevVectorCoProc::Exec( RevCoProcInst rec ) {
-
-  // TODO move into instruction table.
-  // This is just here to provide tests a quick way to read vector CSRs.
-  csr_inst_t csr_inst( rec.VecInst.Inst );
-  if( csr_inst.f.opcode == csr_inst_opcode ) {
-    if( csr_inst.f.funct3 == csr_inst_funct3::csrrsi ) {
-      rec.RegFile->SetX( csr_inst.f.rd, vregfile->GetVCSR( csr_inst.f.csr ) );
-      return;
-    } else {
-      output->fatal( CALL_INFO, -1, "currently only csrrsi supported for vector csr access\n" );
-      return;
-    }
-  }
   // execute vector instruction
   assert( VecInst.revInstEntry );
-  VecInst.revInstEntry->func( rec.Feature, rec.RegFile, vregfile, rec.Mem, VecInst );
+  VecInst.revInstEntry->func( rec.Feature, rec.RegFile, vregfile.get(), rec.Mem, VecInst );
   return;
 }
 
@@ -262,7 +238,7 @@ RevVecInst::RevVecInst( uint32_t inst ) : Inst( inst ) {
   Enc    = funct3 << 8 | opcode;
   if( ( format == RevInstF::RVVTypeLd ) || ( format == RevInstF::RVVTypeSt ) ) {
     //umop = ( Inst >> 20 ) & 0b11111;
-    mop  = ( Inst >> 26 ) & 0b11;
+    mop = ( Inst >> 26 ) & 0b11;
     //Enc |= ( umop << 14 ) | ( mop << 16 );
     Enc |= ( mop << 16 );
   } else if( ( format == RevInstF::RVVTypeOpv ) && ( funct3 != RVVec::OPV::CFG ) ) {
@@ -271,7 +247,7 @@ RevVecInst::RevVecInst( uint32_t inst ) : Inst( inst ) {
     Enc |= ( funct6 << 18 );
   }
   // vector mask bit
-  vm = (Inst>>25) & 1;
+  vm = ( Inst >> 25 ) & 1;
 }
 
 void RevVecInst::DecodeBase() {

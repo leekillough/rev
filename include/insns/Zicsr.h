@@ -27,6 +27,12 @@
 // a particular CSR register does not apply to it (such as RDTIMEH on RV64),
 // then raise an invalid instruction or other exception here.
 //
+// DO NOT enable/disable CSR registers in this file, or make them get decoded
+// by a coprocessor instead of by the tables in here. These 6 instructions are
+// the same for any RISC-V processor with Zicsr. The semantics of specific CSR
+// registers and whether they are supported should not be handled here, but
+// rather in RevCSR.h and its registered SetCSRGetter() and SetCSRSetter().
+//
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef _SST_REVCPU_ZICSR_H_
@@ -113,48 +119,30 @@ class Zicsr : public RevExt {
     }
   };
 
-  // rvv prototyping experiment
-  // If we want to have CSR implementation encapsulated coprocessors we need
-  // an additional decode step that checks the immediate csr field for these
-  // instructions: csrrw, csrrsi, csrrw, csrrs, csrrc, csrrwi, csrrsi, csrrci
-
-  // This seems expensive. Why not have the coprocessors check for the
-  // instructions they own before issuing to core. Then we have a simple method
-  // where coprocessors fully encapsulate there instructions and csrs without
-  // have the core have to deal with any of it.
-
-  // Another option might be to decode the csr instructions but determine
-  // who executes them later using an additional coprocessor id field.
-
-  static constexpr bool isCoProcCSR( uint32_t Inst ) {
-    auto csr = DECODE_IMM12( Inst );
-    return ( csr >= RevCSR::vstart && csr <= RevCSR::vcsr ) || ( csr >= RevCSR::vl && csr <= RevCSR::vlenb );
-  }
-
   // clang-format off
   std::vector<RevInstEntry> ZicsrTable = {
-    RevZicsrInstDefaults().SetMnemonic( "csrw %csr, %rs1"        ).SetFunct3( 0b001 ).SetImplFunc( csrrw      ).SetPredicate( []( uint32_t Inst ){ return DECODE_RD( Inst ) == 0 && ! isCoProcCSR( Inst ); } ),
-    RevZicsrInstDefaults().SetMnemonic( "csrrw %csr, %rd, %rs1"  ).SetFunct3( 0b001 ).SetImplFunc( csrrw      ).SetPredicate( []( uint32_t Inst ){ return DECODE_RD( Inst ) != 0 && DECODE_IMM12( Inst ) != 0x1 && DECODE_IMM12( Inst ) != 0x2 && ! isCoProcCSR( Inst ); } ),
+    RevZicsrInstDefaults().SetMnemonic( "csrw %csr, %rs1"        ).SetFunct3( 0b001 ).SetImplFunc( csrrw      ).SetPredicate( []( uint32_t Inst ){ return DECODE_RD( Inst ) == 0; } ),
+    RevZicsrInstDefaults().SetMnemonic( "csrrw %csr, %rd, %rs1"  ).SetFunct3( 0b001 ).SetImplFunc( csrrw      ).SetPredicate( []( uint32_t Inst ){ return DECODE_RD( Inst ) != 0 && DECODE_IMM12( Inst ) != 0x1 && DECODE_IMM12( Inst ) != 0x2; } ),
     RevZicsrInstDefaults().SetMnemonic( "fsflags %rs"            ).SetFunct3( 0b001 ).SetImplFunc( csrrw      ).SetPredicate( []( uint32_t Inst ){ return DECODE_RD( Inst ) != 0 && DECODE_IMM12( Inst ) == 0x1; } ),
     RevZicsrInstDefaults().SetMnemonic( "fsrm %rs"               ).SetFunct3( 0b001 ).SetImplFunc( csrrw      ).SetPredicate( []( uint32_t Inst ){ return DECODE_RD( Inst ) != 0 && DECODE_IMM12( Inst ) == 0x2; } ),
 
-    RevZicsrInstDefaults().SetMnemonic( "csrrs %rd, %csr, %rs1"  ).SetFunct3( 0b010 ).SetImplFunc( csrrs      ).SetPredicate( []( uint32_t Inst ){ return DECODE_RS1( Inst ) != 0 && DECODE_RD( Inst ) != 0 && ! isCoProcCSR( Inst ); } ),
-    RevZicsrInstDefaults().SetMnemonic( "csrs %csr, %rs1"        ).SetFunct3( 0b010 ).SetImplFunc( csrrs      ).SetPredicate( []( uint32_t Inst ){ return DECODE_RS1( Inst ) != 0 && DECODE_RD( Inst ) == 0 && ! isCoProcCSR( Inst ); } ),
-    RevZicsrInstDefaults().SetMnemonic( "csrr %rd, %csr"         ).SetFunct3( 0b010 ).SetImplFunc( csrrs      ).SetPredicate( []( uint32_t Inst ){ return DECODE_RS1( Inst ) == 0 && DECODE_IMM12( Inst ) != 0x1 && DECODE_IMM12( Inst ) != 0x2  && ! isCoProcCSR( Inst ) && [](auto imm){ return imm < 0xc80 || imm > 0xc82; }( DECODE_IMM12( Inst ) | 0x80 ); } ),
+    RevZicsrInstDefaults().SetMnemonic( "csrrs %rd, %csr, %rs1"  ).SetFunct3( 0b010 ).SetImplFunc( csrrs      ).SetPredicate( []( uint32_t Inst ){ return DECODE_RS1( Inst ) != 0 && DECODE_RD( Inst ) != 0; } ),
+    RevZicsrInstDefaults().SetMnemonic( "csrs %csr, %rs1"        ).SetFunct3( 0b010 ).SetImplFunc( csrrs      ).SetPredicate( []( uint32_t Inst ){ return DECODE_RS1( Inst ) != 0 && DECODE_RD( Inst ) == 0; } ),
+    RevZicsrInstDefaults().SetMnemonic( "csrr %rd, %csr"         ).SetFunct3( 0b010 ).SetImplFunc( csrrs      ).SetPredicate( []( uint32_t Inst ){ return DECODE_RS1( Inst ) == 0 && DECODE_IMM12( Inst ) != 0x1 && DECODE_IMM12( Inst ) != 0x2 && [](auto imm){ return imm < 0xc80 || imm > 0xc82; }( DECODE_IMM12( Inst ) | 0x80 ); } ),
     RevZicsrInstDefaults().SetMnemonic( "frflags %rd"            ).SetFunct3( 0b010 ).SetImplFunc( csrrs      ).SetPredicate( []( uint32_t Inst ){ return DECODE_RS1( Inst ) == 0 && DECODE_IMM12( Inst ) == 0x1; } ),
     RevZicsrInstDefaults().SetMnemonic( "frrm %rd"               ).SetFunct3( 0b010 ).SetImplFunc( csrrs      ).SetPredicate( []( uint32_t Inst ){ return DECODE_RS1( Inst ) == 0 && DECODE_IMM12( Inst ) == 0x2; } ),
 
-    RevZicsrInstDefaults().SetMnemonic( "csrrc %rd, %csr, %rs1"  ).SetFunct3( 0b011 ).SetImplFunc( csrrc      ).SetPredicate( []( uint32_t Inst ){ return DECODE_RD( Inst ) != 0 && ! isCoProcCSR( Inst ); } ),
-    RevZicsrInstDefaults().SetMnemonic( "csrc %csr,%rs1"         ).SetFunct3( 0b011 ).SetImplFunc( csrrc      ).SetPredicate( []( uint32_t Inst ){ return DECODE_RD( Inst ) == 0 && ! isCoProcCSR( Inst ); } ),
+    RevZicsrInstDefaults().SetMnemonic( "csrrc %rd, %csr, %rs1"  ).SetFunct3( 0b011 ).SetImplFunc( csrrc      ).SetPredicate( []( uint32_t Inst ){ return DECODE_RD( Inst ) != 0; } ),
+    RevZicsrInstDefaults().SetMnemonic( "csrc %csr,%rs1"         ).SetFunct3( 0b011 ).SetImplFunc( csrrc      ).SetPredicate( []( uint32_t Inst ){ return DECODE_RD( Inst ) == 0; } ),
 
-    RevZicsrInstDefaults().SetMnemonic( "csrrwi %rd, %csr, $imm" ).SetFunct3( 0b101 ).SetImplFunc( csrrwi     ).SetPredicate( []( uint32_t Inst ){ return DECODE_RD( Inst ) != 0 && ! isCoProcCSR( Inst ); } ),
-    RevZicsrInstDefaults().SetMnemonic( "csrwi %csr, $imm"       ).SetFunct3( 0b101 ).SetImplFunc( csrrwi     ).SetPredicate( []( uint32_t Inst ){ return DECODE_RD( Inst ) == 0 && ! isCoProcCSR( Inst ); } ),
+    RevZicsrInstDefaults().SetMnemonic( "csrrwi %rd, %csr, $imm" ).SetFunct3( 0b101 ).SetImplFunc( csrrwi     ).SetPredicate( []( uint32_t Inst ){ return DECODE_RD( Inst ) != 0; } ),
+    RevZicsrInstDefaults().SetMnemonic( "csrwi %csr, $imm"       ).SetFunct3( 0b101 ).SetImplFunc( csrrwi     ).SetPredicate( []( uint32_t Inst ){ return DECODE_RD( Inst ) == 0; } ),
 
-    RevZicsrInstDefaults().SetMnemonic( "csrrsi %rd, %csr, $imm" ).SetFunct3( 0b110 ).SetImplFunc( csrrsi     ).SetPredicate( []( uint32_t Inst ){ return DECODE_RD( Inst ) != 0 && ! isCoProcCSR( Inst ) && ! isCoProcCSR( Inst ); } ),
-    RevZicsrInstDefaults().SetMnemonic( "csrsi %csr, $imm"       ).SetFunct3( 0b110 ).SetImplFunc( csrrsi     ).SetPredicate( []( uint32_t Inst ){ return DECODE_RD( Inst ) == 0 && ! isCoProcCSR( Inst ) && ! isCoProcCSR( Inst ); } ),
+    RevZicsrInstDefaults().SetMnemonic( "csrrsi %rd, %csr, $imm" ).SetFunct3( 0b110 ).SetImplFunc( csrrsi     ).SetPredicate( []( uint32_t Inst ){ return DECODE_RD( Inst ) != 0; } ),
+    RevZicsrInstDefaults().SetMnemonic( "csrsi %csr, $imm"       ).SetFunct3( 0b110 ).SetImplFunc( csrrsi     ).SetPredicate( []( uint32_t Inst ){ return DECODE_RD( Inst ) == 0; } ),
 
-    RevZicsrInstDefaults().SetMnemonic( "csrrci %rd, %csr, $imm" ).SetFunct3( 0b111 ).SetImplFunc( csrrci     ).SetPredicate( []( uint32_t Inst ){ return DECODE_RD( Inst ) != 0 && ! isCoProcCSR( Inst ); } ),
-    RevZicsrInstDefaults().SetMnemonic( "csrci %csr, $imm"       ).SetFunct3( 0b111 ).SetImplFunc( csrrci     ).SetPredicate( []( uint32_t Inst ){ return DECODE_RD( Inst ) == 0 && ! isCoProcCSR( Inst ); } ),
+    RevZicsrInstDefaults().SetMnemonic( "csrrci %rd, %csr, $imm" ).SetFunct3( 0b111 ).SetImplFunc( csrrci     ).SetPredicate( []( uint32_t Inst ){ return DECODE_RD( Inst ) != 0; } ),
+    RevZicsrInstDefaults().SetMnemonic( "csrci %csr, $imm"       ).SetFunct3( 0b111 ).SetImplFunc( csrrci     ).SetPredicate( []( uint32_t Inst ){ return DECODE_RD( Inst ) == 0; } ),
 
     RevZicsrInstDefaults().SetMnemonic( "rdcycle %rd"            ).SetFunct3( 0b010 ).SetImplFunc( csrrs      ).SetPredicate( []( uint32_t Inst ){ return DECODE_RS1( Inst ) == 0 && DECODE_IMM12( Inst ) == RevCSR::cycle; } ),
     RevZicsrInstDefaults().SetMnemonic( "rdcycleh %rd"           ).SetFunct3( 0b010 ).SetImplFunc( csrrs      ).SetPredicate( []( uint32_t Inst ){ return DECODE_RS1( Inst ) == 0 && DECODE_IMM12( Inst ) == RevCSR::cycleh; } ),

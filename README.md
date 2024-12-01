@@ -1,9 +1,9 @@
 # REV RVV Coprocessor
-       ___  ___ _   _____ 
+       ___  ___ _   _____
       / _ \|_  | | / /_  |
-     / , _/ __/| |/ / __/ 
-    /_/|_/____/|___/____/ 
-                      
+     / , _/ __/| |/ / __/
+    /_/|_/____/|___/____/
+
 # Clone and Build
 
     git clone git@github.com:tactcomplabs/r2v2.git
@@ -18,11 +18,11 @@ If spike is not available an internal, less useful, instruction trace format wil
 # Build and Run Vector tests
 
     cd test/vector_basic
-    
+
     # compile and run all tests on spike
     export USE_SPIKE=1
     make clean; make
-    
+
     # compile and run all tests on REV
     unset USE_SPIKE
     make clean; make
@@ -39,29 +39,29 @@ If spike is not available an internal, less useful, instruction trace format wil
     # Test Directory structure
 
     test/vector_basic
-    ├── Makefile
-    ├── output
-    │   ├── bin
-    │   │   ├── vadd_e16_m1.64.32.dis
-    │   │   ├── vadd_e16_m1.64.32.exe
-    │   │   ├── vadd_e16_m1.64.32.sections
-    │   │   ├── vadd_e32_m1.128.64.dis
-    │   │   ├── vadd_e32_m1.128.64.exe
-    │   │   ├── vadd_e32_m1.128.64.sections
+    +-- Makefile
+    +-- output
+    |   +-- bin
+    |   |   +-- vadd_e16_m1.64.32.dis
+    |   |   +-- vadd_e16_m1.64.32.exe
+    |   |   +-- vadd_e16_m1.64.32.sections
+    |   |   +-- vadd_e32_m1.128.64.dis
+    |   |   +-- vadd_e32_m1.128.64.exe
+    |   |   +-- vadd_e32_m1.128.64.sections
     |   |
-    │   ├── vadd_e16_m1.64.32
-    │   │   ├── run.log
-    │   │   ├── run.printlog
-    │   │   └── run.status
-    │   └── vadd_e32_m1.128.64
-    │       ├── run.log
-    │       ├── run.printlog
-    │       └── run.status
-    └── src
-        ├── README.md
-        ├── rev.h
-        ├── vadd_e16_m1.64.32.cc
-        └── vadd_e32_m1.128.64.cc
+    |   +-- vadd_e16_m1.64.32
+    |   |   +-- run.log
+    |   |   +-- run.printlog
+    |   |   +-- run.status
+    |   +-- vadd_e32_m1.128.64
+    |       +-- run.log
+    |       +-- run.printlog
+    |       +-- run.status
+    +-- src
+        +-- README.md
+        +-- rev.h
+        +-- vadd_e16_m1.64.32.cc
+        +-- vadd_e32_m1.128.64.cc
 
 ## Creating Vector Tests
 
@@ -96,7 +96,7 @@ The suffix (e.g. .64.32.cc) is used to pass VLEN and ELEN into the simulators. T
 - 80 Instructions (out of a lot!) coded with vector mask support. Many tested.
 - TODO [H] touch remaining categories of instructions so we understand all special cases.
 - TODO [H] non-zero starting elements, AVLs that are non multiple of vlen/sew
-- TODO [L] tail/mask agnostioc/unagnostic 
+- TODO [L] tail/mask agnostioc/unagnostic
 - TODO [L] memory alignment and consistency checks
 
 ## Timing
@@ -182,7 +182,7 @@ This sections lists the instructions that have implementations (and limited test
     vse64.v %vs3, (%rs1), %vm
 ### Vector Unit-Stride Mask Load/Start
     vlm.v %vd, (%rs1)
-    vsm.v %vs3, (%rs1) 
+    vsm.v %vs3, (%rs1)
 ### Vector Strided Instructions
     vlse8.v %vd, (%rs1), %rs2, %vm
     vlse16.v %vd, (%rs1), %rs2, %vm
@@ -219,7 +219,7 @@ This sections lists the instructions that have implementations (and limited test
     [H] TODO
 ### Vector Load/Store Whole Register Instructions
     [H] TODO
-## Vector Arithemetic Instructions 
+## Vector Arithemetic Instructions
 ### Vector Single-Width Integer Add and Subtract
     vadd.vv %vd, %vs2, %vs1, %vm
     vadd.vx %vd, %vs2, %rs1, %vm
@@ -385,7 +385,7 @@ This sections lists the instructions that have implementations (and limited test
     TODO
 ### Vector Compress Instruction
     TODO
-### Whole Vector Register Move 
+### Whole Vector Register Move
     TODO
 
 # Links

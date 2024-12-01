@@ -80,9 +80,13 @@ int main( int argc, char** argv ) {
     printf("Checking %1.8f (0x%lx)\n", verify_data[i], (uint64_t) verify_data[i]);;
 #endif
     if( results_data[i] != verify_data[i] ) {
-      printf( "Error: Actual=%1.8f (0x%lx)  Expected=%1.8f (0x%lx)\n",
-	      results_data[i], (uint64_t) results_data[i],
-	      verify_data[i],  (uint64_t) verify_data[i] );
+      printf(
+        "Error: Actual=%1.8f (0x%lx)  Expected=%1.8f (0x%lx)\n",
+        results_data[i],
+        (uint64_t) results_data[i],
+        verify_data[i],
+        (uint64_t) verify_data[i]
+      );
       assert( false );
     }
   }

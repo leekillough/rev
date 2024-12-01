@@ -39,19 +39,27 @@ namespace SST::RevCPU {
 /// Safe non-narrowing cast of enum to integer type
 /// C++17 allows non-narrowing cast of integer to scoped enum, but not the reverse
 template<typename INT, typename ENUM, typename = decltype( INT{ std::declval<std::underlying_type_t<ENUM>>() } )>
-inline constexpr std::enable_if_t<std::is_integral_v<INT> && std::is_enum_v<ENUM>, INT> safe_static_cast( ENUM e ) {
+constexpr std::enable_if_t<std::is_integral_v<INT> && std::is_enum_v<ENUM>, INT> safe_static_cast( ENUM e ) {
   return static_cast<INT>( e );
 }
 
 /// Allow non-narrowing int->int cast with enum_int_cast
 template<typename INT, typename ENUM, typename = decltype( INT{ std::declval<ENUM>() } )>
-inline constexpr std::enable_if_t<std::is_integral_v<INT> && std::is_integral_v<ENUM>, INT> safe_static_cast( ENUM e ) {
+constexpr std::enable_if_t<std::is_integral_v<INT> && std::is_integral_v<ENUM>, INT> safe_static_cast( ENUM e ) {
   return static_cast<INT>( e );
+}
+
+/// Make an expression dependent on arbitrary template type parameters.
+/// This has the effect of lazy evaluation of an expression until a template containing it is instantiated.
+/// It can be used to wrap an incomplete class type which will be completed by template instantiation time.
+template<typename..., typename T>
+constexpr T&& make_dependent( T&& x ) {
+  return std::forward<T>( x );
 }
 
 /// Zero-extend value of bits size
 template<typename T>
-inline constexpr auto ZeroExt( T val, size_t bits ) {
+constexpr auto ZeroExt( T val, size_t bits ) {
   return static_cast<std::make_unsigned_t<T>>( val ) & ( ( std::make_unsigned_t<T>( 1 ) << bits ) - 1 );
 }
 
@@ -64,7 +72,7 @@ constexpr auto SignExt( T val, size_t bits ) {
 
 /// Base-2 logarithm of integers
 template<typename T>
-inline constexpr int lg( T x ) {
+constexpr int lg( T x ) {
   static_assert( std::is_integral_v<T> );
 
   // We select the __builtin_clz which takes integers no smaller than x
@@ -102,7 +110,7 @@ enum class MemOp : uint8_t {
 std::ostream& operator<<( std::ostream& os, MemOp op );
 
 template<typename T>
-inline constexpr uint64_t LSQHash( T DestReg, RevRegClass RegType, unsigned Hart ) {
+constexpr uint64_t LSQHash( T DestReg, RevRegClass RegType, unsigned Hart ) {
   return static_cast<uint64_t>( RegType ) << ( 16 + 8 ) | static_cast<uint64_t>( DestReg ) << 16 | Hart;
 }
 

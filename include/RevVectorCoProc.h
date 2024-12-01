@@ -16,6 +16,12 @@
 // -- RevCPU Headers
 #include "RevCoProc.h"
 #include "RevVRegFile.h"
+#include <cinttypes>
+#include <memory>
+#include <queue>
+#include <string>
+#include <unordered_map>
+#include <vector>
 
 namespace SST::RevCPU {
 
@@ -60,14 +66,14 @@ public:
   RevVectorCoProc( ComponentId_t id, Params& params, RevCore* parent );
 
   /// RevVectorCoProc: destructor
-  virtual ~RevVectorCoProc();
+  ~RevVectorCoProc() final                             = default;
 
   /// RevVectorCoProc: disallow copying and assignment
   RevVectorCoProc( const RevVectorCoProc& )            = delete;
   RevVectorCoProc& operator=( const RevVectorCoProc& ) = delete;
 
   /// RevVectorCoProc: clock tick function - currently not registeres with SST, called by RevCPU
-  virtual bool ClockTick( SST::Cycle_t cycle );
+  bool ClockTick( SST::Cycle_t cycle ) final;
 
   void registerStats();
 
@@ -75,18 +81,18 @@ public:
   bool Decode( const uint32_t inst );
 
   /// RevVectorCoProc: Enqueue Inst into the InstQ and return
-  virtual bool IssueInst( const RevFeature* F, RevRegFile* R, RevMem* M, uint32_t Inst );
+  bool IssueInst( const RevFeature* F, RevRegFile* R, RevMem* M, uint32_t Inst ) final;
 
   /// RevVectorCoProc: Reset the co-processor by emmptying the InstQ
-  virtual bool Reset();
+  bool Reset() final;
 
   /// RevSimpleCoProv: Called when the attached RevCore completes simulation. Could be used to
   ///                   also signal to SST that the co-processor is done if ClockTick is registered
   ///                   to SSTCore vs. being driven by RevCPU
-  virtual bool Teardown() { return Reset(); };
+  bool Teardown() final { return Reset(); };
 
   /// RevVectorCoProc: Returns true if instruction queue is empty
-  virtual bool IsDone() { return InstQ.empty(); }
+  bool IsDone() final { return InstQ.empty(); }
 
 private:
   uint16_t   vlen    = 0;
@@ -107,8 +113,8 @@ private:
   std::vector<std::unique_ptr<RevExt>>        Extensions{};   ///< RevVectorCoProc: vector of enabled extensions
   std::unordered_multimap<uint64_t, unsigned> EncToEntry{};   ///< RevVectorCoProc: instruction encoding to table entry mapping
   std::unordered_map<std::string, unsigned>   NameToEntry{};  ///< RevVectorCoProc: instruction mnemonic to table entry mapping
-  std::unordered_map<unsigned, std::pair<unsigned, unsigned>> EntryToExt{
-  };  ///< RevVectorCoProc: instruction entry to extension mapping
+  std::unordered_map<unsigned, std::pair<unsigned, unsigned>>
+    EntryToExt{};  ///< RevVectorCoProc: instruction entry to extension mapping
 
   Statistic<uint64_t>*      num_instRetired{};  ///< RevVectorCoProc: Total number of instructions retired
   std::queue<RevCoProcInst> InstQ{};            ///< RevVectorCoProc: Queue of instructions sent from attached RevCore
@@ -129,38 +135,7 @@ private:
     uint32_t                                           Inst
   ) const;
 
-  RevVRegFile* vregfile = nullptr;
-
-  // Quick Decode helpers for special CSR access
-  union csr_inst_t {
-    uint32_t v = 0x0;
-
-    struct {
-      uint32_t opcode : 7;   // [6:0]   SYSTEM
-      uint32_t rd     : 5;   // [11:7]  dest
-      uint32_t funct3 : 3;   // [14:12] 001:CSRRW
-                             //         010:CSRRS
-                             //         011:CSRRC
-                             //         101:CSRRWI
-                             //         110:CSRRSI
-                             //         111:CSRRCI
-      uint32_t rs1    : 5;   // [19:15] source, uimm[4:0]
-      uint32_t csr    : 12;  // [31:20] src/dest csr
-    } f;
-
-    csr_inst_t( uint32_t _v ) : v( _v ) {};
-  };
-
-  const uint8_t csr_inst_opcode = 0b1110011;
-
-  enum csr_inst_funct3 : uint8_t {
-    csrrw  = 0b001,
-    csrrs  = 0b010,
-    csrrc  = 0b011,
-    csrrwi = 0b101,
-    csrrsi = 0b110,
-    csrrci = 0b111,
-  };
+  std::unique_ptr<RevVRegFile> vregfile{};
 
 public:
   /// RevVectorCoProc: Vector Execution Mock-up
