@@ -60,8 +60,7 @@ namespace SST::RevCPU {
 
 class RevCore;
 
-class RevCSR : public RevZicntr {
-public:
+struct RevCSR : RevZicntr {
   static constexpr size_t CSR_LIMIT = 0x1000;
 
   // CSR Registers
@@ -467,6 +466,22 @@ public:
     handler ? (void) Setter.insert_or_assign( csr, std::move( handler ) ) : (void) Setter.erase( csr );
   }
 
+  ///< RevCSR: Get the custom getter for a particular CSR register
+  // If no custom getter exists for this RevCSR, look for one in the owning RevCore
+  template<typename CSR>
+  auto GetCSRGetter( CSR csr ) const {
+    auto it = Getter.find( csr );
+    return it != Getter.end() && it->second ? it->second : make_dependent<CSR>( GetCore() )->GetCSRGetter( csr );
+  }
+
+  ///< RevCSR: Get the custom setter for a particular CSR register
+  // If no custom setter exists for this RevCSR, look for one in the owning RevCore
+  template<typename CSR>
+  auto GetCSRSetter( CSR csr ) {
+    auto it = Setter.find( csr );
+    return it != Setter.end() && it->second ? it->second : make_dependent<CSR>( GetCore() )->GetCSRSetter( csr );
+  }
+
   /// Get the Floating-Point Rounding Mode
   FRMode GetFRM() const { return static_cast<FRMode>( CSR[fcsr] >> 5 & 0b111 ); }
 
@@ -528,22 +543,6 @@ public:
     }
     // clang-format on
     return true;
-  }
-
-  ///< RevCSR: Get the custom getter for a particular CSR register
-  // If no custom getter exists for this RevCSR, look for one in the owning RevCore
-  template<typename CSR>
-  auto GetCSRGetter( CSR csr ) const {
-    auto it = Getter.find( csr );
-    return it != Getter.end() && it->second ? it->second : make_dependent<CSR>( GetCore() )->GetCSRGetter( csr );
-  }
-
-  ///< RevCSR: Get the custom setter for a particular CSR register
-  // If no custom setter exists for this RevCSR, look for one in the owning RevCore
-  template<typename CSR>
-  auto GetCSRSetter( CSR csr ) {
-    auto it = Setter.find( csr );
-    return it != Setter.end() && it->second ? it->second : make_dependent<CSR>( GetCore() )->GetCSRSetter( csr );
   }
 
 private:
