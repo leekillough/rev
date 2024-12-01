@@ -279,12 +279,12 @@ public:
 
   ///< RevCore: Register a custom getter for a particular CSR register
   void SetCSRGetter( uint16_t csr, std::function<uint64_t( uint16_t )> handler ) {
-    Getter.insert_or_assign( csr, std::move( handler ) );
+    handler ? (void) Getter.insert_or_assign( csr, std::move( handler ) ) : (void) Getter.erase( csr );
   }
 
   ///< RevCore: Register a custom setter for a particular CSR register
   void SetCSRSetter( uint16_t csr, std::function<bool( uint16_t, uint64_t )> handler ) {
-    Setter.insert_or_assign( csr, std::move( handler ) );
+    handler ? (void) Setter.insert_or_assign( csr, std::move( handler ) ) : (void) Setter.erase( csr );
   }
 
   ///< RevCore: Get the custom getter for a particular CSR register

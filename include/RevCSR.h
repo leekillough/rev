@@ -25,52 +25,38 @@
 
 namespace SST::RevCPU {
 
-////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //
-// A note about the separation of scopes in include/insns/Zicsr.h and
-// include/RevCSR.h:
+// A note about the separation of scopes in include/insns/Zicsr.h and include/RevCSR.h:
 //
-// RevCSR.h: GetCSR() and SetCSR() are used to get and set specific CSR
-// registers in the register file, regardless of how we arrive here. If a
-// particular CSR register is disabled because of CPU extensions present, or if
-// a particular CSR register does not apply to it (such as RDTIMEH on RV64),
-// then raise an invalid instruction or other exception here.
+// RevCSR.h: GetCSR() and SetCSR() are used to get and set specific CSR registers in the register file, regardless of how we arrive
+// here. If a particular CSR register is disabled because of CPU extensions present, or if a particular CSR register does not apply
+// to it (such as RDTIMEH on RV64), then raise an invalid instruction or other exception here.
 //
-// Zicsr.h: Decode and execute one of only 6 CSR instructions (csrrw, csrrs,
-// csrrc, csrrwi, csrrsi, csrrci). Do not enable or disable certain CSR
-// registers, or implement the semantics of particular CSR registers here.
-// All CSR instructions with a valid encoding are valid as far as Zicsr.h is
-// concerned. The particular CSR register accessed in a CSR instruction is
-// secondary to the scope of Zicsr.h. Certain pseudoinstructions like RDTIME or
-// FRFLAGS are listed separately in Zicsr.h only for user-friendly disassembly,
-// not for enabling, disabling or implementing them.
+// Zicsr.h: Decode and execute one of only 6 CSR instructions (csrrw, csrrs, csrrc, csrrwi, csrrsi, csrrci). Do not enable or
+// disable certain CSR registers, or implement the semantics of particular CSR registers here. All CSR instructions with a valid
+// encoding are valid as far as Zicsr.h is concerned. The particular CSR register accessed in a CSR instruction is secondary to the
+// scope of Zicsr.h. Certain pseudoinstructions like RDTIME or FRFLAGS are listed separately in Zicsr.h only for user-friendly
+// disassembly, not for enabling, disabling or implementing them.
 //
-// To ease maintainability and prevent large code size, it is recommended that
-// functions related to specific CSR registers be made base classes of RevCSR
-// in separate header files (e.g. RevZicntr). RevCSR can then dispatch the
-// GetCSR()/SetCSR() functions of these CSR registers to the base class.
+// To ease maintainability and prevent large code size, it is recommended that functions related to specific CSR registers be made
+// base classes of RevCSR in separate header files (e.g. RevZicntr). RevCSR can then dispatch the GetCSR()/SetCSR() functions of
+// these CSR registers to the base class.
 //
-// To access a RevCSR or RevRegFile member function in one of its base classes,
-// it is recommended that the function be made a pure virtual function in the
-// base class so that RevCSR or RevRegFile must override it, similar to how
-// GetCore() is a pure virtual function in RevZicntr which RevRegFile
-// overrides. RevZicntr needs GetCore(), but rather than have to store a
-// pointer in RevZicntr's constructor, it is much simpler to simply declare
-// GetCore() as a pure virtual function in RevZicntr which must be overriden,
-// which makes RevZicntr and RevCSR abstract classes which cannot be
-// instantiated except as a base class of RevRegFile, which defines GetCore().
+// To access a RevCSR or RevRegFile member function in one of its base classes, it is recommended that the function be made a pure
+// virtual function in the base class so that RevCSR or RevRegFile must override it, similar to how GetCore() is a pure virtual
+// function in RevZicntr which RevRegFile overrides. RevZicntr needs GetCore(), but rather than have to store a pointer in
+// RevZicntr's constructor, it is much simpler to simply declare GetCore() as a pure virtual function in RevZicntr which must be
+// overriden, which makes RevZicntr and RevCSR abstract classes which cannot be instantiated except as a base class of RevRegFile,
+// which defines GetCore().
 //
-// To register a handler to Get or Set a CSR register, call SetCSRGetter() and
-// SetCSRSetter(), supplying it a function. For CSR registers which are not
-// Hart-local but are Core-local, call SetCSRGetter() and SetCSRSetter() in
-// RevCore.
+// To register a handler to Get or Set a CSR register, call SetCSRGetter() and SetCSRSetter(), supplying it a function. For CSR
+// registers which are not Hart-local but are Core-local, call SetCSRGetter() and SetCSRSetter() in RevCore.
 //
-// The GetCSR() and SetCSR() functions in this class are called at the Hart
-// execution level, and the CSR registers in this class are hart-specific,
-// but the GetCSR() and SetCSR() functions can be overriden to read/write
-// resources outside of this class.
+// The GetCSR() and SetCSR() functions in this class are called at the Hart execution level, and the CSR registers in this class
+// are hart-specific, but the GetCSR() and SetCSR() functions can be overriden to read/write CSR resources outside of this class.
 //
-////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 class RevCore;
 
@@ -473,12 +459,12 @@ public:
 
   ///< RevCSR: Register a custom getter for a particular CSR register
   void SetCSRGetter( uint16_t csr, std::function<uint64_t( uint16_t )> handler ) {
-    Getter.insert_or_assign( csr, std::move( handler ) );
+    handler ? (void) Getter.insert_or_assign( csr, std::move( handler ) ) : (void) Getter.erase( csr );
   }
 
   ///< RevCSR: Register a custom setter for a particular CSR register
   void SetCSRSetter( uint16_t csr, std::function<bool( uint16_t, uint64_t )> handler ) {
-    Setter.insert_or_assign( csr, std::move( handler ) );
+    handler ? (void) Setter.insert_or_assign( csr, std::move( handler ) ) : (void) Setter.erase( csr );
   }
 
   /// Get the Floating-Point Rounding Mode
@@ -544,9 +530,8 @@ public:
     return true;
   }
 
-private:
   ///< RevCSR: Get the custom getter for a particular CSR register
-  // If no custom getter exists for this RevCSR, look for one in the owning core
+  // If no custom getter exists for this RevCSR, look for one in the owning RevCore
   template<typename CSR>
   auto GetCSRGetter( CSR csr ) const {
     auto it = Getter.find( csr );
@@ -554,13 +539,14 @@ private:
   }
 
   ///< RevCSR: Get the custom setter for a particular CSR register
-  // If no custom setter exists for this RevCSR, look for one in the owning core
+  // If no custom setter exists for this RevCSR, look for one in the owning RevCore
   template<typename CSR>
   auto GetCSRSetter( CSR csr ) {
     auto it = Setter.find( csr );
     return it != Setter.end() && it->second ? it->second : make_dependent<CSR>( GetCore() )->GetCSRSetter( csr );
   }
 
+private:
   std::array<uint64_t, CSR_LIMIT>                                         CSR{};     ///< RegCSR: CSR registers
   std::unordered_map<uint16_t, std::function<uint64_t( uint16_t )>>       Getter{};  ///< RevCSR: CSR Getters
   std::unordered_map<uint16_t, std::function<bool( uint16_t, uint64_t )>> Setter{};  ///< RevCSR: CSR Setters
