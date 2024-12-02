@@ -86,13 +86,6 @@ bool ZqmAidStateTableRow::validateMemBuffSize() {
 }
 #endif
 
-void ZqmMboxInQueue::checkHead() {
-  auto msg_pair = mbox_queue.front();
-  auto zop = msg_pair.first;
-
-}
-
-
 ZQM::ZQM(ComponentId_t id, Params& params)
         : Component(id)
 {
@@ -151,7 +144,7 @@ ZQM::ZQM(ComponentId_t id, Params& params)
   }
 
   // Resize the IncomingMessage vector
-  IncomingMsgQueue.resize( NUM_MBOXES );
+  IncomingMsgQueues.resize( NUM_MBOXES );
 
   // Resize the CSR regs
   PerHartCSRs.resize( numCores );
@@ -353,24 +346,68 @@ void ZQM::sendRingResponse( SST::Forza::ringEvent *ev, uint64_t data )
     zone_ring->send( resp, next_dest );
 }
 
-// TODO: Need to account for recycling messages, etc
-void ZQM::updateMailboxes()
+void ZQM::selectInMboxQueue()
 {
-    // Note (tdysart, 27-aug-24) - I expect a part of this code will disappear once we are putting the 
-    // zops into memory rather than just as objects here in the zqm
+  if ( num_incoming_msg_queues_ready == 0 )
+    return;
 
-    if ( IncomingMsgQueue[cur_incoming_msg_queue].empty() ) {
-      updateCurIncomingMsgQueue();
-      return;
+  uint8_t winning_mbox = UINT8_MAX;
+  for (uint8_t i = 0; i < NUM_MBOXES; i++) {
+    if (IncomingMsgQueues[process_incoming_msg_queue].head_ready) {
+      winning_mbox = i;
+      updateProcessIncomingMsgQueue();
+      break;
     }
+    updateProcessIncomingMsgQueue();
+  }
 
-    auto msg = IncomingMsgQueue[cur_incoming_msg_queue].front().first;
-    IncomingMsgQueue[cur_incoming_msg_queue].pop();
-    updateCurIncomingMsgQueue();
+  if (winning_mbox == UINT8_MAX) {
+    output.fatal( CALL_INFO, -1, "Did not find a ready mailbox\n" );
+  }
 
-    auto dest_mbox = msg->getMbxID();
-    auto &mbox = PerHartCSRs[msg->getDestZCID()][msg->getDestHart()].mbox_buffs[dest_mbox];
-    if ( mbox.buff_state == msgBuffState::IDLE ){
+  // TODO: We now have a winning mailbox, pull the head of that queue, send the message to memory
+  // and update the appropriate status info, counters, etc
+}
+
+
+void ZQM::updateInMboxQueue()
+{
+  auto& in_mbox = IncomingMsgQueues[cur_incoming_msg_queue];
+  updateCurIncomingMsgQueue();
+
+  if( in_mbox.mbox_queue.empty() || in_mbox.head_ready )
+    return;
+
+  auto msg        = in_mbox.mbox_queue.front().first;
+  // Have our message, then we have to look at our next steps:
+  /*
+     * 1 - check to see if it can bumped to memory
+     *   - if so, send mem zop, update status, etc
+     *   - else, update head_check_cycle_cntr - recycle or nack if necessary
+     **/
+
+  auto  dest_mbox = msg->getMbxID();
+  auto& mbox      = PerHartCSRs[msg->getDestZCID()][msg->getDestHart()].mbox_buff_state[dest_mbox];
+  if (mbox.getCurWrState() == msgBuffState::IDLE) {
+    in_mbox.head_ready = true;
+    num_incoming_msg_queues_ready++;
+  } else {
+    in_mbox.head_check_cycle_cntr++;
+    if (in_mbox.head_check_cycle_cntr == cyclesPerRecycle) {
+      if (in_mbox.mbox_queue.front().second == recyclesToNack) {
+        // TODO: NACK THIS MESSAGE
+      } else {
+        // Recycle this message
+        auto qentry = in_mbox.mbox_queue.front();
+        in_mbox.mbox_queue.pop();
+        qentry.second++;
+        in_mbox.mbox_queue.push( qentry );
+      }
+    } // no else needed; just had to increment the counter
+  }
+
+#if 0 // shouldn't need any of this code
+  if ( mbox.buff_state == msgBuffState::IDLE ){
         // fill the msg buffer, set to ready
         mbox.setMsg(msg->getPayload());
         mbox.msg_cur_word = 0;
@@ -383,8 +420,9 @@ void ZQM::updateMailboxes()
     } else {
         // rather than leave the msg at the front of the queue (where it's blocking), we recycle
         // it to the end of the queue
-        IncomingMsgQueue[msg->getMbxID()].push({msg, 0});
+        IncomingMsgQueues[msg->getMbxID()].mbox_queue.push({msg, 0});
     }
+#endif
 }
 
 void ZQM::handleIncomingZOP(SST::Event *event)
@@ -709,7 +747,7 @@ void ZQM::processMessagingMsgs()
         switch(event->getOpc()){
             case zopOpc::Z_MSG_SENDP:{
                 convertLogicPEToPhysPE(event);
-                IncomingMsgQueue[event->getMbxID()].push({event, 0});
+                IncomingMsgQueues[event->getMbxID()].mbox_queue.push({event, 0});
                 break; }
             default:
                 output.fatal(CALL_INFO, -1, "%s: Received an invalid messaging packet; opcode = 0x%x, id=%u\n",
@@ -787,8 +825,8 @@ void ZQM::sendThreadToZap()
 
 bool ZQM::clock(Cycle_t cycle)
 {
-    // Ring related
-    updateMailboxes();
+    selectInMboxQueue();
+    updateInMboxQueue();
 
     sendThreadToZap();
     //processIncomingThreadsMsgs();

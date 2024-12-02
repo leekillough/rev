@@ -197,10 +197,25 @@ public:
 
 // There will be one of these per mbox within a per-hart register
 class ZqmMboxBuffer {
-    public:
-    uint8_t cur_wr_entry{0};
-    uint8_t cur_rd_entry{0};
-    std::vector<msgBuffState> buff_state{msgBuffState::IDLE};
+public:
+  uint8_t                   cur_wr_entry{ 0 };
+  uint8_t                   cur_rd_entry{ 0 };
+  std::vector<msgBuffState> buff_state{ msgBuffState::IDLE };
+
+  void updateWrEntry() {
+    uint8_t tmp  = ( cur_wr_entry + 1 ) % buff_state.size();
+    cur_wr_entry = tmp;
+  }
+
+  void updateRdEntry() {
+    uint8_t tmp  = ( cur_rd_entry + 1 ) % buff_state.size();
+    cur_rd_entry = tmp;
+  }
+
+  msgBuffState getCurWrState() { return buff_state[cur_wr_entry]; }
+  msgBuffState getCurRdState() { return buff_state[cur_rd_entry]; }
+  void setCurWrState(msgBuffState state) { buff_state[cur_wr_entry] = state; }
+  void setCurRdState(msgBuffState state) { buff_state[cur_wr_entry] = state; }
 };
 
 class ZqmPerHartRegs {
@@ -243,14 +258,11 @@ public:
  * starting point here), then we can lower the retry cnt
  */
 
-// Or do we just make this a tuple?
 class ZqmMboxInQueue {
     public:
-    std::queue< std::pair<zopEvent*, uint16_t> > mbox_queue;
+    std::queue< std::pair<zopEvent*, uint16_t> > mbox_queue; // .second=retry cntr
     uint16_t head_check_cycle_cntr{0};
     bool head_ready{false};
-
-    void checkHead();
 };
 
 class ZQM : public SST::Component {
@@ -314,7 +326,8 @@ public:
 
     void sendRingResponse( SST::Forza::ringEvent *ev, uint64_t data );
 
-    void updateMailboxes();
+    void updateInMboxQueue();
+    void selectInMboxQueue();
 
 
     /**
@@ -352,19 +365,13 @@ private:
     // TODO: Delete these two tracking tables - zops to mem set
     // src zap/hart to physical dest zap/hart, then the per
     // hart csr state can do the tracking instead
-    // MZop ACKs and tracking table for in-flight mem ops...will
-    // have to do both reads and writes to memory...
-    // std::vector<SST::Forza::zopEvent*> rza_responses;
-    // std::map<uint8_t, std::pair<uint64_t, uint64_t> > outstanding_rza_reqs; // TODO: WTH is the pair?
 
     // Internal structures - ring architecture
     // key pair<aid, logical PE>, value pair<zap, phys_hart>
     std::map<std::pair<uint8_t, uint16_t>, std::pair<uint8_t, uint16_t>> LogicalToPhysicalMap;
     std::vector<std::vector<ZqmPerHartRegs>> PerHartCSRs;
 
-    // TODO: Move these two into their own incoming mbox queue class (notes above)
-    std::vector< std::queue< std::pair<zopEvent*, uint16_t> > > IncomingMsgQueue; // .second=retry cntr
-    // std::vector<uint64_t> inMsgQueueHeadCycleCntr{0}; // add later
+    std::vector<ZqmMboxInQueue> IncomingMsgQueues;
 
     std::queue<uint8_t> AwaitingThreadsQueue; // ZAPs waiting for threads
     std::queue<SST::Forza::zopEvent*> RunQueue; // threads waiting for an available HART
@@ -376,7 +383,9 @@ private:
     //std::map<uint16_t, MemReturnEntry*> rza_ret_wait_map;
 
     // Internal state
+    uint8_t num_incoming_msg_queues_ready{};
     uint8_t cur_incoming_msg_queue{}; // Incoming msg queue to process next (round-robin arbitration)
+    uint8_t process_incoming_msg_queue{}; // Select a msg queue to process
 
     /// ZQM: clock handler
     bool clock(SST::Cycle_t cycle);
@@ -391,12 +400,15 @@ private:
     void convertLogicPEToPhysPE( zopEvent* msg );
 
     void updateCurIncomingMsgQueue() {
-        if ( (cur_incoming_msg_queue + 1) == NUM_MBOXES)
-            cur_incoming_msg_queue = 0;
-        else
-            cur_incoming_msg_queue++;
+        uint8_t tmp = ( cur_incoming_msg_queue + 1 ) % NUM_MBOXES;
+        cur_incoming_msg_queue = tmp;
     }
-    
+
+    void updateProcessIncomingMsgQueue() {
+        uint8_t tmp = ( process_incoming_msg_queue + 1 ) % NUM_MBOXES;
+        process_incoming_msg_queue = tmp;
+    }
+
     // tdysart, 27-june-2024 removing thread management for now
 #if 0
     void sendThreadToRza(SST::Forza::zopEvent *thread);
