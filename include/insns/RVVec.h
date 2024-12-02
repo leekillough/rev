@@ -39,7 +39,7 @@ struct RevVecInst {
   RevInstF format               = RevInstF::RVTypeUNKNOWN;
 
   // mask bit
-  bool vm = false;
+  bool vm                       = false;
 
   // vector instruction table entry
   RevVecInstEntry* revInstEntry = nullptr;
@@ -63,7 +63,7 @@ struct RevVecInst {
   bool     read_rs2             = false;
   bool     read_rs3             = false;
 
-  RevVecInst() {};
+  RevVecInst(){};
   RevVecInst( uint32_t Inst );
   //RevVecInst( uint32_t Inst, RevVRegFile* vrf );
   void DecodeBase();
@@ -156,9 +156,8 @@ struct RevVecInstEntry {
 // The default initialization for RevVecInstDefaults is the same as RevVecInstEntry
 using RevVecInstDefaults = RevVecInstEntry;
 
-class RVVec : public RevExt {
+struct RVVec : RevExt {
 
-public:
   // Because we are using RevVecInstEntry instead of RevInstEntry we need to define a new table
   std::vector<RevVecInstEntry> VecTable{};  ///< RVVec: vector instruction table
 
@@ -192,9 +191,9 @@ public:
    */
 
   static uint16_t CalculateVLMAX( RevVRegFile* V ) {
-    reg_vtype_t _vtype( V->GetVCSR( RevCSR::vtype ) );
+    reg_vtype_t vtype( V->GetCSR( RevCSR::vtype ) );
     uint8_t     sew = 0;
-    switch( _vtype.f.vsew ) {
+    switch( vtype.f.vsew ) {
     case 0: sew = 8; break;
     case 1: sew = 16; break;
     case 2: sew = 32; break;
@@ -202,8 +201,8 @@ public:
     default: assert( false ); break;
     }
     uint16_t vlmax = 0;
-    uint64_t lenb  = V->GetVCSR( RevCSR::vlenb );
-    switch( _vtype.f.vlmul ) {
+    uint64_t lenb  = V->GetCSR( RevCSR::vlenb );
+    switch( vtype.f.vlmul ) {
     case 0: vlmax = ( lenb * 8 ) / sew; break;
     case 1: vlmax = 2 * ( ( lenb * 8 ) / sew ); break;
     case 2: vlmax = 4 * ( ( lenb * 8 ) / sew ); break;
@@ -218,8 +217,8 @@ public:
 
   static bool _vsetvl( uint16_t avl, uint64_t newvtype, RevRegFile* R, RevVRegFile* V, const RevVecInst& Inst ) {
     // Set vtype and configure vector execution state
-    V->SetVCSR( RevCSR::vtype, newvtype );
-    
+    V->SetCSR( RevCSR::vtype, newvtype );
+
     uint16_t vlmax = RVVec::CalculateVLMAX( V );
     V->Configure( newvtype, vlmax );
     // Configure the vl csr
@@ -235,9 +234,9 @@ public:
     } else if( ( Inst.rd != 0 ) && ( avl == 0 ) ) {
       newvl = vlmax;
     } else if( ( Inst.rd == 0 ) && ( avl == 0 ) ) {
-      newvl = V->GetVCSR( RevCSR::vl );
+      newvl = V->GetCSR( RevCSR::vl );
     }
-    V->SetVCSR( RevCSR::vl, newvl );
+    V->SetCSR( RevCSR::vl, newvl );
     R->SetX( Inst.rd, newvl );
 
 #if 1
@@ -288,7 +287,7 @@ public:
   /// Vector Integer Operator Entry Template
   template<template<class> class VOP, VecOpKind KIND, bool DST_IS_MASK = false, bool FORCE_VS2_ZERO = false, bool REVERSE = false>
   static bool vec_oper( const RevFeature* F, RevRegFile* R, RevVRegFile* V, RevMem* M, const RevVecInst& Inst ) {
-    reg_vtype_t vt = V->GetVCSR( RevCSR::vtype );
+    reg_vtype_t vt = V->GetCSR( RevCSR::vtype );
     if( vt.f.vsew == sew_t::e64 )
       return vec_oper_exec<uint64_t, VOP, KIND, DST_IS_MASK, FORCE_VS2_ZERO, REVERSE>( F, R, V, M, Inst );
     else if( vt.f.vsew == sew_t::e32 )
@@ -296,7 +295,7 @@ public:
     else if( vt.f.vsew == sew_t::e16 )
       return vec_oper_exec<uint16_t, VOP, KIND, DST_IS_MASK, FORCE_VS2_ZERO, REVERSE>( F, R, V, M, Inst );
     else if( vt.f.vsew == sew_t::e8 )
-      return vec_oper_exec<uint8_t, VOP, KIND, DST_IS_MASK, FORCE_VS2_ZERO,  REVERSE>( F, R, V, M, Inst );
+      return vec_oper_exec<uint8_t, VOP, KIND, DST_IS_MASK, FORCE_VS2_ZERO, REVERSE>( F, R, V, M, Inst );
     else {
       assert( false );
     }
@@ -305,32 +304,32 @@ public:
 
   template<typename SEWTYPE, template<class> class VOP, VecOpKind KIND, bool DST_IS_MASK, bool FORCE_VS2_ZERO, bool REVERSE>
   static bool vec_oper_exec( const RevFeature* F, RevRegFile* R, RevVRegFile* V, RevMem* M, const RevVecInst& Inst ) {
-    uint64_t vd   = Inst.vd;
-    uint64_t vs1  = Inst.vs1;
-    uint64_t vs2  = Inst.vs2;
+    uint64_t vd        = Inst.vd;
+    uint64_t vs1       = Inst.vs1;
+    uint64_t vs2       = Inst.vs2;
     // TODO perhaps split out mask setting instructions to avoid this overhead on normal operations.
-    uint64_t vmask[2]  = {0};  // actual mask bits assumes max(vlen)=128
-    uint64_t mfield[2] = {0}; // determines which bits to modify in mask register
-    for( unsigned vecElem = V->GetVCSR(RevCSR::vstart); vecElem < V->GetVCSR( RevCSR::vl ); vecElem++ ) {
-      unsigned el  = vecElem % V->ElemsPerReg();
-      if (DST_IS_MASK || V->v0mask(Inst.vm, vecElem)) {
+    uint64_t vmask[2]  = { 0 };  // actual mask bits assumes max(vlen)=128
+    uint64_t mfield[2] = { 0 };  // determines which bits to modify in mask register
+    for( unsigned vecElem = V->GetCSR( RevCSR::vstart ); vecElem < V->GetCSR( RevCSR::vl ); vecElem++ ) {
+      unsigned el = vecElem % V->ElemsPerReg();
+      if( DST_IS_MASK || V->v0mask( Inst.vm, vecElem ) ) {
         SEWTYPE res = 0;
-        SEWTYPE s2 = FORCE_VS2_ZERO ? 0 : V->GetElem<SEWTYPE>(vs2,el);
+        SEWTYPE s2  = FORCE_VS2_ZERO ? 0 : V->GetElem<SEWTYPE>( vs2, el );
         SEWTYPE s1;
         switch( KIND ) {
         case VReg: s1 = V->GetElem<SEWTYPE>( vs1, el ); break;
-        case Imm:  s1 = (Inst.Inst >> 15) & 0x1f; break;
-        case Reg:  s1 = R->GetX<SEWTYPE>( Inst.rs1 ); break;
+        case Imm: s1 = ( Inst.Inst >> 15 ) & 0x1f; break;
+        case Reg: s1 = R->GetX<SEWTYPE>( Inst.rs1 ); break;
         }
-        res = REVERSE ? VOP()(s1,s2) : VOP()(s2, s1);
+        res = REVERSE ? VOP()( s1, s2 ) : VOP()( s2, s1 );
         if( DST_IS_MASK ) {
-          uint64_t maskbit = ( (res!=0) & 1 );
-          if (vecElem<64) {
-            vmask[0] |= (maskbit<<vecElem);
-            mfield[0] |= (1<<vecElem);
+          uint64_t maskbit = ( ( res != 0 ) & 1 );
+          if( vecElem < 64 ) {
+            vmask[0] |= ( maskbit << vecElem );
+            mfield[0] |= ( 1 << vecElem );
           } else {
-            vmask[1] |= (maskbit<<(vecElem%64));
-            mfield[1] |= (1<<(vecElem%64));
+            vmask[1] |= ( maskbit << ( vecElem % 64 ) );
+            mfield[1] |= ( 1 << ( vecElem % 64 ) );
           }
         } else {
           V->SetElem<SEWTYPE>( Inst.vd, vd, vecElem, el, res );
@@ -351,13 +350,13 @@ public:
 
   /// Vector Multiply-Acc
   static bool vfmacc_oper( const RevFeature* F, RevRegFile* R, RevVRegFile* V, RevMem* M, const RevVecInst& Inst ) {
-    reg_vtype_t vt = V->GetVCSR( RevCSR::vtype );
+    reg_vtype_t vt = V->GetCSR( RevCSR::vtype );
     if( vt.f.vsew == sew_t::e64 ) {
-      vfmacc_oper_exec<double>(F, R, V, M, Inst);
-    } else if (vt.f.vsew == sew_t::e32) {
-      vfmacc_oper_exec<float>(F, R, V, M, Inst);
+      vfmacc_oper_exec<double>( F, R, V, M, Inst );
+    } else if( vt.f.vsew == sew_t::e32 ) {
+      vfmacc_oper_exec<float>( F, R, V, M, Inst );
     } else {
-      V->output()->fatal(CALL_INFO, -1, "Only supporting e64 or e32 for vector floating point operations\n");
+      V->output->fatal( CALL_INFO, -1, "Only supporting e64 or e32 for vector floating point operations\n" );
       return false;
     }
     return true;
@@ -365,36 +364,36 @@ public:
 
   template<typename FTYPE>
   static bool vfmacc_oper_exec( const RevFeature* F, RevRegFile* R, RevVRegFile* V, RevMem* M, const RevVecInst& Inst ) {
-    uint64_t vd   = Inst.vd;
+    uint64_t vd  = Inst.vd;
     // uint64_t vs1  = Inst.vs1;
-    uint64_t vs2  = Inst.vs2;
+    uint64_t vs2 = Inst.vs2;
     // vfmacc.vv vd, vs1, vs2, vm # vd[i] = +(vs1[i] * vs2[i]) + vd[i]
     // vfmacc.vf vd, rs1, vs2, vm # vd[i] = +(f[rs1] * vs2[i]) + vd[i]
-    for( unsigned vecElem = V->GetVCSR(RevCSR::vstart); vecElem < V->GetVCSR( RevCSR::vl ); vecElem++ ) {
-      unsigned el  = vecElem % V->ElemsPerReg();
-      if ( V->v0mask(Inst.vm, vecElem)) {
-        FTYPE s1 = R->GetFP<FTYPE>(Inst.rs1);
-        FTYPE s2 = V->GetElem<FTYPE>(vs2, el);
-        FTYPE dst = V->GetElem<FTYPE>(vd, el);
+    for( unsigned vecElem = V->GetCSR( RevCSR::vstart ); vecElem < V->GetCSR( RevCSR::vl ); vecElem++ ) {
+      unsigned el = vecElem % V->ElemsPerReg();
+      if( V->v0mask( Inst.vm, vecElem ) ) {
+        FTYPE s1  = R->GetFP<FTYPE>( Inst.rs1 );
+        FTYPE s2  = V->GetElem<FTYPE>( vs2, el );
+        FTYPE dst = V->GetElem<FTYPE>( vd, el );
         FTYPE res = s1 * s2 + dst;
-        V->SetElem<FTYPE>(Inst.vd, vd, vecElem, el, res);
+        V->SetElem<FTYPE>( Inst.vd, vd, vecElem, el, res );
       }
       if( ( ( el + 1 ) % V->ElemsPerReg() ) == 0 ) {
         vd++;
         // vs1++;
         vs2++;
       }
-    }  
+    }
     return true;
   }
-  
+
   /// Vector Mask Operator Entry Template
-  template<template<class> class VOP, MaskOpMod MOD=None>
+  template<template<class> class VOP, MaskOpMod MOD = None>
   static bool vmask_oper( const RevFeature* F, RevRegFile* R, RevVRegFile* V, RevMem* M, const RevVecInst& Inst ) {
     // Mask operations affect a single vector register.
     //TODO test: The number of elements should be VLMAX so it can span multiple registers when VLMAX > VLEN.
     // To stay sane, and maybe this is the intent, traverse VLMAX elements using the programmed SEW.
-    reg_vtype_t vt = V->GetVCSR( RevCSR::vtype );
+    reg_vtype_t vt = V->GetCSR( RevCSR::vtype );
     if( vt.f.vsew == sew_t::e64 )
       return vmask_oper_exec<uint64_t, VOP, MOD>( F, R, V, M, Inst );
     else if( vt.f.vsew == sew_t::e32 )
@@ -414,12 +413,14 @@ public:
     uint64_t vd  = Inst.vd;
     uint64_t vs1 = Inst.vs1;
     uint64_t vs2 = Inst.vs2;
-    for( unsigned vecElem = V->GetVCSR(RevCSR::vstart); vecElem < V->GetVCSR( RevCSR::vl ); vecElem++ ) {
-      unsigned el  = vecElem % V->ElemsPerReg();
-      SEWTYPE s1 = V->GetElem<SEWTYPE>( vs1, el );
-      if (MOD==NotVS1) s1 = ~s1;
-      SEWTYPE  res = VOP()( V->GetElem<SEWTYPE>( vs2, el ), s1 );
-      if (MOD==Not) res = ~res;
+    for( unsigned vecElem = V->GetCSR( RevCSR::vstart ); vecElem < V->GetCSR( RevCSR::vl ); vecElem++ ) {
+      unsigned el = vecElem % V->ElemsPerReg();
+      SEWTYPE  s1 = V->GetElem<SEWTYPE>( vs1, el );
+      if( MOD == NotVS1 )
+        s1 = ~s1;
+      SEWTYPE res = VOP()( V->GetElem<SEWTYPE>( vs2, el ), s1 );
+      if( MOD == Not )
+        res = ~res;
       V->SetElem<SEWTYPE>( Inst.vd, vd, vecElem, el, res );
       if( ( ( el + 1 ) % V->ElemsPerReg() ) == 0 ) {
         vd++;
@@ -434,42 +435,42 @@ public:
   /// value 1 and writes that element's index to a GPR. If no active element has the value 1, -1 is written to the
   /// GPR.
   static bool vfirstm( const RevFeature* F, RevRegFile* R, RevVRegFile* V, RevMem* M, const RevVecInst& Inst ) {
-    uint64_t res = V->vfirst(Inst.vs2);
+    uint64_t res = V->vfirst( Inst.vs2 );
     std::cout << "*V r" << Inst.rd << " <- 0x" << std::hex << res << std::endl;
-    R->SetX<uint64_t>(Inst.rd,res);
+    R->SetX<uint64_t>( Inst.rd, res );
     return true;
   }
 
   // Vector Single-Width Integer Add and Subtract
-  static constexpr auto& vaddvv  = vec_oper<std::plus, VecOpKind::VReg>;
-  static constexpr auto& vaddvx  = vec_oper<std::plus, VecOpKind::Reg>;
-  static constexpr auto& vaddvi  = vec_oper<std::plus, VecOpKind::Imm>;
-  static constexpr auto& vsubvv  = vec_oper<std::minus, VecOpKind::VReg>;
-  static constexpr auto& vsubvx  = vec_oper<std::minus, VecOpKind::Reg>;
-  static constexpr auto& vrsubvx = vec_oper<std::minus, VecOpKind::Reg, false, false, true>;
-  static constexpr auto& vrsubvi = vec_oper<std::minus, VecOpKind::Imm, false, false, true>;
+  static constexpr auto& vaddvv   = vec_oper<std::plus, VecOpKind::VReg>;
+  static constexpr auto& vaddvx   = vec_oper<std::plus, VecOpKind::Reg>;
+  static constexpr auto& vaddvi   = vec_oper<std::plus, VecOpKind::Imm>;
+  static constexpr auto& vsubvv   = vec_oper<std::minus, VecOpKind::VReg>;
+  static constexpr auto& vsubvx   = vec_oper<std::minus, VecOpKind::Reg>;
+  static constexpr auto& vrsubvx  = vec_oper<std::minus, VecOpKind::Reg, false, false, true>;
+  static constexpr auto& vrsubvi  = vec_oper<std::minus, VecOpKind::Imm, false, false, true>;
   //TODO Vector Widening Integer Add/Subtract
   //TODO Vector Integer Extension
   //TODO Vector Integer Add-with-Carry / Subtract-with-Borrow Instructions
   // Vector Bitwise logical operations
-  static constexpr auto& vandvv  = vec_oper<std::bit_and, VecOpKind::VReg>;
-  static constexpr auto& vandvx  = vec_oper<std::bit_and, VecOpKind::Reg>;
-  static constexpr auto& vandvi  = vec_oper<std::bit_and, VecOpKind::Imm>;
-  static constexpr auto& vorvv  = vec_oper<std::bit_or, VecOpKind::VReg>;
-  static constexpr auto& vorvx  = vec_oper<std::bit_or, VecOpKind::Reg>;
-  static constexpr auto& vorvi  = vec_oper<std::bit_or, VecOpKind::Imm>;
-  static constexpr auto& vxorvv  = vec_oper<std::bit_xor, VecOpKind::VReg>;
-  static constexpr auto& vxorvx  = vec_oper<std::bit_xor, VecOpKind::Reg>;
-  static constexpr auto& vxorvi  = vec_oper<std::bit_xor, VecOpKind::Imm>;
+  static constexpr auto& vandvv   = vec_oper<std::bit_and, VecOpKind::VReg>;
+  static constexpr auto& vandvx   = vec_oper<std::bit_and, VecOpKind::Reg>;
+  static constexpr auto& vandvi   = vec_oper<std::bit_and, VecOpKind::Imm>;
+  static constexpr auto& vorvv    = vec_oper<std::bit_or, VecOpKind::VReg>;
+  static constexpr auto& vorvx    = vec_oper<std::bit_or, VecOpKind::Reg>;
+  static constexpr auto& vorvi    = vec_oper<std::bit_or, VecOpKind::Imm>;
+  static constexpr auto& vxorvv   = vec_oper<std::bit_xor, VecOpKind::VReg>;
+  static constexpr auto& vxorvx   = vec_oper<std::bit_xor, VecOpKind::Reg>;
+  static constexpr auto& vxorvi   = vec_oper<std::bit_xor, VecOpKind::Imm>;
   //TODO Vector Single-Width Shift Instructions
   //TODO Vector Narrowing Integer Right Shift Instructions
   // Vector Integer Compare Instructions
-  static constexpr auto& vmseqvv = vec_oper<std::equal_to, VecOpKind::VReg, true>;
-  static constexpr auto& vmseqvx = vec_oper<std::equal_to, VecOpKind::Reg, true>;
-  static constexpr auto& vmseqvi = vec_oper<std::equal_to, VecOpKind::Imm, true>;
-  static constexpr auto& vmsnevv = vec_oper<std::not_equal_to, VecOpKind::VReg, true>;
-  static constexpr auto& vmsnevx = vec_oper<std::not_equal_to, VecOpKind::Reg, true>;
-  static constexpr auto& vmsnevi = vec_oper<std::not_equal_to, VecOpKind::Imm, true>;
+  static constexpr auto& vmseqvv  = vec_oper<std::equal_to, VecOpKind::VReg, true>;
+  static constexpr auto& vmseqvx  = vec_oper<std::equal_to, VecOpKind::Reg, true>;
+  static constexpr auto& vmseqvi  = vec_oper<std::equal_to, VecOpKind::Imm, true>;
+  static constexpr auto& vmsnevv  = vec_oper<std::not_equal_to, VecOpKind::VReg, true>;
+  static constexpr auto& vmsnevx  = vec_oper<std::not_equal_to, VecOpKind::Reg, true>;
+  static constexpr auto& vmsnevi  = vec_oper<std::not_equal_to, VecOpKind::Imm, true>;
   // static constexpr auto& vmsltuvv = vec_oper<std::tbd, VecOpKind::VReg, true>;
   // static constexpr auto& vmsltuvx = vec_oper<std::tbd, VecOpKind::Reg, true>;
   // static constexpr auto& vmsltvv = vec_oper<std::tbd, VecOpKind::VReg, true>;
@@ -477,14 +478,14 @@ public:
   // static constexpr auto& vmsleuvv = vec_oper<std::tbd, VecOpKind::VReg, true>;
   // static constexpr auto& vmsleuvx = vec_oper<std::tbd, VecOpKind::Reg, true>;
   // static constexpr auto& vmsleuvi = vec_oper<std::tbd, VecOpKind::Imm, true>;
-  static constexpr auto& vmslevv = vec_oper<std::less_equal, VecOpKind::VReg, true>;
-  static constexpr auto& vmslevx = vec_oper<std::less_equal, VecOpKind::Reg, true>;
-  static constexpr auto& vmslevi = vec_oper<std::less_equal, VecOpKind::Imm, true>;
+  static constexpr auto& vmslevv  = vec_oper<std::less_equal, VecOpKind::VReg, true>;
+  static constexpr auto& vmslevx  = vec_oper<std::less_equal, VecOpKind::Reg, true>;
+  static constexpr auto& vmslevi  = vec_oper<std::less_equal, VecOpKind::Imm, true>;
   // static constexpr auto& vmsgtuvx = vec_oper<std::tbd, VecOpKind::Reg, true>;
   // static constexpr auto& vmsgtuvi = vec_oper<std::tbd, VecOpKind::Imm, true>;
   // static constexpr auto& vmsgtvx = vec_oper<std::tbd, VecOpKind::Reg, true>;
   // static constexpr auto& vmsgtvi = vec_oper<std::tbd, VecOpKind::Imm, true>;
-  
+
   //TODO Vector Integer Min/Max Instructions
   //TODO Vector Single-Width Integer Multiply Instructions
   //TODO Vector Integer Divide Instructions
@@ -492,11 +493,11 @@ public:
   //TODO Vector Single-Width Integer Multiply-Add Instructions
   //TODO Vector Widening Integer Multiply-Add Instructions
   //TODO Vector Integer Merge Instructions
-  
+
   // Vector Integer Move Instructions
-  static constexpr auto& vmvvv   = vec_oper<std::plus, VecOpKind::VReg, false, true>;
-  static constexpr auto& vmvvx   = vec_oper<std::plus, VecOpKind::Reg, false, true>;
-  static constexpr auto& vmvvi   = vec_oper<std::plus, VecOpKind::Imm, false, true>;
+  static constexpr auto& vmvvv    = vec_oper<std::plus, VecOpKind::VReg, false, true>;
+  static constexpr auto& vmvvx    = vec_oper<std::plus, VecOpKind::Reg, false, true>;
+  static constexpr auto& vmvvi    = vec_oper<std::plus, VecOpKind::Imm, false, true>;
 
   //TODO Vector Single-Width Saturating Add and Subtract
   //TODO Vector Single-Width Averaging Add and Subtract
@@ -508,70 +509,72 @@ public:
   //TODO Vector Widening Floating-Point Add/Subtract Instructions
 
   // Vector Mask Instructions
-  static constexpr auto& vmandmm  = vmask_oper<std::bit_and>;                    // vd.mask[i] = vs2.mask[i] && vs1.mask[i]
-  static constexpr auto& vmnandmm = vmask_oper<std::bit_and, MaskOpMod::Not>;    // vd.mask[i] = !(vs2.mask[i] && vs1.mask[i])
-  static constexpr auto& vmandnmm = vmask_oper<std::bit_and, MaskOpMod::NotVS1>; // vd.mask[i] = vs2.mask[i] && !vs1.mask[i]
-  static constexpr auto& vmxormm  = vmask_oper<std::bit_xor>;                    // vd.mask[i] = vs2.mask[i] ^^ vs1.mask[i]
-  static constexpr auto& vmormm   = vmask_oper<std::bit_or>;                     // vd.mask[i] = vs2.mask[i] || vs1.mask[i]
-  static constexpr auto& vmnormm  = vmask_oper<std::bit_or,  MaskOpMod::Not>;    // vd.mask[i] = !(vs2.mask[i] || vs1.mask[i])
-  static constexpr auto& vmornmm  = vmask_oper<std::bit_or,  MaskOpMod::NotVS1>; // vd.mask[i] = vs2.mask[i] || !vs1.mask[i]
-  static constexpr auto& vmxnormm = vmask_oper<std::bit_xor, MaskOpMod::Not>;    // vd.mask[i] = !(vs2.mask[i] ^^ vs1.mask[i])
-
+  static constexpr auto& vmandmm  = vmask_oper<std::bit_and>;                     // vd.mask[i] = vs2.mask[i] && vs1.mask[i]
+  static constexpr auto& vmnandmm = vmask_oper<std::bit_and, MaskOpMod::Not>;     // vd.mask[i] = !(vs2.mask[i] && vs1.mask[i])
+  static constexpr auto& vmandnmm = vmask_oper<std::bit_and, MaskOpMod::NotVS1>;  // vd.mask[i] = vs2.mask[i] && !vs1.mask[i]
+  static constexpr auto& vmxormm  = vmask_oper<std::bit_xor>;                     // vd.mask[i] = vs2.mask[i] ^^ vs1.mask[i]
+  static constexpr auto& vmormm   = vmask_oper<std::bit_or>;                      // vd.mask[i] = vs2.mask[i] || vs1.mask[i]
+  static constexpr auto& vmnormm  = vmask_oper<std::bit_or, MaskOpMod::Not>;      // vd.mask[i] = !(vs2.mask[i] || vs1.mask[i])
+  static constexpr auto& vmornmm  = vmask_oper<std::bit_or, MaskOpMod::NotVS1>;   // vd.mask[i] = vs2.mask[i] || !vs1.mask[i]
+  static constexpr auto& vmxnormm = vmask_oper<std::bit_xor, MaskOpMod::Not>;     // vd.mask[i] = !(vs2.mask[i] ^^ vs1.mask[i])
 
   // container for parameters common to vector loads and stores
-  template<typename EEW, typename SEW, VecMemOpKind KIND> 
+  template<typename EEW, typename SEW, VecMemOpKind KIND>
   struct memopParams_t {
     uint64_t addr;
     uint64_t vd;
-    uint64_t vs2; // for indexed
-    uint64_t vs3; // stores only
+    uint64_t vs2;  // for indexed
+    uint64_t vs3;  // stores only
     uint64_t evl;
-    uint64_t stride = sizeof(EEW);
+    uint64_t stride = sizeof( EEW );
     unsigned elemsPerReg;
     unsigned elemsPerIndexReg = 0;
-    bool evm;
-    memopParams_t(RevRegFile* R, RevVRegFile* V, const RevVecInst& Inst) {
-      addr = R->GetX<uint64_t>( Inst.rs1 );
-      vd   = Inst.vd;
-      vs2  = Inst.vs2;
-      vs3  = Inst.vs3;
-      evm = Inst.vm;
-      unsigned vl = V->GetVCSR( RevCSR::vl );
-      switch (KIND) {
-        case FaultOnlyFirst: // loads only
-          V->output()->verbose(
-            CALL_INFO, 1, 0, "Warning: vector load fault-only first not implemented and will behave has a normal vector unit stride load\n"
-          );
-          evl = vl * sizeof(SEW) / sizeof(EEW); // todo ceiling
-          elemsPerReg = V->ElemsPerReg() * sizeof(SEW) / sizeof(EEW);
-          // We need to check if emul is valid but unsure if we need to use it
-          V->emul<EEW,SEW>();
-          break;
-        case UnitStrideMask:
-          evl = vl>0 ? ((vl-1)>>3) + 1 : 0;   // ceil(vl/8)
-          elemsPerReg = evl;
-          break;
-        case UnitStride:
-          evl = vl * sizeof(SEW) / sizeof(EEW); // todo ceiling
-          elemsPerReg = V->ElemsPerReg() * sizeof(SEW) / sizeof(EEW);
-          V->emul<EEW,SEW>();
-          break;
-        case Strided:
-          evl = vl * sizeof(SEW) / sizeof(EEW); // todo ceiling
-          elemsPerReg = V->ElemsPerReg() * sizeof(SEW) / sizeof(EEW);
-          V->emul<EEW,SEW>();
-          stride = R->GetX<uint64_t>(Inst.rs2);
-          break;
-        case Indexed:
-          // data vector uses SEW, index uses EEW
-          evl = vl;
-          elemsPerReg = V->ElemsPerReg();
-          elemsPerIndexReg = elemsPerReg * sizeof(SEW) / sizeof(EEW);
-          V->emul<EEW,SEW>(); 
-          break;
-        case Segment:
-        case WholeRegister:
-          assert(false);
+    bool     evm;
+
+    memopParams_t( RevRegFile* R, RevVRegFile* V, const RevVecInst& Inst ) {
+      addr        = R->GetX<uint64_t>( Inst.rs1 );
+      vd          = Inst.vd;
+      vs2         = Inst.vs2;
+      vs3         = Inst.vs3;
+      evm         = Inst.vm;
+      unsigned vl = V->GetCSR( RevCSR::vl );
+      switch( KIND ) {
+      case FaultOnlyFirst:  // loads only
+        V->output->verbose(
+          CALL_INFO,
+          1,
+          0,
+          "Warning: vector load fault-only first not implemented and will behave has a normal vector unit stride load\n"
+        );
+        evl         = vl * sizeof( SEW ) / sizeof( EEW );  // todo ceiling
+        elemsPerReg = V->ElemsPerReg() * sizeof( SEW ) / sizeof( EEW );
+        // We need to check if emul is valid but unsure if we need to use it
+        V->emul<EEW, SEW>();
+        break;
+      case UnitStrideMask:
+        evl         = vl > 0 ? ( ( vl - 1 ) >> 3 ) + 1 : 0;  // ceil(vl/8)
+        elemsPerReg = evl;
+        break;
+      case UnitStride:
+        evl         = vl * sizeof( SEW ) / sizeof( EEW );  // todo ceiling
+        elemsPerReg = V->ElemsPerReg() * sizeof( SEW ) / sizeof( EEW );
+        V->emul<EEW, SEW>();
+        break;
+      case Strided:
+        evl         = vl * sizeof( SEW ) / sizeof( EEW );  // todo ceiling
+        elemsPerReg = V->ElemsPerReg() * sizeof( SEW ) / sizeof( EEW );
+        V->emul<EEW, SEW>();
+        stride = R->GetX<uint64_t>( Inst.rs2 );
+        break;
+      case Indexed:
+        // data vector uses SEW, index uses EEW
+        evl              = vl;
+        elemsPerReg      = V->ElemsPerReg();
+        elemsPerIndexReg = elemsPerReg * sizeof( SEW ) / sizeof( EEW );
+        V->emul<EEW, SEW>();
+        break;
+      case Segment:
+      case WholeRegister: assert( false );
       }
     }
   };
@@ -597,20 +600,20 @@ public:
   template<typename EEW, typename SEW, VecMemOpKind KIND>
   static bool vload_exec( const RevFeature* F, RevRegFile* R, RevVRegFile* V, RevMem* M, const RevVecInst& Inst ) {
 
-    memopParams_t params = memopParams_t<EEW, SEW, KIND>(R, V, Inst);
+    memopParams_t params = memopParams_t<EEW, SEW, KIND>( R, V, Inst );
 
-    for( unsigned vecElem = V->GetVCSR(RevCSR::vstart); vecElem < params.evl; vecElem++ ) {
+    for( unsigned vecElem = V->GetCSR( RevCSR::vstart ); vecElem < params.evl; vecElem++ ) {
       unsigned el = vecElem % params.elemsPerReg;
-      if ( V->v0mask(params.evm, vecElem) ) {
-        if (KIND != Indexed) {
-          EEW  d  = 0;
-          MemReq   req0( params.addr, RevReg::zero, RevRegClass::RegGPR, 0, MemOp::MemOpREAD, true, R->GetMarkLoadComplete() );
+      if( V->v0mask( params.evm, vecElem ) ) {
+        if( KIND != Indexed ) {
+          EEW    d = 0;
+          MemReq req0( params.addr, RevReg::zero, RevRegClass::RegGPR, 0, MemOp::MemOpREAD, true, R->GetMarkLoadComplete() );
           M->ReadVal<EEW>( 0, params.addr, &d, req0, RevFlag::F_NONE );
           std::cout << "0x" << std::hex << (uint64_t) d << " <- M[0x" << params.addr << "]" << std::endl;
           V->SetElem<EEW>( Inst.vd, params.vd, vecElem, el, d );
         } else {
-          SEW  d  = 0;
-          uint64_t addr = params.addr + V->GetElem<EEW>(params.vs2, el);
+          SEW      d    = 0;
+          uint64_t addr = params.addr + V->GetElem<EEW>( params.vs2, el );
           MemReq   req0( addr, RevReg::zero, RevRegClass::RegGPR, 0, MemOp::MemOpREAD, true, R->GetMarkLoadComplete() );
           M->ReadVal<SEW>( 0, addr, &d, req0, RevFlag::F_NONE );
           std::cout << "0x" << std::hex << (uint64_t) d << " <- M[0x" << addr << "]" << std::endl;
@@ -620,9 +623,9 @@ public:
       if( ( ( el + 1 ) % params.elemsPerReg ) == 0 ) {
         params.vd++;
       }
-      if (KIND != Indexed ) {
+      if( KIND != Indexed ) {
         params.addr += params.stride;
-      } else if ( ( el + 1 ) % params.elemsPerIndexReg == 0 ) {
+      } else if( ( el + 1 ) % params.elemsPerIndexReg == 0 ) {
         params.vs2++;
       }
     }
@@ -632,7 +635,7 @@ public:
   // Vector Load Entry Template
   template<typename EEW, VecMemOpKind KIND>
   static bool vload( const RevFeature* F, RevRegFile* R, RevVRegFile* V, RevMem* M, const RevVecInst& Inst ) {
-    reg_vtype_t vt = V->GetVCSR( RevCSR::vtype );
+    reg_vtype_t vt = V->GetCSR( RevCSR::vtype );
     if( vt.f.vsew == sew_t::e64 )
       return vload_exec<EEW, uint64_t, KIND>( F, R, V, M, Inst );
     else if( vt.f.vsew == sew_t::e32 )
@@ -644,7 +647,7 @@ public:
     return false;
   }
 
-   // VS*
+  // VS*
   // 31 29  28  27 26  25  24 20  19 15  14 12  11 7   6     0
   //   nf  mew   mop   vm  lumop   rs1   width   vd    b0000111
   //
@@ -664,32 +667,31 @@ public:
   template<typename EEW, typename SEW, VecMemOpKind KIND>
   static bool vstore_exec( const RevFeature* F, RevRegFile* R, RevVRegFile* V, RevMem* M, const RevVecInst& Inst ) {
 
-    memopParams_t params = memopParams_t<EEW, SEW, KIND>(R, V, Inst);
+    memopParams_t params = memopParams_t<EEW, SEW, KIND>( R, V, Inst );
     for( unsigned vecElem = 0; vecElem < params.evl; vecElem++ ) {
       unsigned el = vecElem % params.elemsPerReg;
-      if (V->v0mask(params.evm, vecElem)) {
-        if (KIND != Indexed) {
-          EEW  d  = V->GetElem<EEW>( params.vs3, el );
-          M->WriteMem( 0, params.addr, sizeof( EEW ), &d ); 
-          std::cout << "*V M[0x" << std::hex << params.addr << "] <- 0x" << std::hex << (uint64_t) d << " <- v" << std::dec << params.vs3 << "."
-                    << std::dec << el << std::endl;
+      if( V->v0mask( params.evm, vecElem ) ) {
+        if( KIND != Indexed ) {
+          EEW d = V->GetElem<EEW>( params.vs3, el );
+          M->WriteMem( 0, params.addr, sizeof( EEW ), &d );
+          std::cout << "*V M[0x" << std::hex << params.addr << "] <- 0x" << std::hex << (uint64_t) d << " <- v" << std::dec
+                    << params.vs3 << "." << std::dec << el << std::endl;
         } else {
-          SEW  d  = V->GetElem<SEW>( params.vs3, el );
-          uint64_t addr = params.addr + V->GetElem<EEW>(params.vs2, el);
-          M->WriteMem( 0, addr, sizeof( SEW ), &d ); 
-          std::cout << "*V M[0x" << std::hex << addr << "] <- 0x" << std::hex << (uint64_t) d << " <- v" << std::dec << params.vs3 << "."
-                    << std::dec << el << std::endl;
+          SEW      d    = V->GetElem<SEW>( params.vs3, el );
+          uint64_t addr = params.addr + V->GetElem<EEW>( params.vs2, el );
+          M->WriteMem( 0, addr, sizeof( SEW ), &d );
+          std::cout << "*V M[0x" << std::hex << addr << "] <- 0x" << std::hex << (uint64_t) d << " <- v" << std::dec << params.vs3
+                    << "." << std::dec << el << std::endl;
         }
       }
       if( ( ( el + 1 ) % params.elemsPerReg ) == 0 ) {
         params.vs3++;
       }
-      if (KIND != Indexed ) {
+      if( KIND != Indexed ) {
         params.addr += params.stride;
-      } else if ( ( el + 1 ) % params.elemsPerIndexReg == 0 ) {
+      } else if( ( el + 1 ) % params.elemsPerIndexReg == 0 ) {
         params.vs2++;
       }
-
     }
     return true;
   }
@@ -697,7 +699,7 @@ public:
   // Vector Store Entry Template
   template<typename EEW, VecMemOpKind KIND>
   static bool vstore( const RevFeature* F, RevRegFile* R, RevVRegFile* V, RevMem* M, const RevVecInst& Inst ) {
-    reg_vtype_t vt = V->GetVCSR( RevCSR::vtype );
+    reg_vtype_t vt = V->GetCSR( RevCSR::vtype );
     if( vt.f.vsew == sew_t::e64 )
       return vstore_exec<EEW, uint64_t, KIND>( F, R, V, M, Inst );
     else if( vt.f.vsew == sew_t::e32 )
@@ -735,7 +737,7 @@ public:
   RevVecInstDefaults().SetMnemonic("vlm.v %vd, (%rs1)"               ).SetFunct3(MSZ::u8 ).SetImplFunc(&vload<uint8_t,   UnitStrideMask>).SetrdClass(RevRegClass::RegVEC    ).Setrs1Class(RevRegClass::RegGPR    ).Setrs2Class(RevRegClass::RegUNKNOWN)                                     .SetFormat(RVVTypeLd).SetOpcode(0b0000111).SetMop(0b00).SetPredicate( []( uint32_t Inst ){ return ((Inst >> 20) & 0x1f)  == 0b01011; } ),
   RevVecInstDefaults().SetMnemonic("vsm.v %vs3, (%rs1) "             ).SetFunct3(MSZ::u8 ).SetImplFunc(&vstore<uint8_t,  UnitStrideMask>).SetrdClass(RevRegClass::RegUNKNOWN).Setrs1Class(RevRegClass::RegGPR    ).Setrs2Class(RevRegClass::RegUNKNOWN)  .Setrs3Class(RevRegClass::RegVEC)  .SetFormat(RVVTypeSt).SetOpcode(0b0100111).SetMop(0b00).SetPredicate( []( uint32_t Inst ){ return ((Inst >> 20) & 0x1f)  == 0b01011; } ),
   // Vector Strided Instructions
-  RevVecInstDefaults().SetMnemonic("vlse8.v %vd, (%rs1), %rs2, %vm"  ).SetFunct3(MSZ::u8 ).SetImplFunc(&vload<uint8_t,   Strided>       ).SetrdClass(RevRegClass::RegVEC    ).Setrs1Class(RevRegClass::RegGPR    ).Setrs2Class(RevRegClass::RegGPR    )                                     .SetFormat(RVVTypeLd).SetOpcode(0b0000111).SetMop(0b10),       
+  RevVecInstDefaults().SetMnemonic("vlse8.v %vd, (%rs1), %rs2, %vm"  ).SetFunct3(MSZ::u8 ).SetImplFunc(&vload<uint8_t,   Strided>       ).SetrdClass(RevRegClass::RegVEC    ).Setrs1Class(RevRegClass::RegGPR    ).Setrs2Class(RevRegClass::RegGPR    )                                     .SetFormat(RVVTypeLd).SetOpcode(0b0000111).SetMop(0b10),
   RevVecInstDefaults().SetMnemonic("vlse16.v %vd, (%rs1), %rs2, %vm" ).SetFunct3(MSZ::u16).SetImplFunc(&vload<uint16_t,  Strided>       ).SetrdClass(RevRegClass::RegVEC    ).Setrs1Class(RevRegClass::RegGPR    ).Setrs2Class(RevRegClass::RegGPR    )                                     .SetFormat(RVVTypeLd).SetOpcode(0b0000111).SetMop(0b10),
   RevVecInstDefaults().SetMnemonic("vlse32.v %vd, (%rs1), %rs2, %vm" ).SetFunct3(MSZ::u32).SetImplFunc(&vload<uint32_t,  Strided>       ).SetrdClass(RevRegClass::RegVEC    ).Setrs1Class(RevRegClass::RegGPR    ).Setrs2Class(RevRegClass::RegGPR    )                                     .SetFormat(RVVTypeLd).SetOpcode(0b0000111).SetMop(0b10),
   RevVecInstDefaults().SetMnemonic("vlse64.v %vd, (%rs1), %rs2, %vm" ).SetFunct3(MSZ::u64).SetImplFunc(&vload<uint64_t,  Strided>       ).SetrdClass(RevRegClass::RegVEC    ).Setrs1Class(RevRegClass::RegGPR    ).Setrs2Class(RevRegClass::RegGPR    )                                     .SetFormat(RVVTypeLd).SetOpcode(0b0000111).SetMop(0b10),
@@ -744,14 +746,14 @@ public:
   RevVecInstDefaults().SetMnemonic("vsse32.v %vs3, (%rs1), %rs2, %vm").SetFunct3(MSZ::u32).SetImplFunc(&vload<uint32_t,  Strided>       ).SetrdClass(RevRegClass::RegUNKNOWN).Setrs1Class(RevRegClass::RegGPR    ).Setrs2Class(RevRegClass::RegGPR    )  .Setrs3Class(RevRegClass::RegVEC)  .SetFormat(RVVTypeSt).SetOpcode(0b0100111).SetMop(0b10),
   RevVecInstDefaults().SetMnemonic("vsse64.v %vs3, (%rs1), %rs2, %vm").SetFunct3(MSZ::u64).SetImplFunc(&vload<uint64_t,  Strided>       ).SetrdClass(RevRegClass::RegUNKNOWN).Setrs1Class(RevRegClass::RegGPR    ).Setrs2Class(RevRegClass::RegGPR    )  .Setrs3Class(RevRegClass::RegVEC)  .SetFormat(RVVTypeSt).SetOpcode(0b0100111).SetMop(0b10),
   // Vector Indexed Instructions
-  RevVecInstDefaults().SetMnemonic("vluxei8.v vd, (rs1), vs2, vm"    ).SetFunct3(MSZ::u8 ).SetImplFunc(&vload<uint8_t,   Indexed>       ).SetrdClass(RevRegClass::RegVEC    ).Setrs1Class(RevRegClass::RegGPR    ).Setrs2Class(RevRegClass::RegVEC    )                                     .SetFormat(RVVTypeLd).SetOpcode(0b0000111).SetMop(0b01),   
-  RevVecInstDefaults().SetMnemonic("vluxei16.v vd, (rs1), vs2, vm"   ).SetFunct3(MSZ::u16).SetImplFunc(&vload<uint16_t,  Indexed>       ).SetrdClass(RevRegClass::RegVEC    ).Setrs1Class(RevRegClass::RegGPR    ).Setrs2Class(RevRegClass::RegVEC    )                                     .SetFormat(RVVTypeLd).SetOpcode(0b0000111).SetMop(0b01),  
-  RevVecInstDefaults().SetMnemonic("vluxei32.v vd, (rs1), vs2, vm"   ).SetFunct3(MSZ::u32).SetImplFunc(&vload<uint32_t,  Indexed>       ).SetrdClass(RevRegClass::RegVEC    ).Setrs1Class(RevRegClass::RegGPR    ).Setrs2Class(RevRegClass::RegVEC    )                                     .SetFormat(RVVTypeLd).SetOpcode(0b0000111).SetMop(0b01),  
-  RevVecInstDefaults().SetMnemonic("vluxei64.v vd, (rs1), vs2, vm"   ).SetFunct3(MSZ::u64).SetImplFunc(&vload<uint64_t,  Indexed>       ).SetrdClass(RevRegClass::RegVEC    ).Setrs1Class(RevRegClass::RegGPR    ).Setrs2Class(RevRegClass::RegVEC    )                                     .SetFormat(RVVTypeLd).SetOpcode(0b0000111).SetMop(0b01),  
-  RevVecInstDefaults().SetMnemonic("vloxei8.v vd, (rs1), vs2, vm"    ).SetFunct3(MSZ::u8 ).SetImplFunc(&vload<uint8_t,   Indexed>       ).SetrdClass(RevRegClass::RegVEC    ).Setrs1Class(RevRegClass::RegGPR    ).Setrs2Class(RevRegClass::RegVEC    )                                     .SetFormat(RVVTypeLd).SetOpcode(0b0000111).SetMop(0b11),   
-  RevVecInstDefaults().SetMnemonic("vloxei16.v vd, (rs1), vs2, vm"   ).SetFunct3(MSZ::u16).SetImplFunc(&vload<uint16_t,  Indexed>       ).SetrdClass(RevRegClass::RegVEC    ).Setrs1Class(RevRegClass::RegGPR    ).Setrs2Class(RevRegClass::RegVEC    )                                     .SetFormat(RVVTypeLd).SetOpcode(0b0000111).SetMop(0b11), 
-  RevVecInstDefaults().SetMnemonic("vloxei32.v vd, (rs1), vs2, vm"   ).SetFunct3(MSZ::u32).SetImplFunc(&vload<uint32_t,  Indexed>       ).SetrdClass(RevRegClass::RegVEC    ).Setrs1Class(RevRegClass::RegGPR    ).Setrs2Class(RevRegClass::RegVEC    )                                     .SetFormat(RVVTypeLd).SetOpcode(0b0000111).SetMop(0b11), 
-  RevVecInstDefaults().SetMnemonic("vloxei64.v vd, (rs1), vs2, vm"   ).SetFunct3(MSZ::u64).SetImplFunc(&vload<uint64_t,  Indexed>       ).SetrdClass(RevRegClass::RegVEC    ).Setrs1Class(RevRegClass::RegGPR    ).Setrs2Class(RevRegClass::RegVEC    )                                     .SetFormat(RVVTypeLd).SetOpcode(0b0000111).SetMop(0b11), 
+  RevVecInstDefaults().SetMnemonic("vluxei8.v vd, (rs1), vs2, vm"    ).SetFunct3(MSZ::u8 ).SetImplFunc(&vload<uint8_t,   Indexed>       ).SetrdClass(RevRegClass::RegVEC    ).Setrs1Class(RevRegClass::RegGPR    ).Setrs2Class(RevRegClass::RegVEC    )                                     .SetFormat(RVVTypeLd).SetOpcode(0b0000111).SetMop(0b01),
+  RevVecInstDefaults().SetMnemonic("vluxei16.v vd, (rs1), vs2, vm"   ).SetFunct3(MSZ::u16).SetImplFunc(&vload<uint16_t,  Indexed>       ).SetrdClass(RevRegClass::RegVEC    ).Setrs1Class(RevRegClass::RegGPR    ).Setrs2Class(RevRegClass::RegVEC    )                                     .SetFormat(RVVTypeLd).SetOpcode(0b0000111).SetMop(0b01),
+  RevVecInstDefaults().SetMnemonic("vluxei32.v vd, (rs1), vs2, vm"   ).SetFunct3(MSZ::u32).SetImplFunc(&vload<uint32_t,  Indexed>       ).SetrdClass(RevRegClass::RegVEC    ).Setrs1Class(RevRegClass::RegGPR    ).Setrs2Class(RevRegClass::RegVEC    )                                     .SetFormat(RVVTypeLd).SetOpcode(0b0000111).SetMop(0b01),
+  RevVecInstDefaults().SetMnemonic("vluxei64.v vd, (rs1), vs2, vm"   ).SetFunct3(MSZ::u64).SetImplFunc(&vload<uint64_t,  Indexed>       ).SetrdClass(RevRegClass::RegVEC    ).Setrs1Class(RevRegClass::RegGPR    ).Setrs2Class(RevRegClass::RegVEC    )                                     .SetFormat(RVVTypeLd).SetOpcode(0b0000111).SetMop(0b01),
+  RevVecInstDefaults().SetMnemonic("vloxei8.v vd, (rs1), vs2, vm"    ).SetFunct3(MSZ::u8 ).SetImplFunc(&vload<uint8_t,   Indexed>       ).SetrdClass(RevRegClass::RegVEC    ).Setrs1Class(RevRegClass::RegGPR    ).Setrs2Class(RevRegClass::RegVEC    )                                     .SetFormat(RVVTypeLd).SetOpcode(0b0000111).SetMop(0b11),
+  RevVecInstDefaults().SetMnemonic("vloxei16.v vd, (rs1), vs2, vm"   ).SetFunct3(MSZ::u16).SetImplFunc(&vload<uint16_t,  Indexed>       ).SetrdClass(RevRegClass::RegVEC    ).Setrs1Class(RevRegClass::RegGPR    ).Setrs2Class(RevRegClass::RegVEC    )                                     .SetFormat(RVVTypeLd).SetOpcode(0b0000111).SetMop(0b11),
+  RevVecInstDefaults().SetMnemonic("vloxei32.v vd, (rs1), vs2, vm"   ).SetFunct3(MSZ::u32).SetImplFunc(&vload<uint32_t,  Indexed>       ).SetrdClass(RevRegClass::RegVEC    ).Setrs1Class(RevRegClass::RegGPR    ).Setrs2Class(RevRegClass::RegVEC    )                                     .SetFormat(RVVTypeLd).SetOpcode(0b0000111).SetMop(0b11),
+  RevVecInstDefaults().SetMnemonic("vloxei64.v vd, (rs1), vs2, vm"   ).SetFunct3(MSZ::u64).SetImplFunc(&vload<uint64_t,  Indexed>       ).SetrdClass(RevRegClass::RegVEC    ).Setrs1Class(RevRegClass::RegGPR    ).Setrs2Class(RevRegClass::RegVEC    )                                     .SetFormat(RVVTypeLd).SetOpcode(0b0000111).SetMop(0b11),
   RevVecInstDefaults().SetMnemonic("vsuxei8.v vs3, (rs1), vs2, vm"   ).SetFunct3(MSZ::u8 ).SetImplFunc(&vload<uint8_t,   Indexed>       ).SetrdClass(RevRegClass::RegUNKNOWN).Setrs1Class(RevRegClass::RegGPR    ).Setrs2Class(RevRegClass::RegVEC    )  .Setrs3Class(RevRegClass::RegVEC)  .SetFormat(RVVTypeLd).SetOpcode(0b0100111).SetMop(0b01),
   RevVecInstDefaults().SetMnemonic("vsuxei16.v vs3, (rs1), vs2, vm"  ).SetFunct3(MSZ::u16).SetImplFunc(&vload<uint16_t,  Indexed>       ).SetrdClass(RevRegClass::RegUNKNOWN).Setrs1Class(RevRegClass::RegGPR    ).Setrs2Class(RevRegClass::RegVEC    )  .Setrs3Class(RevRegClass::RegVEC)  .SetFormat(RVVTypeLd).SetOpcode(0b0100111).SetMop(0b01),
   RevVecInstDefaults().SetMnemonic("vsuxei32.v vs3, (rs1), vs2, vm"  ).SetFunct3(MSZ::u32).SetImplFunc(&vload<uint32_t,  Indexed>       ).SetrdClass(RevRegClass::RegUNKNOWN).Setrs1Class(RevRegClass::RegGPR    ).Setrs2Class(RevRegClass::RegVEC    )  .Setrs3Class(RevRegClass::RegVEC)  .SetFormat(RVVTypeLd).SetOpcode(0b0100111).SetMop(0b01),
@@ -815,7 +817,7 @@ public:
   RevVecInstDefaults().SetMnemonic("vmv.v.v %vd, %vs1"             ).SetFunct3(OPV::IVV).SetFunct6(0b010111).SetImplFunc(&vmvvv ).SetrdClass(RevRegClass::RegVEC ).Setrs1Class(RevRegClass::RegVEC    ).Setrs2Class(RevRegClass::RegVEC).SetFormat(RVVTypeOpv).SetOpcode(0b1010111).SetPredicate( []( uint32_t Inst ){ return ((Inst >> 20) & 0x1f)  == 0; } ),
   RevVecInstDefaults().SetMnemonic("vmv.v.x %vd, %rs1"             ).SetFunct3(OPV::IVX).SetFunct6(0b010111).SetImplFunc(&vmvvx ).SetrdClass(RevRegClass::RegVEC ).Setrs1Class(RevRegClass::RegGPR    ).Setrs2Class(RevRegClass::RegVEC).SetFormat(RVVTypeOpv).SetOpcode(0b1010111).SetPredicate( []( uint32_t Inst ){ return ((Inst >> 20) & 0x1f)  == 0; } ),
   RevVecInstDefaults().SetMnemonic("vmv.v.i %vd, zimm5"            ).SetFunct3(OPV::IVI).SetFunct6(0b010111).SetImplFunc(&vmvvi ).SetrdClass(RevRegClass::RegVEC ).Setrs1Class(RevRegClass::RegUNKNOWN).Setrs2Class(RevRegClass::RegVEC).SetFormat(RVVTypeOpv).SetOpcode(0b1010111).SetPredicate( []( uint32_t Inst ){ return ((Inst >> 20) & 0x1f)  == 0; } ),
-  
+
   /* Vector Fixed-Point Arithmetic Instructions */
   //TODO Vector Single-Width Saturating Add and Subtract
   //TODO Vector Single-Width Averaging Add and Subtract
@@ -884,7 +886,7 @@ public:
   //TODO Vector Floating-Point Slide1down Instruction
   //TODO Vector Register Gather Instructions
   //TODO Vector Compress Instruction
-  //TODO Whole Vector Register Move 
+  //TODO Whole Vector Register Move
 
   };
   // clang-format on

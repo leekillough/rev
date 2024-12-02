@@ -34,7 +34,7 @@ union reg_vtype_t {
     uint64_t vii   : 1;   // [63]
   } f;
 
-  reg_vtype_t( uint64_t _v ) : v( _v ){};
+  reg_vtype_t( uint64_t v ) : v( v ){};
 
   // This causes an exception - why?
   // friend std::ostream& operator<<( std::ostream& os, const reg_vtype_t& vt ) {
@@ -60,6 +60,7 @@ enum class VRevReg : uint16_t {
 
 class RevCore;
 
+// Vtype field names
 enum class RevVType : uint8_t { vlmul, vsew, vta, vma, vill };
 
 class RevVRegFile {
@@ -74,9 +75,9 @@ public:
   template<RevVType field>
   auto GetVType( uint64_t vtype ) const {
     if constexpr( field == RevVType::vlmul ) {
-      return static_cast<RevLMUL>( vtype >> 0 & 0b111 );  // [2:0]
+      return static_cast<lmul_t>( vtype >> 0 & 0b111 );  // [2:0]
     } else if constexpr( field == RevVType::vsew ) {
-      return static_cast<RevSEW>( vtype >> 3 & 0b111 );  // [5:3]
+      return static_cast<sew_t>( vtype >> 3 & 0b111 );  // [5:3]
     } else if constexpr( field == RevVType::vta ) {
       return static_cast<bool>( vtype >> 6 & 0b001 );  // [6]
     } else if constexpr( field == RevVType::vma ) {
@@ -84,7 +85,7 @@ public:
     } else if constexpr( field == RevVType::vill ) {
       return static_cast<bool>( vtype >> ( IsRV64() ? 63 : 31 ) & 1 );  // [XLEN-1]
     } else {
-      static_assert( ( field, false ), "Error: Unrecognized RevVType field" );
+      static_assert( make_dependent<field>( false ), "Error: Unrecognized RevVType field" );
     }
   }
 
@@ -110,7 +111,7 @@ public:
       assert( vill < sizeof( VT ) * 8 );  // make sure we're writing to large enough vtype
       vtype = ~( ~vtype | -VT{ 1 } << vill ) | ( static_cast<VT>( val ) & 0b001 ) << vill;  // [XLEN-1]
     } else {
-      static_assert( ( field, false ), "Error: Unrecognized RevVType field" );
+      static_assert( make_dependent<T>( false ), "Error: Unrecognized RevVType field" );
     }
   }
 
@@ -152,13 +153,17 @@ public:
     return res;
   };
 
-  // Vector loads and stores have an EEW encoded directly in the instruction. The corresponding EMUL is
-  // calculated as EMUL = (EEW/SEW)*LMUL. If the EMUL would be out of range (EMUL>8 or EMUL<1/8),
-  // the instruction encoding is reserved. The vector register groups must have legal register specifiers for the
-  // selected EMUL, otherwise the instruction encoding is reserved.
+    // Vector loads and stores have an EEW encoded directly in the instruction. The corresponding EMUL is
+    // calculated as EMUL = (EEW/SEW)*LMUL. If the EMUL would be out of range (EMUL>8 or EMUL<1/8),
+    // the instruction encoding is reserved. The vector register groups must have legal register specifiers for the
+    // selected EMUL, otherwise the instruction encoding is reserved.
+
+#if 1
+
+  // Original version
   template<typename EEW, typename SEW>
   std::pair<unsigned, bool> emul() {
-    reg_vtype_t vt      = vcsrmap[vtype];
+    reg_vtype_t vt      = GetCSR( RevCSR::vtype );
     size_t      eew     = sizeof( EEW ) << 3;
     size_t      sew     = sizeof( SEW ) << 3;
 
@@ -175,21 +180,23 @@ public:
     assert( em == 1 || em == 2 || em == 4 || em == 8 );
     return std::make_pair( em, fractional );
   }
+
 #else
-// Logarithmic version, returning lg(emul), which is right shift (non-positive) or left shift (non-negative)
-// lg() relies on fast __builtin_clz() and can be computed at compile-time
-template<typename EEW, typename SEW>
-int lgemul() const {
-  auto vlmul = static_cast<uint8_t>( GetVType<RevVType::vlmul>() );  // [2:0]
-  int  lgem  = lg( sizeof( EEW ) ) - lg( sizeof( SEW ) ) + vlmul;
 
-  // m1=0, m2=1, m4=2, m8=3, reserved=4, mf8=5, mf4=6, mf2=7
-  if( vlmul >= 4 )
-    lgem -= 8;
+  // Logarithmic version, returning lg(emul), which is right shift (non-positive) or left shift (non-negative)
+  // lg() relies on fast __builtin_clz() and can be computed at compile-time
+  template<typename EEW, typename SEW>
+  int lgemul() const {
+    auto vlmul = static_cast<uint8_t>( GetVType<RevVType::vlmul>() );  // [2:0]
+    int  lgem  = lg( sizeof( EEW ) ) - lg( sizeof( SEW ) ) + vlmul;
 
-  assert( lgem >= -3 && lgem <= 3 );
-  return lgem;
-}
+    // m1=0, m2=1, m4=2, m8=3, reserved=4, mf8=5, mf4=6, mf2=7
+    if( vlmul >= 4 )
+      lgem -= 8;
+
+    assert( lgem >= -3 && lgem <= 3 );
+    return lgem;
+  }
 #endif
 
   void SetMaskReg( uint64_t vd, uint64_t mask[], uint64_t mfield[] );  ///< RevVRegFile: Write entire mask register
@@ -206,25 +213,26 @@ private:
   // clang-format off
 
   /// Set the vector CSR Getters to a function which can be nullptr to clear them
-  template<typename PARENT, typename GETTER>
-  static void SetCSRGetters( PARENT* parent, GETTER getter ) {
-    parent->SetCSRGetter( RevCSR::vxsat,  getter );
-    parent->SetCSRGetter( RevCSR::vxrm,   getter );
-    parent->SetCSRGetter( RevCSR::vcsr,   getter );
-    parent->SetCSRGetter( RevCSR::vstart, getter );
-    parent->SetCSRGetter( RevCSR::vl,     getter );
-    parent->SetCSRGetter( RevCSR::vtype,  getter );
-    parent->SetCSRGetter( RevCSR::vlenb,  getter );
+  // make_dependent delays evaluation of "parent" until the template is instantiated
+  template<typename GETTER>
+  void SetCSRGetters( GETTER getter ) {
+    make_dependent<GETTER>( parent )->SetCSRGetter( RevCSR::vxsat,  getter );
+    make_dependent<GETTER>( parent )->SetCSRGetter( RevCSR::vxrm,   getter );
+    make_dependent<GETTER>( parent )->SetCSRGetter( RevCSR::vcsr,   getter );
+    make_dependent<GETTER>( parent )->SetCSRGetter( RevCSR::vstart, getter );
+    make_dependent<GETTER>( parent )->SetCSRGetter( RevCSR::vl,     getter );
+    make_dependent<GETTER>( parent )->SetCSRGetter( RevCSR::vtype,  getter );
+    make_dependent<GETTER>( parent )->SetCSRGetter( RevCSR::vlenb,  getter );
   }
 
   /// Set the vector CSR Setters to a function which can be nullptr to clear them
-  template<typename PARENT, typename SETTER>
-  static void SetCSRSetters( PARENT* parent, SETTER setter ) {
-    // This does not need to set Setters for CSR registers which are read-only in scalar CSR instructions
-    parent->SetCSRSetter( RevCSR::vxsat,  setter );
-    parent->SetCSRSetter( RevCSR::vxrm,   setter );
-    parent->SetCSRSetter( RevCSR::vcsr,   setter );
-    parent->SetCSRSetter( RevCSR::vstart, setter );
+  // This does not need to set Setters for CSR registers which are read-only in scalar CSR instructions
+  template<typename SETTER>
+  void SetCSRSetters( SETTER setter ) {
+    make_dependent<SETTER>( parent )->SetCSRSetter( RevCSR::vxsat,  setter );
+    make_dependent<SETTER>( parent )->SetCSRSetter( RevCSR::vxrm,   setter );
+    make_dependent<SETTER>( parent )->SetCSRSetter( RevCSR::vcsr,   setter );
+    make_dependent<SETTER>( parent )->SetCSRSetter( RevCSR::vstart, setter );
   }
 
   // clang-format on

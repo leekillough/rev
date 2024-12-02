@@ -16,6 +16,7 @@
 #include <vector>
 
 namespace SST::RevCPU {
+
 RevVRegFile::RevVRegFile( RevCore* parent, SST::Output* output, uint16_t vlen, uint16_t elen )
   : parent( parent ), feature( parent->GetRevFeature() ), output( output ), vlen( vlen ), elen( elen ) {
   assert( vlen <= 128 );  // Temporary constraint
@@ -25,9 +26,9 @@ RevVRegFile::RevVRegFile( RevCore* parent, SST::Output* output, uint16_t vlen, u
   std::cout << "*V VLEN=" << std::dec << vlen << " ELEN=" << elen << std::endl;
 #endif
 
-  // Set CSR getters/setters in the parent core
-  SetCSRGetters( parent, [this]( uint16_t csr ) { return GetCSR( csr ); } );
-  SetCSRSetters( parent, [this]( uint16_t csr, uint64_t val ) { return SetCSR( csr, val ); } );
+  // Set CSR getters/setters in the parent core, capturing pointer to "this" vector register file
+  SetCSRGetters( [this]( uint16_t csr ) { return GetCSR( csr ); } );
+  SetCSRSetters( [this]( uint16_t csr, uint64_t val ) { return SetCSR( csr, val ); } );
 
   // Initialize non-zero CSRs
   SetVType<RevVType::vill>( true );  // vill = 1
@@ -40,8 +41,9 @@ RevVRegFile::RevVRegFile( RevCore* parent, SST::Output* output, uint16_t vlen, u
 }
 
 RevVRegFile::~RevVRegFile() {
-  SetCSRGetters( parent, nullptr );
-  SetCSRSetters( parent, nullptr );
+  // Clear the CSR Getters/Setters
+  SetCSRGetters( nullptr );
+  SetCSRSetters( nullptr );
 }
 
 void RevVRegFile::Configure( uint64_t vtype, uint16_t vlmax ) {
@@ -72,7 +74,7 @@ void RevVRegFile::SetMaskReg( uint64_t vd, uint64_t mask[], uint64_t mfield[] ) 
   uint8_t*    pmask  = reinterpret_cast<uint8_t*>( mask );
   uint8_t*    pfield = reinterpret_cast<uint8_t*>( mfield );
   std::string s;
-  for( unsigned i = 0; i < ( vlen_ >> 3 ); i++ ) {
+  for( unsigned i = 0; i < ( vlen >> 3 ); i++ ) {
     uint8_t byte = ( vreg[vd][i] & ( ~pfield[i] ) ) | ( pmask[i] & pfield[i] );
     vreg[vd][i]  = byte;
     std::stringstream bs;
