@@ -195,7 +195,18 @@ reformat_files() {
     for file in "${FILES[@]}"; do
         if [[ -f $file ]] && is_text_file "$file"; then
             # Replace non-ASCII characters with ASCII equivalents
-            iconv -s -f utf-8 -t ascii//TRANSLIT "$file" > "$temp"
+           if ! iconv -s -f utf-8 -t ascii//TRANSLIT "$file" > "$temp"; then
+                cat <<EOF
+${YELLOW}iconv -f utf-8 -t ascii//TRANSLIT "$file" > "$temp"${END}
+EOF
+                iconv -f utf-8 -t ascii//TRANSLIT "$file" > "$temp" || true
+                fold -s -w79 <<EOF
+${RED}Some non-ASCII characters in $file could not be converted into equivalent
+ASCII characters. Please replace non-ASCII characters in $file and try again.${END}
+EOF
+                exit 1
+            fi
+
             detect_change "$file" "$temp" "%s: Converting non-ASCII characters to ASCII equivalents"
 
             # Change the copyright date at the top of any text files
