@@ -306,6 +306,10 @@ class Zfa : public RevExt {
 
   // clang-format on
 
+#undef min
+#undef inf
+#undef nan
+
 public:
   /// Zfa: standard constructor
   Zfa( const RevFeature* Feature, RevMem* RevMem, SST::Output* Output ) : RevExt( "Zfa", Feature, RevMem, Output ) {
