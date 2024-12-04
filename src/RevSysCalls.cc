@@ -1049,7 +1049,7 @@ EcallStatus RevCore::ECALL_exit() {
     status
   );
   exit( status );
-  return EcallStatus::SUCCESS;
+  // return EcallStatus::SUCCESS;
 }
 
 // 94, rev_exit_group(int error_code)
