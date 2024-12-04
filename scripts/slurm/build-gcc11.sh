@@ -35,7 +35,7 @@ cd build || exit
 rm -Rf ./*
 
 #-- Stage 3: initiate the build
-cmake -DBUILD_ASM_TESTING=ON -DCMAKE_BUILD_TYPE=Debug -DRVCC=${RVCC} ../
+cmake -DCMAKE_BUILD_TYPE=Debug -DRVCC=${RVCC} ../
 make clean
 make uninstall
 make -j
