@@ -59,13 +59,13 @@ public:
   RevCPU& operator=( const RevCPU& ) = delete;
 
   /// RevCPU: standard SST component 'setup' function
-  void setup();
+  void setup() final;
 
   /// RevCPU: standard SST component 'finish' function
-  void finish();
+  void finish() final;
 
   /// RevCPU: standard SST component 'init' function
-  void init( unsigned int phase );
+  void init( unsigned int phase ) final;
 
   /// RevCPU: standard SST component clock function
   bool clockTick( SST::Cycle_t currentCycle );

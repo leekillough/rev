@@ -366,8 +366,8 @@ private:
   std::function<uint32_t()> const GetNewThreadID;
 
   // If a given assigned thread experiences a change of state, it sets the corresponding bit
-  std::vector<std::unique_ptr<RevThread>> ThreadsThatChangedState{
-  };  ///< RevCore: used to signal to RevCPU that the thread assigned to HART has changed state
+  std::vector<std::unique_ptr<RevThread>>
+    ThreadsThatChangedState{};  ///< RevCore: used to signal to RevCPU that the thread assigned to HART has changed state
 
 public:
   SST::Output* const output;  ///< RevCore: output handler
@@ -380,8 +380,8 @@ private:
   RevCoreStats                      StatsTotal{};                 ///< RevCore: collection of total performance stats
   std::unique_ptr<RevPrefetcher>    sfetch{};                     ///< RevCore: stream instruction prefetcher
 
-  std::shared_ptr<std::unordered_multimap<uint64_t, MemReq>> LSQueue{
-  };  ///< RevCore: Load / Store queue used to track memory operations. Currently only tracks outstanding loads.
+  std::shared_ptr<std::unordered_multimap<uint64_t, MemReq>>
+    LSQueue{};  ///< RevCore: Load / Store queue used to track memory operations. Currently only tracks outstanding loads.
   TimeConverter* timeConverter{};  ///< RevCore: Time converter for RTC
 
   RevRegFile* RegFile        = nullptr;        ///< RevCore: Initial pointer to HartToDecodeID RegFile
@@ -496,7 +496,7 @@ private:
   EcallStatus ECALL_capget();                 // 90, rev_capget(cap_user_header_t header, cap_user_data_t dataptr)
   EcallStatus ECALL_capset();                 // 91, rev_capset(cap_user_header_t header, const cap_user_data_t data)
   EcallStatus ECALL_personality();            // 92, rev_personality(unsigned int personality)
-  EcallStatus ECALL_exit();                   // 93, rev_exit(int error_code)
+  [[noreturn]] EcallStatus ECALL_exit();      // 93, rev_exit(int error_code)
   EcallStatus ECALL_exit_group();             // 94, rev_exit_group(int error_code)
   EcallStatus ECALL_waitid();                 // 95, rev_waitid(int which, pid_t pid, struct siginfo  *infop, int options, struct rusage  *ru)
   EcallStatus ECALL_set_tid_address();        // 96, rev_set_tid_address(int  *tidptr)
@@ -895,7 +895,7 @@ private:
   }
 
   /// RevCore: Check LS queue for outstanding load - ignore x0
-  bool LSQCheck( unsigned HartID, const RevRegFile* regFile, uint16_t reg, RevRegClass regClass ) const {
+  static bool LSQCheck( unsigned HartID, const RevRegFile* regFile, uint16_t reg, RevRegClass regClass ) {
     if( reg == 0 && regClass == RevRegClass::RegGPR ) {
       return false;  // GPR x0 is not considered
     } else {
@@ -904,7 +904,7 @@ private:
   }
 
   /// RevCore: Check scoreboard for a source register dependency
-  bool ScoreboardCheck( const RevRegFile* regFile, uint16_t reg, RevRegClass regClass ) const {
+  static bool ScoreboardCheck( const RevRegFile* regFile, uint16_t reg, RevRegClass regClass ) {
     switch( regClass ) {
     case RevRegClass::RegGPR: return reg != 0 && regFile->RV_Scoreboard[reg];
     case RevRegClass::RegFLOAT: return regFile->FP_Scoreboard[reg];

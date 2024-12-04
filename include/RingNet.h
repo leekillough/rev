@@ -137,7 +137,7 @@ enum class ringMsgT : uint8_t {
 // --------------------------------------------
 // ringEvent
 // --------------------------------------------
-class ringEvent : public SST::Event {
+class ringEvent final : public SST::Event {
 
 public:
   // raw event constructor
@@ -238,12 +238,12 @@ public:
   // ringEvent: event serializer
   void serialize_order( SST::Core::Serialization::serializer& ser ) override {
     Event::serialize_order( ser );
-    ser & SrcComp;
-    ser & Hart;
-    ser & DestComp;
-    ser & Type;
-    ser & CSR;
-    ser & Datum;
+    ser& SrcComp;
+    ser& Hart;
+    ser& DestComp;
+    ser& Type;
+    ser& CSR;
+    ser& Datum;
   }
 
   // ringEvent: implements the nic serialization
@@ -267,10 +267,10 @@ public:
   virtual void setMsgHandler( Event::HandlerBase* handler ) = 0;
 
   /// RingNetAPI: initializes the network
-  virtual void init( unsigned int phase )                   = 0;
+  void init( unsigned int phase ) override                  = 0;
 
   /// RingNetAPI: setup the network
-  virtual void setup() {}
+  void setup() override {}
 
   /// RingNetAPI: send a message on the network
   virtual void send( ringEvent* ev, uint64_t dest )          = 0;
@@ -295,7 +295,7 @@ public:
 // -------------------------------------------------------
 // RingNetNIC
 // -------------------------------------------------------
-class RingNetNIC : public RingNetAPI {
+class RingNetNIC final : public RingNetAPI {
 public:
   // register with the SST Core
   SST_ELI_REGISTER_SUBCOMPONENT(
@@ -327,31 +327,31 @@ public:
   ~RingNetNIC() override = default;
 
   /// RingNetNIC: callback to parent on received messages
-  virtual void setMsgHandler( Event::HandlerBase* handler );
+  void setMsgHandler( Event::HandlerBase* handler ) override;
 
   /// RingNetNIC: init function
-  virtual void init( unsigned int phase );
+  void init( unsigned int phase ) override;
 
   /// RingNetNIC: setup function
-  virtual void setup();
+  void setup() override;
 
   /// RingNetNIC: send event to the destination id
-  virtual void send( ringEvent* ev, uint64_t dest );
+  void send( ringEvent* ev, uint64_t dest ) override;
 
   /// RingNetNIC: retrieve the number of destinations
-  virtual unsigned getNumDestinations();
+  unsigned getNumDestinations() override;
 
   /// RingNetNIC: get the endpoint's network address
-  virtual SST::Interfaces::SimpleNetwork::nid_t getAddress();
+  SST::Interfaces::SimpleNetwork::nid_t getAddress() override;
 
   /// RingNetAPI: return the next possible network address (ring topology)
-  virtual uint64_t getNextAddress();
+  uint64_t getNextAddress() override;
 
   /// RingNetNIC: set the endpoint type
-  virtual void setEndpointType( zopCompID type ) { Type = type; }
+  void setEndpointType( zopCompID type ) override { Type = type; }
 
   /// RingNetNic: get the endpoint type
-  virtual zopCompID getEndpointType() { return Type; }
+  zopCompID getEndpointType() override { return Type; }
 
   /// RingNetNIC: clock function
   virtual bool clockTick( Cycle_t cycle );

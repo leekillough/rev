@@ -17,6 +17,13 @@
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wnon-virtual-dtor"
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#pragma GCC diagnostic ignored "-Wsuggest-override"
+#pragma GCC diagnostic ignored "-Wdouble-promotion"
+
+#if defined( __GNUC__ ) && !defined( __clang__ )
+#pragma GCC diagnostic ignored "-Wsuggest-final-methods"
+#pragma GCC diagnostic ignored "-Wsuggest-final-types"
+#endif
 
 // The #include order is important, so we prevent clang-format from reordering
 // clang-format off

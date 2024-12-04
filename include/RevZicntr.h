@@ -23,6 +23,7 @@ class RevCore;
 class RevZicntr {
   uint64_t InstRet{};  ///< RevZicntr: Number of instructions retired
 
+protected:
   /// RevZicntr: Get the core owning this hart
   virtual RevCore* GetCore() const = 0;
 
@@ -40,7 +41,12 @@ class RevZicntr {
     return make_dependent<T>( GetCore() )->output->fatal( CALL_INFO, -1, msg, GetPC() );
   }
 
-protected:
+  RevZicntr()                              = default;
+  RevZicntr( const RevZicntr& )            = delete;
+  RevZicntr( RevZicntr&& )                 = default;
+  RevZicntr& operator=( const RevZicntr& ) = delete;
+  RevZicntr& operator=( RevZicntr&& )      = delete;
+
   template<typename ZICNTR>
   static uint64_t rdcycle( const ZICNTR* Zicntr ) {
     return Zicntr->GetCore()->GetCycles();

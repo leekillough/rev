@@ -78,7 +78,8 @@ enum class RevImmFunc {  ///< Rev Immediate Values
  * following a successful crack + decode
  *
  */
-struct RevInst {
+class RevInst {
+public:
   uint8_t  opcode    = 0;         ///< RevInst: opcode
   uint8_t  funct2    = 0;         ///< RevInst: compressed funct2 value
   uint8_t  funct3    = 0;         ///< RevInst: funct3 value
