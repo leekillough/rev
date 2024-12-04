@@ -77,6 +77,7 @@ endif()
 # Compiler Options
 if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
   set(FP_MODE_FLAG "-ffp-model=strict -frounding-math -ftrapping-math")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-command-line-argument")
 else()
   set(FP_MODE_FLAG "-frounding-math -ftrapping-math")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wmissing-format-attribute -Wsuggest-final-methods -Wsuggest-final-types -Wvolatile -Werror")

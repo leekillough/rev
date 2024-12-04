@@ -525,7 +525,7 @@ protected:
   // ----------------------------------------
   // RevStdMemHandlers
   // ----------------------------------------
-  class RevStdMemHandlers : public Interfaces::StandardMem::RequestHandler {
+  class RevStdMemHandlers final : public Interfaces::StandardMem::RequestHandler {
   public:
     friend class RevBasicMemCtrl;
 
