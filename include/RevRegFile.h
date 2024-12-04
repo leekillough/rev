@@ -192,7 +192,7 @@ public:
   RevRegFile& operator=( const RevRegFile& ) = delete;
 
   /// RevRegFile: standard destructor
-  ~RevRegFile()                              = default;
+  ~RevRegFile() final                        = default;
 
   ///< RevRegFile: Return the core owning this hart
   RevCore* GetCore() const final { return Core; }
