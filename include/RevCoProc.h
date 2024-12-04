@@ -101,7 +101,7 @@ protected:
 // ----------------------------------------
 // RevSimpleCoProc
 // ----------------------------------------
-class RevSimpleCoProc : public RevCoProc {
+class RevSimpleCoProc final : public RevCoProc {
 public:
   SST_ELI_REGISTER_SUBCOMPONENT(
     RevSimpleCoProc,

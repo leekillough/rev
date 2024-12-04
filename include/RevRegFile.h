@@ -130,7 +130,7 @@ enum class RevExceptionCause : int32_t {
 class RevCore;
 class RevTracer;
 
-class RevRegFile : public RevCSR {
+class RevRegFile final : public RevCSR {
   RevCore* const Core;       ///< RevRegFile: Owning core of this register file's hart
   const bool     IsRV64_v;   ///< RevRegFile: Cached copy of Features->IsRV64()
   const bool     HasD_v;     ///< RevRegFile: Cached copy of Features->HasD()

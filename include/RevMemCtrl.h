@@ -305,7 +305,7 @@ protected:
 // ----------------------------------------
 // RevBasicMemCtrl
 // ----------------------------------------
-class RevBasicMemCtrl : public RevMemCtrl {
+class RevBasicMemCtrl final : public RevMemCtrl {
 public:
   SST_ELI_REGISTER_SUBCOMPONENT(
     RevBasicMemCtrl,

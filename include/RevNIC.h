@@ -27,7 +27,7 @@ namespace SST::RevCPU {
 /**
  * nicEvent : inherited class to handle the individual network events for RevNIC
  */
-class nicEvent : public SST::Event {
+class nicEvent final : public SST::Event {
 public:
   /// nicEvent: standard constructor
   explicit nicEvent( std::string name ) : Event(), SrcName( std::move( name ) ) {}
