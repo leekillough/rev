@@ -133,7 +133,7 @@ enum class RevExceptionCause : int32_t {
 class RevCore;
 class RevTracer;
 
-class RevRegFile : public RevCSR {
+class RevRegFile final : public RevCSR {
   RevCore* const Core;        ///< RevRegFile: Owning core of this register file's hart
   const bool     IsRV64_v;    ///< RevRegFile: Cached copy of Features->IsRV64()
   const bool     HasD_v;      ///< RevRegFile: Cached copy of Features->HasD()
@@ -196,14 +196,14 @@ public:
   RevRegFile& operator=( const RevRegFile& ) = delete;
 
   /// RevRegFile: standard destructor
-  ~RevRegFile()                              = default;
+  ~RevRegFile() final                        = default;
 
   ///< RevRegFile: Return the core owning this hart
-  RevCore* GetCore() const { return Core; }
+  RevCore* GetCore() const final { return Core; }
 
   // Feature tests
   ///< RevRegFile: Whether it is RV64
-  bool IsRV64() const { return IsRV64_v; }
+  bool IsRV64() const final { return IsRV64_v; }
 
   ///< RevRegFile: Whenter it is D
   bool HasD() const { return HasD_v; }
@@ -302,7 +302,7 @@ public:
   }
 
   /// GetPC: Get the Program Counter
-  uint64_t GetPC() const {
+  uint64_t GetPC() const final {
     if( IsRV64() ) {
       return RV64_PC;
     } else {

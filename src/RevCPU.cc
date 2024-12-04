@@ -1086,12 +1086,9 @@ void RevCPU::handleMessage( Event* ev ) {
 uint8_t RevCPU::createTag() {
   uint8_t rtn = 0;
   if( PrivTag == 0b11111111 ) {
-    rtn     = 0b00000000;
     PrivTag = 0b00000001;
-    return 0b00000000;
   } else {
-    rtn = PrivTag;
-    PrivTag += 1;
+    rtn = PrivTag++;
   }
   return rtn;
 }

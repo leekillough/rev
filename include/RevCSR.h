@@ -61,7 +61,14 @@ namespace SST::RevCPU {
 class RevCore;
 
 struct RevCSR : RevZicntr {
-  static constexpr size_t CSR_LIMIT = 0x1000;
+  static constexpr size_t CSR_LIMIT  = 0x1000;
+
+  RevCSR()                           = default;
+  RevCSR( const RevCSR& )            = delete;
+  RevCSR( RevCSR&& )                 = default;
+  RevCSR& operator=( const RevCSR& ) = delete;
+  RevCSR& operator=( RevCSR&& )      = delete;
+  virtual ~RevCSR()                  = default;
 
   // CSR Registers
   enum : uint16_t {
@@ -549,10 +556,7 @@ private:
   std::array<uint64_t, CSR_LIMIT>                                         CSR{};     ///< RegCSR: CSR registers
   std::unordered_map<uint16_t, std::function<uint64_t( uint16_t )>>       Getter{};  ///< RevCSR: CSR Getters
   std::unordered_map<uint16_t, std::function<bool( uint16_t, uint64_t )>> Setter{};  ///< RevCSR: CSR Setters
-
-  /// RevCSR: Get the core owning this hart
-  virtual RevCore* GetCore() const = 0;
-};  // class RevCSR
+};                                                                                   // class RevCSR
 
 }  // namespace SST::RevCPU
 

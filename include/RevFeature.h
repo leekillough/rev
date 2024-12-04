@@ -47,7 +47,8 @@ enum RevFeatureType : uint32_t {
   RV_ZTSO     = 1 << 21,  ///< RevFeatureType: Ztso-extension
 };
 
-struct RevFeature {
+class RevFeature {
+public:
   /// RevFeature: standard constructor
   RevFeature( std::string Machine, SST::Output* Output, unsigned Min, unsigned Max, unsigned Id );
 
