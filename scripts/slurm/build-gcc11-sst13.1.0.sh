@@ -25,7 +25,7 @@ export CC=gcc-11
 export CXX=g++-11
 export RVCC=riscv64-unknown-elf-gcc
 
-exec >> "../rev.jenkins.${SLURM_JOB_ID}.out" 2>&1
+exec >> "rev.jenkins.${SLURM_JOB_ID}.out" 2>&1
 sst --version
 sst-info revcpu
 

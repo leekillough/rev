@@ -102,7 +102,7 @@ public:
 /**
  * RevNIC: the Rev network interface controller subcomponent
  */
-class RevNIC : public nicAPI {
+class RevNIC final : public nicAPI {
 public:
   // Register with the SST Core
   SST_ELI_REGISTER_SUBCOMPONENT(
