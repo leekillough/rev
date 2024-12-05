@@ -270,7 +270,7 @@ private:
   /// RevTracer: format register address for rendering
   std::string fmt_reg( uint8_t r );
   /// RevTracer: Format data associated with memory access
-  std::string fmt_data( unsigned len, uint64_t data );
+  std::string fmt_data( size_t len, uint64_t data );
   /// RevTracer: Generate string from captured state
   std::string RenderExec( const std::string& fallbackMnemonic );
   /// RevTracer: User setting: starting cycle of trace (overrides programmtic control)

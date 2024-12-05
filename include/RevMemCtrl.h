@@ -89,10 +89,12 @@ public:
   RevMemOp( unsigned Hart, uint64_t Addr, uint64_t PAddr, uint32_t Size, void* target, MemOp Op, RevFlag flags );
 
   /// RevMemOp overloaded constructor
-  RevMemOp( unsigned Hart, uint64_t Addr, uint64_t PAddr, uint32_t Size, char* buffer, MemOp Op, RevFlag flags );
+  RevMemOp( unsigned Hart, uint64_t Addr, uint64_t PAddr, uint32_t Size, unsigned char* buffer, MemOp Op, RevFlag flags );
 
   /// RevMemOp overloaded constructor
-  RevMemOp( unsigned Hart, uint64_t Addr, uint64_t PAddr, uint32_t Size, char* buffer, void* target, MemOp Op, RevFlag flags );
+  RevMemOp(
+    unsigned Hart, uint64_t Addr, uint64_t PAddr, uint32_t Size, unsigned char* buffer, void* target, MemOp Op, RevFlag flags
+  );
 
   /// RevMemOp overloaded constructor
   RevMemOp( unsigned Hart, uint64_t Addr, uint64_t PAddr, uint32_t Size, std::vector<uint8_t> buffer, MemOp Op, RevFlag flags );
@@ -104,7 +106,7 @@ public:
 
   /// RevMemOp overloaded constructor
   RevMemOp(
-    unsigned Hart, uint64_t Addr, uint64_t PAddr, uint32_t Size, char* buffer, unsigned CustomOpc, MemOp Op, RevFlag flags
+    unsigned Hart, uint64_t Addr, uint64_t PAddr, uint32_t Size, unsigned char* buffer, unsigned CustomOpc, MemOp Op, RevFlag flags
   );
 
   /// RevMemOp default destructor
@@ -232,29 +234,39 @@ public:
   /// RevMemCtrl: send a read request
   virtual bool sendREADRequest(
     unsigned Hart, uint64_t Addr, uint64_t PAddr, uint32_t Size, void* target, const MemReq& req, RevFlag flags
-  )                                                                                                                         = 0;
+  ) = 0;
 
   /// RevMemCtrl: send a write request
-  virtual bool sendWRITERequest( unsigned Hart, uint64_t Addr, uint64_t PAddr, uint32_t Size, char* buffer, RevFlag flags ) = 0;
+  virtual bool
+    sendWRITERequest( unsigned Hart, uint64_t Addr, uint64_t PAddr, uint32_t Size, unsigned char* buffer, RevFlag flags ) = 0;
 
   /// RevMemCtrl: send an AMO request
   virtual bool sendAMORequest(
-    unsigned Hart, uint64_t Addr, uint64_t PAddr, uint32_t Size, char* buffer, void* target, const MemReq& req, RevFlag flags
+    unsigned       Hart,
+    uint64_t       Addr,
+    uint64_t       PAddr,
+    uint32_t       Size,
+    unsigned char* buffer,
+    void*          target,
+    const MemReq&  req,
+    RevFlag        flags
   ) = 0;
 
   /// RevMemCtrl: send a readlock request
   virtual bool sendREADLOCKRequest(
     unsigned Hart, uint64_t Addr, uint64_t PAddr, uint32_t Size, void* target, const MemReq& req, RevFlag flags
-  )                                                                                                                             = 0;
+  ) = 0;
 
   /// RevMemCtrl: send a writelock request
-  virtual bool sendWRITELOCKRequest( unsigned Hart, uint64_t Addr, uint64_t PAddr, uint32_t Size, char* buffer, RevFlag flags ) = 0;
+  virtual bool
+    sendWRITELOCKRequest( unsigned Hart, uint64_t Addr, uint64_t PAddr, uint32_t Size, unsigned char* buffer, RevFlag flags ) = 0;
 
   /// RevMemCtrl: send a loadlink request
-  virtual bool sendLOADLINKRequest( unsigned Hart, uint64_t Addr, uint64_t PAddr, uint32_t Size, RevFlag flags )                = 0;
+  virtual bool sendLOADLINKRequest( unsigned Hart, uint64_t Addr, uint64_t PAddr, uint32_t Size, RevFlag flags )              = 0;
 
   /// RevMemCtrl: send a storecond request
-  virtual bool sendSTORECONDRequest( unsigned Hart, uint64_t Addr, uint64_t PAddr, uint32_t Size, char* buffer, RevFlag flags ) = 0;
+  virtual bool
+    sendSTORECONDRequest( unsigned Hart, uint64_t Addr, uint64_t PAddr, uint32_t Size, unsigned char* buffer, RevFlag flags ) = 0;
 
   /// RevMemCtrl: send an void custom read memory request
   virtual bool sendCUSTOMREADRequest(
@@ -263,7 +275,7 @@ public:
 
   /// RevMemCtrl: send a custom write request
   virtual bool sendCUSTOMWRITERequest(
-    unsigned Hart, uint64_t Addr, uint64_t PAddr, uint32_t Size, char* buffer, unsigned Opc, RevFlag flags
+    unsigned Hart, uint64_t Addr, uint64_t PAddr, uint32_t Size, unsigned char* buffer, unsigned Opc, RevFlag flags
   )                                                            = 0;
 
   /// RevMemCtrl: send a FENCE request
@@ -462,12 +474,19 @@ public:
 
   /// RevBasicMemCtrl: send a write request
   bool sendWRITERequest(
-    unsigned Hart, uint64_t Addr, uint64_t PAddr, uint32_t Size, char* buffer, RevFlag flags = RevFlag::F_NONE
+    unsigned Hart, uint64_t Addr, uint64_t PAddr, uint32_t Size, unsigned char* buffer, RevFlag flags = RevFlag::F_NONE
   ) final;
 
   /// RevBasicMemCtrl: send an AMO request
   bool sendAMORequest(
-    unsigned Hart, uint64_t Addr, uint64_t PAddr, uint32_t Size, char* buffer, void* target, const MemReq& req, RevFlag flags
+    unsigned       Hart,
+    uint64_t       Addr,
+    uint64_t       PAddr,
+    uint32_t       Size,
+    unsigned char* buffer,
+    void*          target,
+    const MemReq&  req,
+    RevFlag        flags
   ) final;
 
   // RevBasicMemCtrl: send a readlock request
@@ -476,13 +495,15 @@ public:
   ) final;
 
   // RevBasicMemCtrl: send a writelock request
-  bool sendWRITELOCKRequest( unsigned Hart, uint64_t Addr, uint64_t PAddr, uint32_t Size, char* buffer, RevFlag flags ) final;
+  bool
+    sendWRITELOCKRequest( unsigned Hart, uint64_t Addr, uint64_t PAddr, uint32_t Size, unsigned char* buffer, RevFlag flags ) final;
 
   // RevBasicMemCtrl: send a loadlink request
   bool sendLOADLINKRequest( unsigned Hart, uint64_t Addr, uint64_t PAddr, uint32_t Size, RevFlag flags ) final;
 
   // RevBasicMemCtrl: send a storecond request
-  bool sendSTORECONDRequest( unsigned Hart, uint64_t Addr, uint64_t PAddr, uint32_t Size, char* buffer, RevFlag flags ) final;
+  bool
+    sendSTORECONDRequest( unsigned Hart, uint64_t Addr, uint64_t PAddr, uint32_t Size, unsigned char* buffer, RevFlag flags ) final;
 
   // RevBasicMemCtrl: send an void custom read memory request
   bool sendCUSTOMREADRequest(
@@ -491,7 +512,7 @@ public:
 
   // RevBasicMemCtrl: send a custom write request
   bool sendCUSTOMWRITERequest(
-    unsigned Hart, uint64_t Addr, uint64_t PAddr, uint32_t Size, char* buffer, unsigned Opc, RevFlag flags
+    unsigned Hart, uint64_t Addr, uint64_t PAddr, uint32_t Size, unsigned char* buffer, unsigned Opc, RevFlag flags
   ) final;
 
   // RevBasicMemCtrl: send a FENCE request
@@ -621,7 +642,7 @@ private:
   unsigned getNumSplitRqsts( RevMemOp* op );
 
   /// RevBasicMemCtrl: perform the MODIFY portion of the AMO (READ+MODIFY+WRITE)
-  void performAMO( std::tuple<unsigned, char*, void*, RevFlag, RevMemOp*, bool> Entry );
+  void performAMO( std::tuple<unsigned, unsigned char*, void*, RevFlag, RevMemOp*, bool> Entry );
 
   // -- private data members
   StandardMem*       memIface{};         ///< StandardMem memory interface
@@ -658,7 +679,7 @@ private:
 #define AMOTABLE_IN     5
 
   /// RevBasicMemCtrl: map of amo operations to memory addresses
-  std::multimap<uint64_t, std::tuple<unsigned, char*, void*, RevFlag, RevMemOp*, bool>> AMOTable{};
+  std::multimap<uint64_t, std::tuple<unsigned, unsigned char*, void*, RevFlag, RevMemOp*, bool>> AMOTable{};
 
   std::vector<Statistic<uint64_t>*> stats{};  ///< statistics vector
 

@@ -80,34 +80,34 @@ enum class RevImmFunc {  ///< Rev Immediate Values
  */
 class RevInst {
 public:
-  uint8_t  opcode    = 0;         ///< RevInst: opcode
-  uint8_t  funct2    = 0;         ///< RevInst: compressed funct2 value
-  uint8_t  funct3    = 0;         ///< RevInst: funct3 value
-  uint8_t  funct4    = 0;         ///< RevInst: compressed funct4 value
-  uint8_t  funct6    = 0;         ///< RevInst: compressed funct6 value
-  uint8_t  funct2or7 = 0;         ///< RevInst: uncompressed funct2 or funct7 value
-  uint64_t rd        = ~0;        ///< RevInst: rd value
-  uint64_t rs1       = ~0;        ///< RevInst: rs1 value
-  uint64_t rs2       = ~0;        ///< RevInst: rs2 value
-  uint64_t rs3       = ~0;        ///< RevInst: rs3 value
-  uint64_t imm       = 0;         ///< RevInst: immediate value
-  bool     raisefpe  = 0;         ///< RevInst: raises FP exceptions
-  FRMode   rm{ FRMode::None };    ///< RevInst: floating point rounding mode
-  bool     aq           = false;  ///< RevInst: aqr field for atomic instructions
-  bool     rl           = false;  ///< RevInst: rel field for atomic instructions
-  uint16_t offset       = 0;      ///< RevInst: compressed offset
-  uint16_t jumpTarget   = 0;      ///< RevInst: compressed jumpTarget
-  uint8_t  instSize     = 0;      ///< RevInst: size of the instruction in bytes
-  bool     compressed   = 0;      ///< RevInst: determines if the instruction is compressed
-  uint32_t cost         = 0;      ///< RevInst: the cost to execute this instruction, in clock cycles
-  unsigned entry        = 0;      ///< RevInst: Where to find this instruction in the InstTables
-  uint16_t hart         = 0;      ///< RevInst: What hart is this inst being executed on
-  bool     isCoProcInst = 0;      ///< RevInst: whether instruction is coprocessor instruction
+  uint8_t  opcode    = 0;            ///< RevInst: opcode
+  uint8_t  funct2    = 0;            ///< RevInst: compressed funct2 value
+  uint8_t  funct3    = 0;            ///< RevInst: funct3 value
+  uint8_t  funct4    = 0;            ///< RevInst: compressed funct4 value
+  uint8_t  funct6    = 0;            ///< RevInst: compressed funct6 value
+  uint8_t  funct2or7 = 0;            ///< RevInst: uncompressed funct2 or funct7 value
+  uint64_t rd        = ~uint64_t{};  ///< RevInst: rd value
+  uint64_t rs1       = ~uint64_t{};  ///< RevInst: rs1 value
+  uint64_t rs2       = ~uint64_t{};  ///< RevInst: rs2 value
+  uint64_t rs3       = ~uint64_t{};  ///< RevInst: rs3 value
+  uint64_t imm       = 0;            ///< RevInst: immediate value
+  bool     raisefpe  = 0;            ///< RevInst: raises FP exceptions
+  FRMode   rm{ FRMode::None };       ///< RevInst: floating point rounding mode
+  bool     aq           = false;     ///< RevInst: aqr field for atomic instructions
+  bool     rl           = false;     ///< RevInst: rel field for atomic instructions
+  uint16_t offset       = 0;         ///< RevInst: compressed offset
+  uint16_t jumpTarget   = 0;         ///< RevInst: compressed jumpTarget
+  uint8_t  instSize     = 0;         ///< RevInst: size of the instruction in bytes
+  bool     compressed   = 0;         ///< RevInst: determines if the instruction is compressed
+  uint32_t cost         = 0;         ///< RevInst: the cost to execute this instruction, in clock cycles
+  unsigned entry        = 0;         ///< RevInst: Where to find this instruction in the InstTables
+  uint16_t hart         = 0;         ///< RevInst: What hart is this inst being executed on
+  bool     isCoProcInst = 0;         ///< RevInst: whether instruction is coprocessor instruction
 
   explicit RevInst()    = default;  // prevent aggregate initialization
 
   ///< RevInst: Sign-extended immediate value
-  constexpr int32_t ImmSignExt( size_t bits ) const { return SignExt( imm, bits ); }
+  constexpr int64_t ImmSignExt( int bits ) const { return SignExt( imm, bits ); }
 };  // RevInst
 
 /// CRegIdx: Maps the compressed index to normal index

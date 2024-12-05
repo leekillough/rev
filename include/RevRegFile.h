@@ -257,9 +257,9 @@ public:
   template<typename T>
   void SetSTVAL( T val ) {
     if( IsRV64() ) {
-      RV64_STVAL = val;
+      RV64_STVAL = uint64_t( val );
     } else {
-      RV32_STVAL = val;
+      RV32_STVAL = uint32_t( val );
     }
   }
 

@@ -97,7 +97,7 @@ bool RevOpts::InitStartAddrs( const std::vector<std::string>& StartAddrs ) {
     if( vstr.size() != 2 )
       return false;
 
-    unsigned Core = std::stoi( vstr[0], nullptr, 0 );
+    unsigned Core = std::stoul( vstr[0], nullptr, 0 );
     if( Core > numCores )
       return false;
 
@@ -118,7 +118,7 @@ bool RevOpts::InitStartSymbols( const std::vector<std::string>& StartSymbols ) {
     if( vstr.size() != 2 )
       return false;
 
-    unsigned Core = std::stoi( vstr[0], nullptr, 0 );
+    unsigned Core = std::stoul( vstr[0], nullptr, 0 );
     if( Core > numCores )
       return false;
 
@@ -154,7 +154,7 @@ bool RevOpts::InitMachineModels( const std::vector<std::string>& Machines ) {
     if( vstr.size() != 2 )
       return false;
 
-    unsigned Core = std::stoi( vstr[0], nullptr, 0 );
+    unsigned Core = std::stoul( vstr[0], nullptr, 0 );
     if( Core > numCores )
       return false;
 
@@ -172,7 +172,7 @@ bool RevOpts::InitInstTables( const std::vector<std::string>& InstTables ) {
     if( vstr.size() != 2 )
       return false;
 
-    unsigned Core = std::stoi( vstr[0], nullptr, 0 );
+    unsigned Core = std::stoul( vstr[0], nullptr, 0 );
     if( Core > numCores )
       return false;
 
@@ -191,9 +191,9 @@ bool RevOpts::InitMemCosts( const std::vector<std::string>& MemCosts ) {
     if( vstr.size() != 3 )
       return false;
 
-    unsigned Core         = std::stoi( vstr[0], nullptr, 0 );
-    unsigned Min          = std::stoi( vstr[1], nullptr, 0 );
-    unsigned Max          = std::stoi( vstr[2], nullptr, 0 );
+    unsigned Core         = std::stoul( vstr[0], nullptr, 0 );
+    unsigned Min          = std::stoul( vstr[1], nullptr, 0 );
+    unsigned Max          = std::stoul( vstr[2], nullptr, 0 );
     memCosts[Core].first  = Min;
     memCosts[Core].second = Max;
     if( ( Min == 0 ) || ( Max == 0 ) ) {

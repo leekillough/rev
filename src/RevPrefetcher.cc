@@ -205,8 +205,8 @@ void RevPrefetcher::Fill( uint64_t Addr ) {
 void RevPrefetcher::DeleteStream( size_t i ) {
   // delete the target stream as we no longer need it
   if( i < baseAddr.size() ) {
-    iStack.erase( iStack.begin() + i );
-    baseAddr.erase( baseAddr.begin() + i );
+    iStack.erase( iStack.begin() + ptrdiff_t( i ) );
+    baseAddr.erase( baseAddr.begin() + ptrdiff_t( i ) );
   }
 }
 

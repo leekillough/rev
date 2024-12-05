@@ -32,7 +32,7 @@ const char splash_msg[] = R"(
 
 RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params ) : SST::Component( id ) {
 
-  const int Verbosity = params.find<int>( "verbose", 0 );
+  auto Verbosity = params.find<uint32_t>( "verbose", 0 );
 
   // Initialize the output handler
   output.init( "RevCPU[" + getName() + ":@p:@t]: ", Verbosity, 0, SST::Output::STDOUT );
@@ -338,7 +338,7 @@ void RevCPU::DecodeFaultWidth( const std::string& width ) {
   } else if( width == "word" ) {
     fault_width = 8;
   } else {
-    fault_width = std::stoi( width );
+    fault_width = std::stoul( width );
   }
 
   if( fault_width > 64 ) {
@@ -520,7 +520,7 @@ void RevCPU::HandleFaultInjection( SST::Cycle_t currentCycle ) {
 
   unsigned selector = 0;
   if( myfaults.size() != 1 ) {
-    selector = RevRand( 0, int( myfaults.size() ) - 1 );
+    selector = RevRand( 0u, int( myfaults.size() ) - 1 );
   }
 
   // handle the selected fault

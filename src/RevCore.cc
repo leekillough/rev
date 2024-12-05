@@ -454,14 +454,14 @@ RevInst RevCore::DecodeCIInst( uint16_t Inst, unsigned Entry ) const {
     CompInst.imm |= ( ( Inst & 0b1000000000000 ) >> 3 );  // bit 9
     CompInst.rs1 = 2;                                     // Force rs1 to be x2 (stack pointer)
     // sign extend
-    CompInst.imm = CompInst.ImmSignExt( 10 );
+    CompInst.imm = uint64_t( CompInst.ImmSignExt( 10 ) );
   } else if( ( CompInst.opcode == 0b01 ) && ( CompInst.funct3 == 0b011 ) && ( CompInst.rd != 0 ) && ( CompInst.rd != 2 ) ) {
     // c.lui
     CompInst.imm = 0;
     CompInst.imm = ( ( Inst & 0b1111100 ) << 10 );        // [16:12]
     CompInst.imm |= ( ( Inst & 0b1000000000000 ) << 5 );  // [17]
     // sign extend
-    CompInst.imm = CompInst.ImmSignExt( 18 );
+    CompInst.imm = uint64_t( CompInst.ImmSignExt( 18 ) );
     CompInst.imm >>= 12;  //immd value will be re-aligned on execution
   } else if( ( CompInst.opcode == 0b01 ) && ( CompInst.funct3 == 0b010 ) && ( CompInst.rd != 0 ) ) {
     // c.li
@@ -470,10 +470,10 @@ RevInst RevCore::DecodeCIInst( uint16_t Inst, unsigned Entry ) const {
     CompInst.imm |= ( ( Inst & 0b1000000000000 ) >> 7 );  // [5]
     CompInst.rs1 = 0;                                     // Force rs1 to be x0, expands to add rd, x0, imm
     // sign extend
-    CompInst.imm = CompInst.ImmSignExt( 6 );
+    CompInst.imm = uint64_t( CompInst.ImmSignExt( 6 ) );
   } else {
     // sign extend
-    CompInst.imm = CompInst.ImmSignExt( 6 );
+    CompInst.imm = uint64_t( CompInst.ImmSignExt( 6 ) );
   }
 
   //if c.addi, expands to addi %rd, %rd, $imm so set rs1 to rd -or-
@@ -761,11 +761,11 @@ RevInst RevCore::DecodeCBInst( uint16_t Inst, unsigned Entry ) const {
     //Set rs2 to x0 if c.beqz or c.bnez
     CompInst.rs2 = 0;
     CompInst.imm = CompInst.offset;
-    CompInst.imm = CompInst.ImmSignExt( 9 );
+    CompInst.imm = uint64_t( CompInst.ImmSignExt( 9 ) );
   } else {
     CompInst.imm = ( ( Inst & 0b01111100 ) >> 2 );
     CompInst.imm |= ( ( Inst & 0b01000000000000 ) >> 7 );
-    CompInst.imm = CompInst.ImmSignExt( 6 );
+    CompInst.imm = uint64_t( CompInst.ImmSignExt( 6 ) );
   }
 
   CompInst.instSize   = 2;
@@ -806,7 +806,7 @@ RevInst RevCore::DecodeCJInst( uint16_t Inst, unsigned Entry ) const {
     //Set rd to x1 if this is a c.jal, x0 if this is a c.j
     CompInst.rd  = ( 0b001 == CompInst.funct3 ) ? 1 : 0;
     CompInst.imm = CompInst.jumpTarget;
-    CompInst.imm = CompInst.ImmSignExt( 12 );
+    CompInst.imm = uint64_t( CompInst.ImmSignExt( 12 ) );
   }
 
   CompInst.instSize   = 2;
@@ -1486,7 +1486,7 @@ void RevCore::HandleRegFault( unsigned width ) {
   RevRegFile* regFile = GetRegFile( HartToExecID );
 
   // select a register
-  unsigned RegIdx     = RevRand( 0, _REV_NUM_REGS_ - 1 );
+  unsigned RegIdx     = RevRand( 0u, _REV_NUM_REGS_ - 1 );
 
   if( !feature->HasF() || RevRand( 0, 1 ) ) {
     // X registers

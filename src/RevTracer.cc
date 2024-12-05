@@ -368,19 +368,15 @@ std::string RevTracer::fmt_reg( uint8_t r ) {
   return s.str();
 }
 
-std::string RevTracer::fmt_data( unsigned len, uint64_t d ) {
+std::string RevTracer::fmt_data( size_t len, uint64_t d ) {
   std::stringstream s;
   if( len == 0 )
     return "";
   s << "0x" << std::hex << std::setfill( '0' );
-  if( len > 8 )
-    s << std::setw( 8 * 2 ) << d << "..+" << std::dec << ( 8 - len );
-  else if( len == 8 )
-    s << std::setw( 8 * 2 ) << d;
+  if( len > sizeof( d ) )
+    s << std::setw( sizeof( d ) * 2 ) << d << "..+" << std::dec << len - sizeof( d );
   else {
-    unsigned shift = ( 8 - len ) * 8;
-    uint64_t mask  = ( ~0ULL ) >> shift;
-    s << std::setw( len * 2 ) << ( d & mask );
+    s << std::setw( len * 2 ) << ( d & ~( ~uint64_t{} << len * 8 ) );
   }
   return s.str();
 }

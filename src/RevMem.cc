@@ -13,45 +13,31 @@
 #include <cstring>
 #include <iomanip>
 #include <memory>
+#include <new>
 #include <utility>
 
 namespace SST::RevCPU {
 
 using MemSegment = RevMem::MemSegment;
 
+// We initialize StackTop to the size of memory minus 1024 bytes
+// This allocates 1024 bytes for program header information to contain
+// the ARGC and ARGV information
+
+// Note: this constructor assumes the use of the memHierarchy backend
 RevMem::RevMem( uint64_t memSize, RevOpts* opts, RevMemCtrl* ctrl, SST::Output* output )
-  : memSize( memSize ), opts( opts ), ctrl( ctrl ), output( output ) {
-  // Note: this constructor assumes the use of the memHierarchy backend
-  pageSize  = 262144;  //Page Size (in Bytes)
-  addrShift = lg( pageSize );
-  nextPage  = 0;
-
-  // We initialize StackTop to the size of memory minus 1024 bytes
-  // This allocates 1024 bytes for program header information to contain
-  // the ARGC and ARGV information
-  stacktop  = ( _REVMEM_BASE_ + memSize ) - 1024;
-
-  // Add the 1024 bytes for the program header information
-  AddMemSegAt( stacktop, 1024 );
+  : memSize( memSize ), opts( opts ), ctrl( ctrl ), output( output ), pageSize( 262144 ), addrShift( uint32_t( lg( pageSize ) ) ),
+    stacktop( _REVMEM_BASE_ + memSize - 1024 ) {
+  AddMemSegAt( stacktop, 1024 );  // Add the 1024 bytes for the program header information
 }
 
-RevMem::RevMem( uint64_t MemSize, RevOpts* Opts, SST::Output* Output )
-  : memSize( MemSize ), opts( Opts ), ctrl( nullptr ), output( Output ) {
-
-  // allocate the backing memory, zeroing it
-  physMem   = new char[memSize]{};
-  pageSize  = 262144;  //Page Size (in Bytes)
-  addrShift = lg( pageSize );
-  nextPage  = 0;
-
+// allocate the backing memory, zeroing it
+RevMem::RevMem( uint64_t memSize, RevOpts* opts, SST::Output* output )
+  : physMem( new( std::nothrow ) unsigned char[memSize]{} ), memSize( memSize ), opts( opts ), output( output ), pageSize( 262144 ),
+    addrShift( uint32_t( lg( pageSize ) ) ), stacktop( _REVMEM_BASE_ + memSize - 1024 ) {
   if( !physMem )
     output->fatal( CALL_INFO, -1, "Error: could not allocate backing memory\n" );
-
-  // We initialize StackTop to the size of memory minus 1024 bytes
-  // This allocates 1024 bytes for program header information to contain
-  // the ARGC and ARGV information
-  stacktop = ( _REVMEM_BASE_ + memSize ) - 1024;
-  AddMemSegAt( stacktop, 1024 );
+  AddMemSegAt( stacktop, 1024 );  // Add the 1024 bytes for the program header information
 }
 
 bool RevMem::outstandingRqsts() {
@@ -110,9 +96,9 @@ void RevMem::LR( unsigned hart, uint64_t addr, size_t len, void* target, const M
   LRSC.insert_or_assign( hart, std::pair( addr, len ) );
 
   // now handle the memory operation
-  uint64_t pageNum  = addr >> addrShift;
-  uint64_t physAddr = CalcPhysAddr( pageNum, addr );
-  char*    BaseMem  = &physMem[physAddr];
+  uint64_t       pageNum  = addr >> addrShift;
+  uint64_t       physAddr = CalcPhysAddr( pageNum, addr );
+  unsigned char* BaseMem  = &physMem[physAddr];
 
   if( ctrl ) {
     ctrl->sendREADLOCKRequest( hart, addr, reinterpret_cast<uint64_t>( BaseMem ), len, target, req, flags );
@@ -398,7 +384,7 @@ uint64_t RevMem::AllocMem( const uint64_t& SegSize ) {
       // New data will start where the free segment started
       NewSegBaseAddr = FreeSeg->getBaseAddr();
       MemSegs.emplace_back( std::make_shared<MemSegment>( NewSegBaseAddr, SegSize ) );
-      FreeMemSegs.erase( FreeMemSegs.begin() + i );
+      FreeMemSegs.erase( FreeMemSegs.begin() + ptrdiff_t( i ) );
       return NewSegBaseAddr;
     }
     // FreeSeg not big enough to fit the new data
@@ -422,7 +408,7 @@ uint64_t RevMem::AllocMem( const uint64_t& SegSize ) {
 // vector to see if there is a free segment that will fit the new data
 // If its unable to allocate at the location requested it will error. This may change in the future.
 uint64_t RevMem::AllocMemAt( const uint64_t& BaseAddr, const uint64_t& SegSize ) {
-  int ret = 0;
+  uint64_t ret = 0;
   output->verbose( CALL_INFO, 10, 99, "Attempting to allocate %" PRIu64 " bytes on the heap", SegSize );
 
   // Check if this range exists in the FreeMemSegs vector
@@ -515,11 +501,13 @@ bool RevMem::AMOMem( unsigned Hart, uint64_t Addr, size_t Len, void* Data, void*
 
   if( ctrl ) {
     // sending to the RevMemCtrl
-    uint64_t pageNum  = Addr >> addrShift;
-    uint64_t physAddr = CalcPhysAddr( pageNum, Addr );
-    char*    BaseMem  = &physMem[physAddr];
+    uint64_t       pageNum  = Addr >> addrShift;
+    uint64_t       physAddr = CalcPhysAddr( pageNum, Addr );
+    unsigned char* BaseMem  = &physMem[physAddr];
 
-    ctrl->sendAMORequest( Hart, Addr, (uint64_t) ( BaseMem ), Len, static_cast<char*>( Data ), Target, req, flags );
+    ctrl->sendAMORequest(
+      Hart, Addr, reinterpret_cast<uint64_t>( BaseMem ), Len, static_cast<unsigned char*>( Data ), Target, req, flags
+    );
   } else {
     // process the request locally
     union {
@@ -571,11 +559,11 @@ bool RevMem::WriteMem( unsigned Hart, uint64_t Addr, size_t Len, const void* Dat
     std::cout << "Found special write. Val = " << std::hex << *(int*) ( Data ) << std::dec << std::endl;
   }
   RevokeFuture( Addr );  // revoke the future if it is present
-  const char* DataMem = static_cast<const char*>( Data );
+  auto* DataMem = static_cast<const unsigned char*>( Data );
 
   if( ctrl ) {
     // write the memory using RevMemCtrl
-    ctrl->sendWRITERequest( Hart, Addr, 0, Len, const_cast<char*>( DataMem ), flags );
+    ctrl->sendWRITERequest( Hart, Addr, 0, Len, const_cast<unsigned char*>( DataMem ), flags );
   } else {
     // write the memory using the internal RevMem model
 
@@ -616,7 +604,7 @@ bool RevMem::ReadMem( unsigned Hart, uint64_t Addr, size_t Len, void* Target, co
   std::cout << "NEW READMEM: Reading " << Len << " Bytes Starting at 0x" << std::hex << Addr << std::dec << std::endl;
 #endif
 
-  char* DataMem = static_cast<char*>( Target );
+  auto* DataMem = static_cast<unsigned char*>( Target );
 
   if( ctrl ) {
     // read the memory using RevMemCtrl
@@ -701,7 +689,7 @@ bool RevMem::CleanLine( unsigned Hart, uint64_t Addr ) {
 uint64_t RevMem::DeallocMem( uint64_t BaseAddr, uint64_t Size ) {
   output->verbose( CALL_INFO, 10, 99, "Attempting to deallocate %lul bytes starting at BaseAddr = 0x%lx\n", Size, BaseAddr );
 
-  int ret = -1;
+  uint64_t ret = -uint64_t{ 1 };
   // Search through allocated segments for the segment that begins on the baseAddr
   for( unsigned i = 0; i < MemSegs.size(); i++ ) {
     auto AllocedSeg = MemSegs[i];

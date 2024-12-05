@@ -360,7 +360,7 @@ public:
   void DumpThreadMem( const uint64_t bytesPerRow = 16, std::ostream& outputStream = std::cout );
 
 protected:
-  char* physMem = nullptr;  ///< RevMem: memory container
+  unsigned char* physMem = nullptr;  ///< RevMem: memory container
 
 private:
   RevMemStats memStats{};

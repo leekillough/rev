@@ -133,7 +133,7 @@ bool RevLoader::LoadElf32( char* membuf, size_t sz ) {
   RV32Entry            = eh->e_entry;
 
   // Add memory segments for each program header
-  for( unsigned i = 0; i < eh->e_phnum; i++ ) {
+  for( size_t i = 0; i < eh->e_phnum; i++ ) {
     if( sz < ph[i].p_offset + ph[i].p_filesz ) {
       output->fatal( CALL_INFO, -1, "Error: RV64 Elf is unrecognizable\n" );
     }
@@ -154,7 +154,7 @@ bool RevLoader::LoadElf32( char* membuf, size_t sz ) {
   (void) mem->AddThreadMem();
 
   // Add memory segments for each program header
-  for( unsigned i = 0; i < eh->e_phnum; i++ ) {
+  for( size_t i = 0; i < eh->e_phnum; i++ ) {
     if( sz < ph[i].p_offset + ph[i].p_filesz ) {
       output->fatal( CALL_INFO, -1, "Error: RV32 Elf is unrecognizable\n" );
     }
@@ -168,7 +168,7 @@ bool RevLoader::LoadElf32( char* membuf, size_t sz ) {
   uint64_t BSSEnd        = 0;
   uint64_t DataEnd       = 0;
   uint64_t TextEnd       = 0;
-  for( unsigned i = 0; i < eh->e_shnum; i++ ) {
+  for( size_t i = 0; i < eh->e_shnum; i++ ) {
     // check if the section header name is bss
     if( strcmp( shstrtab + sh[i].sh_name, ".bss" ) == 0 ) {
       BSSEnd = sh[i].sh_addr + sh[i].sh_size;
@@ -215,7 +215,7 @@ bool RevLoader::LoadElf32( char* membuf, size_t sz ) {
   mem->SetStackTop( sp );
 
   // iterate over the program headers
-  for( unsigned i = 0; i < eh->e_phnum; i++ ) {
+  for( size_t i = 0; i < eh->e_phnum; i++ ) {
     // Look for the loadable program headers
     if( ph[i].p_type == PT_LOAD && ph[i].p_memsz ) {
       if( ph[i].p_filesz ) {
@@ -243,7 +243,7 @@ bool RevLoader::LoadElf32( char* membuf, size_t sz ) {
   unsigned symtabidx = 0;
 
   // Iterate over every section header
-  for( unsigned i = 0; i < eh->e_shnum; i++ ) {
+  for( size_t i = 0; i < eh->e_shnum; i++ ) {
     // If the section header is empty, skip it
     if( sh[i].sh_type & SHT_NOBITS )
       continue;
@@ -264,7 +264,7 @@ bool RevLoader::LoadElf32( char* membuf, size_t sz ) {
     char*      strtab = membuf + sh[strtabidx].sh_offset;
     Elf32_Sym* sym    = (Elf32_Sym*) ( membuf + sh[symtabidx].sh_offset );
     // Iterate over every symbol in the symbol table
-    for( unsigned i = 0; i < sh[symtabidx].sh_size / sizeof( Elf32_Sym ); i++ ) {
+    for( size_t i = 0; i < sh[symtabidx].sh_size / sizeof( Elf32_Sym ); i++ ) {
       // Calculate the maximum length of the symbol
       unsigned maxlen = sh[strtabidx].sh_size - sym[i].st_name;
       if( sym[i].st_name >= sh[strtabidx].sh_size )
@@ -297,7 +297,7 @@ bool RevLoader::LoadElf64( char* membuf, size_t sz ) {
   RV64Entry            = eh->e_entry;
 
   // Add memory segments for each program header
-  for( unsigned i = 0; i < eh->e_phnum; i++ ) {
+  for( size_t i = 0; i < eh->e_phnum; i++ ) {
     if( sz < ph[i].p_offset + ph[i].p_filesz ) {
       output->fatal( CALL_INFO, -1, "Error: RV64 Elf is unrecognizable\n" );
     }
@@ -322,7 +322,7 @@ bool RevLoader::LoadElf64( char* membuf, size_t sz ) {
   uint64_t BSSEnd        = 0;
   uint64_t DataEnd       = 0;
   uint64_t TextEnd       = 0;
-  for( unsigned i = 0; i < eh->e_shnum; i++ ) {
+  for( size_t i = 0; i < eh->e_shnum; i++ ) {
     // check if the section header name is bss
     if( strcmp( shstrtab + sh[i].sh_name, ".bss" ) == 0 ) {
       BSSEnd = sh[i].sh_addr + sh[i].sh_size;
@@ -369,7 +369,7 @@ bool RevLoader::LoadElf64( char* membuf, size_t sz ) {
   mem->SetStackTop( sp );
 
   // iterate over the program headers
-  for( unsigned i = 0; i < eh->e_phnum; i++ ) {
+  for( size_t i = 0; i < eh->e_phnum; i++ ) {
     // Look for the loadable headers
     if( ph[i].p_type == PT_LOAD && ph[i].p_memsz ) {
       if( ph[i].p_filesz ) {
@@ -397,7 +397,7 @@ bool RevLoader::LoadElf64( char* membuf, size_t sz ) {
   unsigned symtabidx = 0;
 
   // Iterate over every section header
-  for( unsigned i = 0; i < eh->e_shnum; i++ ) {
+  for( size_t i = 0; i < eh->e_shnum; i++ ) {
     // If the section header is empty, skip it
     if( sh[i].sh_type & SHT_NOBITS ) {
       continue;
@@ -419,7 +419,7 @@ bool RevLoader::LoadElf64( char* membuf, size_t sz ) {
     char*      strtab = membuf + sh[strtabidx].sh_offset;
     Elf64_Sym* sym    = (Elf64_Sym*) ( membuf + sh[symtabidx].sh_offset );
     // Iterate over every symbol in the symbol table
-    for( unsigned i = 0; i < sh[symtabidx].sh_size / sizeof( Elf64_Sym ); i++ ) {
+    for( size_t i = 0; i < sh[symtabidx].sh_size / sizeof( Elf64_Sym ); i++ ) {
       // Calculate the maximum length of the symbol
       unsigned maxlen = sh[strtabidx].sh_size - sym[i].st_name;
       if( sym[i].st_name >= sh[strtabidx].sh_size )
@@ -544,10 +544,10 @@ bool RevLoader::LoadElf( const std::string& exe, const std::vector<std::string>&
   if( fstat( fd, &FileStats ) < 0 )
     output->fatal( CALL_INFO, -1, "Error: failed to stat executable file: %s\n", exe.c_str() );
 
-  size_t FileSize = FileStats.st_size;
+  size_t FileSize = static_cast<size_t>( FileStats.st_size );
 
   // map the executable into memory
-  char* membuf    = (char*) ( mmap( NULL, FileSize, PROT_READ, MAP_PRIVATE, fd, 0 ) );
+  char* membuf    = static_cast<char*>( mmap( NULL, FileSize, PROT_READ, MAP_PRIVATE, fd, 0 ) );
   if( membuf == MAP_FAILED )
     output->fatal( CALL_INFO, -1, "Error: failed to map executable file: %s\n", exe.c_str() );
 

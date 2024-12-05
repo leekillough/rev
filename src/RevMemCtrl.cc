@@ -43,7 +43,7 @@ RevMemOp::RevMemOp( unsigned Hart, uint64_t Addr, uint64_t PAddr, uint32_t Size,
   : Hart( Hart ), Addr( Addr ), PAddr( PAddr ), Size( Size ), Inv( false ), Op( Op ), CustomOpc( 0 ), SplitRqst( 1 ),
     flags( flags ), target( target ), procReq() {}
 
-RevMemOp::RevMemOp( unsigned Hart, uint64_t Addr, uint64_t PAddr, uint32_t Size, char* buffer, MemOp Op, RevFlag flags )
+RevMemOp::RevMemOp( unsigned Hart, uint64_t Addr, uint64_t PAddr, uint32_t Size, unsigned char* buffer, MemOp Op, RevFlag flags )
   : Hart( Hart ), Addr( Addr ), PAddr( PAddr ), Size( Size ), Inv( false ), Op( Op ), CustomOpc( 0 ), SplitRqst( 1 ),
     flags( flags ), target( nullptr ), procReq() {
   for( uint32_t i = 0; i < Size; i++ ) {
@@ -52,7 +52,7 @@ RevMemOp::RevMemOp( unsigned Hart, uint64_t Addr, uint64_t PAddr, uint32_t Size,
 }
 
 RevMemOp::RevMemOp(
-  unsigned Hart, uint64_t Addr, uint64_t PAddr, uint32_t Size, char* buffer, void* target, MemOp Op, RevFlag flags
+  unsigned Hart, uint64_t Addr, uint64_t PAddr, uint32_t Size, unsigned char* buffer, void* target, MemOp Op, RevFlag flags
 )
   : Hart( Hart ), Addr( Addr ), PAddr( PAddr ), Size( Size ), Inv( false ), Op( Op ), CustomOpc( 0 ), SplitRqst( 1 ),
     flags( flags ), target( target ), procReq() {
@@ -74,7 +74,7 @@ RevMemOp::RevMemOp(
     flags( flags ), target( target ), procReq() {}
 
 RevMemOp::RevMemOp(
-  unsigned Hart, uint64_t Addr, uint64_t PAddr, uint32_t Size, char* buffer, unsigned CustomOpc, MemOp Op, RevFlag flags
+  unsigned Hart, uint64_t Addr, uint64_t PAddr, uint32_t Size, unsigned char* buffer, unsigned CustomOpc, MemOp Op, RevFlag flags
 )
   : Hart( Hart ), Addr( Addr ), PAddr( PAddr ), Size( Size ), Inv( false ), Op( Op ), CustomOpc( CustomOpc ), SplitRqst( 1 ),
     flags( flags ), target( nullptr ), procReq() {
@@ -194,7 +194,9 @@ bool RevBasicMemCtrl::sendREADRequest(
   return true;
 }
 
-bool RevBasicMemCtrl::sendWRITERequest( unsigned Hart, uint64_t Addr, uint64_t PAddr, uint32_t Size, char* buffer, RevFlag flags ) {
+bool RevBasicMemCtrl::sendWRITERequest(
+  unsigned Hart, uint64_t Addr, uint64_t PAddr, uint32_t Size, unsigned char* buffer, RevFlag flags
+) {
   if( Size == 0 )
     return true;
   RevMemOp* Op = new RevMemOp( Hart, Addr, PAddr, Size, buffer, MemOp::MemOpWRITE, flags );
@@ -204,7 +206,7 @@ bool RevBasicMemCtrl::sendWRITERequest( unsigned Hart, uint64_t Addr, uint64_t P
 }
 
 bool RevBasicMemCtrl::sendAMORequest(
-  unsigned Hart, uint64_t Addr, uint64_t PAddr, uint32_t Size, char* buffer, void* target, const MemReq& req, RevFlag flags
+  unsigned Hart, uint64_t Addr, uint64_t PAddr, uint32_t Size, unsigned char* buffer, void* target, const MemReq& req, RevFlag flags
 ) {
 
   if( Size == 0 )
@@ -270,7 +272,7 @@ bool RevBasicMemCtrl::sendREADLOCKRequest(
 }
 
 bool RevBasicMemCtrl::sendWRITELOCKRequest(
-  unsigned Hart, uint64_t Addr, uint64_t PAddr, uint32_t Size, char* buffer, RevFlag flags
+  unsigned Hart, uint64_t Addr, uint64_t PAddr, uint32_t Size, unsigned char* buffer, RevFlag flags
 ) {
   if( Size == 0 )
     return true;
@@ -290,7 +292,7 @@ bool RevBasicMemCtrl::sendLOADLINKRequest( unsigned Hart, uint64_t Addr, uint64_
 }
 
 bool RevBasicMemCtrl::sendSTORECONDRequest(
-  unsigned Hart, uint64_t Addr, uint64_t PAddr, uint32_t Size, char* buffer, RevFlag flags
+  unsigned Hart, uint64_t Addr, uint64_t PAddr, uint32_t Size, unsigned char* buffer, RevFlag flags
 ) {
   if( Size == 0 )
     return true;
@@ -312,7 +314,7 @@ bool RevBasicMemCtrl::sendCUSTOMREADRequest(
 }
 
 bool RevBasicMemCtrl::sendCUSTOMWRITERequest(
-  unsigned Hart, uint64_t Addr, uint64_t PAddr, uint32_t Size, char* buffer, unsigned Opc, RevFlag flags
+  unsigned Hart, uint64_t Addr, uint64_t PAddr, uint32_t Size, unsigned char* buffer, unsigned Opc, RevFlag flags
 ) {
   if( Size == 0 )
     return true;
@@ -1217,7 +1219,7 @@ void RevBasicMemCtrl::handleReadResp( StandardMem::ReadResp* ev ) {
   num_read--;
 }
 
-void RevBasicMemCtrl::performAMO( std::tuple<unsigned, char*, void*, RevFlag, RevMemOp*, bool> Entry ) {
+void RevBasicMemCtrl::performAMO( std::tuple<unsigned, unsigned char*, void*, RevFlag, RevMemOp*, bool> Entry ) {
   RevMemOp* Tmp = std::get<AMOTABLE_MEMOP>( Entry );
   if( Tmp == nullptr ) {
     output->fatal( CALL_INFO, -1, "Error : AMOTable entry is null\n" );
