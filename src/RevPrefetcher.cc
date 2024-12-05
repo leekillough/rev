@@ -21,7 +21,7 @@ delete[] s;
 bool RevPrefetcher::IsAvail( uint64_t Addr ) {
 
   // note: this logic now considers compressed instructions
-  uint64_t lastAddr = 0x00ull;
+  uint64_t lastAddr = 0;
   for( unsigned i = 0; i < baseAddr.size(); i++ ) {
     lastAddr = baseAddr[i] + ( depth * 4 );
     if( ( Addr >= baseAddr[i] ) && ( Addr < lastAddr ) ) {
@@ -87,7 +87,7 @@ void RevPrefetcher::MarkInstructionLoadComplete( const MemReq& req ) {
 }
 
 bool RevPrefetcher::FetchUpper( uint64_t Addr, bool& Fetched, uint32_t& UInst ) {
-  uint64_t lastAddr = 0x00ull;
+  uint64_t lastAddr = 0;
   for( unsigned i = 0; i < baseAddr.size(); i++ ) {
     lastAddr = baseAddr[i] + ( depth * 4 );
     if( ( Addr >= baseAddr[i] ) && ( Addr < lastAddr ) ) {
@@ -121,7 +121,7 @@ bool RevPrefetcher::FetchUpper( uint64_t Addr, bool& Fetched, uint32_t& UInst ) 
 
 bool RevPrefetcher::InstFetch( uint64_t Addr, bool& Fetched, uint32_t& Inst ) {
   // scan the baseAddr vector to see if the address is cached
-  uint64_t lastAddr = 0x00ull;
+  uint64_t lastAddr = 0;
   for( unsigned i = 0; i < baseAddr.size(); i++ ) {
     lastAddr = baseAddr[i] + ( depth * 4 );
     if( ( Addr >= baseAddr[i] ) && ( Addr < lastAddr ) ) {

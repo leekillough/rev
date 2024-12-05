@@ -599,7 +599,7 @@ bool RevLoader::LoadElf( const std::string& exe, const std::vector<std::string>&
 }
 
 uint64_t RevLoader::GetSymbolAddr( std::string Symbol ) {
-  uint64_t tmp = 0x00ull;
+  uint64_t tmp = 0;
   if( symtable.find( Symbol ) != symtable.end() ) {
     tmp = symtable[Symbol];
   }

@@ -774,7 +774,7 @@ uint64_t RevMem::DeallocMem( uint64_t BaseAddr, uint64_t Size ) {
 /// @brief This function is called from the loader to initialize the heap
 /// @param EndOfStaticData: The address of the end of the static data section (ie. end of .bss section)
 void RevMem::InitHeap( const uint64_t& EndOfStaticData ) {
-  if( EndOfStaticData == 0x00ull ) {
+  if( EndOfStaticData == 0 ) {
     // Program didn't contain .text, .data, or .bss sections
     output->fatal(
       CALL_INFO,

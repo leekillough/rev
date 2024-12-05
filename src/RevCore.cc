@@ -841,7 +841,7 @@ RevInst RevCore::DecodeCompressed( uint32_t Inst ) const {
   uint8_t  funct4 = 0;
   uint8_t  funct6 = 0;
   uint8_t  l3     = 0;
-  uint32_t Enc    = 0x00ul;
+  uint32_t Enc    = 0;
 
   if( !feature->HasCompressed() ) {
     output->fatal(
@@ -1251,7 +1251,7 @@ bool RevCore::PrefetchInst() {
 
   // These are addresses that we can't decode
   // Return false back to the main program loop
-  if( PC == 0x00ull ) {
+  if( PC == 0 ) {
     return false;
   }
 
@@ -1259,7 +1259,7 @@ bool RevCore::PrefetchInst() {
 }
 
 RevInst RevCore::FetchAndDecodeInst() {
-  uint32_t Inst    = 0x00ul;
+  uint32_t Inst    = 0;
   uint64_t PC      = GetPC();
   bool     Fetched = false;
 
@@ -1326,26 +1326,26 @@ RevInst RevCore::DecodeInst( uint32_t Inst ) const {
   const uint32_t Opcode = Inst & 0b1111111;
 
   // Stage 3: Determine if we have a funct3 field
-  uint32_t       Funct3 = 0x00ul;
+  uint32_t       Funct3 = 0;
   const uint32_t inst42 = Opcode >> 2 & 0b111;
   const uint32_t inst65 = Opcode >> 5 & 0b11;
 
   if( ( inst42 == 0b011 ) && ( inst65 == 0b11 ) ) {
     // JAL
-    Funct3 = 0x00ul;
+    Funct3 = 0;
   } else if( ( inst42 == 0b101 ) && ( inst65 == 0b00 ) ) {
     // AUIPC
-    Funct3 = 0x00ul;
+    Funct3 = 0;
   } else if( ( inst42 == 0b101 ) && ( inst65 == 0b01 ) ) {
     // LUI
-    Funct3 = 0x00ul;
+    Funct3 = 0;
   } else {
     // Retrieve the field
     Funct3 = DECODE_FUNCT3( Inst );
   }
 
   // Stage 4: Determine if we have a funct7 field (R-Type and some specific I-Type)
-  uint32_t Funct2or7 = 0x00ul;
+  uint32_t Funct2or7 = 0;
   if( inst65 == 0b01 ) {
     if( ( inst42 == 0b011 ) || ( inst42 == 0b100 ) || ( inst42 == 0b110 ) ) {
       // R-Type encodings
@@ -1396,7 +1396,7 @@ RevInst RevCore::DecodeInst( uint32_t Inst ) const {
   }
 
   // Stage 5: Determine if we have an imm12 field (ECALL and EBREAK, CBO)
-  uint32_t Imm12 = 0x00ul;
+  uint32_t Imm12 = 0;
   if( ( inst42 == 0b100 && inst65 == 0b11 && Funct3 == 0b000 ) || ( inst42 == 0b011 && inst65 == 0b00 && Funct3 == 0b010 ) ) {
     Imm12 = DECODE_IMM12( Inst );
   }
@@ -1815,7 +1815,7 @@ bool RevCore::ClockTick( SST::Cycle_t currentCycle ) {
     }
   }
   // Check for completion states and new tasks
-  if( RegFile->GetPC() == 0x00ull ) {
+  if( RegFile->GetPC() == 0 ) {
     // look for more work on the execution queue
     // if no work is found, don't update the PC
     // just wait and spin

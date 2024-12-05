@@ -108,8 +108,8 @@ RevMemCtrl::~RevMemCtrl() {
 RevBasicMemCtrl::RevBasicMemCtrl( ComponentId_t id, const Params& params )
   : RevMemCtrl( id, params ), memIface( nullptr ), stdMemHandlers( nullptr ), hasCache( false ), lineSize( 0 ), max_loads( 64 ),
     max_stores( 64 ), max_flush( 64 ), max_llsc( 64 ), max_readlock( 64 ), max_writeunlock( 64 ), max_custom( 64 ), max_ops( 2 ),
-    num_read( 0x00ull ), num_write( 0x00ull ), num_flush( 0x00ull ), num_llsc( 0x00ull ), num_readlock( 0x00ull ),
-    num_writeunlock( 0x00ull ), num_custom( 0x00ull ), num_fence( 0x00ull ) {
+    num_read( 0 ), num_write( 0 ), num_flush( 0 ), num_llsc( 0 ), num_readlock( 0 ), num_writeunlock( 0 ), num_custom( 0 ),
+    num_fence( 0 ) {
 
   stdMemHandlers        = new RevBasicMemCtrl::RevStdMemHandlers( this, output );
 
@@ -325,7 +325,7 @@ bool RevBasicMemCtrl::sendCUSTOMWRITERequest(
 }
 
 bool RevBasicMemCtrl::sendFENCE( unsigned Hart ) {
-  RevMemOp* Op = new RevMemOp( Hart, 0x00ull, 0x00ull, 0x00, MemOp::MemOpFENCE, RevFlag::F_NONE );
+  RevMemOp* Op = new RevMemOp( Hart, 0, 0, 0, MemOp::MemOpFENCE, RevFlag::F_NONE );
   rqstQ.push_back( Op );
   recordStat( RevBasicMemCtrl::MemCtrlStats::FencePending, 1 );
   return true;
@@ -698,7 +698,7 @@ bool RevBasicMemCtrl::buildCacheMemRqst( RevMemOp* op, bool& Success ) {
   newBuf.clear();
   uint64_t newBase   = op->getAddr() + BaseCacheLineSize;
   uint64_t bytesLeft = (uint64_t) ( op->getSize() ) - BaseCacheLineSize;
-  uint64_t newSize   = 0x00ull;
+  uint64_t newSize   = 0;
 
   for( unsigned i = 1; i < NumLines; i++ ) {
     // setup the adjusted size of the request

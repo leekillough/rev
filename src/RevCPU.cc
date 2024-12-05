@@ -230,12 +230,12 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params ) : SST::Compon
   // Initial thread setup
   uint32_t MainThreadID = id + 1;  // Prevents having MainThreadID == 0 which is reserved for INVALID
 
-  uint64_t    StartAddr = 0x00ull;
+  uint64_t    StartAddr = 0;
   std::string StartSymbol;
 
   bool     IsStartSymbolProvided   = Opts->GetStartSymbol( id, StartSymbol );
-  bool     IsStartAddrProvided     = Opts->GetStartAddr( id, StartAddr ) && StartAddr != 0x00ull;
-  uint64_t ResolvedStartSymbolAddr = ( IsStartSymbolProvided ) ? Loader->GetSymbolAddr( StartSymbol ) : 0x00ull;
+  bool     IsStartAddrProvided     = Opts->GetStartAddr( id, StartAddr ) && StartAddr != 0;
+  uint64_t ResolvedStartSymbolAddr = ( IsStartSymbolProvided ) ? Loader->GetSymbolAddr( StartSymbol ) : 0;
 
   // If no start address has been provided ...
   if( !IsStartAddrProvided ) {
@@ -243,7 +243,7 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params ) : SST::Compon
     if( !IsStartSymbolProvided ) {
       // ... no, try to default to 'main' ...
       StartAddr = Loader->GetSymbolAddr( "main" );
-      if( StartAddr == 0x00ull ) {
+      if( StartAddr == 0 ) {
         // ... no hope left!
         output.fatal(
           CALL_INFO,
