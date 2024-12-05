@@ -27,18 +27,18 @@ namespace SST::RevCPU {
 
 // Register Decoding functions
 // clang-format off
-constexpr uint8_t  DECODE_RD        ( uint32_t Inst ) { return Inst >>  7 &                0b11111; }
-constexpr uint8_t  DECODE_RS1       ( uint32_t Inst ) { return Inst >> 15 &                0b11111; }
-constexpr uint8_t  DECODE_RS2       ( uint32_t Inst ) { return Inst >> 20 &                0b11111; }
-constexpr uint8_t  DECODE_RS3       ( uint32_t Inst ) { return Inst >> 27 &                0b11111; }
-constexpr uint16_t DECODE_IMM12     ( uint32_t Inst ) { return Inst >> 20 &         0b111111111111; }
+constexpr uint32_t DECODE_RD        ( uint32_t Inst ) { return Inst >>  7 &                0b11111; }
+constexpr uint32_t DECODE_RS1       ( uint32_t Inst ) { return Inst >> 15 &                0b11111; }
+constexpr uint32_t DECODE_RS2       ( uint32_t Inst ) { return Inst >> 20 &                0b11111; }
+constexpr uint32_t DECODE_RS3       ( uint32_t Inst ) { return Inst >> 27 &                0b11111; }
+constexpr uint32_t DECODE_IMM12     ( uint32_t Inst ) { return Inst >> 20 &         0b111111111111; }
 constexpr uint32_t DECODE_IMM20     ( uint32_t Inst ) { return Inst >> 12 & 0b11111111111111111111; }
-constexpr uint8_t  DECODE_LOWER_CRS2( uint32_t Inst ) { return Inst >>  2 &                0b11111; }
-constexpr uint8_t  DECODE_FUNCT7    ( uint32_t Inst ) { return Inst >> 25 &              0b1111111; }
-constexpr uint8_t  DECODE_FUNCT2    ( uint32_t Inst ) { return Inst >> 25 &                   0b11; }
-constexpr uint8_t  DECODE_FUNCT3    ( uint32_t Inst ) { return Inst >> 12 &                  0b111; }
-constexpr bool     DECODE_RL        ( uint32_t Inst ) { return Inst >> 25 &                    0b1; }
-constexpr bool     DECODE_AQ        ( uint32_t Inst ) { return Inst >> 26 &                    0b1; }
+constexpr uint32_t DECODE_LOWER_CRS2( uint32_t Inst ) { return Inst >>  2 &                0b11111; }
+constexpr uint32_t DECODE_FUNCT7    ( uint32_t Inst ) { return Inst >> 25 &              0b1111111; }
+constexpr uint32_t DECODE_FUNCT2    ( uint32_t Inst ) { return Inst >> 25 &                   0b11; }
+constexpr uint32_t DECODE_FUNCT3    ( uint32_t Inst ) { return Inst >> 12 &                  0b111; }
+constexpr uint32_t DECODE_RL        ( uint32_t Inst ) { return Inst >> 25 &                    0b1; }
+constexpr uint32_t DECODE_AQ        ( uint32_t Inst ) { return Inst >> 26 &                    0b1; }
 constexpr FRMode   DECODE_RM        ( uint32_t Inst ) { return FRMode{ Inst >> 12 &          0b111 }; }
 
 // clang-format on
