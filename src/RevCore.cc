@@ -357,7 +357,7 @@ bool RevCore::Reset() {
   return true;
 }
 
-RevInst RevCore::DecodeCRInst( uint16_t Inst, unsigned Entry ) const {
+RevInst RevCore::DecodeCRInst( uint32_t Inst, unsigned Entry ) const {
   RevInst CompInst;
 
   // cost
@@ -399,7 +399,7 @@ RevInst RevCore::DecodeCRInst( uint16_t Inst, unsigned Entry ) const {
   return CompInst;
 }
 
-RevInst RevCore::DecodeCIInst( uint16_t Inst, unsigned Entry ) const {
+RevInst RevCore::DecodeCIInst( uint32_t Inst, unsigned Entry ) const {
   RevInst CompInst;
 
   // cost
@@ -490,7 +490,7 @@ RevInst RevCore::DecodeCIInst( uint16_t Inst, unsigned Entry ) const {
   return CompInst;
 }
 
-RevInst RevCore::DecodeCSSInst( uint16_t Inst, unsigned Entry ) const {
+RevInst RevCore::DecodeCSSInst( uint32_t Inst, unsigned Entry ) const {
   RevInst CompInst;
 
   // cost
@@ -537,7 +537,7 @@ RevInst RevCore::DecodeCSSInst( uint16_t Inst, unsigned Entry ) const {
   return CompInst;
 }
 
-RevInst RevCore::DecodeCIWInst( uint16_t Inst, unsigned Entry ) const {
+RevInst RevCore::DecodeCIWInst( uint32_t Inst, unsigned Entry ) const {
   RevInst CompInst;
 
   // cost
@@ -579,7 +579,7 @@ RevInst RevCore::DecodeCIWInst( uint16_t Inst, unsigned Entry ) const {
   return CompInst;
 }
 
-RevInst RevCore::DecodeCLInst( uint16_t Inst, unsigned Entry ) const {
+RevInst RevCore::DecodeCLInst( uint32_t Inst, unsigned Entry ) const {
   RevInst CompInst;
 
   // cost
@@ -645,7 +645,7 @@ RevInst RevCore::DecodeCLInst( uint16_t Inst, unsigned Entry ) const {
   return CompInst;
 }
 
-RevInst RevCore::DecodeCSInst( uint16_t Inst, unsigned Entry ) const {
+RevInst RevCore::DecodeCSInst( uint32_t Inst, unsigned Entry ) const {
   RevInst CompInst;
 
   // cost
@@ -688,7 +688,7 @@ RevInst RevCore::DecodeCSInst( uint16_t Inst, unsigned Entry ) const {
   return CompInst;
 }
 
-RevInst RevCore::DecodeCAInst( uint16_t Inst, unsigned Entry ) const {
+RevInst RevCore::DecodeCAInst( uint32_t Inst, unsigned Entry ) const {
   RevInst CompInst;
 
   // cost
@@ -717,7 +717,7 @@ RevInst RevCore::DecodeCAInst( uint16_t Inst, unsigned Entry ) const {
   return CompInst;
 }
 
-RevInst RevCore::DecodeCBInst( uint16_t Inst, unsigned Entry ) const {
+RevInst RevCore::DecodeCBInst( uint32_t Inst, unsigned Entry ) const {
   RevInst CompInst;
 
   // cost
@@ -774,7 +774,7 @@ RevInst RevCore::DecodeCBInst( uint16_t Inst, unsigned Entry ) const {
   return CompInst;
 }
 
-RevInst RevCore::DecodeCJInst( uint16_t Inst, unsigned Entry ) const {
+RevInst RevCore::DecodeCJInst( uint32_t Inst, unsigned Entry ) const {
   RevInst CompInst;
 
   // cost

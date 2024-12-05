@@ -800,31 +800,31 @@ private:
   RevInst DecodeR4Inst( uint32_t Inst, unsigned Entry ) const;
 
   /// RevCore: decode a compressed CR-type isntruction
-  RevInst DecodeCRInst( uint16_t Inst, unsigned Entry ) const;
+  RevInst DecodeCRInst( uint32_t Inst, unsigned Entry ) const;
 
   /// RevCore: decode a compressed CI-type isntruction
-  RevInst DecodeCIInst( uint16_t Inst, unsigned Entry ) const;
+  RevInst DecodeCIInst( uint32_t Inst, unsigned Entry ) const;
 
   /// RevCore: decode a compressed CSS-type isntruction
-  RevInst DecodeCSSInst( uint16_t Inst, unsigned Entry ) const;
+  RevInst DecodeCSSInst( uint32_t Inst, unsigned Entry ) const;
 
   /// RevCore: decode a compressed CIW-type isntruction
-  RevInst DecodeCIWInst( uint16_t Inst, unsigned Entry ) const;
+  RevInst DecodeCIWInst( uint32_t Inst, unsigned Entry ) const;
 
   /// RevCore: decode a compressed CL-type isntruction
-  RevInst DecodeCLInst( uint16_t Inst, unsigned Entry ) const;
+  RevInst DecodeCLInst( uint32_t Inst, unsigned Entry ) const;
 
   /// RevCore: decode a compressed CS-type isntruction
-  RevInst DecodeCSInst( uint16_t Inst, unsigned Entry ) const;
+  RevInst DecodeCSInst( uint32_t Inst, unsigned Entry ) const;
 
   /// RevCore: decode a compressed CA-type isntruction
-  RevInst DecodeCAInst( uint16_t Inst, unsigned Entry ) const;
+  RevInst DecodeCAInst( uint32_t Inst, unsigned Entry ) const;
 
   /// RevCore: decode a compressed CB-type isntruction
-  RevInst DecodeCBInst( uint16_t Inst, unsigned Entry ) const;
+  RevInst DecodeCBInst( uint32_t Inst, unsigned Entry ) const;
 
   /// RevCore: decode a compressed CJ-type isntruction
-  RevInst DecodeCJInst( uint16_t Inst, unsigned Entry ) const;
+  RevInst DecodeCJInst( uint32_t Inst, unsigned Entry ) const;
 
   /// RevCore: Determine next thread to execute
   unsigned GetNextHartToDecodeID() const;
