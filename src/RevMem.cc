@@ -1026,18 +1026,18 @@ bool RevMem::ZOP_READMem( unsigned Hart, uint64_t Addr, size_t Len, void* Target
 
   uint64_t memSeg           = ( Addr >> Z_SEG_SHIFT ) & Z_SEG_MASK;
 
+  //output->verbose(CALL_INFO, 5, 0, "TJD: ZOP Read; Addr=0x%" PRIx64 "; MemSeg=0x%" PRIx64 "\n", Addr, memSeg );
+
   // set all the fields : FIXME
   zev->setType( SST::Forza::zopMsgT::Z_MZOP );
   zev->setID( Hart );  // -- we set this to the Hart temporarily.  The zNic will set the actual message ID
   zev->setOpc( memToZOP( (uint32_t) ( flags ), Len, false ) );
   zev->setAppID( 0 );
   zev->setDestHart( Forza::Z_MZOP_PIPE_HART );
-  if( memSeg != 0x0F )
-    zev->setDestZCID( (uint8_t) ( SST::Forza::zopCompID::Z_RZA ) );
-  else {
-    // In hardware, this would get set to ring level 3
-    zev->setDestZCID( (uint8_t) ( SST::Forza::zopCompID::Z_RZA1 ) );
-  }
+  Forza::zopCompID end_dest = ( Forza::zopCompID::Z_RZA );
+  if( memSeg == 0x0F )  // In hardware, this would get set to ring level 3 as well
+    end_dest = ( Forza::zopCompID::Z_RZA1 );
+  zev->setDestZCID( (uint8_t) end_dest );
   zev->setDestPCID( (uint8_t) ( zNic->getPCID( zNic->getZoneID() ) ) );
   zev->setDestPrec( (uint8_t) ( zNic->getPrecinctID() ) );
   zev->setSrcHart( Hart );
@@ -1050,9 +1050,15 @@ bool RevMem::ZOP_READMem( unsigned Hart, uint64_t Addr, size_t Len, void* Target
   zev->setTarget( static_cast<uint64_t*>( Target ) );
 
   // no payload
+  /*
+  if ( memSeg == 0x0F ) {
+    output->verbose(CALL_INFO, 5, 0, "Send MZOP packet %s to %s; Addr=0x%" PRIx64 "\n",
+      zev->getSrcString().c_str(), zev->getDestString().c_str(), (Addr & Z_ADDR_MASK) );
+  }
+  */
 
   // inject the new packet
-  zNic->send( zev, SST::Forza::zopCompID::Z_RZA );
+  zNic->send( zev, end_dest );
 
   return true;
 }

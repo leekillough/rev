@@ -109,6 +109,7 @@ public:
     { "enableRDMAMbox",  "Enable the RDMA mailbox",                      "1" },
     { "enableCoProc",    "Enable an attached coProcessor for all cores", "0" },
     { "enableRZA",       "[FORZA] Enables the RZA functionality",        "0" },
+    { "enableMsgRZA",    "[FORZA] Enables the Msg RZA functionality",    "0" },
     { "enableZoneNIC",   "[FORZA] Enables the zone NIC functionality",   "0" },
     { "precinctId",      "[FORZA] The precinct ID of the local device",  "0" },
     { "zoneId",          "[FORZA] The zone ID of the local device",      "0" },
@@ -326,8 +327,8 @@ private:
 
   std::queue<std::pair<uint32_t, char*>> ZeroRqst{};   ///< RevCPU: tracks incoming zero address put requests; pair<Size, Data>
   std::list<std::pair<uint8_t, int>>     TrackTags{};  ///< RevCPU: tracks the outgoing messages; pair<Tag, Dest>
-  std::vector<std::tuple<uint8_t, uint64_t, uint32_t>>
-    TrackGets{};  ///< RevCPU: tracks the outstanding get messages; tuple<Tag, Addr, Sz>
+  std::vector<std::tuple<uint8_t, uint64_t, uint32_t>> TrackGets{
+  };  ///< RevCPU: tracks the outstanding get messages; tuple<Tag, Addr, Sz>
   std::vector<std::tuple<uint8_t, uint32_t, unsigned, int, uint64_t>> ReadQueue{};  ///< RevCPU: outgoing memory read queue
   ///<         - Tag
   ///<         - Size

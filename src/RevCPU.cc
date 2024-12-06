@@ -50,12 +50,14 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params ) : SST::Compon
     primaryComponentDoNotEndSim();
   }
 
+  bool enableMsgRza = params.find<bool>( "enableMsgRZA", 0 );
+
   // std::string ClockFreq = params.find<std::string>("clock", "1Ghz");
   // printf("given Txt files : %s\n",txtFile.c_str());
   // Derive the simulation parameters
   // We must always derive the number of cores before initializing the options
-  numCores = params.find<uint32_t>( "numCores", "1" );
-  numHarts = params.find<uint32_t>( "numHarts", "1" );
+  numCores          = params.find<uint32_t>( "numCores", "1" );
+  numHarts          = params.find<uint32_t>( "numHarts", "1" );
 
   // Make sure someone isn't trying to have more than _MAX_HARTS_ harts per core
   if( numHarts > _MAX_HARTS_ ) {
@@ -193,7 +195,12 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params ) : SST::Compon
           "instance is an RZA\n"
         );
       }
-      zNic->setEndpointType( Forza::zopCompID::Z_RZA );
+      if( !enableMsgRza )
+        zNic->setEndpointType( Forza::zopCompID::Z_RZA );
+      else {
+        output.verbose( CALL_INFO, 5, 0, "[FORZA] - Enable MSGRZA Endpoint\n" );
+        zNic->setEndpointType( Forza::zopCompID::Z_RZA1 );
+      }
       output.verbose( CALL_INFO, 4, 0, "[FORZA] device=%s initialized as RZA device\n", getName().c_str() );
       // ensure the memory controller knows that it is an RZA device
       Mem->setRZA();

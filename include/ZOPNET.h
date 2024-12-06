@@ -141,7 +141,7 @@ enum class zopOpc : uint8_t {
   Z_MZOP_SSB           = 0b00001100,  /// zopOpc: MZOP Store signed byte
   Z_MZOP_SSH           = 0b00001101,  /// zopOpc: MZOP Store signed half
   Z_MZOP_SSW           = 0b00001110,  /// zopOpc: MZOP Store signed word
-  Z_MZOP_SDMA          = 0b00001111,  /// zopOpc: MSOP Store DMA
+  Z_MZOP_SDMA          = 0b00001111,  /// zopOpc: MZOP Store DMA
 
   // Next three are not currently implemented
   //Z_MZOP_MCOPY_RD     = 0b11100111,  /// zopOpc: MZOP MCOPY Read
@@ -675,14 +675,14 @@ public:
   void setFullSrc( uint16_t Hart, zopCompID zoneComp, zopPrecID precComp, uint16_t Prec ) {
     SrcHart = Hart;
     SrcZCID = RevCPU::safe_static_cast<uint8_t>( zoneComp );
-    SrcPrec = RevCPU::safe_static_cast<uint8_t>( precComp );
+    SrcPCID = RevCPU::safe_static_cast<uint8_t>( precComp );
     SrcPrec = Prec;
   }
 
   void setFullDest( uint16_t Hart, zopCompID zoneComp, zopPrecID precComp, uint16_t Prec ) {
     DestHart = Hart;
     DestZCID = RevCPU::safe_static_cast<uint8_t>( zoneComp );
-    DestPrec = RevCPU::safe_static_cast<uint8_t>( precComp );
+    DestPCID = RevCPU::safe_static_cast<uint8_t>( precComp );
     DestPrec = Prec;
   }
 
@@ -1072,6 +1072,7 @@ public:
     case zopCompID::Z_ZAP2: return "ZAP2";
     case zopCompID::Z_ZAP3: return "ZAP3";
     case zopCompID::Z_RZA: return "RZA";
+    case zopCompID::Z_RZA1: return "MSGRZA";
     case zopCompID::Z_ZEN: return "ZEN";
     case zopCompID::Z_ZQM: return "ZQM";
     case zopCompID::Z_PREC_ZIP: return "PREC_ZIP";

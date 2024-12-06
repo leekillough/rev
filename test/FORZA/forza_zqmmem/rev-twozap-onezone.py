@@ -31,7 +31,7 @@ zen.addParams({
   "clockFreq": "1.0GHz",      # Clock Frequency
   "precinctId": 0,            # precinct Id
   "zoneId": 0,                # zone Id
-  "numHarts": 32,             # number of harts
+  "numHarts": 2,             # number of harts
   "numZaps": 2,
   "numZones": 1,              # number of zones
   "numPrecincts": 1,          # number of precincts
@@ -50,7 +50,7 @@ zqm.addParams({
   "clockFreq": "1.0GHz",     # Clock Frequency
   "precinctId": 0,           # precinct Id
   "zoneId": 0,               # zone Id
-  "numHarts": 32,             # number of harts
+  "numHarts": 2,             # number of harts
   "numCores": 2,             # number of cores
 })
 
@@ -61,7 +61,7 @@ zap_cpu0 = sst.Component("zap0", "revcpu.RevCPU")
 zap_cpu0.addParams({
         "verbose": 5,                                # Verbosity
         "numCores": 1,                               # Number of cores
-        "numHarts": 32,
+        "numHarts": 2,
         "clock": "1.0GHz",                           # Clock
         "memSize": MEM_SIZE,                   # Memory size in bytes
         "machine": "[0:RV64GC]",                     # Core:Config; RV64I for core 0
@@ -80,7 +80,7 @@ zap_cpu1 = sst.Component("zap1", "revcpu.RevCPU")
 zap_cpu1.addParams({
         "verbose": 5,                                # Verbosity
         "numCores": 1,                               # Number of cores
-        "numHarts": 32,
+        "numHarts": 2,
         "clock": "1.0GHz",                           # Clock
         "memSize": MEM_SIZE+(1024*1024*200),   # Memory size in bytes
         "machine": "[0:RV64GC]",                     # Core:Config; RV64I for core 0
@@ -164,7 +164,6 @@ memory.addParams({
     "mem_size": "8GB"
 })
 
-
 # --------------------------
 # SETUP THE MESSAGING RZA
 # TODO: MAKE THE PARAMS HERE MATCH AN HBM
@@ -177,9 +176,10 @@ rzaMsg.addParams({
     "memSize": MEM_SIZE+(1024*1024*1200),                   # Memory size in bytes
     "machine": "[CORES:RV64G]",                  # Core:Config; RV64I for core 0
     "startAddr": "[CORES:0x00000000]",           # Starting address for core 0
-    "program": os.getenv("REV_EXE", EXE),  # Target executable
+    "program": os.getenv("REV_EXE", EXE),        # Target executable
     "enableZoneNIC": 1,                          # [FORZA] Enable the zone NIC
     "enableRZA": 1,                              # [FORZA] Enable RZA functionality
+    "enableMsgRZA": 1,                           # [FORZA] Declare this as a messaging RZA
     "precinctId": 0,                             # [FORZA] precinct ID
     "zoneId": 0,                                 # [FORZA] zone ID
     "enableMemH": 1,                            # Enable memHierarchy support

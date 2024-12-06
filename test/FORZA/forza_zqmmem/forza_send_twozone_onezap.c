@@ -5,7 +5,7 @@
 #include <string.h>
 
 /**
-* NOTE: THIS EXAMPLE CODE IS FOR A TWO-ZAP, SINGLE ZONE EXAMPLE
+* NOTE: THIS EXAMPLE CODE IS FOR A ONE ZAP PER, TWO ZONE EXAMPLE
 */
 
 #define assert( x )               \
@@ -16,29 +16,21 @@
   while( 0 )
 
 int main( int argc, char** argv ) {
-  uint64_t TID = forza_get_my_zap();
+  uint64_t TID        = forza_get_my_zone();
 
-  if( forza_get_my_zone() != 0 )
-    return 0;
-
-  if( forza_get_my_zap() >= 2 )
-    return 0;
+  // No checking for zap/zone info
 
   uint64_t abba       = forza_read_zen_status();
-
   uint64_t logical_pe = 0xbeef;
-#if 1
+
   if( TID == 0 )
     logical_pe = 0xADUL;
   else
     logical_pe = 0x93UL;
-#endif
 
-  forza_debug_print( logical_pe, TID, abba /*0xcafe*/ );
+  forza_debug_print( logical_pe, TID, abba );
   // forza_zqm_setup( logical_pe, n_mailboxes );
   forza_zqm_setup( logical_pe, 6 );
-
-  //forza_zone_barrier( forza_get_zaps_per_zone() );
 
   if( TID == 0 ) {
     forza_send_word( 0xa1UL, false );
@@ -50,8 +42,8 @@ int main( int argc, char** argv ) {
     uint64_t dest_mbox = 1;
     uint64_t ctrl_word = dest_mbox << 33;
     ctrl_word |= dest_pe;
-    //uint64_t dest_zone = ( 1 << 16 );
-    //ctrl_word |= dest_zone;
+    uint64_t dest_zone = ( 1 << 16 );
+    ctrl_word |= dest_zone;
     forza_send_word( ctrl_word, true );
     uint64_t cntrs = forza_zen_get_cntrs();
     forza_debug_print( 0xabcd, cntrs, 0xcdef );

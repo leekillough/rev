@@ -3914,7 +3914,6 @@ EcallStatus RevCore::ECALL_forza_send_word() {
     output->verbose( CALL_INFO, 5, 0, "[ERROR] NO RING NETWORK\n" );
     delete ring_ev;
   }
-
   return EcallStatus::SUCCESS;
 
 #if 0
@@ -4115,13 +4114,17 @@ EcallStatus RevCore::ECALL_forza_receive_word() {
     HartToExecID
   );
   output->flush();
-  uint64_t mbox_id               = (uint64_t) RegFile->GetX<uint64_t>( RevReg::a0 );
+  uint64_t mbox_id     = (uint64_t) RegFile->GetX<uint64_t>( RevReg::a0 );
+  bool     release_msg = (bool) RegFile->GetX<bool>( RevReg::a1 );
   // TODO: ensure mbox_id 0 <= mbox_id <= 7
-  uint64_t reg_id                = Forza::R_ZQMDQ_0 + mbox_id;
+  uint64_t reg_id      = Forza::R_ZQMDQ_0 + mbox_id;
 
-  SST::Forza::ringEvent* ring_ev = new SST::Forza::ringEvent(
-    zNic->getEndpointType(), HartToExecID, SST::Forza::zopCompID::Z_ZQM, SST::Forza::ringMsgT::R_READ, reg_id, 0
-  );
+  Forza::ringMsgT rt   = Forza::ringMsgT::R_READ;
+  if( release_msg )
+    rt = Forza::ringMsgT::R_RMW;
+
+  SST::Forza::ringEvent* ring_ev =
+    new SST::Forza::ringEvent( zNic->getEndpointType(), HartToExecID, SST::Forza::zopCompID::Z_ZQM, rt, reg_id, 0 );
 
   if( zoneRing ) {
     uint64_t next_dest = zoneRing->getNextAddress();
