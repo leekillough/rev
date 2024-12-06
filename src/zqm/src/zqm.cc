@@ -16,6 +16,8 @@
 
 using namespace SST::Forza;
 
+static constexpr uint16_t ZAP_TO_HART_SHIFT = 9;
+
 ZQM::ZQM(ComponentId_t id, Params& params)
         : Component(id)
 {
@@ -223,29 +225,37 @@ void ZQM::handleRingMboxReg( SST::Forza::ringEvent *ev )
     //output.flush();
 }
 
-void ZQM::handleRingDq( SST::Forza::ringEvent *ev )
-{
-    output.verbose(CALL_INFO, 7, 0, "[ZQM] %s; handling a dequeue message\n", getName().c_str() );
-    auto &regs = PerHartCSRs[ev->getSrcZap()][ev->getHart()];
-    auto &mbox = regs.mbox_buff_state[( ev->getCSR() & R_MASK_ZQMDQMBOX )];
+void ZQM::handleRingDq( SST::Forza::ringEvent* ev ) {
+  output.verbose( CALL_INFO, 7, 0, "[ZQM] %s; handling a dequeue message\n", getName().c_str() );
+  auto& regs = PerHartCSRs[ev->getSrcZap()][ev->getHart()];
+  auto& mbox = regs.mbox_buff_state[( ev->getCSR() & R_MASK_ZQMDQMBOX )];
 
-    if ( mbox.getCurRdState() != msgBuffState::READY )
-        output.fatal(CALL_INFO, -1, "[ZQM] %s; message buffer for [Zap:Hart:Mbox]=[%u:%u:%u] not ready \n",
-                    getName().c_str(), ev->getSrcZap(), ev->getHart(), (ev->getCSR() & R_MASK_ZQMDQMBOX) );
+  if( mbox.getCurRdState() != msgBuffState::READY )
+    output.fatal(
+      CALL_INFO,
+      -1,
+      "[ZQM] %s; message buffer for [Zap:Hart:Mbox]=[%u:%u:%u] not ready \n",
+      getName().c_str(),
+      ev->getSrcZap(),
+      ev->getHart(),
+      ( ev->getCSR() & R_MASK_ZQMDQMBOX )
+    );
 
-    // Get the pointer for the current read buffer
-    auto ret_data = regs.getMsgBuffAddr( ev->getCSR() & R_MASK_ZQMDQMBOX, mbox.cur_rd_entry );
-    ret_data |= ( (0x0fUL & Z_SEG_MASK) << Z_SEG_SHIFT );
-    output.verbose(CALL_INFO, 7, 0, "[ZQM] %s; handling a dequeue message; msg_ptr=0x%" PRIx64 "\n", getName().c_str(), ret_data );
+  // Get the pointer for the current read buffer; HW uses ring level 3, segment 0xF for physical addressing to the
+  // ZQM memory
+  auto ret_data = regs.getMsgBuffAddr( ev->getCSR() & R_MASK_ZQMDQMBOX, mbox.cur_rd_entry );
+  ret_data |= ( ( 0x0fUL & Z_SEG_MASK ) << Z_SEG_SHIFT );
+  //output.verbose( CALL_INFO, 7, 0, "[ZQM] %s; handling a dequeue message; msg_ptr=0x%" PRIx64 "\n", getName().c_str(), ret_data );
 
-    sendRingResponse( ev, ret_data );
+  // If this was a read request, don't do anything else
+  // If this is a RMW request, update the buffer state
+  if( ev->getOp() == ringMsgT::R_RMW ) {
+    ret_data                           = 0;
+    mbox.buff_state[mbox.cur_rd_entry] = msgBuffState::IDLE;
+    mbox.updateRdEntry();
+  }
 
-    // If this was a read request, don't do anything else
-    // If this is a RMW request, update the buffer state
-    if ( ev->getOp() == ringMsgT::R_RMW ) {
-      mbox.buff_state[mbox.cur_rd_entry] = msgBuffState::IDLE;
-      mbox.updateRdEntry();
-    }
+  sendRingResponse( ev, ret_data );
 }
 
 void ZQM::sendRingResponse( SST::Forza::ringEvent *ev, uint64_t data )
@@ -298,8 +308,11 @@ void ZQM::selectInMboxQueue()
   auto& mbox      = PerHartCSRs[msg->getDestZCID()][msg->getDestHart()].mbox_buff_state[dest_mbox];
   auto wr_addr = PerHartCSRs[msg->getDestZCID()][msg->getDestHart()].getMsgBuffAddr( dest_mbox, mbox.cur_wr_entry );
 
+  //output.verbose(CALL_INFO, 5, 0, "Winner: [Z:H:MB:Buf]=[%u:%u:%u:%u]\n", msg->getDestZCID(), msg->getDestHart(), dest_mbox, mbox.cur_wr_entry );
+
   sendMsgToMemory( msg, wr_addr, mbox.cur_wr_entry );
   sendZopAck(msg, zopMsgT::Z_MSG, zopOpc::Z_MSG_ACK);
+  num_incoming_msg_queues_ready--;
   delete msg;
 
   // Update CSR state
@@ -571,23 +584,33 @@ void ZQM::sendMsgToMemory( SST::Forza::zopEvent* ev, uint64_t wr_addr, uint8_t w
   // Set packet header info
   rzaMsg->setType(SST::Forza::zopMsgT::Z_MZOP);
   rzaMsg->setOpc(SST::Forza::zopOpc::Z_MZOP_SDMA);
-  rzaMsg->setFullSrc( ev->getDestHart(), zone_nic->getZCID( ev->getDestZCID(), false ), rzaMsg->getPCID( ZoneId ), PrecinctId );
+  // Need to set DestHart to be a combo of physical hart and zap
+  uint16_t dest_hart = ( static_cast<uint16_t>( ev->getDestZCID() ) << ZAP_TO_HART_SHIFT ) + ev->getDestHart();
+  rzaMsg->setFullSrc( dest_hart, zopCompID::Z_ZQM, rzaMsg->getPCID( ZoneId ), PrecinctId );
   setLocalRzaAsZopDest(rzaMsg);
   rzaMsg->setID(msg_id);
   rzaMsg->setAppID(ev->getAppID());
   rzaMsg->setResZero( wr_entry );
   rzaMsg->setAddr( wr_addr );
   rzaMsg->setPayload(ev->getPayload());
+  rzaMsg->setMboxID( ev->getMbxID() );
   rzaMsg->encodeEvent();
-  output.verbose(CALL_INFO, 9, 0, "[ZQM] %s: Send StoreDMA to RZA1 msg_id=%" PRIu16 ", payload length=%" PRIu32 "\n",
-                 getName().c_str(), msg_id, (uint32_t)ev->getPayload().size() );
+  output.verbose(CALL_INFO, 9, 0, "[ZQM] %s: Send StoreDMA from ZoneId=%u with %s to %s to RZA1 msg_id=%" PRIu16 ", payload length=%" PRIu32 ", Addr=0x%" PRIx64 "\n",
+                 getName().c_str(), ZoneId, rzaMsg->getSrcString().c_str(), rzaMsg->getDestString().c_str(),
+                 msg_id, (uint32_t)ev->getPayload().size(), wr_addr );
   zone_nic->send(rzaMsg, zopCompID::Z_RZA1);
 }
 
 void ZQM::processRzaMsgs() {
+
+  if ( rza_response_q.empty() )
+    return;
+
   // Process a single one per clock tick
   auto resp = rza_response_q.front();
   rza_response_q.pop();
+
+  //output.verbose( CALL_INFO, 5, 0, "[ZQM] %s: Received RZA Ack from %s\n", getName().c_str(), resp->getSrcString().c_str() );
 
   if( resp->getSrcZCID() != RevCPU::safe_static_cast<uint8_t>( zopCompID::Z_RZA1 ) ) {
     output.fatal( CALL_INFO, -1, "[ZQM] RZA response not from RZA1\n" );
@@ -596,7 +619,10 @@ void ZQM::processRzaMsgs() {
   switch( resp->getOpc() ) {
   case SST::Forza::zopOpc::Z_RESP_SACK: {
     auto  dest_mbox = resp->getMbxID();
-    auto& mbox      = PerHartCSRs[resp->getDestZCID()][resp->getDestHart()].mbox_buff_state[dest_mbox];
+    uint16_t dest_hart = resp->getDestHart() & 0x1FF;
+    uint16_t dest_zap = ( resp->getDestHart() >> ZAP_TO_HART_SHIFT ) & 0x3;
+    auto& mbox      = PerHartCSRs[dest_zap][dest_hart].mbox_buff_state[dest_mbox];
+    //output.verbose(CALL_INFO, 5, 0, "WinnerResp: [Z:H:MB:Buf]=[%u:%u:%u:%u]\n", dest_zap, dest_hart, dest_mbox, resp->getResZero() );
     if( mbox.buff_state.at( resp->getResZero() ) != msgBuffState::FILLING ) {
       output.fatal( CALL_INFO, -1, "[ZQM] Buffer state not FILLING\n" );
     }

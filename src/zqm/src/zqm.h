@@ -186,10 +186,6 @@ private:
     // From ZEN
     bool dma_enabled;
 
-    // TODO: Delete these two tracking tables - zops to mem set
-    // src zap/hart to physical dest zap/hart, then the per
-    // hart csr state can do the tracking instead
-
     // Internal structures - ring architecture
     // key pair<aid, logical PE>, value pair<zap, phys_hart>
     std::map<std::pair<uint8_t, uint16_t>, std::pair<uint8_t, uint16_t>> LogicalToPhysicalMap;

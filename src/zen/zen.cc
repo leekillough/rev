@@ -347,10 +347,15 @@ void ZEN::sendMsgZop(OutgoingMessage* msg, bool is_msg, uint16_t zop_msg_id)
   zop->encodeEvent();
   output.verbose(CALL_INFO, 5, 0, "ZEN[%s]: Send msg from %s to %s\n", getName().c_str(),
                  zop->getSrcString().c_str(), zop->getDestString().c_str());
-  if ( (zop->getDestPrec() == Precinct ) && ( zop->getDestPCID() == Zone ) )  
+  if ( (zop->getDestPrec() == Precinct ) && ( zop->getDestPCID() == Zone ) )
     zone_nic->send(zop, zopCompID::Z_ZQM);
-  else
+  else {
+    if (!m_prec_iface) {
+      output.flush();
+      output.fatal( CALL_INFO, -1, "ZEN[%s]: Packet needs unavailable precinct NoC\n");
+    }
     m_prec_iface->send(zop, zopCompID::Z_ZQM, zop->getPCID( zop->getDestPCID() ), zop->getDestPrec());
+  }
 }
 
 void ZEN::execMsgPipe2()
