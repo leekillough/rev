@@ -11,6 +11,7 @@
 #ifndef __REV_COMMON__
 #define __REV_COMMON__
 
+#include <climits>
 #include <cstddef>
 #include <cstdint>
 #include <functional>
@@ -59,30 +60,52 @@ constexpr T&& make_dependent( T&& x ) {
 
 /// Zero-extend value of bits size
 template<typename T>
-constexpr auto ZeroExt( T val, size_t bits ) {
-  return static_cast<std::make_unsigned_t<T>>( val ) & ( ( std::make_unsigned_t<T>( 1 ) << bits ) - 1 );
+constexpr auto ZeroExt( T val, int bits ) {
+  using UT = std::make_unsigned_t<T>;
+  return UT( val & ~( UT( ~UT{} ) << bits ) );
 }
 
 /// Sign-extend value of bits size
 template<typename T>
-constexpr auto SignExt( T val, size_t bits ) {
+constexpr auto SignExt( T val, int bits ) {
   auto signbit = std::make_unsigned_t<T>{ 1 } << ( bits - 1 );
-  return static_cast<std::make_signed_t<T>>( ( ZeroExt( val, bits ) ^ signbit ) - signbit );
+  return std::make_signed_t<T>( ( ZeroExt( val, bits ) ^ signbit ) - signbit );
 }
 
 /// Base-2 logarithm of integers
 template<typename T>
 constexpr int lg( T x ) {
   static_assert( std::is_integral_v<T> );
-
   // We select the __builtin_clz which takes integers no smaller than x
   if constexpr( sizeof( x ) <= sizeof( int ) ) {
-    return x ? 8 * sizeof( int ) - 1 - __builtin_clz( x ) : -1;
+    return x ? int{ 8 * sizeof( int ) - 1 } - __builtin_clz( x ) : INT_MIN;
   } else if constexpr( sizeof( x ) <= sizeof( long ) ) {
-    return x ? 8 * sizeof( long ) - 1 - __builtin_clzl( x ) : -1;
+    return x ? int{ 8 * sizeof( long ) - 1 } - __builtin_clzl( x ) : INT_MIN;
   } else {
-    return x ? 8 * sizeof( long long ) - 1 - __builtin_clzll( x ) : -1;
+    return x ? int{ 8 * sizeof( long long ) - 1 } - __builtin_clzll( x ) : INT_MIN;
   }
+}
+
+/// Bit extraction of (pos+width-1 : pos) into a signed or unsigned type
+template<int pos, int width, typename T>
+constexpr auto BitExtract( T x ) {
+  if constexpr( std::is_signed_v<T> )
+    return SignExt( x >> pos, width );
+  else
+    return ZeroExt( x >> pos, width );
+}
+
+/// Bit deposit of a value into (pos+width-1 : pos)
+template<int pos, int width, typename T, typename U>
+constexpr T& BitDeposit( T& x, U val ) {
+  auto mask = ~std::make_unsigned_t<T>( ( std::make_unsigned_t<T>( ~std::make_unsigned_t<T>{} ) << width ) << pos );
+  return x  = ( x & ~mask ) | ( std::make_unsigned_t<T>( val ) << pos & mask );
+}
+
+/// Bit shift of a value by a positive (left) or negative (right) shift amount
+template<typename T>
+constexpr auto BitShift( T x, int shift ) {
+  return shift <= 0 ? T( x >> -shift ) : T( std::make_unsigned_t<T>( x ) << shift );
 }
 
 enum class RevRegClass : uint8_t {  ///< Rev CPU Register Classes

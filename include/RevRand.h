@@ -66,9 +66,9 @@ inline auto RevRand( T min, U max ) {
   thread_local RevRNG RNG;
   using TU = std::common_type_t<T, U>;
   if constexpr( std::is_floating_point_v<TU> ) {
-    return std::uniform_real_distribution<TU>( min, max )( RNG );
+    return std::uniform_real_distribution<TU>( TU( min ), TU( max ) )( RNG );
   } else {
-    return std::uniform_int_distribution<TU>( min, max )( RNG );
+    return std::uniform_int_distribution<TU>( TU( min ), TU( max ) )( RNG );
   }
 }
 

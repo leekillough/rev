@@ -490,7 +490,7 @@ struct RevCSR : RevZicntr {
   }
 
   /// Get the Floating-Point Rounding Mode
-  FRMode GetFRM() const { return static_cast<FRMode>( CSR[fcsr] >> 5 & 0b111 ); }
+  FRMode GetFRM() const { return static_cast<FRMode>( BitExtract<5, 3>( CSR[fcsr] ) ); }
 
   /// Set Floating-Point flags
   void SetFFlags( FCSR flags ) { CSR[fcsr] |= static_cast<uint32_t>( flags ) & 0b11111; }
@@ -507,9 +507,9 @@ struct RevCSR : RevZicntr {
     // clang-format off
     switch( csr ) {
       // Floating Point flags
-      case fflags:   return static_cast<XLEN>( CSR[fcsr] >> 0 & 0b00011111 );
-      case frm:      return static_cast<XLEN>( CSR[fcsr] >> 5 & 0b00000111 );
-      case fcsr:     return static_cast<XLEN>( CSR[fcsr] >> 0 & 0b11111111 );
+      case fflags:   return BitExtract<0, 5, XLEN>( CSR[fcsr] );
+      case frm:      return BitExtract<5, 3, XLEN>( CSR[fcsr] );
+      case fcsr:     return BitExtract<0, 8, XLEN>( CSR[fcsr] );
 
       // Performance Counters
       case cycle:    return GetPerfCounter<XLEN, Half::Lo, rdcycle  >();
@@ -541,9 +541,9 @@ struct RevCSR : RevZicntr {
     // clang-format off
     switch( csr ) {
       // Floating Point flags
-      case fflags: CSR[fcsr] = ( CSR[fcsr] & ~uint64_t{ 0b00011111 } ) | ( val & 0b00011111 ) << 0; break;
-      case frm:    CSR[fcsr] = ( CSR[fcsr] & ~uint64_t{ 0b11100000 } ) | ( val & 0b00000111 ) << 5; break;
-      case fcsr:   CSR[fcsr] = ( CSR[fcsr] & ~uint64_t{ 0b11111111 } ) | ( val & 0b11111111 ) << 0; break;
+      case fflags: BitDeposit<0, 5>(CSR[fcsr], val); break;
+      case frm:    BitDeposit<5, 3>(CSR[fcsr], val); break;
+      case fcsr:   BitDeposit<0, 8>(CSR[fcsr], val); break;
 
       // Default behavior is to write to it as an ordinary register
       default:     CSR.at( csr ) = val;
@@ -556,7 +556,8 @@ private:
   std::array<uint64_t, CSR_LIMIT>                                         CSR{};     ///< RegCSR: CSR registers
   std::unordered_map<uint16_t, std::function<uint64_t( uint16_t )>>       Getter{};  ///< RevCSR: CSR Getters
   std::unordered_map<uint16_t, std::function<bool( uint16_t, uint64_t )>> Setter{};  ///< RevCSR: CSR Setters
-};                                                                                   // class RevCSR
+
+};  // class RevCSR
 
 }  // namespace SST::RevCPU
 
