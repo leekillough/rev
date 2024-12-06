@@ -544,11 +544,6 @@ bool zopNIC::msgNotify( int vn ) {
 
   // this is likely a ZAP device,
   // iterate across the outstanding messages
-  if( ev->getSrcZCID() == (uint8_t) zopCompID::Z_RZA1 ) {
-    output.verbose(
-      CALL_INFO, 5, 0, "TJD: Handle packet from %s to %s\n", ev->getSrcString().c_str(), ev->getDestString().c_str()
-    );
-  }
   unsigned Cur = 0;
   for( auto const& [DestHart, ID, isRead, Target, Opc, Req] : outstanding ) {
     auto SrcHart = ev->getDestHart();
@@ -758,11 +753,6 @@ bool zopNIC::clockTick( SST::Cycle_t cycle ) {
           if( ( ev->getOpc() != SST::Forza::zopOpc::Z_MSG_ZBAR ) && ( !skip ) ) {
             ev->setID( msgId[Hart].getMsgId() );
             auto V = std::make_tuple( Hart, ev->getID(), ev->isRead(), ev->getTarget(), ev->getOpc(), ev->getMemReq() );
-            if( ev->getDestZCID() == (uint8_t) zopCompID::Z_RZA1 ) {
-              output.verbose(
-                CALL_INFO, 5, 0, "TJD: Push onto outstanding %s to %s \n", ev->getSrcString().c_str(), ev->getDestString().c_str()
-              );
-            }
             outstanding.push_back( V );
           }
           ev->encodeEvent();
