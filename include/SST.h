@@ -19,6 +19,7 @@
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 #pragma GCC diagnostic ignored "-Wsuggest-override"
 #pragma GCC diagnostic ignored "-Wdouble-promotion"
+#pragma GCC diagnostic ignored "-Wsign-conversion"
 
 #if defined( __GNUC__ ) && !defined( __clang__ )
 #pragma GCC diagnostic ignored "-Wsuggest-final-methods"
