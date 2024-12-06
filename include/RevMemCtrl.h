@@ -689,7 +689,7 @@ private:
 /// The operation described by "flags" is applied to memory "Target" with value "value"
 template<typename T>
 void ApplyAMO( RevFlag flags, void* Target, T value ) {
-  // Target and value cast to signed and unsigned versions
+  // Target and value cast to signed and uint32_t versions
   auto* TmpTarget  = static_cast<std::make_signed_t<T>*>( Target );
   auto* TmpTargetU = static_cast<std::make_unsigned_t<T>*>( Target );
   auto  TmpBuf     = static_cast<std::make_signed_t<T>>( value );

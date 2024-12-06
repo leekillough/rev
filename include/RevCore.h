@@ -62,9 +62,9 @@ class RevCore {
 public:
   /// RevCore: standard constructor
   RevCore(
-    unsigned                  id,
+    uint32_t                  id,
     RevOpts*                  opts,
-    unsigned                  numHarts,
+    uint32_t                  numHarts,
     RevMem*                   mem,
     RevLoader*                loader,
     std::function<uint32_t()> GetNewThreadID,
@@ -100,28 +100,28 @@ public:
   void SetTimeConverter( TimeConverter* tc ) { timeConverter = tc; }
 
   /// RevCore: Debug mode read a register
-  bool DebugReadReg( unsigned Idx, uint64_t* Value ) const;
+  bool DebugReadReg( uint32_t Idx, uint64_t* Value ) const;
 
   /// RevCore: Debug mode write a register
-  bool DebugWriteReg( unsigned Idx, uint64_t Value ) const;
+  bool DebugWriteReg( uint32_t Idx, uint64_t Value ) const;
 
   /// RevCore: Set an optional tracer
   void SetTracer( RevTracer* T ) { Tracer = T; }
 
   /// RevCore: Retrieve a random memory cost value
-  unsigned RandCost() { return mem->RandCost( feature->GetMinCost(), feature->GetMaxCost() ); }
+  uint32_t RandCost() { return mem->RandCost( feature->GetMinCost(), feature->GetMaxCost() ); }
 
   /// RevCore: Handle register faults
-  void HandleRegFault( unsigned width );
+  void HandleRegFault( uint32_t width );
 
   /// RevCore: Handle crack+decode faults
-  void HandleCrackFault( unsigned width );
+  void HandleCrackFault( uint32_t width );
 
   /// RevCore: Handle ALU faults
-  void HandleALUFault( unsigned width );
+  void HandleALUFault( uint32_t width );
 
   /// RevCore: Handle ALU faults
-  void InjectALUFault( std::pair<unsigned, unsigned> EToE, RevInst& Inst );
+  void InjectALUFault( std::pair<uint32_t, uint32_t> EToE, RevInst& Inst );
 
   struct RevCoreStats {
     uint64_t totalCycles;
@@ -184,10 +184,10 @@ public:
   void SetCoProc( RevCoProc* coproc );
 
   /// GetHartToExecID: Retrieve the current executing Hart
-  unsigned GetHartToExecID() const { return HartToExecID; }
+  uint32_t GetHartToExecID() const { return HartToExecID; }
 
   /// SetHartToExecID: Set the current executing Hart
-  void SetHartToExecID( unsigned hart ) { HartToExecID = hart; }
+  void SetHartToExecID( uint32_t hart ) { HartToExecID = hart; }
 
   //--------------- External Interface for use with Co-Processor -------------------------
   ///< RevCore: Allow a co-processor to query the bits in scoreboard. Note the RevCorePassKey may only
@@ -261,7 +261,7 @@ public:
   void UpdateStatusOfHarts();
 
   ///< RevCore: Returns the id of an idle hart (or _INVALID_HART_ID_ if none are idle)
-  unsigned FindIdleHartID() const;
+  uint32_t FindIdleHartID() const;
 
   ///< RevCore: Returns true if all harts are available (ie. There is nothing executing on this Core)
   bool HasNoBusyHarts() const { return IdleHarts == ValidHarts; }
@@ -712,22 +712,22 @@ private:
   bool ExecEcall();
 
   /// RevCore: Get a pointer to the register file loaded into Hart w/ HartID
-  RevRegFile* GetRegFile( unsigned HartID ) const;
+  RevRegFile* GetRegFile( uint32_t HartID ) const;
 
   std::vector<RevInstEntry>            InstTable{};   ///< RevCore: target instruction table
   std::vector<std::unique_ptr<RevExt>> Extensions{};  ///< RevCore: vector of enabled extensions
   //std::vector<std::tuple<uint16_t, RevInst, bool>>  Pipeline; ///< RevCore: pipeline of instructions
   std::deque<std::pair<uint16_t, RevInst>>    Pipeline{};     ///< RevCore: pipeline of instructions
-  std::unordered_map<std::string, unsigned>   NameToEntry{};  ///< RevCore: instruction mnemonic to table entry mapping
-  std::unordered_multimap<uint64_t, unsigned> EncToEntry{};   ///< RevCore: instruction encoding to table entry mapping
-  std::unordered_multimap<uint64_t, unsigned> CEncToEntry{};  ///< RevCore: compressed instruction encoding to table entry mapping
-  std::unordered_map<unsigned, std::pair<unsigned, unsigned>> EntryToExt{};  ///< RevCore: instruction entry to extension mapping
+  std::unordered_map<std::string, uint32_t>   NameToEntry{};  ///< RevCore: instruction mnemonic to table entry mapping
+  std::unordered_multimap<uint64_t, uint32_t> EncToEntry{};   ///< RevCore: instruction encoding to table entry mapping
+  std::unordered_multimap<uint64_t, uint32_t> CEncToEntry{};  ///< RevCore: compressed instruction encoding to table entry mapping
+  std::unordered_map<uint32_t, std::pair<uint32_t, uint32_t>> EntryToExt{};  ///< RevCore: instruction entry to extension mapping
   ///           first = Master table entry number
   ///           second = pair<Extension Index, Extension Entry>
 
   /// RevCore: finds an entry which matches an encoding whose predicate is true
   auto matchInst(
-    const std::unordered_multimap<uint64_t, unsigned>& map,
+    const std::unordered_multimap<uint64_t, uint32_t>& map,
     uint64_t                                           encoding,
     const std::vector<RevInstEntry>&                   InstTable,
     uint32_t                                           Inst
@@ -779,58 +779,58 @@ private:
   RevInst DecodeCompressed( uint32_t Inst ) const;
 
   /// RevCore: decode an R-type instruction
-  RevInst DecodeRInst( uint32_t Inst, unsigned Entry ) const;
+  RevInst DecodeRInst( uint32_t Inst, uint32_t Entry ) const;
 
   /// RevCore: decode an I-type instruction
-  RevInst DecodeIInst( uint32_t Inst, unsigned Entry ) const;
+  RevInst DecodeIInst( uint32_t Inst, uint32_t Entry ) const;
 
   /// RevCore: decode an S-type instruction
-  RevInst DecodeSInst( uint32_t Inst, unsigned Entry ) const;
+  RevInst DecodeSInst( uint32_t Inst, uint32_t Entry ) const;
 
   /// RevCore: decode a U-type instruction
-  RevInst DecodeUInst( uint32_t Inst, unsigned Entry ) const;
+  RevInst DecodeUInst( uint32_t Inst, uint32_t Entry ) const;
 
   /// RevCore: decode a B-type instruction
-  RevInst DecodeBInst( uint32_t Inst, unsigned Entry ) const;
+  RevInst DecodeBInst( uint32_t Inst, uint32_t Entry ) const;
 
   /// RevCore: decode a J-type instruction
-  RevInst DecodeJInst( uint32_t Inst, unsigned Entry ) const;
+  RevInst DecodeJInst( uint32_t Inst, uint32_t Entry ) const;
 
   /// RevCore: decode an R4-type instruction
-  RevInst DecodeR4Inst( uint32_t Inst, unsigned Entry ) const;
+  RevInst DecodeR4Inst( uint32_t Inst, uint32_t Entry ) const;
 
   /// RevCore: decode a compressed CR-type isntruction
-  RevInst DecodeCRInst( uint32_t Inst, unsigned Entry ) const;
+  RevInst DecodeCRInst( uint32_t Inst, uint32_t Entry ) const;
 
   /// RevCore: decode a compressed CI-type isntruction
-  RevInst DecodeCIInst( uint32_t Inst, unsigned Entry ) const;
+  RevInst DecodeCIInst( uint32_t Inst, uint32_t Entry ) const;
 
   /// RevCore: decode a compressed CSS-type isntruction
-  RevInst DecodeCSSInst( uint32_t Inst, unsigned Entry ) const;
+  RevInst DecodeCSSInst( uint32_t Inst, uint32_t Entry ) const;
 
   /// RevCore: decode a compressed CIW-type isntruction
-  RevInst DecodeCIWInst( uint32_t Inst, unsigned Entry ) const;
+  RevInst DecodeCIWInst( uint32_t Inst, uint32_t Entry ) const;
 
   /// RevCore: decode a compressed CL-type isntruction
-  RevInst DecodeCLInst( uint32_t Inst, unsigned Entry ) const;
+  RevInst DecodeCLInst( uint32_t Inst, uint32_t Entry ) const;
 
   /// RevCore: decode a compressed CS-type isntruction
-  RevInst DecodeCSInst( uint32_t Inst, unsigned Entry ) const;
+  RevInst DecodeCSInst( uint32_t Inst, uint32_t Entry ) const;
 
   /// RevCore: decode a compressed CA-type isntruction
-  RevInst DecodeCAInst( uint32_t Inst, unsigned Entry ) const;
+  RevInst DecodeCAInst( uint32_t Inst, uint32_t Entry ) const;
 
   /// RevCore: decode a compressed CB-type isntruction
-  RevInst DecodeCBInst( uint32_t Inst, unsigned Entry ) const;
+  RevInst DecodeCBInst( uint32_t Inst, uint32_t Entry ) const;
 
   /// RevCore: decode a compressed CJ-type isntruction
-  RevInst DecodeCJInst( uint32_t Inst, unsigned Entry ) const;
+  RevInst DecodeCJInst( uint32_t Inst, uint32_t Entry ) const;
 
   /// RevCore: Determine next thread to execute
-  unsigned GetNextHartToDecodeID() const;
+  uint32_t GetNextHartToDecodeID() const;
 
   /// RevCore: Whether any scoreboard bits are set
-  bool AnyDependency( unsigned HartID, RevRegClass regClass = RevRegClass::RegUNKNOWN ) const {
+  bool AnyDependency( uint32_t HartID, RevRegClass regClass = RevRegClass::RegUNKNOWN ) const {
     const RevRegFile* regFile = GetRegFile( HartID );
     switch( regClass ) {
     case RevRegClass::RegGPR: return regFile->RV_Scoreboard.any();
@@ -841,7 +841,7 @@ private:
   }
 
   /// RevCore: Check LS queue for outstanding load - ignore x0
-  static bool LSQCheck( unsigned HartID, const RevRegFile* regFile, uint16_t reg, RevRegClass regClass ) {
+  static bool LSQCheck( uint32_t HartID, const RevRegFile* regFile, uint16_t reg, RevRegClass regClass ) {
     if( reg == 0 && regClass == RevRegClass::RegGPR ) {
       return false;  // GPR x0 is not considered
     } else {
@@ -858,25 +858,25 @@ private:
     }
   }
 
-  bool HartHasNoDependencies( unsigned HartID ) const { return !AnyDependency( HartID ); }
+  bool HartHasNoDependencies( uint32_t HartID ) const { return !AnyDependency( HartID ); }
 
   ///< Removes thread from Hart and returns it
-  std::unique_ptr<RevThread> PopThreadFromHart( unsigned HartID );
+  std::unique_ptr<RevThread> PopThreadFromHart( uint32_t HartID );
 
   /// RevCore: Check scoreboard for pipeline hazards
-  bool DependencyCheck( unsigned HartID, const RevInst* Inst ) const;
+  bool DependencyCheck( uint32_t HartID, const RevInst* Inst ) const;
 
   /// RevCore: Set or clear scoreboard based on instruction destination
-  void DependencySet( unsigned HartID, const RevInst* Inst, bool value = true ) {
+  void DependencySet( uint32_t HartID, const RevInst* Inst, bool value = true ) {
     DependencySet( HartID, Inst->rd, InstTable[Inst->entry].rdClass, value );
   }
 
   /// RevCore: Clear scoreboard on instruction retirement
-  void DependencyClear( unsigned HartID, const RevInst* Inst ) { DependencySet( HartID, Inst, false ); }
+  void DependencyClear( uint32_t HartID, const RevInst* Inst ) { DependencySet( HartID, Inst, false ); }
 
   /// RevCore: Set or clear scoreboard based on register number and floating point.
   template<typename T>
-  void DependencySet( unsigned HartID, T RegNum, RevRegClass regClass, bool value = true ) {
+  void DependencySet( uint32_t HartID, T RegNum, RevRegClass regClass, bool value = true ) {
     if( size_t( RegNum ) < _REV_NUM_REGS_ ) {
       RevRegFile* regFile = GetRegFile( HartID );
       switch( regClass ) {
@@ -892,7 +892,7 @@ private:
 
   /// RevCore: Clear scoreboard on instruction retirement
   template<typename T>
-  void DependencyClear( unsigned HartID, T RegNum, RevRegClass regClass ) {
+  void DependencyClear( uint32_t HartID, T RegNum, RevRegClass regClass ) {
     DependencySet( HartID, RegNum, regClass, false );
   }
 

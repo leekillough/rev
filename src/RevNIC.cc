@@ -51,7 +51,7 @@ void RevNIC::setMsgHandler( Event::HandlerBase* handler ) {
   msgHandler = handler;
 }
 
-void RevNIC::init( unsigned int phase ) {
+void RevNIC::init( uint32_t phase ) {
   iFace->init( phase );
 
   if( iFace->isNetworkInitialized() ) {

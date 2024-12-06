@@ -410,7 +410,7 @@ uint64_t RevMem::AllocMemAt( const uint64_t& BaseAddr, const uint64_t& SegSize )
   output->verbose( CALL_INFO, 10, 99, "Attempting to allocate %" PRIu64 " bytes on the heap", SegSize );
 
   // Check if this range exists in the FreeMemSegs vector
-  for( unsigned i = 0; i < FreeMemSegs.size(); i++ ) {
+  for( uint32_t i = 0; i < FreeMemSegs.size(); i++ ) {
     auto FreeSeg = FreeMemSegs[i];
     if( FreeSeg->contains( BaseAddr, SegSize ) ) {
       // Check if were allocating on a boundary of FreeSeg
@@ -483,14 +483,14 @@ uint64_t RevMem::AllocMemAt( const uint64_t& BaseAddr, const uint64_t& SegSize )
   return ret;
 }
 
-bool RevMem::FenceMem( unsigned Hart ) {
+bool RevMem::FenceMem( uint32_t Hart ) {
   if( ctrl ) {
     return ctrl->sendFENCE( Hart );
   }
   return true;  // base RevMem support does nothing here
 }
 
-bool RevMem::AMOMem( unsigned Hart, uint64_t Addr, size_t Len, void* Data, void* Target, const MemReq& req, RevFlag flags ) {
+bool RevMem::AMOMem( uint32_t Hart, uint64_t Addr, size_t Len, void* Data, void* Target, const MemReq& req, RevFlag flags ) {
 #ifdef _REV_DEBUG_
   std::cout << "AMO of " << Len << " Bytes Starting at 0x" << std::hex << Addr << std::dec << std::endl;
 #endif
@@ -542,7 +542,7 @@ bool RevMem::AMOMem( unsigned Hart, uint64_t Addr, size_t Len, void* Data, void*
   return true;
 }
 
-bool RevMem::WriteMem( unsigned Hart, uint64_t Addr, size_t Len, const void* Data, RevFlag flags ) {
+bool RevMem::WriteMem( uint32_t Hart, uint64_t Addr, size_t Len, const void* Data, RevFlag flags ) {
 #ifdef _REV_DEBUG_
   std::cout << "Writing " << Len << " Bytes Starting at 0x" << std::hex << Addr << std::dec << std::endl;
 #endif
@@ -595,7 +595,7 @@ std::tuple<uint64_t, uint64_t, uint64_t> RevMem::AdjPageAddr( uint64_t Addr, uin
   return { remainder, physAddr, adjPhysAddr };
 }
 
-bool RevMem::ReadMem( unsigned Hart, uint64_t Addr, size_t Len, void* Target, const MemReq& req, RevFlag flags ) {
+bool RevMem::ReadMem( uint32_t Hart, uint64_t Addr, size_t Len, void* Target, const MemReq& req, RevFlag flags ) {
 #ifdef _REV_DEBUG_
   std::cout << "NEW READMEM: Reading " << Len << " Bytes Starting at 0x" << std::hex << Addr << std::dec << std::endl;
 #endif
@@ -626,7 +626,7 @@ bool RevMem::ReadMem( unsigned Hart, uint64_t Addr, size_t Len, void* Target, co
   return true;
 }
 
-bool RevMem::FlushLine( unsigned Hart, uint64_t Addr ) {
+bool RevMem::FlushLine( uint32_t Hart, uint64_t Addr ) {
   uint64_t pageNum  = Addr >> addrShift;
   uint64_t physAddr = CalcPhysAddr( pageNum, Addr );
   if( ctrl ) {
@@ -636,7 +636,7 @@ bool RevMem::FlushLine( unsigned Hart, uint64_t Addr ) {
   return true;
 }
 
-bool RevMem::InvLine( unsigned Hart, uint64_t Addr ) {
+bool RevMem::InvLine( uint32_t Hart, uint64_t Addr ) {
   uint64_t pageNum  = Addr >> addrShift;
   uint64_t physAddr = CalcPhysAddr( pageNum, Addr );
   if( ctrl ) {
@@ -646,7 +646,7 @@ bool RevMem::InvLine( unsigned Hart, uint64_t Addr ) {
   return true;
 }
 
-bool RevMem::CleanLine( unsigned Hart, uint64_t Addr ) {
+bool RevMem::CleanLine( uint32_t Hart, uint64_t Addr ) {
   uint64_t pageNum  = Addr >> addrShift;
   uint64_t physAddr = CalcPhysAddr( pageNum, Addr );
   if( ctrl ) {
@@ -689,7 +689,7 @@ uint64_t RevMem::DeallocMem( uint64_t BaseAddr, uint64_t Size ) {
 
   uint64_t ret = -uint64_t{ 1 };
   // Search through allocated segments for the segment that begins on the baseAddr
-  for( unsigned i = 0; i < MemSegs.size(); i++ ) {
+  for( uint32_t i = 0; i < MemSegs.size(); i++ ) {
     auto AllocedSeg = MemSegs[i];
     // We don't allow memory to be deallocated if it's not on a segment boundary
     if( AllocedSeg->getBaseAddr() != BaseAddr ) {
@@ -856,7 +856,7 @@ void RevMem::DumpValidMem( const uint64_t bytesPerRow, std::ostream& outputStrea
 
   std::sort( MemSegs.begin(), MemSegs.end() );
   outputStream << "Memory Segments:" << std::endl;
-  for( unsigned i = 0; i < MemSegs.size(); i++ ) {
+  for( uint32_t i = 0; i < MemSegs.size(); i++ ) {
     outputStream << "// SEGMENT #" << i << *MemSegs[i] << std::endl;
     DumpMemSeg( MemSegs[i], bytesPerRow, outputStream );
   }

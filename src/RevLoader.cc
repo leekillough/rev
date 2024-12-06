@@ -54,7 +54,7 @@ bool RevLoader::WriteCacheLine( uint64_t Addr, size_t Len, const void* Data ) {
   }
 
   // calculate the cache line size
-  unsigned lineSize = mem->getLineSize();
+  uint32_t lineSize = mem->getLineSize();
   if( lineSize == 0 ) {
     // default to 64byte cache lines
     lineSize = 64;
@@ -239,8 +239,8 @@ bool RevLoader::LoadElf32( char* membuf, size_t sz ) {
   if( sz < sh[eh->e_shstrndx].sh_offset + sh[eh->e_shstrndx].sh_size )
     output->fatal( CALL_INFO, -1, "Error: RV32 Elf is unrecognizable\n" );
 
-  unsigned strtabidx = 0;
-  unsigned symtabidx = 0;
+  uint32_t strtabidx = 0;
+  uint32_t symtabidx = 0;
 
   // Iterate over every section header
   for( size_t i = 0; i < eh->e_shnum; i++ ) {
@@ -266,7 +266,7 @@ bool RevLoader::LoadElf32( char* membuf, size_t sz ) {
     // Iterate over every symbol in the symbol table
     for( size_t i = 0; i < sh[symtabidx].sh_size / sizeof( Elf32_Sym ); i++ ) {
       // Calculate the maximum length of the symbol
-      unsigned maxlen = sh[strtabidx].sh_size - sym[i].st_name;
+      uint32_t maxlen = sh[strtabidx].sh_size - sym[i].st_name;
       if( sym[i].st_name >= sh[strtabidx].sh_size )
         output->fatal( CALL_INFO, -1, "Error: RV32 Elf is unrecognizable\n" );
       if( strnlen( strtab + sym[i].st_name, maxlen ) >= maxlen )
@@ -393,8 +393,8 @@ bool RevLoader::LoadElf64( char* membuf, size_t sz ) {
   if( sz < sh[eh->e_shstrndx].sh_offset + sh[eh->e_shstrndx].sh_size )
     output->fatal( CALL_INFO, -1, "Error: RV64 Elf is unrecognizable\n" );
 
-  unsigned strtabidx = 0;
-  unsigned symtabidx = 0;
+  uint32_t strtabidx = 0;
+  uint32_t symtabidx = 0;
 
   // Iterate over every section header
   for( size_t i = 0; i < eh->e_shnum; i++ ) {
@@ -421,7 +421,7 @@ bool RevLoader::LoadElf64( char* membuf, size_t sz ) {
     // Iterate over every symbol in the symbol table
     for( size_t i = 0; i < sh[symtabidx].sh_size / sizeof( Elf64_Sym ); i++ ) {
       // Calculate the maximum length of the symbol
-      unsigned maxlen = sh[strtabidx].sh_size - sym[i].st_name;
+      uint32_t maxlen = sh[strtabidx].sh_size - sym[i].st_name;
       if( sym[i].st_name >= sh[strtabidx].sh_size )
         output->fatal( CALL_INFO, -1, "Error: RV64 Elf is unrecognizable\n" );
       if( strnlen( strtab + sym[i].st_name, maxlen ) >= maxlen )

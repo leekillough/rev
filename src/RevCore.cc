@@ -22,8 +22,8 @@ std::unique_ptr<RevFeature> RevCore::CreateFeature() {
   if( !opts->GetMachineModel( id, Machine ) )
     output->fatal( CALL_INFO, -1, "Error: failed to retrieve the machine model for core=%" PRIu32 "\n", id );
 
-  unsigned MinCost = 0;
-  unsigned MaxCost = 0;
+  uint32_t MinCost = 0;
+  uint32_t MaxCost = 0;
 
   opts->GetMemCost( id, MinCost, MaxCost );
 
@@ -31,9 +31,9 @@ std::unique_ptr<RevFeature> RevCore::CreateFeature() {
 }
 
 RevCore::RevCore(
-  unsigned                  id,
+  uint32_t                  id,
   RevOpts*                  opts,
-  unsigned                  numHarts,
+  uint32_t                  numHarts,
   RevMem*                   mem,
   RevLoader*                loader,
   std::function<uint32_t()> GetNewTID,
@@ -51,7 +51,7 @@ RevCore::RevCore(
     ValidHarts.set( i, true );
   }
 
-  unsigned Depth = 0;
+  uint32_t Depth = 0;
   opts->GetPrefetchDepth( id, Depth );
   if( Depth == 0 ) {
     Depth = 16;
@@ -127,10 +127,10 @@ bool RevCore::EnableExt( RevExt* Ext ) {
   // setup the mapping of InstTable to Ext objects
   auto load = [&]( const std::vector<RevInstEntry>& Table ) {
     InstTable.reserve( InstTable.size() + Table.size() );
-    for( unsigned i = 0; i < Table.size(); i++ ) {
+    for( uint32_t i = 0; i < Table.size(); i++ ) {
       InstTable.push_back( Table[i] );
-      auto ExtObj = std::pair<unsigned, unsigned>( Extensions.size() - 1, i );
-      EntryToExt.insert( std::pair<unsigned, std::pair<unsigned, unsigned>>( InstTable.size() - 1, ExtObj ) );
+      auto ExtObj = std::pair<uint32_t, uint32_t>( Extensions.size() - 1, i );
+      EntryToExt.insert( std::pair<uint32_t, std::pair<uint32_t, uint32_t>>( InstTable.size() - 1, ExtObj ) );
     }
   };
 
@@ -256,11 +256,11 @@ bool RevCore::InitTableMapping() {
     CALL_INFO, 6, 0, "Core %" PRIu32 " ; Initializing table mapping for machine model=%s\n", id, feature->GetMachineModel().data()
   );
 
-  for( unsigned i = 0; i < InstTable.size(); i++ ) {
-    NameToEntry.insert( std::pair<std::string, unsigned>( ExtractMnemonic( InstTable[i] ), i ) );
+  for( uint32_t i = 0; i < InstTable.size(); i++ ) {
+    NameToEntry.insert( std::pair<std::string, uint32_t>( ExtractMnemonic( InstTable[i] ), i ) );
     if( !InstTable[i].compressed ) {
       // map normal instruction
-      EncToEntry.insert( std::pair<uint64_t, unsigned>( CompressEncoding( InstTable[i] ), i ) );
+      EncToEntry.insert( std::pair<uint64_t, uint32_t>( CompressEncoding( InstTable[i] ), i ) );
       output->verbose(
         CALL_INFO,
         6,
@@ -272,7 +272,7 @@ bool RevCore::InitTableMapping() {
       );
     } else {
       // map compressed instruction
-      CEncToEntry.insert( std::pair<uint64_t, unsigned>( CompressCEncoding( InstTable[i] ), i ) );
+      CEncToEntry.insert( std::pair<uint64_t, uint32_t>( CompressCEncoding( InstTable[i] ), i ) );
       output->verbose(
         CALL_INFO,
         6,
@@ -308,14 +308,14 @@ bool RevCore::ReadOverrideTables() {
   // read all the values
   std::string Inst;
   std::string Cost;
-  unsigned    Entry;
+  uint32_t    Entry;
   while( infile >> Inst >> Cost ) {
     auto it = NameToEntry.find( Inst );
     if( it == NameToEntry.end() )
       output->fatal( CALL_INFO, -1, "Error: could not find instruction in table for map value=%s\n", Inst.data() );
 
     Entry                 = it->second;
-    InstTable[Entry].cost = (unsigned) ( std::stoi( Cost, nullptr, 0 ) );
+    InstTable[Entry].cost = (uint32_t) ( std::stoi( Cost, nullptr, 0 ) );
   }
 
   // close the file
@@ -345,7 +345,7 @@ bool RevCore::Reset() {
   IdleHarts.reset();
 
   // All harts are idle to start
-  for( unsigned i = 0; i < numHarts; i++ ) {
+  for( uint32_t i = 0; i < numHarts; i++ ) {
     IdleHarts[i]  = true;
     ValidHarts[i] = true;
   }
@@ -357,7 +357,7 @@ bool RevCore::Reset() {
   return true;
 }
 
-RevInst RevCore::DecodeCRInst( uint32_t Inst, unsigned Entry ) const {
+RevInst RevCore::DecodeCRInst( uint32_t Inst, uint32_t Entry ) const {
   RevInst CompInst;
 
   // cost
@@ -399,7 +399,7 @@ RevInst RevCore::DecodeCRInst( uint32_t Inst, unsigned Entry ) const {
   return CompInst;
 }
 
-RevInst RevCore::DecodeCIInst( uint32_t Inst, unsigned Entry ) const {
+RevInst RevCore::DecodeCIInst( uint32_t Inst, uint32_t Entry ) const {
   RevInst CompInst;
 
   // cost
@@ -490,7 +490,7 @@ RevInst RevCore::DecodeCIInst( uint32_t Inst, unsigned Entry ) const {
   return CompInst;
 }
 
-RevInst RevCore::DecodeCSSInst( uint32_t Inst, unsigned Entry ) const {
+RevInst RevCore::DecodeCSSInst( uint32_t Inst, uint32_t Entry ) const {
   RevInst CompInst;
 
   // cost
@@ -537,7 +537,7 @@ RevInst RevCore::DecodeCSSInst( uint32_t Inst, unsigned Entry ) const {
   return CompInst;
 }
 
-RevInst RevCore::DecodeCIWInst( uint32_t Inst, unsigned Entry ) const {
+RevInst RevCore::DecodeCIWInst( uint32_t Inst, uint32_t Entry ) const {
   RevInst CompInst;
 
   // cost
@@ -579,7 +579,7 @@ RevInst RevCore::DecodeCIWInst( uint32_t Inst, unsigned Entry ) const {
   return CompInst;
 }
 
-RevInst RevCore::DecodeCLInst( uint32_t Inst, unsigned Entry ) const {
+RevInst RevCore::DecodeCLInst( uint32_t Inst, uint32_t Entry ) const {
   RevInst CompInst;
 
   // cost
@@ -645,7 +645,7 @@ RevInst RevCore::DecodeCLInst( uint32_t Inst, unsigned Entry ) const {
   return CompInst;
 }
 
-RevInst RevCore::DecodeCSInst( uint32_t Inst, unsigned Entry ) const {
+RevInst RevCore::DecodeCSInst( uint32_t Inst, uint32_t Entry ) const {
   RevInst CompInst;
 
   // cost
@@ -688,7 +688,7 @@ RevInst RevCore::DecodeCSInst( uint32_t Inst, unsigned Entry ) const {
   return CompInst;
 }
 
-RevInst RevCore::DecodeCAInst( uint32_t Inst, unsigned Entry ) const {
+RevInst RevCore::DecodeCAInst( uint32_t Inst, uint32_t Entry ) const {
   RevInst CompInst;
 
   // cost
@@ -717,7 +717,7 @@ RevInst RevCore::DecodeCAInst( uint32_t Inst, unsigned Entry ) const {
   return CompInst;
 }
 
-RevInst RevCore::DecodeCBInst( uint32_t Inst, unsigned Entry ) const {
+RevInst RevCore::DecodeCBInst( uint32_t Inst, uint32_t Entry ) const {
   RevInst CompInst;
 
   // cost
@@ -774,7 +774,7 @@ RevInst RevCore::DecodeCBInst( uint32_t Inst, unsigned Entry ) const {
   return CompInst;
 }
 
-RevInst RevCore::DecodeCJInst( uint32_t Inst, unsigned Entry ) const {
+RevInst RevCore::DecodeCJInst( uint32_t Inst, uint32_t Entry ) const {
   RevInst CompInst;
 
   // cost
@@ -817,14 +817,14 @@ RevInst RevCore::DecodeCJInst( uint32_t Inst, unsigned Entry ) const {
 
 // Find the first matching encoding which satisfies a predicate, if any
 auto RevCore::matchInst(
-  const std::unordered_multimap<uint64_t, unsigned>& map,
+  const std::unordered_multimap<uint64_t, uint32_t>& map,
   uint64_t                                           encoding,
   const std::vector<RevInstEntry>&                   InstTable,
   uint32_t                                           Inst
 ) const {
   // Iterate through all entries which match the encoding
   for( auto [it, end] = map.equal_range( encoding ); it != end; ++it ) {
-    unsigned Entry = it->second;
+    uint32_t Entry = it->second;
     // If an entry is valid and has a satisfied predicate, return it
     if( Entry < InstTable.size() && InstTable[Entry].predicate( Inst ) )
       return it;
@@ -967,7 +967,7 @@ RevInst RevCore::DecodeCompressed( uint32_t Inst ) const {
   return ret;
 }
 
-RevInst RevCore::DecodeRInst( uint32_t Inst, unsigned Entry ) const {
+RevInst RevCore::DecodeRInst( uint32_t Inst, uint32_t Entry ) const {
   RevInst DInst;
 
   DInst.cost      = InstTable[Entry].cost;
@@ -1022,7 +1022,7 @@ RevInst RevCore::DecodeRInst( uint32_t Inst, unsigned Entry ) const {
   return DInst;
 }
 
-RevInst RevCore::DecodeIInst( uint32_t Inst, unsigned Entry ) const {
+RevInst RevCore::DecodeIInst( uint32_t Inst, uint32_t Entry ) const {
   RevInst DInst;
 
   // cost
@@ -1057,7 +1057,7 @@ RevInst RevCore::DecodeIInst( uint32_t Inst, unsigned Entry ) const {
   return DInst;
 }
 
-RevInst RevCore::DecodeSInst( uint32_t Inst, unsigned Entry ) const {
+RevInst RevCore::DecodeSInst( uint32_t Inst, uint32_t Entry ) const {
   RevInst DInst;
 
   // cost
@@ -1091,7 +1091,7 @@ RevInst RevCore::DecodeSInst( uint32_t Inst, unsigned Entry ) const {
   return DInst;
 }
 
-RevInst RevCore::DecodeUInst( uint32_t Inst, unsigned Entry ) const {
+RevInst RevCore::DecodeUInst( uint32_t Inst, uint32_t Entry ) const {
   RevInst DInst;
 
   // cost
@@ -1122,7 +1122,7 @@ RevInst RevCore::DecodeUInst( uint32_t Inst, unsigned Entry ) const {
   return DInst;
 }
 
-RevInst RevCore::DecodeBInst( uint32_t Inst, unsigned Entry ) const {
+RevInst RevCore::DecodeBInst( uint32_t Inst, uint32_t Entry ) const {
   RevInst DInst;
 
   // cost
@@ -1159,7 +1159,7 @@ RevInst RevCore::DecodeBInst( uint32_t Inst, unsigned Entry ) const {
   return DInst;
 }
 
-RevInst RevCore::DecodeJInst( uint32_t Inst, unsigned Entry ) const {
+RevInst RevCore::DecodeJInst( uint32_t Inst, uint32_t Entry ) const {
   RevInst DInst;
 
   // cost
@@ -1193,7 +1193,7 @@ RevInst RevCore::DecodeJInst( uint32_t Inst, unsigned Entry ) const {
   return DInst;
 }
 
-RevInst RevCore::DecodeR4Inst( uint32_t Inst, unsigned Entry ) const {
+RevInst RevCore::DecodeR4Inst( uint32_t Inst, uint32_t Entry ) const {
   RevInst DInst;
 
   // cost
@@ -1224,7 +1224,7 @@ RevInst RevCore::DecodeR4Inst( uint32_t Inst, unsigned Entry ) const {
   return DInst;
 }
 
-bool RevCore::DebugReadReg( unsigned Idx, uint64_t* Value ) const {
+bool RevCore::DebugReadReg( uint32_t Idx, uint64_t* Value ) const {
   if( !Halted )
     return false;
   if( Idx >= _REV_NUM_REGS_ ) {
@@ -1235,7 +1235,7 @@ bool RevCore::DebugReadReg( unsigned Idx, uint64_t* Value ) const {
   return true;
 }
 
-bool RevCore::DebugWriteReg( unsigned Idx, uint64_t Value ) const {
+bool RevCore::DebugWriteReg( uint32_t Idx, uint64_t Value ) const {
   RevRegFile* regFile = GetRegFile( HartToExecID );
   if( !Halted )
     return false;
@@ -1436,7 +1436,7 @@ RevInst RevCore::DecodeInst( uint32_t Inst ) const {
     output->fatal( CALL_INFO, -1, "Error: failed to decode instruction at PC=0x%" PRIx64 "; Enc=%" PRIu64 "\n", GetPC(), Enc );
   }
 
-  unsigned Entry = it->second;
+  uint32_t Entry = it->second;
   if( Entry >= InstTable.size() ) {
     if( coProc && coProc->IssueInst( feature, RegFile, mem, Inst ) ) {
       //Create NOP - ADDI x0, x0, 0
@@ -1481,12 +1481,12 @@ RevInst RevCore::DecodeInst( uint32_t Inst ) const {
   return ret;
 }
 
-void RevCore::HandleRegFault( unsigned width ) {
+void RevCore::HandleRegFault( uint32_t width ) {
   const char* RegPrefix;
   RevRegFile* regFile = GetRegFile( HartToExecID );
 
   // select a register
-  unsigned RegIdx     = RevRand( 0u, _REV_NUM_REGS_ - 1 );
+  uint32_t RegIdx     = RevRand( 0u, _REV_NUM_REGS_ - 1 );
 
   if( !feature->HasF() || RevRand( 0, 1 ) ) {
     // X registers
@@ -1517,19 +1517,19 @@ void RevCore::HandleRegFault( unsigned width ) {
   );
 }
 
-void RevCore::HandleCrackFault( unsigned width ) {
+void RevCore::HandleCrackFault( uint32_t width ) {
   CrackFault  = true;
   fault_width = width;
   output->verbose( CALL_INFO, 5, 0, "FAULT:CRACK: Crack+Decode fault injected into next decode cycle\n" );
 }
 
-void RevCore::HandleALUFault( unsigned width ) {
+void RevCore::HandleALUFault( uint32_t width ) {
   ALUFault    = true;
   fault_width = true;
   output->verbose( CALL_INFO, 5, 0, "FAULT:ALU: ALU fault injected into next retire cycle\n" );
 }
 
-bool RevCore::DependencyCheck( unsigned HartID, const RevInst* I ) const {
+bool RevCore::DependencyCheck( uint32_t HartID, const RevInst* I ) const {
   const RevRegFile*   regFile = GetRegFile( HartID );
   const RevInstEntry* E       = &InstTable[I->entry];
 
@@ -1574,12 +1574,12 @@ void RevCore::ExternalReleaseHart( RevCorePasskey<RevCoProc>, uint16_t HartID ) 
   }
 }
 
-unsigned RevCore::GetNextHartToDecodeID() const {
+uint32_t RevCore::GetNextHartToDecodeID() const {
   if( HartsClearToDecode.none() ) {
     return HartToDecodeID;
   };
 
-  unsigned nextID = HartToDecodeID;
+  uint32_t nextID = HartToDecodeID;
   if( HartsClearToDecode[HartToDecodeID] ) {
     nextID = HartToDecodeID;
   } else {
@@ -1713,7 +1713,7 @@ bool RevCore::ClockTick( SST::Cycle_t currentCycle ) {
     }
 
     // found the instruction extension
-    std::pair<unsigned, unsigned> EToE = it->second;
+    std::pair<uint32_t, uint32_t> EToE = it->second;
     RevExt*                       Ext  = Extensions[EToE.first].get();
 
     // -- BEGIN new pipelining implementation
@@ -1851,7 +1851,7 @@ bool RevCore::ClockTick( SST::Cycle_t currentCycle ) {
   return rtn;
 }
 
-std::unique_ptr<RevThread> RevCore::PopThreadFromHart( unsigned HartID ) {
+std::unique_ptr<RevThread> RevCore::PopThreadFromHart( uint32_t HartID ) {
   if( HartID >= numHarts ) {
     output->fatal(
       CALL_INFO, -1, "Error: tried to pop thread from hart %" PRIu32 " but there are only %" PRIu32 " hart(s)\n", HartID, numHarts
@@ -1895,7 +1895,7 @@ void RevCore::PrintStatSummary() {
   );
 }
 
-RevRegFile* RevCore::GetRegFile( unsigned HartID ) const {
+RevRegFile* RevCore::GetRegFile( uint32_t HartID ) const {
   if( HartID >= Harts.size() ) {
     output->fatal(
       CALL_INFO, -1, "Error: tried to get RegFile for Hart %" PRIu32 " but there are only %" PRIu32 " hart(s)\n", HartID, numHarts
@@ -1990,7 +1990,7 @@ bool RevCore::ExecEcall() {
 // so if for some reason we can't find a hart without a thread assigned
 // to it then we have a bug.
 void RevCore::AssignThread( std::unique_ptr<RevThread> Thread ) {
-  unsigned HartToAssign = FindIdleHartID();
+  uint32_t HartToAssign = FindIdleHartID();
 
   if( HartToAssign == _REV_INVALID_HART_ID_ ) {
     output->fatal(
@@ -2012,8 +2012,8 @@ void RevCore::AssignThread( std::unique_ptr<RevThread> Thread ) {
   return;
 }
 
-unsigned RevCore::FindIdleHartID() const {
-  unsigned IdleHartID = _REV_INVALID_HART_ID_;
+uint32_t RevCore::FindIdleHartID() const {
+  uint32_t IdleHartID = _REV_INVALID_HART_ID_;
   // Iterate over IdleHarts to find the first idle hart
   for( size_t i = 0; i < Harts.size(); i++ ) {
     if( IdleHarts[i] ) {
@@ -2028,7 +2028,7 @@ unsigned RevCore::FindIdleHartID() const {
   return IdleHartID;
 }
 
-void RevCore::InjectALUFault( std::pair<unsigned, unsigned> EToE, RevInst& Inst ) {
+void RevCore::InjectALUFault( std::pair<uint32_t, uint32_t> EToE, RevInst& Inst ) {
   // inject ALU fault
   RevExt* Ext = Extensions[EToE.first].get();
   if( ( Ext->GetName() == "RV64F" ) || ( Ext->GetName() == "RV64D" ) ) {

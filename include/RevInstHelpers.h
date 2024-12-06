@@ -64,7 +64,7 @@ inline constexpr double fpmin<double, uint64_t> = 0x0p+0;
 
 /// General template for converting between Floating Point and Integer.
 /// FP values outside the range of the target integer type are clipped
-/// at the integer type's numerical limits, whether signed or unsigned.
+/// at the integer type's numerical limits, whether signed or uint32_t.
 template<typename INT, typename FP>
 bool fcvtif( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) {
   // Read the FP register. Round to integer according to current rounding mode.

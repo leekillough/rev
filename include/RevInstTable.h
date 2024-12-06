@@ -100,7 +100,7 @@ public:
   uint8_t  instSize     = 0;         ///< RevInst: size of the instruction in bytes
   bool     compressed   = 0;         ///< RevInst: determines if the instruction is compressed
   uint32_t cost         = 0;         ///< RevInst: the cost to execute this instruction, in clock cycles
-  unsigned entry        = 0;         ///< RevInst: Where to find this instruction in the InstTables
+  uint32_t entry        = 0;         ///< RevInst: Where to find this instruction in the InstTables
   uint16_t hart         = 0;         ///< RevInst: What hart is this inst being executed on
   bool     isCoProcInst = 0;         ///< RevInst: whether instruction is coprocessor instruction
 

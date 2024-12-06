@@ -89,7 +89,7 @@ const std::string TRC_OP_DEFAULT = "slli";
 const int         TRC_OP_POS     = 20;
 
 // Position of fully formed instruction in 'nops' array
-enum class TRC_CMD_IDX : unsigned {
+enum class TRC_CMD_IDX : uint32_t {
   TRACE_OFF      = 0,
   TRACE_ON       = 1,
   TRACE_PUSH_OFF = 2,
@@ -97,9 +97,9 @@ enum class TRC_CMD_IDX : unsigned {
   TRACE_POP      = 4,
 };
 
-constexpr unsigned NOP_COUNT = 5;  // must match TRC_CMD_IDX size
+constexpr uint32_t NOP_COUNT = 5;  // must match TRC_CMD_IDX size
 
-enum class EVENT_SYMBOL : unsigned {
+enum class EVENT_SYMBOL : uint32_t {
   OK        = 0x0,
   STALL     = 0x1,
   FLUSH     = 0x2,
@@ -154,14 +154,14 @@ struct TraceRec_t {
 
 struct InstHeader_t {
   size_t       cycle{};
-  unsigned     id{};
-  unsigned     hart{};
-  unsigned     tid{};
+  uint32_t     id{};
+  uint32_t     hart{};
+  uint32_t     tid{};
   std::string  defaultMnem      = "?";
   std::string& fallbackMnemonic = defaultMnem;
   bool         valid            = false;
 
-  void set( size_t _cycle, unsigned _id, unsigned _hart, unsigned _tid, const std::string& _fallback ) {
+  void set( size_t _cycle, uint32_t _id, uint32_t _hart, uint32_t _tid, const std::string& _fallback ) {
     cycle            = _cycle;
     id               = _id;
     hart             = _hart;
@@ -175,15 +175,15 @@ struct InstHeader_t {
 
 // aggregate read completion (memh)
 struct CompletionRec_t {
-  unsigned int hart{};
-  uint16_t     destReg{};
-  size_t       len{};
-  uint64_t     addr{};
-  uint64_t     data{};  // first 8 bytes max
-  bool         isFloat{};
-  bool         wait4Completion{};
+  uint32_t hart{};
+  uint16_t destReg{};
+  size_t   len{};
+  uint64_t addr{};
+  uint64_t data{};  // first 8 bytes max
+  bool     isFloat{};
+  bool     wait4Completion{};
 
-  CompletionRec_t( unsigned int hart, uint16_t destReg, size_t len, uint64_t addr, void* data, RevRegClass regClass )
+  CompletionRec_t( uint32_t hart, uint16_t destReg, size_t len, uint64_t addr, void* data, RevRegClass regClass )
     : hart( hart ), destReg( destReg ), len( len ), addr( addr ), isFloat( regClass == RevRegClass::RegFLOAT ),
       wait4Completion( true ) {
     memcpy( &this->data, data, len > sizeof( this->data ) ? sizeof( this->data ) : len );
@@ -226,7 +226,7 @@ public:
   /// RevTracer: capture 64-bit program counter
   void pcWrite( uint64_t newpc );
   /// RevTracer: render instruction execution trace to output stream and update tracer state
-  void Exec( size_t cycle, unsigned id, unsigned hart, unsigned tid, const std::string& fallbackMnemonic );
+  void Exec( size_t cycle, uint32_t id, uint32_t hart, uint32_t tid, const std::string& fallbackMnemonic );
   /// RevTracer: Render captured states
   void Render( size_t cycle );
 
@@ -287,9 +287,9 @@ private:
   /// RevTracer: support for trace control push/pop
   std::vector<bool> enableQ{};
   /// RevTracer: current pointer into trace controls queue
-  unsigned enableQindex{};
+  uint32_t enableQindex{};
   /// RevTracer: wraparound limit for trace controls queue
-  const unsigned MAX_ENABLE_Q = 100;
+  const uint32_t MAX_ENABLE_Q = 100;
   /// RevTracer: count of lines rendered
   uint64_t traceCycles{};
   /// RevTracer: Hard disable for output

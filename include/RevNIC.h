@@ -84,7 +84,7 @@ public:
   virtual void setMsgHandler( Event::HandlerBase* handler )  = 0;
 
   /// nicEvent: initializes the network
-  void init( unsigned int phase ) override                   = 0;
+  void init( uint32_t phase ) override                       = 0;
 
   /// nicEvent: setup the network
   void setup() override                                      = 0;
@@ -132,7 +132,7 @@ public:
   void setMsgHandler( Event::HandlerBase* handler ) final;
 
   /// RevNIC: initialization function
-  void init( unsigned int phase ) final;
+  void init( uint32_t phase ) final;
 
   /// RevNIC: setup function
   void setup() final;
