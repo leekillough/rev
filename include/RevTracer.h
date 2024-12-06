@@ -35,7 +35,14 @@
 #ifdef __GNUC__
 #undef UNUSED
 #endif
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wsign-conversion"
+
 #include "riscv/disasm.h"
+
+#pragma GCC diagnostic pop
+
 #endif
 
 // Tracing macros
