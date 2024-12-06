@@ -108,7 +108,7 @@ void RevCore::SetCoProc( RevCoProc* coproc ) {
     output->fatal(
       CALL_INFO,
       -1,
-      "CONFIG ERROR: Core %u : Attempting to assign a "
+      "CONFIG ERROR: Core %" PRIu32 " : Attempting to assign a "
       "co-processor when one is already present\n",
       id
     );
@@ -918,8 +918,8 @@ RevInst RevCore::DecodeCompressed( uint32_t Inst ) const {
     output->fatal(
       CALL_INFO,
       -1,
-      "Error: failed to decode instruction at PC=0x%" PRIx64 "; Enc=%" PRIu32
-      "\n opc=%x; funct2=%x, funct3=%x, funct4=%x, funct6=%x\n",
+      "Error: failed to decode instruction at PC=0x%" PRIx64 "; Enc=%" PRIx32 "\n opc=%" PRIx8 "; funct2=%" PRIx8 ", funct3=%" PRIx8
+      ", funct4=%" PRIx8 ", funct6=%" PRIx8 "\n",
       GetPC(),
       Enc,
       opc,
@@ -935,8 +935,8 @@ RevInst RevCore::DecodeCompressed( uint32_t Inst ) const {
     output->fatal(
       CALL_INFO,
       -1,
-      "Error: no entry in table for instruction at PC=0x%" PRIx64 " Opcode = %x Funct2 = %x Funct3 = %x Funct4 = %x Funct6 = "
-      "%x Enc = %x \n",
+      "Error: no entry in table for instruction at PC=0x%" PRIx64 " Opcode = %" PRIx8 " Funct2 = %" PRIx8 " Funct3 = %" PRIx8
+      " Funct4 = %" PRIx8 " Funct6 = %" PRIx8 " Enc = %" PRIx32 "\n",
       GetPC(),
       opc,
       funct2,
@@ -1452,8 +1452,8 @@ RevInst RevCore::DecodeInst( uint32_t Inst ) const {
     output->fatal(
       CALL_INFO,
       -1,
-      "Error: no entry in table for instruction at PC=0x%" PRIx64
-      " Opcode = %x Funct3 = %x Funct2or7 = %x Imm12 = %x Enc = %" PRIx64 "\n",
+      "Error: no entry in table for instruction at PC=0x%" PRIx64 " Opcode = 0x%" PRIx32 " Funct3 = %" PRIx32
+      " Funct2or7 = %" PRIx32 " Imm12 = %" PRIx32 " Enc = %" PRIx64 "\n",
       GetPC(),
       Opcode,
       Funct3,
@@ -1558,7 +1558,9 @@ void RevCore::ExternalStallHart( RevCorePasskey<RevCoProc>, uint16_t HartID ) {
   if( HartID < Harts.size() ) {
     CoProcStallReq.set( HartID );
   } else {
-    output->fatal( CALL_INFO, -1, "Core %u ; CoProc Request: Cannot stall Hart %" PRIu32 " as the ID is invalid\n", id, HartID );
+    output->fatal(
+      CALL_INFO, -1, "Core %" PRIu32 " ; CoProc Request: Cannot stall Hart %" PRIu32 " as the ID is invalid\n", id, HartID
+    );
   }
 }
 
@@ -1566,7 +1568,9 @@ void RevCore::ExternalReleaseHart( RevCorePasskey<RevCoProc>, uint16_t HartID ) 
   if( HartID < Harts.size() ) {
     CoProcStallReq.reset( HartID );
   } else {
-    output->fatal( CALL_INFO, -1, "Core %u ; CoProc Request: Cannot release Hart %" PRIu32 " as the ID is invalid\n", id, HartID );
+    output->fatal(
+      CALL_INFO, -1, "Core %" PRIu32 " ; CoProc Request: Cannot release Hart %" PRIu32 " as the ID is invalid\n", id, HartID
+    );
   }
 }
 
@@ -1866,7 +1870,7 @@ void RevCore::PrintStatSummary() {
     2,
     0,
     "Program execution complete\n"
-    "Core %u Program Stats: Total Cycles: %" PRIu64 " Busy Cycles: %" PRIu64 " Idle Cycles: %" PRIu64 " Eff: %f\n",
+    "Core %" PRIu32 " Program Stats: Total Cycles: %" PRIu64 " Busy Cycles: %" PRIu64 " Idle Cycles: %" PRIu64 " Eff: %f\n",
     id,
     StatsTotal.totalCycles,
     StatsTotal.cyclesBusy,

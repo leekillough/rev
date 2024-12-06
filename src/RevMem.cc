@@ -49,19 +49,17 @@ bool RevMem::outstandingRqsts() {
   return false;
 }
 
-void RevMem::HandleMemFault( unsigned width ) {
+void RevMem::HandleMemFault( uint32_t width ) {
   // build up the fault payload
   uint64_t rval    = RevRand( 0, ( uint32_t{ 1 } << width ) - 1 );
 
   // find an address to fault
-  unsigned  NBytes = RevRand( 0, memSize - 8 );
+  uint32_t  NBytes = RevRand( 0, memSize - 8 );
   uint64_t* Addr   = (uint64_t*) ( &physMem[0] + NBytes );
 
   // write the fault (read-modify-write)
   *Addr |= rval;
-  output->verbose(
-    CALL_INFO, 5, 0, "FAULT:MEM: Memory fault %u bits at address : 0x%" PRIxPTR "\n", width, reinterpret_cast<uintptr_t>( Addr )
-  );
+  output->verbose( CALL_INFO, 5, 0, "FAULT:MEM: Memory fault %" PRIu32 " bits at address : 0x%p\n", width, Addr );
 }
 
 bool RevMem::SetFuture( uint64_t Addr ) {
@@ -72,9 +70,9 @@ bool RevMem::SetFuture( uint64_t Addr ) {
 }
 
 bool RevMem::RevokeFuture( uint64_t Addr ) {
-  for( unsigned i = 0; i < FutureRes.size(); i++ ) {
+  for( size_t i = 0; i < FutureRes.size(); i++ ) {
     if( FutureRes[i] == Addr ) {
-      FutureRes.erase( FutureRes.begin() + i );
+      FutureRes.erase( FutureRes.begin() + ptrdiff_t( i ) );
       return true;
     }
   }
@@ -83,14 +81,14 @@ bool RevMem::RevokeFuture( uint64_t Addr ) {
 }
 
 bool RevMem::StatusFuture( uint64_t Addr ) {
-  for( unsigned i = 0; i < FutureRes.size(); i++ ) {
+  for( size_t i = 0; i < FutureRes.size(); i++ ) {
     if( FutureRes[i] == Addr )
       return true;
   }
   return false;
 }
 
-void RevMem::LR( unsigned hart, uint64_t addr, size_t len, void* target, const MemReq& req, RevFlag flags ) {
+void RevMem::LR( uint32_t hart, uint64_t addr, size_t len, void* target, const MemReq& req, RevFlag flags ) {
   // Create a reservation for this hart, overwriting one if it already exists
   // A reservation maps a hart to an (addr, len) range and is invalidated if any other hart writes to this range
   LRSC.insert_or_assign( hart, std::pair( addr, len ) );
@@ -110,7 +108,7 @@ void RevMem::LR( unsigned hart, uint64_t addr, size_t len, void* target, const M
   }
 }
 
-bool RevMem::InvalidateLRReservations( unsigned hart, uint64_t addr, size_t len ) {
+bool RevMem::InvalidateLRReservations( uint32_t hart, uint64_t addr, size_t len ) {
   bool ret = false;
   // Loop over all active reservations
   for( auto it = LRSC.cbegin(); it != LRSC.cend(); ) {
@@ -126,7 +124,7 @@ bool RevMem::InvalidateLRReservations( unsigned hart, uint64_t addr, size_t len 
   return ret;
 }
 
-bool RevMem::SC( unsigned hart, uint64_t addr, size_t len, void* data, RevFlag flags ) {
+bool RevMem::SC( uint32_t hart, uint64_t addr, size_t len, void* data, RevFlag flags ) {
   // Find the reservation for this hart (there can only be one active reservation per hart)
   auto it = LRSC.find( hart );
   if( it != LRSC.end() ) {
@@ -468,10 +466,8 @@ uint64_t RevMem::AllocMemAt( const uint64_t& BaseAddr, const uint64_t& SegSize )
         output->fatal(
           CALL_INFO,
           11,
-          "Error: Attempting to allocate memory at address 0x%lx "
-          "of size 0x%lx which contains memory that is"
-          "already allocated in the segment with BaseAddr = 0x%lx "
-          "and Size 0x%lx\n",
+          "Error: Attempting to allocate memory at address 0x%" PRIx64 " of size 0x%" PRIx64 " which contains memory that is"
+          "already allocated in the segment with BaseAddr = 0x%" PRIx64 " and Size 0x%" PRIx64 "\n",
           BaseAddr,
           SegSize,
           Seg->getBaseAddr(),
@@ -687,7 +683,9 @@ bool RevMem::CleanLine( unsigned Hart, uint64_t Addr ) {
 // 3. Deallocating memory that hasn't been allocated
 // - |---- FreeSeg ----| ==> SegFault :/
 uint64_t RevMem::DeallocMem( uint64_t BaseAddr, uint64_t Size ) {
-  output->verbose( CALL_INFO, 10, 99, "Attempting to deallocate %lul bytes starting at BaseAddr = 0x%lx\n", Size, BaseAddr );
+  output->verbose(
+    CALL_INFO, 10, 99, "Attempting to deallocate %" PRIu64 " bytes starting at BaseAddr = 0x%" PRIx64 "\n", Size, BaseAddr
+  );
 
   uint64_t ret = -uint64_t{ 1 };
   // Search through allocated segments for the segment that begins on the baseAddr
@@ -705,8 +703,8 @@ uint64_t RevMem::DeallocMem( uint64_t BaseAddr, uint64_t Size ) {
           CALL_INFO,
           11,
           "Dealloc Error: Cannot free beyond the segment bounds. Attempted to"
-          "free from 0x%lx to 0x%lx however the highest address in the segment "
-          "is 0x%lx",
+          "free from 0x%" PRIx64 " to 0x%" PRIx64 " however the highest address in the segment "
+          "is 0x%" PRIx64,
           BaseAddr,
           BaseAddr + Size,
           AllocedSeg->getTopAddr()
@@ -781,8 +779,7 @@ void RevMem::InitHeap( const uint64_t& EndOfStaticData ) {
       7,
       "The loader was unable"
       "to find a .text section in your executable. This is a bug."
-      "EndOfStaticData = 0x%lx which is less than or equal to 0",
-      EndOfStaticData
+      "EndOfStaticData = 0."
     );
   } else {
     // Mark heap as free
@@ -804,7 +801,7 @@ uint64_t RevMem::ExpandHeap( uint64_t Size ) {
     output->fatal(
       CALL_INFO,
       7,
-      "Out Of Memory --- Attempted to expand heap to 0x%" PRIx64 " which goes beyond the maxHeapSize = 0x%x set in the "
+      "Out Of Memory --- Attempted to expand heap to 0x%" PRIx64 " which goes beyond the maxHeapSize = 0x%" PRIx64 " set in the "
       "python configuration. "
       "If unset, this value will be equal to 1/4 of memSize.\n",
       NewHeapEnd,

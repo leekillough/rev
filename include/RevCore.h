@@ -308,11 +308,11 @@ private:
   bool           SingleStep  = false;  ///< RevCore: determines if we are in a single step
   bool           CrackFault  = false;  ///< RevCore: determines if we need to handle a crack fault
   bool           ALUFault    = false;  ///< RevCore: determines if we need to handle an ALU fault
-  unsigned       fault_width = 0;      ///< RevCore: the width of the target fault
-  unsigned const id;                   ///< RevCore: processor id
+  uint32_t       fault_width = 0;      ///< RevCore: the width of the target fault
+  uint32_t const id;                   ///< RevCore: processor id
   uint64_t       ExecPC          = 0;  ///< RevCore: executing PC
-  unsigned       HartToDecodeID  = 0;  ///< RevCore: Current executing ThreadID
-  unsigned       HartToExecID    = 0;  ///< RevCore: Thread to dispatch instruction
+  uint32_t       HartToDecodeID  = 0;  ///< RevCore: Current executing ThreadID
+  uint32_t       HartToExecID    = 0;  ///< RevCore: Thread to dispatch instruction
   uint64_t       currentSimCycle = 0;  ///< RevCore: Current simulation cycle
 
   std::vector<std::shared_ptr<RevHart>> Harts{};                ///< RevCore: vector of Harts without a thread assigned to them
@@ -321,7 +321,7 @@ private:
   std::bitset<_MAX_HARTS_>              HartsClearToDecode{};   ///< RevCore: Thread is clear to start (proceed with decode)
   std::bitset<_MAX_HARTS_>              HartsClearToExecute{};  ///< RevCore: Thread is clear to execute (no register dependencides)
 
-  unsigned   numHarts{};  ///< RevCore: Number of Harts for this core
+  uint32_t   numHarts{};  ///< RevCore: Number of Harts for this core
   RevOpts*   opts{};      ///< RevCore: options object
   RevMem*    mem{};       ///< RevCore: memory object
   RevCoProc* coProc{};    ///< RevCore: attached co-processor

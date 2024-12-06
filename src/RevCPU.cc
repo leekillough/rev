@@ -675,7 +675,7 @@ bool RevCPU::ThreadCanProceed( const std::unique_ptr<RevThread>& Thread ) {
   // If the thread is waiting on another thread, check if that thread has completed
   if( WaitingOnTID != _INVALID_TID_ ) {
     // Check if WaitingOnTID has completed... if so, return = true, else return false
-    output.verbose( CALL_INFO, 6, 0, "Thread %" PRIu32 " is waiting on Thread %u\n", Thread->GetID(), WaitingOnTID );
+    output.verbose( CALL_INFO, 6, 0, "Thread %" PRIu32 " is waiting on Thread %" PRIu32 "\n", Thread->GetID(), WaitingOnTID );
 
     // Check if the WaitingOnTID has completed, if not, thread cannot proceed
     rtn = ( CompletedThreads.find( WaitingOnTID ) != CompletedThreads.end() ) ? true : false;

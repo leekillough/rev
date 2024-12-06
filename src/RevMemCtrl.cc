@@ -339,14 +339,14 @@ void RevBasicMemCtrl::processMemEvent( StandardMem::Request* ev ) {
   ev->handle( stdMemHandlers );
 }
 
-void RevBasicMemCtrl::init( unsigned int phase ) {
+void RevBasicMemCtrl::init( uint32_t phase ) {
   memIface->init( phase );
 
   // query the caching infrastructure
   if( phase == 1 ) {
     lineSize = memIface->getLineSize();
     if( lineSize > 0 ) {
-      output->verbose( CALL_INFO, 5, 0, "Detected cache layers; default line size=%u\n", lineSize );
+      output->verbose( CALL_INFO, 5, 0, "Detected cache layers; default line size=%" PRIu64 "\n", lineSize );
       hasCache = true;
     } else {
       output->verbose( CALL_INFO, 5, 0, "No cache detected; disabling caching\n" );
