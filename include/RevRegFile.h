@@ -135,7 +135,7 @@ class RevRegFile final : public RevCSR {
   const bool     IsRV64_v;   ///< RevRegFile: Cached copy of Features->IsRV64()
   const bool     HasD_v;     ///< RevRegFile: Cached copy of Features->HasD()
   bool           trigger{};  ///< RevRegFile: Has the instruction been triggered?
-  unsigned       Entry{};    ///< RevRegFile: Instruction entry
+  uint32_t       Entry{};    ///< RevRegFile: Instruction entry
   uint32_t       cost{};     ///< RevRegFile: Cost of the instruction
   RevTracer*     Tracer{};   ///< RegRegFile: Tracer object
 
@@ -220,10 +220,10 @@ public:
   void SetTrigger( bool t ) { trigger = t; }
 
   /// Get the instruction entry
-  unsigned GetEntry() const { return Entry; }
+  uint32_t GetEntry() const { return Entry; }
 
   /// Set the instruction entry
-  void SetEntry( unsigned e ) { Entry = e; }
+  void SetEntry( uint32_t e ) { Entry = e; }
 
   /// Get the Load/Store Queue
   const auto& GetLSQueue() const { return LSQueue; }
@@ -257,9 +257,9 @@ public:
   template<typename T>
   void SetSTVAL( T val ) {
     if( IsRV64() ) {
-      RV64_STVAL = val;
+      RV64_STVAL = uint64_t( val );
     } else {
-      RV32_STVAL = val;
+      RV32_STVAL = uint32_t( val );
     }
   }
 

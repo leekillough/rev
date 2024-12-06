@@ -14,7 +14,7 @@ namespace SST::RevCPU {
 
 RevNIC::RevNIC( ComponentId_t id, Params& params ) : nicAPI( id, params ) {
   // setup the initial logging functions
-  int verbosity              = params.find<int>( "verbose", 0 );
+  auto verbosity             = params.find<uint32_t>( "verbose", 0 );
   output                     = new SST::Output( "", verbosity, 0, SST::Output::STDOUT );
 
   const std::string nicClock = params.find<std::string>( "clock", "1GHz" );
@@ -51,7 +51,7 @@ void RevNIC::setMsgHandler( Event::HandlerBase* handler ) {
   msgHandler = handler;
 }
 
-void RevNIC::init( unsigned int phase ) {
+void RevNIC::init( uint32_t phase ) {
   iFace->init( phase );
 
   if( iFace->isNetworkInitialized() ) {
