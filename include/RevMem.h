@@ -324,7 +324,7 @@ public:
   // FIXME:
   uint64_t GetBrk() { return brk; }
 
-  void AdjustBrk( const int64_t NumBytes ) { brk += NumBytes; }
+  void AdjustBrk( const uint64_t NumBytes ) { brk += NumBytes; }
 
   uint64_t ExpandHeap( uint64_t Size );
 
@@ -395,10 +395,10 @@ public:
   ///        Returns false if the address is not local and places the
   ///        target Zone and Precinct IDs in `Zone` and `Precinct`, respectively.
   ///        Returns true if the address is local
-  bool isLocalAddr( uint64_t vAddr, unsigned& Zone, unsigned& Precinct );
+  bool isLocalAddr( uint64_t vAddr, uint32_t& Zone, uint32_t& Precinct );
 
   /// FORZA: send a thread migration request
-  bool ZOP_ThreadMigrate( unsigned Hart, std::vector<uint64_t> Payload, unsigned Zone, unsigned Precinct );
+  bool ZOP_ThreadMigrate( uint32_t Hart, std::vector<uint64_t> Payload, uint32_t Zone, uint32_t Precinct );
 
   // Add Physical Addresss Information
   /// FORZA: update the physical history from the input file
@@ -440,22 +440,22 @@ private:
   Forza::zopOpc memToZOP( uint32_t flags, size_t Len, bool Write );
 
   /// FORZA: send an AMO request
-  bool ZOP_AMOMem( unsigned Hart, uint64_t Addr, size_t Len, void* Data, void* Target, const MemReq& req, RevFlag flags );
+  bool ZOP_AMOMem( uint32_t Hart, uint64_t Addr, size_t Len, void* Data, void* Target, const MemReq& req, RevFlag flags );
 
   /// FORZA: send a READ request
-  bool ZOP_READMem( unsigned Hart, uint64_t Addr, size_t Len, void* Target, const MemReq& req, RevFlag flags );
+  bool ZOP_READMem( uint32_t Hart, uint64_t Addr, size_t Len, void* Target, const MemReq& req, RevFlag flags );
 
   /// FORZA: send a WRITE request
-  bool ZOP_WRITEMem( unsigned Hart, uint64_t Addr, size_t Len, const void* Data, RevFlag flags );
+  bool ZOP_WRITEMem( uint32_t Hart, uint64_t Addr, size_t Len, const void* Data, RevFlag flags );
 
   /// FORZA: send a large raw WRITE request: DO NOT USE
-  bool __ZOP_WRITEMemLarge( unsigned Hart, uint64_t Addr, size_t Len, const void* Data, RevFlag flags );
+  bool __ZOP_WRITEMemLarge( uint32_t Hart, uint64_t Addr, size_t Len, const void* Data, RevFlag flags );
 
   /// FORZA: send a WRITE request using the target opcode: DO NOT USE
-  bool __ZOP_WRITEMemBase( unsigned Hart, uint64_t Addr, size_t Len, const void* Data, RevFlag flags, SST::Forza::zopOpc opc );
+  bool __ZOP_WRITEMemBase( uint32_t Hart, uint64_t Addr, size_t Len, const void* Data, RevFlag flags, SST::Forza::zopOpc opc );
 
   /// FORZA: send a HART fence request
-  bool __ZOP_FENCEHart( unsigned Hart );
+  bool __ZOP_FENCEHart( uint32_t Hart );
 
 protected:
   unsigned char* physMem = nullptr;  ///< RevMem: memory container

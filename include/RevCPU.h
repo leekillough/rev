@@ -305,8 +305,8 @@ private:
 
   bool DisableCoprocClock{};  ///< RevCPU: Disables manual coproc clocking
 
-  unsigned Precinct{};  ///< RevCPU: FORZA precinct ID
-  unsigned Zone{};      ///< RevCPU: FORZA zone ID
+  uint32_t Precinct{};  ///< RevCPU: FORZA precinct ID
+  uint32_t Zone{};      ///< RevCPU: FORZA zone ID
 
   Forza::zopAPI*     zNic{};           ///< RevCPU: FORZA ZOP NIC
   Forza::zopMsgID*   zNicMsgIds{};     ///< RevCPU: FORZA ZOP NIC Message ID handler

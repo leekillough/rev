@@ -254,20 +254,20 @@ bool RZALSCoProc::ClockTick( SST::Cycle_t cycle ) {
 }
 
 void RZALSCoProc::MarkLoadComplete( const MemReq& req ) {
-  Alloc.setDirty( (unsigned) ( req.getDestReg() ) );
+  Alloc.setDirty( (uint32_t) ( req.getDestReg() ) );
 }
 
 bool RZALSCoProc::handleMZOP( Forza::zopEvent* zev, bool& flag ) {
-  unsigned Rs1         = _UNDEF_REG;
-  unsigned Rs2         = _UNDEF_REG;
+  uint32_t Rs1         = _UNDEF_REG;
+  uint32_t Rs2         = _UNDEF_REG;
   uint64_t Addr        = 0x00ull;  // -- Forza::Z_FLIT_ADDR: FLIT 2
   uint64_t Data        = 0x00ull;  // -- Forza::Z_FLIT_DATA: FLIT 3
 
   // this is the actual number of data flits
   // these variables are only used for the DMA store operations
-  unsigned RealFlitLen = (unsigned) ( zev->getLength() - Forza::Z_NUM_HEADER_FLITS );
+  uint32_t RealFlitLen = (uint32_t) ( zev->getLength() - Forza::Z_NUM_HEADER_FLITS );
   uint8_t* Buf         = nullptr;
-  unsigned i, j, cur = 0;
+  uint32_t i, j, cur = 0;
 
   if( !Alloc.getRegs( Rs1, Rs2 ) ) {
     return false;
@@ -286,14 +286,13 @@ bool RZALSCoProc::handleMZOP( Forza::zopEvent* zev, bool& flag ) {
 
   // used only for load operations
   MemReq req{
-    Addr, (uint16_t) ( Rs2 ), RevRegClass::RegGPR, Forza::Z_MZOP_PIPE_HART, MemOp::MemOpREAD, true, MarkLoadCompleteFunc
-  };
+    Addr, (uint16_t) ( Rs2 ), RevRegClass::RegGPR, Forza::Z_MZOP_PIPE_HART, MemOp::MemOpREAD, true, MarkLoadCompleteFunc };
 
   // set the address
   Alloc.SetX( Rs1, Addr );
 
   switch( zev->getOpc() ) {
-  // unsigned loads
+  // uint32_t loads
   case Forza::zopOpc::Z_MZOP_LB:
     Alloc.SetX( Rs2, 0x00ull );
     Mem->ReadVal( Forza::Z_MZOP_PIPE_HART, Addr, reinterpret_cast<uint8_t*>( Alloc.getRegAddr( Rs2 ) ), req, RevFlag::F_NONE );
@@ -352,7 +351,7 @@ bool RZALSCoProc::handleMZOP( Forza::zopEvent* zev, bool& flag ) {
     recordStat( MZOP_LSW, 1 );
     break;
 
-  // unsigned & signed stores
+  // uint32_t & signed stores
   case Forza::zopOpc::Z_MZOP_SB:
     if( !zev->getFLIT( Forza::Z_FLIT_DATA, &Data ) ) {
       output->fatal(
@@ -614,8 +613,8 @@ bool RZAAMOCoProc::ClockTick( SST::Cycle_t cycle ) {
 
 bool RZAAMOCoProc::handleHZOP( Forza::zopEvent* zev, bool& flag ) {
   flag          = false;  // these are handled as READ requests; eg they hazard
-  unsigned Rs1  = _UNDEF_REG;
-  unsigned Rs2  = _UNDEF_REG;
+  uint32_t Rs1  = _UNDEF_REG;
+  uint32_t Rs2  = _UNDEF_REG;
   uint64_t Addr = 0x00ull;  // -- Forza::Z_FLIT_ADDR: FLIT 2
   uint64_t Data = 0x00ull;  // -- Forza::Z_FLIT_DATA: FLIT 3
 
@@ -857,7 +856,7 @@ void RZAAMOCoProc::CheckLSQueue() {
 }
 
 void RZAAMOCoProc::MarkLoadComplete( const MemReq& req ) {
-  Alloc.setDirty( (unsigned) ( req.getDestReg() ) );
+  Alloc.setDirty( (uint32_t) ( req.getDestReg() ) );
 }
 
 }  // namespace SST::RevCPU

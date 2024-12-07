@@ -164,8 +164,8 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params ) : SST::Compon
   EnableZopNIC = params.find<bool>( "enableZoneNIC", 0 );
   if( EnableZopNIC ) {
     output.verbose( CALL_INFO, 4, 0, "[FORZA] Enabling zone NIC on device=%s\n", getName().c_str() );
-    Precinct = params.find<unsigned>( "precinctId", 0 );
-    Zone     = params.find<unsigned>( "zoneId", 0 );
+    Precinct = params.find<uint32_t>( "precinctId", 0 );
+    Zone     = params.find<uint32_t>( "zoneId", 0 );
     zNic     = loadUserSubComponent<Forza::zopAPI>( "zone_nic" );
     if( !zNic ) {
       output.fatal( CALL_INFO, -1, "Error: no ZONE NIC object loaded into RevCPU\n" );
@@ -200,7 +200,7 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params ) : SST::Compon
     } else {
       // This Rev instance is a ZAP
       Mem->unsetRZA();
-      unsigned         zap   = params.find<unsigned>( "zapId", 0 );
+      uint32_t         zap   = params.find<uint32_t>( "zapId", 0 );
       Forza::zopCompID zapId = Forza::zopCompID::Z_ZAP0;
       switch( zap ) {
       case 0: zapId = Forza::zopCompID::Z_ZAP0; break;
@@ -233,7 +233,7 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params ) : SST::Compon
   Mem->SetMaxHeapSize( maxHeapSize );
 
   // Load the binary into memory
-  Loader = std::make_unique<RevLoader>( Exe, Opts->GetArgv(), Mem.get(), &output );
+  Loader = std::make_unique<RevLoader>( Exe, Opts->GetArgv(), Mem.get(), &output, !EnableZopNIC || EnableRZA );
 
   // Create the processor objects
   Procs.reserve( Procs.size() + numCores );
@@ -246,7 +246,7 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params ) : SST::Compon
 
     // Create the processor objects
     Procs.reserve( Procs.size() + numCores );
-    for( unsigned i = 0; i < numCores; i++ ) {
+    for( uint32_t i = 0; i < numCores; i++ ) {
       RevCore* tmpNewRevCore = new RevCore( i, Opts.get(), numHarts, Mem.get(), Loader.get(), this->GetNewTID(), &output );
       tmpNewRevCore->setZNic( zNic );
       Procs.push_back( std::unique_ptr<RevCore>( tmpNewRevCore ) );
@@ -273,7 +273,7 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params ) : SST::Compon
     EnableCoProc = true;
 
     Procs.reserve( Procs.size() + numCores );
-    for( unsigned i = 0; i < numCores; i++ ) {
+    for( uint32_t i = 0; i < numCores; i++ ) {
       auto tmpNewRevCore =
         std::make_unique<RevCore>( i, Opts.get(), numHarts, Mem.get(), Loader.get(), this->GetNewTID(), &output );
       tmpNewRevCore->setZNic( zNic );
@@ -303,7 +303,7 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params ) : SST::Compon
   } else {
     // Create the processor objects
     Procs.reserve( Procs.size() + numCores );
-    for( unsigned i = 0; i < numCores; i++ ) {
+    for( uint32_t i = 0; i < numCores; i++ ) {
       auto tmpNewRevCore =
         std::make_unique<RevCore>( i, Opts.get(), numHarts, Mem.get(), Loader.get(), this->GetNewTID(), &output );
       tmpNewRevCore->setZNic( zNic );
@@ -612,7 +612,7 @@ void RevCPU::processZOPQ() {
 
   /// put the ZRqst structure in RevMem
 
-  for( unsigned i = 0; i < ZIQ.size(); i++ ) {
+  for( uint32_t i = 0; i < ZIQ.size(); i++ ) {
     auto zev = ZIQ[i];
     if( !zev->getFLIT( Forza::Z_FLIT_ADDR, &Addr ) ) {
       output.fatal(
@@ -932,7 +932,7 @@ void RevCPU::handleZOPThreadMigrateIntRegs( Forza::zopEvent* zev ) {
   std::unique_ptr<RevRegFile> MigratedRegState = std::make_unique<RevRegFile>( Procs[0].get() );
   uint64_t                    pc               = pkt[2] & ( 0x0FFFFFFFFUL );
   MigratedRegState->SetPC( pc );
-  for( unsigned i = 1; i < 32; i++ ) {
+  for( uint32_t i = 1; i < 32; i++ ) {
     MigratedRegState->SetX( i, pkt[2 + i] );  //x0 == 0
   }
 
@@ -968,7 +968,7 @@ void RevCPU::handleZOPThreadMigrateSpawn( Forza::zopEvent* zev ) {
   std::unique_ptr<RevRegFile> MigratedRegState = std::make_unique<RevRegFile>( Procs[0].get() );
   uint64_t                    pc               = pkt[2] & ( 0x0FFFFFFFFUL );
   MigratedRegState->SetPC( pc );
-  for( unsigned i = 1; i < 31; i++ ) {
+  for( uint32_t i = 1; i < 31; i++ ) {
     MigratedRegState->SetX( i, 0 );
   }
   MigratedRegState->SetX( 31, pkt[3] );
@@ -1064,7 +1064,7 @@ void RevCPU::handleRingMsg( Event* ev ) {
       ring_ev->getCSR(),
       (uint8_t) ring_ev->getOp()
     );
-    uint64_t next_addr = zoneRing->getNextAddress();
+    int64_t next_addr = zoneRing->getNextAddress();
     zoneRing->send( ring_ev, next_addr );
     return;
   }
@@ -1203,7 +1203,7 @@ bool RevCPU::clockTick( SST::Cycle_t currentCycle ) {
   // Process the ZOPQ
   if( EnableRZA ) {
     processZOPQ();
-    for( unsigned i = 0; i < CoProcs.size(); i++ ) {
+    for( uint32_t i = 0; i < CoProcs.size(); i++ ) {
       CoProcs[i]->ClockTick( currentCycle );
     }
     return false;

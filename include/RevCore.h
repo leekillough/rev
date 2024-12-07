@@ -276,7 +276,7 @@ public:
   void ExternalReleaseHart( RevCorePasskey<RevCoProc>, uint16_t HartID );
 
   ///< RevCore: Allow a co-process to retrieve the register file object for the target HART
-  std::unique_ptr<RevRegFile> ExternalGetRegFile( RevCorePasskey<RevCoProc>, unsigned Hart ) {
+  std::unique_ptr<RevRegFile> ExternalGetRegFile( RevCorePasskey<RevCoProc>, uint32_t Hart ) {
     return Harts.at( Hart )->PopRegFile();
   }
 

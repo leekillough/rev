@@ -17,7 +17,7 @@ namespace SST::Forza {
 //------------------------------------------
 RingNetNIC::RingNetNIC( SST::ComponentId_t id, SST::Params& params ) : RingNetAPI( id, params ) {
 
-  verbosity = params.find<int>( "verbose", 0 );
+  verbosity = params.find<uint32_t>( "verbose", 0 );
   output.init( "RingNetNIC[" + getName() + ":@p:@t]: ", verbosity, 0, SST::Output::STDOUT );
 
   const std::string nicClock = params.find<std::string>( "clock", "1GHz" );
@@ -46,7 +46,7 @@ void RingNetNIC::setMsgHandler( Event::HandlerBase* handler ) {
   msgHandler = handler;
 }
 
-void RingNetNIC::init( unsigned int phase ) {
+void RingNetNIC::init( uint32_t phase ) {
   iFace->init( phase );
 
   if( Type == zopCompID::Z_UNK_COMP )
@@ -76,7 +76,7 @@ void RingNetNIC::init( unsigned int phase ) {
     uint64_t endP = ev->getDatum();
     output.verbose( CALL_INFO, 5, 0, "Receiving endpoint id=%" PRIu64 "\n", endP );
 
-    endPoints.push_back( endP );
+    endPoints.push_back( int64_t( endP ) );
   }
 
   std::sort( endPoints.begin(), endPoints.end() );
@@ -107,7 +107,7 @@ bool RingNetNIC::msgNotify( int vn ) {
   return true;
 }
 
-void RingNetNIC::send( ringEvent* event, uint64_t destination ) {
+void RingNetNIC::send( ringEvent* event, int64_t destination ) {
   SST::Interfaces::SimpleNetwork::Request* req = new SST::Interfaces::SimpleNetwork::Request();
   req->dest                                    = destination;
   req->src                                     = iFace->getEndpointID();
@@ -115,7 +115,7 @@ void RingNetNIC::send( ringEvent* event, uint64_t destination ) {
   sendQ.push( req );
 }
 
-unsigned RingNetNIC::getNumDestinations() {
+uint32_t RingNetNIC::getNumDestinations() {
   return endPoints.size();
 }
 
@@ -123,14 +123,14 @@ SST::Interfaces::SimpleNetwork::nid_t RingNetNIC::getAddress() {
   return iFace->getEndpointID();
 }
 
-uint64_t RingNetNIC::getNextAddress() {
-  uint64_t myAddr   = (uint64_t) ( getAddress() );
-  uint64_t lastAddr = endPoints.back();
+int64_t RingNetNIC::getNextAddress() {
+  int64_t myAddr   = getAddress();
+  int64_t lastAddr = endPoints.back();
   output.verbose(
     CALL_INFO,
     11,
     0,
-    "RingNet: my_addr=%" PRIu64 ", num_endpts=%" PRIu64 ", lastAddr=%" PRIu64 "\n",
+    "RingNet: my_addr=%" PRIi64 ", num_endpts=%" PRIu64 ", lastAddr=%" PRIi64 "\n",
     myAddr,
     endPoints.size(),
     lastAddr
@@ -138,15 +138,15 @@ uint64_t RingNetNIC::getNextAddress() {
   if( myAddr > lastAddr )
     return endPoints[0];
 
-  for( unsigned i = 0; i < endPoints.size(); i++ )
+  for( uint32_t i = 0; i < endPoints.size(); i++ )
     if( endPoints[i] > myAddr )
       return endPoints[i];
 
 #if 0
-  for( unsigned i = 0; i < endPoints.size(); i++ ) {
+  for( uint32_t i = 0; i < endPoints.size(); i++ ) {
     output.verbose( CALL_INFO, 5, 0, "TJD: endpoint[%" PRIu32 "]=%" PRIu64 "\n", i, endPoints[i] );
   }
-  for( unsigned i = 0; i < endPoints.size(); i++ ) {
+  for( uint32_t i = 0; i < endPoints.size(); i++ ) {
     if( endPoints[i] == myAddr ) {
       if( ( i + 1 ) <= ( endPoints.size() - 1 ) ) {
         return endPoints[i + 1];

@@ -18,13 +18,13 @@ zopNIC::zopNIC( ComponentId_t id, Params& params )
     barrierSense( nullptr ) {
 
   // read the parameters
-  int verbosity = params.find<int>( "verbose", 0 );
+  uint32_t verbosity = params.find<uint32_t>( "verbose", 0 );
   output.init( "zopNIC[" + getName() + ":@p:@t]: ", verbosity, 0, SST::Output::STDOUT );
-  ReqPerCycle       = params.find<unsigned>( "req_per_cycle", 1 );
+  ReqPerCycle       = params.find<uint32_t>( "req_per_cycle", 1 );
 
   enableTestHarness = params.find<bool>( "enableTestHarness", false );
-  numZones          = params.find<unsigned>( "numZones", 8 );
-  numPrecincts      = params.find<unsigned>( "numPrecincts", 1 );
+  numZones          = params.find<uint32_t>( "numZones", 8 );
+  numPrecincts      = params.find<uint32_t>( "numPrecincts", 1 );
 
   // register the stats
   registerStats();
@@ -59,7 +59,7 @@ zopNIC::~zopNIC() {
     delete[] HARTFence;
   if( barrierSense )
     delete[] barrierSense;
-  for( unsigned i = 0; i < 2; i++ ) {
+  for( uint32_t i = 0; i < 2; i++ ) {
     if( zoneBarrier[i] ) {
       delete[] zoneBarrier[i];
     }
@@ -69,16 +69,16 @@ zopNIC::~zopNIC() {
   }
 }
 
-void zopNIC::setNumHarts( unsigned H ) {
+void zopNIC::setNumHarts( uint32_t H ) {
   numHarts     = H;
   msgId        = new SST::Forza::zopMsgID[numHarts];
-  HARTFence    = new unsigned[numHarts];
-  barrierSense = new unsigned[numHarts];
-  zoneBarrier.push_back( new unsigned[numHarts] );
-  zoneBarrier.push_back( new unsigned[numHarts] );
-  barrierEndpoints.push_back( new unsigned[numHarts] );
-  barrierEndpoints.push_back( new unsigned[numHarts] );
-  for( unsigned i = 0; i < numHarts; i++ ) {
+  HARTFence    = new uint32_t[numHarts];
+  barrierSense = new uint32_t[numHarts];
+  zoneBarrier.push_back( new uint32_t[numHarts] );
+  zoneBarrier.push_back( new uint32_t[numHarts] );
+  barrierEndpoints.push_back( new uint32_t[numHarts] );
+  barrierEndpoints.push_back( new uint32_t[numHarts] );
+  for( uint32_t i = 0; i < numHarts; i++ ) {
     HARTFence[i]           = 0;
     barrierSense[i]        = 0;
     zoneBarrier[0][i]      = 0;
@@ -157,7 +157,7 @@ void zopNIC::setup() {
   }
 }
 
-void zopNIC::init( unsigned int phase ) {
+void zopNIC::init( uint32_t phase ) {
 
   output.verbose( CALL_INFO, 7, 0, "%s initializing interface at phase %d\n", getName().c_str(), phase );
 
@@ -171,7 +171,7 @@ void zopNIC::init( unsigned int phase ) {
   if( iFace->isNetworkInitialized() ) {
     if( !initBroadcastSent ) {
       initBroadcastSent = true;
-      zopEvent* ev = new zopEvent( iFace->getEndpointID(), getEndpointType(), unsigned( getPCID( getZoneID() ) ), getPrecinctID() );
+      zopEvent* ev = new zopEvent( iFace->getEndpointID(), getEndpointType(), uint32_t( getPCID( getZoneID() ) ), getPrecinctID() );
       SST::Interfaces::SimpleNetwork::Request* req = new SST::Interfaces::SimpleNetwork::Request();
       req->dest                                    = SST::Interfaces::SimpleNetwork::INIT_BROADCAST_ADDR;
       req->src                                     = iFace->getEndpointID();
@@ -243,14 +243,14 @@ void zopNIC::init( unsigned int phase ) {
   // --- end print out the host mapping table
 }
 
-bool zopNIC::hasBarrier( unsigned Hart ) {
+bool zopNIC::hasBarrier( uint32_t Hart ) {
   if( barrierEndpoints[barrierSense[Hart]][Hart] > 0 ) {
     return true;
   }
   return false;
 }
 
-bool zopNIC::isBarrierComplete( unsigned Hart ) {
+bool zopNIC::isBarrierComplete( uint32_t Hart ) {
   if( zoneBarrier[barrierSense[Hart]][Hart] == barrierEndpoints[barrierSense[Hart]][Hart] ) {
     // completed the barrier, switch the sense
     zoneBarrier[barrierSense[Hart]][Hart]      = 0;
@@ -267,7 +267,7 @@ bool zopNIC::isBarrierComplete( unsigned Hart ) {
   return false;
 }
 
-void zopNIC::send_zone_barrier( unsigned Hart, unsigned endpoints ) {
+void zopNIC::send_zone_barrier( uint32_t Hart, uint32_t endpoints ) {
   output.verbose( CALL_INFO, 9, 0, "Injecting zone barrier with sense=%u\n", barrierSense[Hart] );
   // setup the barrier
   barrierEndpoints[barrierSense[Hart]][Hart] = endpoints;
@@ -275,8 +275,7 @@ void zopNIC::send_zone_barrier( unsigned Hart, unsigned endpoints ) {
   // walk the zone network destinations and send a packet to every ZAP
   for( auto i : hostMap ) {
     auto t = i.second;
-    if( ( (uint8_t) ( std::get<_HM_ENDP_T>( t ) ) < (uint8_t) ( SST::Forza::zopCompID::Z_RZA ) ) &&
-        ( (unsigned) ( std::get<_HM_ZID>( t ) ) == Zone ) && ( std::get<_HM_PID>( t ) == Precinct ) ) {
+    if( ( (uint8_t) ( std::get<_HM_ENDP_T>( t ) ) < (uint8_t) ( SST::Forza::zopCompID::Z_RZA ) ) && ( (uint32_t) ( std::get<_HM_ZID>( t ) ) == Zone ) && ( std::get<_HM_PID>( t ) == Precinct ) ) {
       // found a candidate target
       auto realDest = i.first;
 
@@ -312,7 +311,7 @@ void zopNIC::send_zone_barrier( unsigned Hart, unsigned endpoints ) {
   }
 
   // signal my local barrier
-  for( unsigned i = 0; i < numHarts; i++ ) {
+  for( uint32_t i = 0; i < numHarts; i++ ) {
     zoneBarrier[barrierSense[Hart]][i]++;
   }
 }
@@ -322,7 +321,7 @@ void zopNIC::send( zopEvent* ev, zopCompID dest ) {
   send( ev, dest, ev->getPCID( ev->getDestPCID() ), ev->getDestPrec() );
 }
 
-void zopNIC::send( zopEvent* ev, zopCompID dest, zopPrecID zone, unsigned prec ) {
+void zopNIC::send( zopEvent* ev, zopCompID dest, zopPrecID zone, uint32_t prec ) {
   zopCompID TmpDest = dest;
   if( !initBroadcastSent ) {
     output.verbose(
@@ -367,7 +366,7 @@ void zopNIC::send( zopEvent* ev, zopCompID dest, zopPrecID zone, unsigned prec )
       ev->getID(),
       ev->getSrcString().c_str(),
       ev->getDestString().c_str(),
-      (unsigned)zone,
+      (uint32_t)zone,
       Zone,
       prec,
       Precinct
@@ -375,7 +374,7 @@ void zopNIC::send( zopEvent* ev, zopCompID dest, zopPrecID zone, unsigned prec )
   }
 #endif
   auto realDest = 0;
-  if( ( (unsigned) zone == Zone ) && ( prec == Precinct ) ) {
+  if( ( (uint32_t) zone == Zone ) && ( prec == Precinct ) ) {
     if( ev->getDestZCID() <= (uint8_t) SST::Forza::zopCompID::Z_ZAP3 && ev->getType() == SST::Forza::zopMsgT::Z_MSG ) {
       if( ev->getOpc() == SST::Forza::zopOpc::Z_MSG_SENDP )
         TmpDest = zopCompID::Z_ZQM;  // any send message so go to a zqm
@@ -513,8 +512,7 @@ bool zopNIC::msgNotify( int vn ) {
   // if the local device is a ZAP, handle the broadcast
   // otherwise, ignore the packet
   if( ( ev->getType() == Forza::zopMsgT::Z_MSG ) && ( ev->getOpc() == Forza::zopOpc::Z_MSG_ZBAR ) ) {
-    if( Type == Forza::zopCompID::Z_ZAP0 || Type == Forza::zopCompID::Z_ZAP1 || Type == Forza::zopCompID::Z_ZAP2 ||
-        Type == Forza::zopCompID::Z_ZAP3 ) {
+    if( Type == Forza::zopCompID::Z_ZAP0 || Type == Forza::zopCompID::Z_ZAP1 || Type == Forza::zopCompID::Z_ZAP2 || Type == Forza::zopCompID::Z_ZAP3 ) {
       return handleBarrier( ev );
     } else {
       // not a ZAP device, ignore the packet
@@ -525,8 +523,7 @@ bool zopNIC::msgNotify( int vn ) {
 
   // if this is an RZA device, marshall it through to the ZIQ
   // if this is a ZEN/ZQM/ZIP, forward it in the incoming queue
-  if( Type == Forza::zopCompID::Z_RZA || Type == Forza::zopCompID::Z_ZEN || Type == Forza::zopCompID::Z_ZQM ||
-      Type == Forza::zopCompID::Z_PREC_ZIP ) {
+  if( Type == Forza::zopCompID::Z_RZA || Type == Forza::zopCompID::Z_ZEN || Type == Forza::zopCompID::Z_ZQM || Type == Forza::zopCompID::Z_PREC_ZIP ) {
     ( *msgHandler )( ev );
     return true;
   }
@@ -535,16 +532,14 @@ bool zopNIC::msgNotify( int vn ) {
 
   // if this is a ZAP device and a thread migration or mzop (scratchpad req, methinks - tjd, 6-sept-24),
   // send it to the RevCPU handler
-  if( ( Type == Forza::zopCompID::Z_ZAP0 || Type == Forza::zopCompID::Z_ZAP1 || Type == Forza::zopCompID::Z_ZAP2 ||
-        Type == Forza::zopCompID::Z_ZAP3 ) &&
-      ( ev->getType() == Forza::zopMsgT::Z_TMIG || ev->getType() == Forza::zopMsgT::Z_MZOP ) ) {
+  if( ( Type == Forza::zopCompID::Z_ZAP0 || Type == Forza::zopCompID::Z_ZAP1 || Type == Forza::zopCompID::Z_ZAP2 || Type == Forza::zopCompID::Z_ZAP3 ) && ( ev->getType() == Forza::zopMsgT::Z_TMIG || ev->getType() == Forza::zopMsgT::Z_MZOP ) ) {
     ( *msgHandler )( ev );
     return true;
   }
 
   // this is likely a ZAP device,
   // iterate across the outstanding messages
-  unsigned Cur = 0;
+  uint32_t Cur = 0;
   for( auto const& [DestHart, ID, isRead, Target, Opc, Req] : outstanding ) {
     auto SrcHart = ev->getDestHart();
     auto EVID    = ev->getID();
@@ -569,16 +564,16 @@ bool zopNIC::msgNotify( int vn ) {
   }
 #if 0
   // debug statements
-  std::cout << "NO MATCHING REQUEST : src=" << (unsigned)(ev->getSrcHart())
-            << "; ID= " << (unsigned)(ev->getID())
+  std::cout << "NO MATCHING REQUEST : src=" << (uint32_t)(ev->getSrcHart())
+            << "; ID= " << (uint32_t)(ev->getID())
             << "; outstanding.size() = " << outstanding.size() << std::endl;
   for( auto const& [DestHart, ID, isRead, Target, Opc, Req] : outstanding ){
     std::cout << " ===== " << std::endl;
-    std::cout << "SrcHart = " << (unsigned)(DestHart) << std::endl;
-    std::cout << "ID = " << (unsigned)(ID) << std::endl;
+    std::cout << "SrcHart = " << (uint32_t)(DestHart) << std::endl;
+    std::cout << "ID = " << (uint32_t)(ID) << std::endl;
     std::cout << "isRead = " << isRead << std::endl;
     std::cout << "Target = " << Target << std::endl;
-    std::cout << "Opc = " << (unsigned)(Opc) << std::endl;
+    std::cout << "Opc = " << (uint32_t)(Opc) << std::endl;
     std::cout << " ===== " << std::endl;
   }
 #endif
@@ -672,7 +667,7 @@ bool zopNIC::handleFence( zopEvent* ev ) {
   return false;  // not ready to clear
 }
 
-unsigned zopNIC::getNumDestinations() {
+uint32_t zopNIC::getNumDestinations() {
   return numDest;
 }
 
@@ -680,11 +675,11 @@ SST::Interfaces::SimpleNetwork::nid_t zopNIC::getAddress() {
   return iFace->getEndpointID();
 }
 
-unsigned zopNIC::getNumZaps() {
-  unsigned count = 0;
+uint32_t zopNIC::getNumZaps() {
+  uint32_t count = 0;
   for( auto i : hostMap ) {
     auto t = i.second;
-    if( ( (unsigned) std::get<_HM_ZID>( t ) != Zone ) || ( std::get<_HM_PID>( t ) != Precinct ) )
+    if( ( (uint32_t) std::get<_HM_ZID>( t ) != Zone ) || ( std::get<_HM_PID>( t ) != Precinct ) )
       continue;
     zopCompID zc = std::get<_HM_ENDP_T>( t );
     if( ( zc == zopCompID::Z_ZAP0 ) || ( zc == zopCompID::Z_ZAP1 ) || ( zc == zopCompID::Z_ZAP2 ) || ( zc == zopCompID::Z_ZAP3 ) )
@@ -694,8 +689,8 @@ unsigned zopNIC::getNumZaps() {
 }
 
 bool zopNIC::clockTick( SST::Cycle_t cycle ) {
-  unsigned thisCycle = 0;
-  unsigned Hart      = 0;
+  uint32_t thisCycle = 0;
+  uint32_t Hart      = 0;
   bool     erase     = false;
 
   // check if there are any outstanding requests
@@ -707,7 +702,7 @@ bool zopNIC::clockTick( SST::Cycle_t cycle ) {
     erase = false;
     if( thisCycle < ReqPerCycle ) {
       zopEvent* ev = static_cast<zopEvent*>( ( *it )->inspectPayload() );
-      Hart         = (unsigned) ( ev->getSrcHart() );
+      Hart         = (uint32_t) ( ev->getSrcHart() );
       if( Type == SST::Forza::zopCompID::Z_RZA || Type == SST::Forza::zopCompID::Z_ZEN || Type == SST::Forza::zopCompID::Z_ZQM ) {
         // I am an RZA... I don't need to reserve any message IDs
         // ZEN ACKs and NACKs do not use message IDs, ZEN ZOPs to the RZA internally

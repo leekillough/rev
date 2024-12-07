@@ -64,7 +64,7 @@ inline constexpr double fpmin<double, uint64_t> = 0x0p+0;
 
 /// General template for converting between Floating Point and Integer.
 /// FP values outside the range of the target integer type are clipped
-/// at the integer type's numerical limits, whether signed or uint32_t.
+/// at the integer type's numerical limits, whether signed or unsigned.
 template<typename INT, typename FP>
 bool fcvtif( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) {
   // Read the FP register. Round to integer according to current rounding mode.
@@ -135,17 +135,17 @@ template<typename T>
 bool load( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) {
 
   // FORZA: check the address to see whether we need to migrate the thread
-  unsigned Zone     = 0x00;
-  unsigned Precinct = 0x00;
-  if( !M->isLocalAddr( R->GetX<uint64_t>( Inst.rs1 ) + Inst.ImmSignExt( 12 ), Zone, Precinct ) ) {
+  uint32_t Zone     = 0x00;
+  uint32_t Precinct = 0x00;
+  if( !M->isLocalAddr( R->GetX<uint64_t>( Inst.rs1 ) + uint64_t( Inst.ImmSignExt( 12 ) ), Zone, Precinct ) ) {
     // trigger the migration
     std::vector<uint64_t> P;
     P.reserve( 80 );
     P.push_back( R->GetPC() );
-    for( unsigned i = 1; i < 32; i++ ) {
+    for( uint32_t i = 1; i < 32; i++ ) {
       P.push_back( R->GetX<uint64_t>( i ) );
     }
-    for( unsigned i = 0; i < 32; i++ ) {
+    for( uint32_t i = 0; i < 32; i++ ) {
       uint64_t t = 0x00ull;
       double   s = R->DPF[i];
       memcpy( &t, &s, sizeof( t ) );
@@ -210,16 +210,16 @@ bool load( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) 
 template<typename T>
 bool store( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) {
   // FORZA: check the address to see whether we need to migrate the thread
-  unsigned Zone     = 0x00;
-  unsigned Precinct = 0x00;
-  if( !M->isLocalAddr( R->GetX<uint64_t>( Inst.rs1 ) + Inst.ImmSignExt( 12 ), Zone, Precinct ) ) {
+  uint32_t Zone     = 0x00;
+  uint32_t Precinct = 0x00;
+  if( !M->isLocalAddr( R->GetX<uint64_t>( Inst.rs1 ) + uint64_t( Inst.ImmSignExt( 12 ) ), Zone, Precinct ) ) {
     // trigger the migration
     std::vector<uint64_t> P;
     P.push_back( R->GetPC() );
-    for( unsigned i = 1; i < 32; i++ ) {
+    for( uint32_t i = 1; i < 32; i++ ) {
       P.push_back( R->GetX<uint64_t>( i ) );
     }
-    for( unsigned i = 0; i < 32; i++ ) {
+    for( uint32_t i = 0; i < 32; i++ ) {
       uint64_t t = 0x00ull;
       double   s = R->DPF[i];
       memcpy( &t, &s, sizeof( t ) );
@@ -241,16 +241,16 @@ template<typename T>
 bool fload( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) {
 
   // FORZA: check the address to see whether we need to migrate the thread
-  unsigned Zone     = 0x00;
-  unsigned Precinct = 0x00;
-  if( !M->isLocalAddr( R->GetX<uint64_t>( Inst.rs1 ) + Inst.ImmSignExt( 12 ), Zone, Precinct ) ) {
+  uint32_t Zone     = 0x00;
+  uint32_t Precinct = 0x00;
+  if( !M->isLocalAddr( R->GetX<uint64_t>( Inst.rs1 ) + uint64_t( Inst.ImmSignExt( 12 ) ), Zone, Precinct ) ) {
     // trigger the migration
     std::vector<uint64_t> P;
     P.push_back( R->GetPC() );
-    for( unsigned i = 1; i < 32; i++ ) {
+    for( uint32_t i = 1; i < 32; i++ ) {
       P.push_back( R->GetX<uint64_t>( i ) );
     }
-    for( unsigned i = 0; i < 32; i++ ) {
+    for( uint32_t i = 0; i < 32; i++ ) {
       uint64_t t = 0x00ull;
       double   s = R->DPF[i];
       memcpy( &t, &s, sizeof( t ) );
@@ -305,16 +305,16 @@ bool fload( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst )
 template<typename T>
 bool fstore( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) {
   // FORZA: check the address to see whether we need to migrate the thread
-  unsigned Zone     = 0x00;
-  unsigned Precinct = 0x00;
-  if( !M->isLocalAddr( R->GetX<uint64_t>( Inst.rs1 ) + Inst.ImmSignExt( 12 ), Zone, Precinct ) ) {
+  uint32_t Zone     = 0x00;
+  uint32_t Precinct = 0x00;
+  if( !M->isLocalAddr( R->GetX<uint64_t>( Inst.rs1 ) + uint64_t( Inst.ImmSignExt( 12 ) ), Zone, Precinct ) ) {
     // trigger the migration
     std::vector<uint64_t> P;
     P.push_back( R->GetPC() );
-    for( unsigned i = 1; i < 32; i++ ) {
+    for( uint32_t i = 1; i < 32; i++ ) {
       P.push_back( R->GetX<uint64_t>( i ) );
     }
-    for( unsigned i = 0; i < 32; i++ ) {
+    for( uint32_t i = 0; i < 32; i++ ) {
       uint64_t t = 0x00ull;
       double   s = R->DPF[i];
       memcpy( &t, &s, sizeof( t ) );

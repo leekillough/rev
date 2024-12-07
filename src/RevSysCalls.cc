@@ -3797,7 +3797,7 @@ EcallStatus RevCore::ECALL_forza_read_zen_status() {
   );
 
   if( zoneRing ) {
-    uint64_t next_dest = zoneRing->getNextAddress();
+    int64_t next_dest = zoneRing->getNextAddress();
     output->verbose(
       CALL_INFO,
       5,
@@ -3833,7 +3833,7 @@ EcallStatus RevCore::ECALL_forza_read_zqm_status() {
   );
 
   if( zoneRing ) {
-    uint64_t next_dest = zoneRing->getNextAddress();
+    int64_t next_dest = zoneRing->getNextAddress();
     output->verbose(
       CALL_INFO,
       5,
@@ -3897,7 +3897,7 @@ EcallStatus RevCore::ECALL_forza_send_word() {
   );
 
   if( zoneRing ) {
-    uint64_t next_dest = zoneRing->getNextAddress();
+    int64_t next_dest = zoneRing->getNextAddress();
     output->verbose(
       CALL_INFO,
       5,
@@ -4123,7 +4123,7 @@ EcallStatus RevCore::ECALL_forza_receive_word() {
   );
 
   if( zoneRing ) {
-    uint64_t next_dest = zoneRing->getNextAddress();
+    int64_t next_dest = zoneRing->getNextAddress();
     output->verbose(
       CALL_INFO,
       5,
@@ -4159,7 +4159,7 @@ EcallStatus RevCore::ECALL_forza_zen_get_cntrs() {
   );
 
   if( zoneRing ) {
-    uint64_t next_dest = zoneRing->getNextAddress();
+    int64_t next_dest = zoneRing->getNextAddress();
     output->verbose(
       CALL_INFO,
       5,
@@ -4226,7 +4226,7 @@ EcallStatus RevCore::ECALL_forza_zqm_setup() {
   );
 
   if( zoneRing ) {
-    uint64_t next_dest = zoneRing->getNextAddress();
+    int64_t next_dest = zoneRing->getNextAddress();
     output->verbose(
       CALL_INFO,
       5,

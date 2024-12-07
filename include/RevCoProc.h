@@ -55,7 +55,7 @@ class RegAlloc {
 public:
   /// RegAlloc: constructor
   RegAlloc() {
-    for( unsigned i = 0; i < _RA_NUM_REG; i++ ) {
+    for( uint32_t i = 0; i < _RA_NUM_REG; i++ ) {
       hazard[i] = _H_CLEAR;
       regs[i]   = 0x00ull;
     }
@@ -65,10 +65,10 @@ public:
   ~RegAlloc() {}
 
   /// RegAlloc: retrieve a single operand register
-  bool getRegs( unsigned& rs1 ) {
-    unsigned t_rs1 = _RA_NUM_REG + 1;
+  bool getRegs( uint32_t& rs1 ) {
+    uint32_t t_rs1 = _RA_NUM_REG + 1;
 
-    unsigned cur   = 0;
+    uint32_t cur   = 0;
     while( cur < _RA_NUM_REG ) {
       if( hazard[cur] == _H_CLEAR ) {
         hazard[cur] = _H_SET;
@@ -87,12 +87,12 @@ public:
   }
 
   /// RegAlloc: retrieve a two operand register set
-  bool getRegs( unsigned& rs1, unsigned& rs2 ) {
-    unsigned t_rs1 = _RA_NUM_REG + 1;
-    unsigned t_rs2 = _RA_NUM_REG + 1;
+  bool getRegs( uint32_t& rs1, uint32_t& rs2 ) {
+    uint32_t t_rs1 = _RA_NUM_REG + 1;
+    uint32_t t_rs2 = _RA_NUM_REG + 1;
 
     // find two register slots
-    unsigned cur   = 0;
+    uint32_t cur   = 0;
     while( cur < _RA_NUM_REG ) {
       if( hazard[cur] == _H_CLEAR ) {
         hazard[cur] = _H_SET;
@@ -126,14 +126,14 @@ public:
   }
 
   /// RegAlloc: retrieve a three operand register set
-  bool getRegs( unsigned& rd, unsigned& rs1, unsigned& rs2 ) {
-    unsigned t_rd  = _RA_NUM_REG + 1;
-    unsigned t_rs1 = _RA_NUM_REG + 1;
-    unsigned t_rs2 = _RA_NUM_REG + 1;
+  bool getRegs( uint32_t& rd, uint32_t& rs1, uint32_t& rs2 ) {
+    uint32_t t_rd  = _RA_NUM_REG + 1;
+    uint32_t t_rs1 = _RA_NUM_REG + 1;
+    uint32_t t_rs2 = _RA_NUM_REG + 1;
 
     // find three register slots
     // -- Rd
-    unsigned cur   = 0;
+    uint32_t cur   = 0;
     while( cur < _RA_NUM_REG ) {
       if( hazard[cur] == _H_CLEAR ) {
         hazard[cur] = _H_SET;
@@ -181,7 +181,7 @@ public:
   }
 
   /// RegAlloc: clear the hazard on the target register
-  void clearReg( unsigned reg ) {
+  void clearReg( uint32_t reg ) {
     if( reg < _RA_NUM_REG ) {
       hazard[reg] = _H_CLEAR;
       regs[reg]   = 0x00ull;
@@ -189,14 +189,14 @@ public:
   }
 
   /// RegAlloc: set the target value
-  void SetX( unsigned Idx, uint64_t Val ) {
+  void SetX( uint32_t Idx, uint64_t Val ) {
     if( Idx < _RA_NUM_REG - 1 ) {
       regs[Idx] = Val;
     }
   }
 
   /// RegAlloc: get the target value
-  uint64_t GetX( unsigned Idx ) {
+  uint64_t GetX( uint32_t Idx ) {
     if( Idx < _RA_NUM_REG - 1 ) {
       return regs[Idx];
     }
@@ -204,7 +204,7 @@ public:
   }
 
   /// RegAlloc: get the address for the target reigster
-  uint64_t* getRegAddr( unsigned Idx ) {
+  uint64_t* getRegAddr( uint32_t Idx ) {
     if( Idx < _RA_NUM_REG - 1 ) {
       return ( &regs[Idx] );
     }
@@ -212,7 +212,7 @@ public:
   }
 
   /// RegAlloc: get the hazard state
-  uint8_t getState( unsigned Idx ) {
+  uint8_t getState( uint32_t Idx ) {
     if( Idx < _RA_NUM_REG - 1 ) {
       return hazard[Idx];
     }
@@ -220,7 +220,7 @@ public:
   }
 
   /// RegAlloc: set the target register as dirty
-  void setDirty( unsigned Idx ) {
+  void setDirty( uint32_t Idx ) {
     if( Idx < _RA_NUM_REG - 1 ) {
       hazard[Idx] = _H_DIRTY;
     }
@@ -509,7 +509,7 @@ private:
 
 #define LOADQ_ZEV 0
 #define LOADQ_RS2 1
-  std::vector<std::pair<Forza::zopEvent*, unsigned>> LoadQ;  ///< RZALSCoProc: Outstanding load queue
+  std::vector<std::pair<Forza::zopEvent*, uint32_t>> LoadQ;  ///< RZALSCoProc: Outstanding load queue
 
   std::function<void( const MemReq& )> MarkLoadCompleteFunc;  ///< RZALSCoProc: Hazard function
 
@@ -1017,7 +1017,7 @@ private:
 #define AMOQ_ZEV 0
 #define AMOQ_RS1 1
 #define AMOQ_RS2 2
-  std::vector<std::tuple<Forza::zopEvent*, unsigned, unsigned>> AMOQ;  ///< RZAAMOCoProc: Outstanding load queue
+  std::vector<std::tuple<Forza::zopEvent*, uint32_t, uint32_t>> AMOQ;  ///< RZAAMOCoProc: Outstanding load queue
 
   std::function<void( const MemReq& )> MarkLoadCompleteFunc;  ///< RZAAMOCoProc: Hazard function
 

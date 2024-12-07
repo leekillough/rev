@@ -749,7 +749,7 @@ uint64_t RevMem::DeallocMem( uint64_t BaseAddr, uint64_t Size ) {
       else {
         output->verbose( CALL_INFO, 10, 99, "  => entire deallocation\n" );
         // Delete it from MemSegs
-        MemSegs.erase( MemSegs.begin() + i );
+        MemSegs.erase( MemSegs.begin() + ptrdiff_t( i ) );
         ret = 0;
         break;
       }
