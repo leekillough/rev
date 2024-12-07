@@ -27,19 +27,19 @@ namespace SST::RevCPU {
 
 // Register Decoding functions
 // clang-format off
-constexpr uint32_t DECODE_RD        ( uint32_t Inst ) { return Inst >>  7 &                0b11111; }
-constexpr uint32_t DECODE_RS1       ( uint32_t Inst ) { return Inst >> 15 &                0b11111; }
-constexpr uint32_t DECODE_RS2       ( uint32_t Inst ) { return Inst >> 20 &                0b11111; }
-constexpr uint32_t DECODE_RS3       ( uint32_t Inst ) { return Inst >> 27 &                0b11111; }
-constexpr uint32_t DECODE_IMM12     ( uint32_t Inst ) { return Inst >> 20 &         0b111111111111; }
-constexpr uint32_t DECODE_IMM20     ( uint32_t Inst ) { return Inst >> 12 & 0b11111111111111111111; }
-constexpr uint32_t DECODE_LOWER_CRS2( uint32_t Inst ) { return Inst >>  2 &                0b11111; }
-constexpr uint32_t DECODE_FUNCT7    ( uint32_t Inst ) { return Inst >> 25 &              0b1111111; }
-constexpr uint32_t DECODE_FUNCT2    ( uint32_t Inst ) { return Inst >> 25 &                   0b11; }
-constexpr uint32_t DECODE_FUNCT3    ( uint32_t Inst ) { return Inst >> 12 &                  0b111; }
-constexpr uint32_t DECODE_RL        ( uint32_t Inst ) { return Inst >> 25 &                    0b1; }
-constexpr uint32_t DECODE_AQ        ( uint32_t Inst ) { return Inst >> 26 &                    0b1; }
-constexpr FRMode   DECODE_RM        ( uint32_t Inst ) { return FRMode{ Inst >> 12 &          0b111 }; }
+constexpr auto DECODE_RD        ( uint32_t Inst ) { return BitExtract< 7,  5>( Inst ); }
+constexpr auto DECODE_RS1       ( uint32_t Inst ) { return BitExtract<15,  5>( Inst ); }
+constexpr auto DECODE_RS2       ( uint32_t Inst ) { return BitExtract<20,  5>( Inst ); }
+constexpr auto DECODE_RS3       ( uint32_t Inst ) { return BitExtract<27,  5>( Inst ); }
+constexpr auto DECODE_IMM12     ( uint32_t Inst ) { return BitExtract<20, 12>( Inst ); }
+constexpr auto DECODE_IMM20     ( uint32_t Inst ) { return BitExtract<12, 20>( Inst ); }
+constexpr auto DECODE_LOWER_CRS2( uint32_t Inst ) { return BitExtract< 2,  5>( Inst ); }
+constexpr auto DECODE_FUNCT7    ( uint32_t Inst ) { return BitExtract<25,  7>( Inst ); }
+constexpr auto DECODE_FUNCT2    ( uint32_t Inst ) { return BitExtract<25,  2>( Inst ); }
+constexpr auto DECODE_FUNCT3    ( uint32_t Inst ) { return BitExtract<12,  3>( Inst ); }
+constexpr auto DECODE_RL        ( uint32_t Inst ) { return BitExtract<25,  1>( Inst ); }
+constexpr auto DECODE_AQ        ( uint32_t Inst ) { return BitExtract<26,  1>( Inst ); }
+constexpr auto DECODE_RM        ( uint32_t Inst ) { return FRMode{ BitExtract<12, 3>( Inst ) }; }
 
 // clang-format on
 
@@ -111,7 +111,9 @@ public:
 };  // RevInst
 
 /// CRegIdx: Maps the compressed index to normal index
-#define CRegIdx( x ) ( ( x ) + 8 )
+constexpr auto CRegIdx( uint32_t x ) {
+  return x + 8;
+}
 
 class RevFeature;
 class RevRegFile;
