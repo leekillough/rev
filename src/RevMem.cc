@@ -775,11 +775,7 @@ void RevMem::InitHeap( const uint64_t& EndOfStaticData ) {
   if( EndOfStaticData == 0 ) {
     // Program didn't contain .text, .data, or .bss sections
     output->fatal(
-      CALL_INFO,
-      7,
-      "The loader was unable"
-      "to find a .text section in your executable. This is a bug."
-      "EndOfStaticData = 0."
+      CALL_INFO, 7, "The loader was unable to find a .text section in your executable. This is a bug. EndOfStaticData = 0."
     );
   } else {
     // Mark heap as free
