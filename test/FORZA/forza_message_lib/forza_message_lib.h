@@ -8,6 +8,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
 
 #define assert( x )               \
   do                              \
@@ -428,7 +429,7 @@ uint32_t forza_message_receive( uint64_t mb_id, uint64_t* pkt, size_t pkt_size )
 #if DEBUG
   char msg[55] = "\ndebug: forza_message_receive: full zqmstat\n";
   rev_write( STDOUT_FILENO, msg, sizeof( msg ) );
-  forza_debug_print( zqmstat, 0UL, 0UL );
+  forza_debug_print( zqmstat, 0UL, 0x89abUL );
 #endif
 
   // Check Error
@@ -450,12 +451,12 @@ uint32_t forza_message_receive( uint64_t mb_id, uint64_t* pkt, size_t pkt_size )
   }
 
   // Read control word and check op
-  uint64_t ctrl_word = forza_receive_word( mb_id );
-  uint64_t msg_op    = ( ctrl_word & MSG_OP_MASK ) >> 40;
+  uint64_t* msgmem_ptr = (uint64_t*) forza_receive_word( mb_id, false );
+  uint64_t  ctrl_word  = *msgmem_ptr;
+  uint64_t  msg_op     = ( ctrl_word & MSG_OP_MASK ) >> 40;
   if( msg_op == DIRECT_OP ) {
     // Read all 7 data words for now (ignore packet size)
-    for( uint32_t i = 0; i < 7; i++ )
-      pkt[i] = forza_receive_word( mb_id );
+    memcpy( pkt, ( msgmem_ptr + 1 ), 7 * sizeof( uint64_t ) );
 
 // Debug 0x3333 receive: msg_op and ZQM status
 #if DEBUG
@@ -465,6 +466,8 @@ uint32_t forza_message_receive( uint64_t mb_id, uint64_t* pkt, size_t pkt_size )
     }
     //forza_debug_print( 0x3333, msg_op, zqmstat );
 #endif
+    // Advance the message pointer
+    forza_receive_word( mb_id, true );
     return SUCCESS;
   } else if( msg_op == INDIRECT_OP ) {
     // Debug 0x3333 receive: msg_op and ZQM status
@@ -475,17 +478,14 @@ uint32_t forza_message_receive( uint64_t mb_id, uint64_t* pkt, size_t pkt_size )
     forza_debug_print( 0x3333, msg_op, zqmstat );
     assert( 0 );  // INDIRECT msg op not yet supported
   } else if( msg_op == DONE_OP ) {
-#if 1  // Unused for now, but may want it later for message counts
-    // Read all 7 data words and dump them
-    uint64_t tmp;
-    for( uint32_t i = 0; i < 7; i++ )
-      tmp = forza_receive_word( mb_id );
-#endif
 #if DEBUG
     char msg[40] = "\ndebug: forza_message_receive: DONE_OP\n";
     rev_write( STDOUT_FILENO, msg, sizeof( msg ) );
     //forza_debug_print( 0x3333, msg_op, zqmstat );
 #endif
+    forza_debug_print( 0x3456, msg_op, zqmstat );
+    // Advance the message pointer
+    forza_receive_word( mb_id, true );
     return DONE_MSG;
   } else {
     {

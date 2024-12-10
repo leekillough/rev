@@ -279,7 +279,7 @@ bool RZALSCoProc::handleMZOP( Forza::zopEvent* zev, bool& flag ) {
 
   // this is the actual number of data flits
   // these variables are only used for the DMA store operations
-  unsigned RealFlitLen = (unsigned) ( zev->getLength() - Forza::Z_NUM_HEADER_FLITS );
+  unsigned RealFlitLen = (unsigned) ( zev->getLength() );
   uint8_t* Buf         = nullptr;
   unsigned i, j, cur = 0;
 
@@ -489,6 +489,8 @@ bool RZALSCoProc::handleMZOP( Forza::zopEvent* zev, bool& flag ) {
         cur++;
       }
     }
+
+    output->verbose( CALL_INFO, 5, 0, "SDMA payload size=%u\n", RealFlitLen * 8 );
 
     // write buffer
     Mem->WriteMem( Forza::Z_MZOP_PIPE_HART, Addr, RealFlitLen * 8, Buf );

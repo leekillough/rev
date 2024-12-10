@@ -3909,7 +3909,7 @@ EcallStatus RevCore::ECALL_forza_send_word() {
       static_cast<uint8_t>( ring_ev->getOp() )
     );
     zoneRing->send( ring_ev, next_dest );
-    output->verbose( CALL_INFO, 5, 0, "SENDING RING MESSAGE, next addr = %" PRIu64 "\n", next_dest );
+    //output->verbose( CALL_INFO, 5, 0, "SENDING RING MESSAGE, next addr = %" PRIu64 "\n", next_dest );
   } else {
     output->verbose( CALL_INFO, 5, 0, "[ERROR] NO RING NETWORK\n" );
     delete ring_ev;
@@ -4401,6 +4401,7 @@ EcallStatus RevCore::ECALL_forza_debug_print() {
     b,
     c
   );
+  output->flush();
   return EcallStatus::SUCCESS;
 }
 

@@ -725,8 +725,8 @@ public:
   /// zopEvent: get the packet type
   zopMsgT getType() { return Type; }
 
-  /// zopEvent: get the payload length - does NOT include the two header words
-  uint8_t getLength() { return Length; }
+  /// zopEvent: get the payload length
+  uint8_t getLength() { return Packet.size() - Z_NUM_HEADER_FLITS; }
 
   /// zopEvent: get which flit this is in the transaction
   uint8_t getSeqNum() { return SeqNum; }

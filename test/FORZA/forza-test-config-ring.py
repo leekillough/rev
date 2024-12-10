@@ -299,7 +299,7 @@ class FORZA:
                  inputBufSize="2048B", outputBufSize="2048B",
                  linkBW="100GB/s", nocFlitSize="88B",
                  ringFlitSize="16B", linkLatency="100ns",
-                 xbarBW="800GB/s", verbose="7"):
+                 xbarBW="800GB/s", verbose="5"):
         print("Initializing FORZA")
         self.name = name
         self.zones = zones
@@ -580,7 +580,7 @@ class FORZA:
                 # -- create the ZQM
                 zqm = sst.Component("zqm_"+str(i)+"_"+str(j), "forzazqm.ZQM")
                 zqm.addParams({
-                  "verbose": self.verbose,
+                  "verbose": 9,  # self.verbose,
                   "clockFreq": self.clock,
                   "precinctId": i,
                   "zoneId": j,
@@ -627,7 +627,7 @@ class FORZA:
                 # -- create the ZEN
                 zen = sst.Component("zen_"+str(i)+"_"+str(j), "forzazen.ZEN")
                 zen.addParams({
-                  "verbose": 7,  # self.verbose,
+                  "verbose": 9,  # self.verbose,
                   "clockFreq": self.clock,
                   "precinctId": i,
                   "zoneId": j,
