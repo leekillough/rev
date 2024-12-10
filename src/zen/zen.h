@@ -190,7 +190,7 @@ class ZEN : public SST::Component{
      * msg: zen msg to be sent
      * is_msg: true if sending a message, false is to rza/retry buffer memory
      */
-    void sendMsgZop(OutgoingMessage *msg, bool is_msg, uint16_t zop_msg_id);
+    void sendMsgZop( OutgoingMessage* msg, bool is_msg );
 
 
     /// ZEN: Send a NACK message back to the to target device

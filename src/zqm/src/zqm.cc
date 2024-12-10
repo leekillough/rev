@@ -41,8 +41,8 @@ ZQM::ZQM(ComponentId_t id, Params& params)
   msgQueueDepth         = params.find<uint32_t>( "msgQueueDepth", 512 );
   memStartAddr          = params.find<uint64_t>( "memStartAddr", 0x400 );
   msgsPerMbox           = params.find<uint32_t>( "msgsPerMbox", 2 );
-  cyclesPerRecycle      = params.find<uint32_t>( "cyclesPerRecycle", 100 );
-  recyclesToNack        = params.find<uint32_t>( "recyclesToNack", 16 );
+  cyclesPerRecycle      = params.find<uint32_t>( "cyclesPerRecycle", 128 );
+  recyclesToNack        = params.find<uint32_t>( "recyclesToNack", 64 );
 
   // Validate parameters
   if ( ( memStartAddr % 0x400 ) != 0 ) {
@@ -92,6 +92,11 @@ ZQM::ZQM(ComponentId_t id, Params& params)
       j.msgs_per_mbox = msgsPerMbox;
       j.mem_base_addr = base_addr;
       base_addr += base_addr_increment;
+      // TODO: NEED TO SET SIZE OF mbox_buff_state.buff_state; also test more retry times
+      for (auto &k : j.mbox_buff_state) {
+        //k.buff_state.resize( msgsPerMbox );
+        k.buff_state.resize( 1 );
+      }
     }
   }
 
@@ -281,7 +286,7 @@ void ZQM::selectInMboxQueue()
   uint8_t winning_mbox = UINT8_MAX;
   for (uint8_t i = 0; i < NUM_MBOXES; i++) {
     if (IncomingMsgQueues[process_incoming_msg_queue].head_ready) {
-      winning_mbox = i;
+      winning_mbox = process_incoming_msg_queue;
       updateProcessIncomingMsgQueue();
       break;
     }
@@ -298,7 +303,6 @@ void ZQM::selectInMboxQueue()
   in_mbox.mbox_queue.pop();
   in_mbox.head_ready = false;
   in_mbox.head_check_cycle_cntr = 0;
-
   // Per hart csr stuff
   if (msg->getMbxID() != winning_mbox) {
     output.fatal( CALL_INFO, -1, "ZQM: mboxId=%" PRIu8 "; does not match winner=%" PRIu8 "\n",
@@ -329,14 +333,7 @@ void ZQM::updateInMboxQueue()
     return;
 
   auto msg        = in_mbox.mbox_queue.front().first;
-  // Have our message, then we have to look at our next steps:
-  /*
-     * 1 - check to see if it can bumped to memory
-     *   - if so, send mem zop, update status, etc
-     *   - else, update head_check_cycle_cntr - recycle or nack if necessary
-     **/
-
-  auto  dest_mbox = msg->getMbxID();
+  auto dest_mbox = msg->getMbxID();
   auto& mbox      = PerHartCSRs[msg->getDestZCID()][msg->getDestHart()].mbox_buff_state[dest_mbox];
   if (mbox.getCurWrState() == msgBuffState::IDLE) {
     in_mbox.head_ready = true;
@@ -346,6 +343,7 @@ void ZQM::updateInMboxQueue()
     if (in_mbox.head_check_cycle_cntr == cyclesPerRecycle) {
       if (in_mbox.mbox_queue.front().second == recyclesToNack) {
         // TODO: NACK THIS MESSAGE
+        output.flush();
         output.fatal( CALL_INFO, -1, "ZQM: NACK not yet implemented\n" );
       } else {
         // Recycle this message
@@ -381,6 +379,7 @@ void ZQM::handleIncomingZOP(SST::Event *event)
                      getName().c_str(),
                      ev->getID());
     }
+  output.flush();
 }
 
 #if 0
@@ -719,6 +718,7 @@ void ZQM::processMessagingMsgs()
         if ( msg_zop_q.empty() )
             break;
     }
+  output.flush();
 }
 
 void ZQM::sendZopAck(SST::Forza::zopEvent *event, zopMsgT msg_type, zopOpc msg_opc)

@@ -300,13 +300,12 @@ uint32_t ZEN::getRetrySeqNum()
   return UINT32_MAX;
 } 
 
-void ZEN::sendMsgZop(OutgoingMessage* msg, bool is_msg, uint16_t zop_msg_id)
+void ZEN::sendMsgZop( OutgoingMessage* msg, bool is_msg )
 {
   auto *zop = new SST::Forza::zopEvent();
   // Set packet header info
   zop->setType(SST::Forza::zopMsgT::Z_MSG);
   zop->setOpc(SST::Forza::zopOpc::Z_MSG_SENDP);
-  zop->setID(zop_msg_id);
 
   // Set source to be the sending hart
   zop->setSrcHart(msg->src_hart);
@@ -342,9 +341,11 @@ void ZEN::sendMsgZop(OutgoingMessage* msg, bool is_msg, uint16_t zop_msg_id)
   std::vector<uint64_t> payload;
   for (uint16_t i = 0; i < msg->msg.size(); i++){
     payload.push_back(msg->msg[i]);
+    output.verbose( CALL_INFO, 5, 0, "Packet payload[%u] = 0x%" PRIx64 "\n", i, msg->msg[i] );
   }
   zop->setPayload(payload);
   zop->encodeEvent();
+  output.flush();
   output.verbose(CALL_INFO, 5, 0, "ZEN[%s]: Send msg from %s to %s\n", getName().c_str(),
                  zop->getSrcString().c_str(), zop->getDestString().c_str());
   if ( (zop->getDestPrec() == Precinct ) && ( zop->getDestPCID() == Zone ) )
@@ -372,14 +373,14 @@ void ZEN::execMsgPipe2()
     // local zop -- get an id
     uint16_t zop_msg_id = zoneMsgID->getMsgId();
     if (zop_msg_id != Z_MAX_MSG_IDS) {
-      sendMsgZop(MsgPipeline[2], true, zop_msg_id);
+      sendMsgZop( MsgPipeline[2], true );
     } else {
       output.verbose(CALL_INFO, 7, 0, "[WARNING] ZEN[%s]; out of zone_msg_ids\n", getName().c_str());
       return;
     }
   } else {
     // put onto m_prec_iface;
-    sendMsgZop(MsgPipeline[2], true, 0);
+    sendMsgZop( MsgPipeline[2], true );
     //output.fatal( CALL_INFO, -1, "ZEN[%s]; no send of msg to precinct nic implemented\n", getName().c_str() );
   }
 
@@ -474,6 +475,8 @@ void ZEN::execMsgPipe0()
 
   // Retry entry available; update that in the msg
   MsgPipeline[0]->msg_id = msg_id;
+  output.verbose( CALL_INFO, 5, 0, "ZEN insert msg_id=%" PRIu32 "\n", msg_id );
+  output.flush();
   // TODO: Fill in mem addr
 
   // Move down the pipe
