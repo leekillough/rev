@@ -113,7 +113,7 @@ public:
     { "testIters",       "Number of PAN test messages to send",          "255" },
     { "trcOp",           "Tracer instruction trigger",                   "slli" },
     { "trcLimit",        "Max trace lines per core (0 no limit)",        "0" },
-    { "trcStartCycle",   "Starting tracer cycle (disables trcOp)",       "0" },
+    { "trcStartCycle",   "Starting tracer cycle to use with verbose=5",  "0" },
     { "splash",          "Display the splash logo",                      "0" },
     { "independentCoprocClock",  "Enables each coprocessor to register its own clock handler", "0" },
     )
@@ -300,12 +300,12 @@ private:
   std::list<std::pair<uint8_t, int>>     TrackTags{};  ///< RevCPU: tracks the outgoing messages; pair<Tag, Dest>
   std::vector<std::tuple<uint8_t, uint64_t, uint32_t>>
     TrackGets{};  ///< RevCPU: tracks the outstanding get messages; tuple<Tag, Addr, Sz>
-  std::vector<std::tuple<uint8_t, uint32_t, uint32_t, int, uint64_t>> ReadQueue{};  ///< RevCPU: outgoing memory read queue
   ///<         - Tag
   ///<         - Size
   ///<         - Cost
   ///<         - Src
   ///<         - Addr
+  std::vector<std::tuple<uint8_t, uint32_t, uint32_t, int, uint64_t>> ReadQueue{};  ///< RevCPU: outgoing memory read queue
 
   //-------------------------------------------------------
   // -- STATISTICS
