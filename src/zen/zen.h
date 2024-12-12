@@ -36,6 +36,10 @@
 
 #define _ZEN_DEFAULT_ZIP_CREDITS_   100
 
+constexpr uint32_t ZenSeqNumMgrDepth = 8192;
+static constexpr uint64_t BytesPerActorMsg = 64;
+
+
 namespace SST::Forza{
 
   class ZenPerHartRegs {
@@ -125,7 +129,7 @@ class ZEN : public SST::Component{
       { "enablePrecinctNIC", "[FORZA] Enable Precinct NIC",                  "0"},
       { "zenQSizeLimit",     "[FORZA] ZEN Queue Size Limit",                 "100000"},
       { "processPerCycle",   "[FORZA] Messages to process per cycle",        "100000"},
-      { "seqMgrDepth",       "[FORZA] Number of entries in retry buffer",    "8192"},
+      { "memStartAddr",      "[FORZA] Start address for message buffers",    "0x1000" }, // expected to be 0x400 aligned
     )
 
     // describe the ports
@@ -183,6 +187,7 @@ class ZEN : public SST::Component{
     void updateMsgPipe0();
 
     void handleMsgAck(zopEvent *ack);
+    void sendMsgToMemory( OutgoingMessage* out_msg );
 
     void ExecSpawns();
 
@@ -210,18 +215,6 @@ class ZEN : public SST::Component{
 
     void sendACK(SST::Forza::zopEvent *ev, bool to_zone_noc);
 
-    /// ZEN: send a DMA store to the zone's RZA
-    // tdysart, 27-june-24: currently unused - zen isn't sending anything to memory
-#if 0 
-    void sendSdmaToRza(ZenMailboxMetadata *mbox_info, SST::Forza::zopEvent *ev,
-                       std::vector<uint64_t> store_payload, uint16_t msg_id,
-                       uint64_t wr_addr);
-
-    void sendSdmaToRzaAsSequence(ZenMailboxMetadata *mbox_info, SST::Forza::zopEvent *ev,
-                                 std::vector<uint64_t> store_payload, 
-                                 std::vector<uint16_t> msg_ids, uint64_t wr_addr);
-#endif
-
     /// ZEN: handle incoming RZA messages
     // tdysart, 27-june-24: currently unused - zen isn't using rza yet
     //void handleIncomingRZAMsg();
@@ -235,13 +228,6 @@ class ZEN : public SST::Component{
     /// ZEN: helper functions for zop types entering from zone noc
     void helper_handleMsgZop(SST::Forza::zopEvent *ev);
 
-    /// ZEN: retrieve the read ACS
-    //uint64_t  getReadACS(uint64_t acs_pair) { return (acs_pair & Z_ACS_READ) >> 32; }
-
-    /// ZEN: retrieve the write ACS
-    //uint64_t  getWriteACS(uint64_t acs_pair) { return acs_pair & Z_ACS_WRITE; }
-
-
     /// ZEN: preps to send the RZA a STORE
     // tdysart, 27-june-24: currently unused - zen shouldn't receive 
     // setup packets right now    
@@ -250,16 +236,16 @@ class ZEN : public SST::Component{
     /// ZEN: determine if zop dest precinct and zone match me
     bool isDestLocal(SST::Forza::zopEvent *ev)
     {
-      if ( (ev->getDestPCID() == Zone) &&
-           (ev->getDestPrec() == Precinct) )
+      if ( (ev->getDestPCID() == ZoneId) &&
+           (ev->getDestPrec() == PrecinctId) )
           return true;
       return false;
     }
 
     bool isSrcLocal(SST::Forza::zopEvent *ev)
     {
-      if ( (ev->getSrcPCID() == Zone) &&
-           (ev->getSrcPrec() == Precinct) )
+      if ( (ev->getSrcPCID() == ZoneId) &&
+           (ev->getSrcPrec() == PrecinctId) )
           return true;
       return false;
     }
@@ -269,24 +255,24 @@ class ZEN : public SST::Component{
       //SST::Forza::zopAPI *iface = isSrcLocal(ev) ? zone_nic : m_prec_iface;
       ev->setSrcHart(0);
       ev->setSrcZCID(SST::Forza::zopCompID::Z_ZEN);
-      ev->setSrcPCID(Zone);
-      ev->setSrcPrec(Precinct);
+      ev->setSrcPCID(ZoneId);
+      ev->setSrcPrec(PrecinctId);
     }
 
     void setLocalRzaAsZopDest(SST::Forza::zopEvent *ev)
     {
       ev->setDestHart(Z_MZOP_PIPE_HART);
-      ev->setDestZCID(SST::Forza::zopCompID::Z_RZA);
-      ev->setDestPCID(Zone);
-      ev->setDestPrec(Precinct);
+      ev->setDestZCID(SST::Forza::zopCompID::Z_RZA1);
+      ev->setDestPCID(ZoneId);
+      ev->setDestPrec(PrecinctId);
     }
 
     void setLocalZqmAsZopDest(SST::Forza::zopEvent *ev)
     {
       ev->setDestHart(0);
       ev->setDestZCID(SST::Forza::zopCompID::Z_ZQM);
-      ev->setDestPCID(Zone);
-      ev->setDestPrec(Precinct);
+      ev->setDestPCID(ZoneId);
+      ev->setDestPrec(PrecinctId);
     }
 
     void setDestFromSrcInfo(SST::Forza::zopEvent *dest_packet, SST::Forza::zopEvent *src_packet)
@@ -305,34 +291,39 @@ class ZEN : public SST::Component{
         dest_packet->setDestPrec(src_packet->getDestPrec());
     }
 
+    uint64_t getRetryBuffAddr( uint32_t idx ) {
+      uint64_t incr = ( idx * BytesPerActorMsg );
+      return ( memStartAddr + incr );
+    }
+
     // private data members
     SST::Output output;                    ///< ZEN: SST output handler
-    SST::Forza::zopAPI* zone_nic{};        ///< ZEN: ZOP Network interfaces for zone network
+    SST::Forza::zopAPI* zNic{};        ///< ZEN: ZOP Network interfaces for zone network
     SST::Forza::zopMsgID *zoneMsgID{};     ///< ZEN: manually allocated message IDs
-    SST::Forza::zopAPI* m_prec_iface{};    ///< ZEN: ZOP Network interfaces for precinct network
+    SST::Forza::zopAPI* precNic{};    ///< ZEN: ZOP Network interfaces for precinct network
     SST::Forza::RingNetAPI* zone_ring{};   ///< ZEN: zone CSR network
 
-
-    // ----- BEGIN SST PARAMETERS - some of these should be camel case to match other code
-    unsigned Precinct;              ///< ZEN: Precinct ID
-    unsigned Zone;                  ///< ZEN: Zone ID
-    unsigned m_num_harts;           ///< ZEN: number of harts
-    unsigned m_num_zaps;            ///< ZEN: number of zaps
-    unsigned m_num_zones;           ///< ZEN: number of zones
-    unsigned m_num_precincts;       ///< ZEN: number of precincts
+    // ----- BEGIN SST PARAMETERS
+    unsigned PrecinctId;              ///< ZEN: Precinct ID
+    unsigned ZoneId;                  ///< ZEN: Zone ID
+    unsigned numHarts;              ///< ZEN: number of harts
+    unsigned numZaps;               ///< ZEN: number of zaps
+    unsigned numZones;              ///< ZEN: number of zones
+    unsigned numPrecincts;          ///< ZEN: number of precincts
     bool dma_enabled;               ///< ZEN: enable DMA operations
     uint64_t zen_queue_size_limit;  ///< ZEN: zen queue size limit
     uint64_t process_per_cycle;     ///< ZEN: messages to process per cycle
-    uint32_t SeqNumMgrDepth;        ///< ZEN: sequence number manager depth
+    uint64_t memStartAddr;          ///< ZEN: start addr for retry queue
     // ----- END SST PARAMETERS
 
     // Internal data structures
     std::vector<std::vector<ZenPerHartRegs>> PerHartCSRs;
-    std::vector<bool> SeqNumMgrList;
+    std::bitset<ZenSeqNumMgrDepth> SeqNumMgrList{false};
     std::map<uint32_t, OutgoingMessage*> RetryMgrMap;
     std::queue<OutgoingMessage*> OutMsgQueue;
     std::array<OutgoingMessage*, 3> MsgPipeline{};
     std::queue<zopEvent*> MsgAckQueue;
+    std::queue<SST::Forza::zopEvent*> RzaRespQueue;
     std::queue<OutgoingSpawn*> OutSpawnQueue;
 
     /*
@@ -361,23 +352,6 @@ class ZEN : public SST::Component{
       Add to map: handleIncomingZOP() - destination is diff precinct
     */
     //std::map<uint64_t, std::vector<ZENEntry*> > precinct_queue;
-
-
-    /*
-      Add to vector: handleIncomingZOP() - RZA response
-    */
-    //std::queue<SST::Forza::zopEvent*> mem_acks; 
-
-    /*
-      Add to queue: handleIncomingZOP() - ZEN setup message
-    */
-    //std::queue<SST::Forza::zopEvent*> setup_reqs;
-
-    /*
-      Add to vector: handleIncomingZOP() - Credit message
-      Add to vector: handleIncomingPrecZOP() - Credit message
-    */
-    //std::vector<SST::Forza::zopEvent*> zap_credits;
 
 
     //std::map<uint8_t, ZENEntry*> outstanding_mem_req;

@@ -39,9 +39,9 @@ ZQM::ZQM(ComponentId_t id, Params& params)
   ZoneId                = params.find<unsigned>( "zoneId", 0 );
   processPerCycle       = params.find<unsigned>( "processPerCycle", 10 );
   msgQueueDepth         = params.find<uint32_t>( "msgQueueDepth", 512 );
-  memStartAddr          = params.find<uint64_t>( "memStartAddr", 0x400 );
+  memStartAddr          = params.find<uint64_t>( "memStartAddr", 0x100000UL );
   msgsPerMbox           = params.find<uint32_t>( "msgsPerMbox", 2 );
-  cyclesPerRecycle      = params.find<uint32_t>( "cyclesPerRecycle", 128 );
+  cyclesPerRecycle      = params.find<uint32_t>( "cyclesPerRecycle", 1024 );
   recyclesToNack        = params.find<uint32_t>( "recyclesToNack", 64 );
 
   // Validate parameters
@@ -92,10 +92,8 @@ ZQM::ZQM(ComponentId_t id, Params& params)
       j.msgs_per_mbox = msgsPerMbox;
       j.mem_base_addr = base_addr;
       base_addr += base_addr_increment;
-      // TODO: NEED TO SET SIZE OF mbox_buff_state.buff_state; also test more retry times
       for (auto &k : j.mbox_buff_state) {
-        //k.buff_state.resize( msgsPerMbox );
-        k.buff_state.resize( 1 );
+        k.buff_state.resize( msgsPerMbox );
       }
     }
   }
@@ -257,6 +255,8 @@ void ZQM::handleRingDq( SST::Forza::ringEvent* ev ) {
   if( ev->getOp() == ringMsgT::R_RMW ) {
     ret_data                           = 0;
     mbox.buff_state[mbox.cur_rd_entry] = msgBuffState::IDLE;
+    //output.verbose( CALL_INFO, 5, 0, "ZQM Deque[%u][%u].mbox[%u].buff[%u]\n",
+    //  ev->getSrcZap(), ev->getHart(), ( ev->getCSR() & R_MASK_ZQMDQMBOX ), mbox.cur_rd_entry );
     mbox.updateRdEntry();
   }
 
@@ -352,6 +352,8 @@ void ZQM::updateInMboxQueue()
         qentry.second++;
         in_mbox.mbox_queue.push( qentry );
         in_mbox.head_check_cycle_cntr = 0;
+        //output.verbose( CALL_INFO, 5, 0, "TJD: ZQM: recycle num=%" PRIu16 "; msg %s to %s, ID=%" PRIu16 "\n",
+         // qentry.second, msg->getSrcString().c_str(), msg->getDestString().c_str(), msg->getID() );
       }
     } // no else needed; just had to increment the counter
   }
@@ -609,7 +611,7 @@ void ZQM::processRzaMsgs() {
   auto resp = rza_response_q.front();
   rza_response_q.pop();
 
-  //output.verbose( CALL_INFO, 5, 0, "[ZQM] %s: Received RZA Ack from %s\n", getName().c_str(), resp->getSrcString().c_str() );
+  output.verbose( CALL_INFO, 5, 0, "[ZQM] %s: Received RZA Ack from %s\n", getName().c_str(), resp->getSrcString().c_str() );
 
   if( resp->getSrcZCID() != RevCPU::safe_static_cast<uint8_t>( zopCompID::Z_RZA1 ) ) {
     output.fatal( CALL_INFO, -1, "[ZQM] RZA response not from RZA1\n" );

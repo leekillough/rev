@@ -112,10 +112,10 @@ public:
     { "zoneId",           "[FORZA] The zone ID of the local device",          "0" },
     { "processPerCycle",  "[FORZA] Messages to process per cycle",            "10" },
     { "msgQueueDepth",    "[FORZA] Depth of the incoming message queue",      "512" },
-    { "memStartAddr",     "[FORZA] Start address for message buffers",        "0x400" }, // expected to be 0x400 aligned
+    { "memStartAddr",     "[FORZA] Start address for message buffers",        "0x100000" }, // expected to be 0x400 aligned
     { "msgsPerMbox",      "[FORZA] Number of messages per mailbox per Hart",  "2" },
-    { "cyclesPerRecycle", "[FORZA] Cycles before recycling incoming msg",     "100"}, // TODO: check w/RTL folks
-    { "recyclesToNack",   "[FORZA] Recycles before NACKing incoming msg",     "16"} // TODO: check w/RTL folks
+    { "cyclesPerRecycle", "[FORZA] Cycles before recycling incoming msg",     "1024"}, // TODO: check w/RTL folks
+    { "recyclesToNack",   "[FORZA] Recycles before NACKing incoming msg",     "64"} // TODO: check w/RTL folks
     )
 
     // describe the ports
