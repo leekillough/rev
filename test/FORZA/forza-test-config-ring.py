@@ -632,7 +632,7 @@ class FORZA:
                   "precinctId": i,
                   "zoneId": j,
                   "numHarts": self.hartsPerZap,
-                  "numZap": self.zapsPerZone,
+                  "numZaps": self.zapsPerZone,
                   "numZones": self.zones,
                   "numPrecincts": self.precincts,
                   "enableDMA": 0,
