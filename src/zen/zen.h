@@ -34,18 +34,14 @@
 #include <bitset>
 #include <queue>
 
-#define _ZEN_DEFAULT_ZIP_CREDITS_   100
-
-constexpr uint32_t ZenSeqNumMgrDepth = 8192;
+constexpr uint32_t ZenSeqNumMgrDepth = 8192;  // if we change this depth, need to update shift and/or mask
 static constexpr uint64_t BytesPerActorMsg = 64;
-
 
 namespace SST::Forza{
 
   class ZenPerHartRegs {
     public:
       // Note: may need to add some other status variables, etc in here
-      // May want to put this into the zen class
       uint64_t status{ 1UL << 63 }; //default to turning on the enabled bit
       std::array<uint64_t, ACTOR_MSG_LENGTH> msg{}; // word 0 is control, 1-7 are data
       std::array<uint8_t, NUM_MBOXES> mbox_cntrs{};
@@ -67,7 +63,6 @@ class OutgoingMessage {
     uint8_t src_zap;
     uint16_t src_hart;
     uint32_t msg_id{UINT32_MAX}; // retry number/id
-    uint64_t mem_addr; // currently unused
 };
 
 class OutgoingSpawn {

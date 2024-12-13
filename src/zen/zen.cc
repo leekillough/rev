@@ -189,12 +189,16 @@ void ZEN::handleRingOmc( SST::Forza::ringEvent *ev )
 
 void ZEN::handleRingStatus( SST::Forza::ringEvent *ev )
 {
+  // Currently, this only supports the mailbox busy and msg seq nums avail fields
+
   output.verbose(CALL_INFO, 7, 0, "[ZEN] %s handle ZENSTAT message\n", getName().c_str());
   if ( ev->getOp() != SST::Forza::ringMsgT::R_READ )
     output.fatal(CALL_INFO, -1, "[ZEN] %s unexpected optype message; OpType=%" PRIu8 "\n", getName().c_str(), static_cast<uint8_t>(ev->getOp()));
 
   auto &status = PerHartCSRs[ev->getSrcZap()][ev->getHart()].status;
   status |= ( PerHartCSRs[ev->getSrcZap()][ev->getHart()].is_sending ) ? 0x0ffUL : 0;
+  uint64_t seq_num_avail = ( seqNumsAvail & ZENSTAT_MASK_SEQNUMAVAIL ) << ZENSTAT_SHIFT_SEQNUMAVAIL;
+  status |= seq_num_avail;
   sendRingResponse(ev, status);
 }
 
