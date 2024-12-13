@@ -55,7 +55,6 @@ namespace SST::Forza{
       uint8_t spawn_cur_word{0};
   };
 
-
 // Configure these as a base + inhereted classes?
 class OutgoingMessage {
   public:
@@ -84,21 +83,19 @@ class OutgoingSpawn {
     uint8_t aid{UINT8_MAX}; // WHERE FROM?
 };
 
-  // This probably needs to be 
-  // expanded if we're not using DMA (right now, I'm forcing the use
-  // of DMA).  Might need to track my_id, parent_id, sequence_counter, 
-  // originating zop
-#if 0
-  class MemReturnEntry {
-    public:
-      SST::Forza::zopEvent *msg;
-      std::vector<uint16_t> msg_ids;
-      MemReturnEntry(SST::Forza::zopEvent *m, std::vector<uint16_t>v) :
-        msg(m),
-        msg_ids(v)
-        { /* empty constructor */}
-  };
-#endif
+class seqNumEntry {
+  public:
+    bool in_use{ false };
+    bool acked{ false }; // may need to be an enum
+    bool written{ false }; // may need to be an enum
+
+  void set() {
+    in_use = true; acked = false; written = false;
+  }
+  void clear() {
+    in_use = false; acked = false; written = false;
+  }
+};
 
   // --------------------------------------------
   // ZEN
@@ -197,27 +194,9 @@ class ZEN : public SST::Component{
      */
     void sendMsgZop( OutgoingMessage* msg, bool is_msg );
 
-
-    /// ZEN: Send a NACK message back to the to target device
-    // No NACKs for now
-    /*
-    void sendNACK(uint16_t hart, uint8_t zcid,
-                  uint8_t pcid, uint16_t prec, uint8_t id,
-                  SST::Forza::zopAPI *iface);
-    */
-
-    /// ZEN: Send an ACK message back to the to target device
-    /* Remove this version
-    void sendACK(uint16_t hart, uint8_t zcid,
-                  uint8_t pcid, uint16_t prec, uint8_t id,
-                  SST::Forza::zopAPI *iface);
-    */
-
-    void sendACK(SST::Forza::zopEvent *ev, bool to_zone_noc);
-
     /// ZEN: handle incoming RZA messages
-    // tdysart, 27-june-24: currently unused - zen isn't using rza yet
-    //void handleIncomingRZAMsg();
+    /// (12-dec-2024 - just store acks for now)
+    void processIncomingRZAMsgs();
 
     /// ZEN: handle incoming ZOP messages (from zone NoC)
     void handleIncomingZOP(SST::Event *ev);
@@ -227,11 +206,6 @@ class ZEN : public SST::Component{
 
     /// ZEN: helper functions for zop types entering from zone noc
     void helper_handleMsgZop(SST::Forza::zopEvent *ev);
-
-    /// ZEN: preps to send the RZA a STORE
-    // tdysart, 27-june-24: currently unused - zen shouldn't receive 
-    // setup packets right now    
-    //void prepSendRZAStore();
 
     /// ZEN: determine if zop dest precinct and zone match me
     bool isDestLocal(SST::Forza::zopEvent *ev)
@@ -298,14 +272,14 @@ class ZEN : public SST::Component{
 
     // private data members
     SST::Output output;                    ///< ZEN: SST output handler
-    SST::Forza::zopAPI* zNic{};        ///< ZEN: ZOP Network interfaces for zone network
+    SST::Forza::zopAPI* zNic{};            ///< ZEN: ZOP Network interfaces for zone network
     SST::Forza::zopMsgID *zoneMsgID{};     ///< ZEN: manually allocated message IDs
-    SST::Forza::zopAPI* precNic{};    ///< ZEN: ZOP Network interfaces for precinct network
+    SST::Forza::zopAPI* precNic{};         ///< ZEN: ZOP Network interfaces for precinct network
     SST::Forza::RingNetAPI* zone_ring{};   ///< ZEN: zone CSR network
 
     // ----- BEGIN SST PARAMETERS
-    unsigned PrecinctId;              ///< ZEN: Precinct ID
-    unsigned ZoneId;                  ///< ZEN: Zone ID
+    unsigned PrecinctId;            ///< ZEN: Precinct ID
+    unsigned ZoneId;                ///< ZEN: Zone ID
     unsigned numHarts;              ///< ZEN: number of harts
     unsigned numZaps;               ///< ZEN: number of zaps
     unsigned numZones;              ///< ZEN: number of zones
@@ -318,72 +292,15 @@ class ZEN : public SST::Component{
 
     // Internal data structures
     std::vector<std::vector<ZenPerHartRegs>> PerHartCSRs;
-    std::bitset<ZenSeqNumMgrDepth> SeqNumMgrList{false};
-    std::map<uint32_t, OutgoingMessage*> RetryMgrMap;
+    std::vector<seqNumEntry> SeqNumMgrList;
     std::queue<OutgoingMessage*> OutMsgQueue;
     std::array<OutgoingMessage*, 3> MsgPipeline{};
     std::queue<zopEvent*> MsgAckQueue;
-    std::queue<SST::Forza::zopEvent*> RzaRespQueue;
+    std::queue<zopEvent*> RzaRespQueue;
     std::queue<OutgoingSpawn*> OutSpawnQueue;
 
-    /*
-      This is incremented in handleIncomingPrecZOP()
-    */
-    //uint64_t zip_credits;
-
-    /* 
-      Add to map: handleIncomingZOP() - destination is same zone; basically the default
-        case for messaging types in this function
-      Add to map: handleIncomingPrecZOP() - destination is unchecked (but assumed to be this zone)
-    */
-    //std::map<std::pair<uint64_t, uint64_t>, std::vector<ZENEntry*>> zen_queue;
-
-    /*
-      Creating a new data structure to handle MSG.SENDP and MSG.MBXDONE messages
-    */
-    std::queue<SST::Forza::zopEvent*> from_zone_messaging_queue;
-
-    /*
-      Add to map: handleIncomingZOP() - destination is same precinct, diff zone
-    */
-    //std::map<uint64_t, std::vector<ZENEntry*> > zone_queue;
-
-    /*
-      Add to map: handleIncomingZOP() - destination is diff precinct
-    */
-    //std::map<uint64_t, std::vector<ZENEntry*> > precinct_queue;
-
-
-    //std::map<uint8_t, ZENEntry*> outstanding_mem_req;
-
-    /* 
-      Add to queue: handleIncomingPrecZOP() - source precinct != my_precinct
-      This is for incoming messages; precessing this queue will send out credit packets
-        Depending on implementation of credits, we may need to be returning some to the 
-        ZIP for anything that came from outside this precinct
-    */
-    //std::queue<SST::Forza::zopEvent*> zipQ;
-
-    // Messages placed here are heading to the precinct NoC
-    //std::queue<SST::Forza::zopEvent*> to_precinct_noc_q;
-
-    // Messages placed here are being forward onto zone NOC
-    //std::queue<SST::Forza::zopEvent*> to_zone_noc_q;
-
-    // Messages placed here are for the local RZA
-    //std::queue<SST::Forza::zopEvent*> to_rza_q;
-
-    // Messages awaiting return from RZA
-    // key is msg_ids[0]
-    //std::map<uint16_t, MemReturnEntry*> rza_ret_wait_map;
-
-    // Messages for updating the scratchpad
-    //std::queue<SST::Forza::zopEvent*> update_scratchpad_q;
-
-    // Vector of outstanding scratchpad transactions
-    // I would expect this to generally operate in FIFO order, but
-    // it's not a system requirement (Zap traffic may influence)
-    //std::vector<uint16_t> outstanding_spad_reqs;
+    // Other counters, etc
+    uint64_t seqNumsAvail;
 
   }; // class SST::ZEN
 } // namespace SST::Forza

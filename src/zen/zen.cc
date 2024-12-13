@@ -70,10 +70,14 @@ ZEN::ZEN(ComponentId_t id, Params& params)
   }
 
   // Size internal data structures
+  SeqNumMgrList.resize( ZenSeqNumMgrDepth );
   PerHartCSRs.resize( numZaps );
   for ( auto &i : PerHartCSRs ){
     i.resize( numHarts );
   }
+
+  // Other configuration
+  seqNumsAvail = ZenSeqNumMgrDepth;
 
   // complete SST registration
   registerAsPrimaryComponent();
@@ -132,10 +136,10 @@ void ZEN::handleRingMsg( SST::Event *event )
   // Do some sanity checks
   // PerHartCSRs[ev->getSrcZap()][ev->getHart()]
 #if 0
-  if (ev->getSrcZap() >= m_num_zaps ) {
+  if (ev->getSrcZap() >= numZaps ) {
     output.fatal(CALL_INFO, -1, "ev with srcZap=%" PRIu8 "\n", ev->getSrcZap());
   }
-  if (ev->getHart() >= m_num_harts ) {
+  if (ev->getHart() >= numHarts ) {
     output.fatal(CALL_INFO, -1, "ev with Hart=%" PRIu16 "\n", ev->getHart());
   }
 #endif
@@ -282,8 +286,9 @@ void ZEN::sendRingResponse( SST::Forza::ringEvent *ev, uint64_t data )
 uint32_t ZEN::getRetrySeqNum()
 {
   for (uint32_t i = 0; i < SeqNumMgrList.size(); i++){
-    if (!SeqNumMgrList[i]){
-      SeqNumMgrList[i] = true;
+    if (!SeqNumMgrList[i].in_use){
+      SeqNumMgrList[i].set();
+      seqNumsAvail--;
       return i;
     }
   }
@@ -308,7 +313,6 @@ void ZEN::sendMsgZop( OutgoingMessage* msg, bool is_msg )
   zop->setAppID(aid);
   auto mbox_id = ( ctrl_word >> ZENEQC_SHIFT_DESTMBOX ) & ZENEQC_MASK_DESTMBOX;
   zop->setMboxID(mbox_id);
-  //zop->setID(msg->msg_id); // redundant
 
   if ( is_msg ){
     // going to dest zone/precinct
@@ -333,11 +337,11 @@ void ZEN::sendMsgZop( OutgoingMessage* msg, bool is_msg )
   std::vector<uint64_t> payload;
   for (uint16_t i = 0; i < msg->msg.size(); i++){
     payload.push_back(msg->msg[i]);
-    output.verbose( CALL_INFO, 5, 0, "Packet payload[%u] = 0x%" PRIx64 "\n", i, msg->msg[i] );
+    //output.verbose( CALL_INFO, 5, 0, "Packet payload[%u] = 0x%" PRIx64 "\n", i, msg->msg[i] );
   }
   zop->setPayload(payload);
   zop->encodeEvent();
-  output.flush();
+  //output.flush();
   output.verbose(CALL_INFO, 5, 0, "ZEN[%s]: Send msg from %s to %s\n", getName().c_str(),
                  zop->getSrcString().c_str(), zop->getDestString().c_str());
   if ( (zop->getDestPrec() == PrecinctId ) && ( zop->getDestPCID() == ZoneId ) )
@@ -401,24 +405,20 @@ void ZEN::handleMsgAck(zopEvent *ack)
   regs.status &= mask;
 
   auto retry_num = ack->getID();
-  // Return the retry number to the list
-  if ( SeqNumMgrList[retry_num] ) {
-    SeqNumMgrList[retry_num] = false;
+  if ( SeqNumMgrList[retry_num].in_use ) {
+    if (SeqNumMgrList[retry_num].written) {
+      // Return the retry number to the list
+      SeqNumMgrList[retry_num].clear();
+      seqNumsAvail++;
+      output.verbose( CALL_INFO, 9, 0, "ZEN[%s]: Releasing SeqNum %" PRIu16 "\n", getName().c_str(), retry_num );
+    } else {
+      // Have to wait for rza ack before releasing this retry number
+      SeqNumMgrList[retry_num].acked = true;
+    }
   } else {
-    output.fatal(CALL_INFO, -3, "ZEN[%s]; SeqNumMgrList[%u] was false; Packet %s to %s \n", getName().c_str(), 
+    output.fatal(CALL_INFO, -3, "ZEN[%s]; SeqNumMgrList[%u].in_use was false; Packet %s to %s \n", getName().c_str(),
                  retry_num, ack->getSrcString().c_str(), ack->getDestString().c_str());
   }
-  
-  // Remove the entry from the RetryMgrMap
-  auto num_deletes = RetryMgrMap.erase(retry_num);
-  if (num_deletes != 1) {
-    output.fatal(CALL_INFO, -2, "ZEN[%s]; Deleted %lu entries in the RetryMgrMap[%u]; Packet %s to %s \n", getName().c_str(), 
-                 num_deletes, retry_num, ack->getSrcString().c_str(), ack->getDestString().c_str());
-  }
-
-  //output.verbose(CALL_INFO, 9, 0, "ZEN[%s]; Counter=%u; packet %s to %s; credit=%u \n", getName().c_str(), cntr,
-  //               ack->getSrcString().c_str(), ack->getDestString().c_str(), ack->getCredit());
-
 }
 
 void ZEN::sendMsgToMemory( OutgoingMessage* out_msg )
@@ -459,12 +459,8 @@ void ZEN::execMsgPipe1()
   if ( MsgPipeline[1] == nullptr )
     return;
 
-  // TODO: Do the work - send message to proper RZA
+  // Send message to RZA1
   sendMsgToMemory( MsgPipeline[1] );
-  //output.verbose(CALL_INFO, 1, 0, "[WARNING] ZEN[%s]; no send of msg to RZA implemented\n", getName().c_str());
-
-  // Insert message into retry mgr map
-  RetryMgrMap[MsgPipeline[1]->msg_id] = MsgPipeline[1];
 
   // Move down the pipe
   MsgPipeline[2] = MsgPipeline[1];
@@ -700,7 +696,7 @@ void ZEN::helper_handleMsgZop(SST::Forza::zopEvent *ev)
 
     case SST::Forza::zopOpc::Z_MSG_NACK:
       // Received a NACK, need to retry the message
-      output.fatal(CALL_INFO, -1, "ZEN[%s]: received a intrazone msg nack packet - not yet implemented\n",
+      output.fatal(CALL_INFO, -1, "ZEN[%s]: received a MSG NACK packet - not yet implemented\n",
                  getName().c_str());
       break;
     
@@ -721,168 +717,44 @@ void ZEN::helper_handleMsgZop(SST::Forza::zopEvent *ev)
   }
 }
 
-/*
-  Logic here takes a minute to process, so let's lay it out
-  mem_acks -> this queue is just a simple FIFO of incoming mem_acks
-  rza_ret_wait_map -> this map is used to track outstanding memory requests
-  update_scratchpad_q -> store the original messaging zops so we can update
-     their scratchpad tail ptr
-*/
-#if 0
-void ZEN::handleIncomingRZAMsg() {
-  //std::cout << "handleIncomingRZAMsg(): num messages = " << mem_acks.size() << std::endl;
-  if (mem_acks.empty())
+void ZEN::processIncomingRZAMsgs() {
+  if ( RzaRespQueue.empty() )
     return;
 
-  for (unsigned i = 0; i < process_per_cycle; ++i) {
-    auto ack_zop = mem_acks.front();
-    uint16_t inc_msg_id = ack_zop->getID();
+  auto *ack = RzaRespQueue.front();
+  RzaRespQueue.pop();
 
-    // TODO: These acks can come in from different sources 
-    // we have scratchpad acks from the ZAPs
-    // and then we have regular acks from the RZA...probably
-    // want to create separate functions for there.  And maybe
-    // do some renaming
-    if (ack_zop->getSrcZCID() <= (uint8_t)SST::Forza::zopCompID::Z_ZAP7){
-      handleScratchpadAck(inc_msg_id);
+  // Ensure this is an rza1 response
+  if ( ( ack->getSrcZCID() != RevCPU::safe_static_cast<uint8_t>( zopCompID::Z_RZA1 ) ) ||
+       ( ack->getOpc() != SST::Forza::zopOpc::Z_RESP_SACK ) ) {
+    output.flush();
+    output.fatal( CALL_INFO, -1, "ZEN[%s]: Unexpected packet received %s to %s\n", getName().c_str(),
+                   ack->getSrcString().c_str(), ack->getDestString().c_str() );
+  }
+
+  auto retry_num = ack->getID();
+  if ( SeqNumMgrList[retry_num].in_use ) {
+    if (SeqNumMgrList[retry_num].acked) {
+      // Return the retry number to the list
+      SeqNumMgrList[retry_num].clear();
+      seqNumsAvail++;
+      output.verbose( CALL_INFO, 9, 0, "ZEN[%s]: Releasing SeqNum %" PRIu16 "\n", getName().c_str(), retry_num );
     } else {
-      // Turn into a function?  Probably ought to.
-      output.verbose(CALL_INFO, 9, 0, "ZENRZA %s Process incoming RZA message msg_id %hu\n",
-                    getName().c_str(), inc_msg_id);
-      // Find inc_msg_id in the rza_ret_wait_map
-      auto ret_map_itr = rza_ret_wait_map.find(inc_msg_id);
-      if (ret_map_itr == rza_ret_wait_map.end()){
-        output.fatal(CALL_INFO, -1, "ZEN did not find inc_msg_id=%" PRIu16 " in map\n", inc_msg_id);
-      }
-
-      // Get my original ZOP
-      auto *ev = ret_map_itr->second->msg;
-      output.verbose(CALL_INFO, 9, 0, "ZEN %s dealing with rza return for zop msg_id=%" PRIu16 "\n",
-                    getName().c_str(), ev->getID());
-      // Push original zop so we can update the scratchpad
-      update_scratchpad_q.push(ev);
-      
-      // Clean up the map components
-      delete ret_map_itr->second; // delete the MemReturnEntry*
-      rza_ret_wait_map.erase(ret_map_itr);
+      // Have to wait for msg ack before releasing this retry number
+      SeqNumMgrList[retry_num].written = true;
     }
-
-    // Clear the MsgID from the network interface
-    zoneMsgID->clearMsgId(inc_msg_id);
-
-    // Done with ACK Zop, delete it
-    mem_acks.pop();
-    delete ack_zop;
-
-   // Should be done with this iteration
-    if (mem_acks.empty())
-      return;
+  } else {
+    output.fatal(CALL_INFO, -3, "ZEN[%s]; SeqNumMgrList[%u].in_use was false; Packet %s to %s \n", getName().c_str(),
+                 retry_num, ack->getSrcString().c_str(), ack->getDestString().c_str());
   }
+  delete ack;
 }
-#endif
-
-// Keep the two functions below until they (or equivalents) are in the ZQM
-#if 0
-void ZEN::sendACK(SST::Forza::zopEvent *ev, bool to_zone_noc){
-  SST::Forza::zopEvent *ack = new SST::Forza::zopEvent();
-  ack->setType(SST::Forza::zopMsgT::Z_MSG);
-  ack->setOpc(SST::Forza::zopOpc::Z_MSG_ACK);
-  setMeAsZopSrc(ack);
-  setDestFromSrcInfo(ack, ev);
-  ack->setID(ev->getID());
-  ack->encodeEvent();
-  auto iface = (to_zone_noc) ? zone_nic : m_prec_iface;
-  iface->send(ack, (zopCompID)ack->getDestZCID(), (zopPrecID)ack->getDestPCID(), (uint16_t)ack->getDestPrec());
-  output.verbose(CALL_INFO, 9, 0, "ZEN %s sending ACK with msg_id=%" PRIu16 " to %s\n",
-                 getName().c_str(), ev->getID(), ack->getDestString().c_str());
-}
-#endif
-
-#if 0
-void ZEN::sendNACK(uint16_t hart, uint8_t zcid,
-                   uint8_t pcid, uint16_t prec, uint8_t id,
-                   SST::Forza::zopAPI *iface){
-  SST::Forza::zopEvent *nackMsg = new SST::Forza::zopEvent();
-  nackMsg->setType(SST::Forza::zopMsgT::Z_MSG);
-  nackMsg->setOpc(SST::Forza::zopOpc::Z_MSG_EXCP);
-  nackMsg->setSrcHart((uint16_t)(zopCompID::Z_ZEN));
-  nackMsg->setSrcZCID((uint8_t)(iface->getEndpointType()));
-  nackMsg->setSrcPCID((uint8_t)(iface->getPCID(zone_nic->getZoneID())));
-  nackMsg->setSrcPrec((uint8_t)(iface->getPrecinctID()));
-  nackMsg->setDestHart(hart);
-  nackMsg->setDestZCID(zcid);
-  nackMsg->setDestPCID(pcid);
-  nackMsg->setID(id);
-  nackMsg->encodeEvent();
-  iface->send(nackMsg,
-              iface->getZCID(zcid, false),  //this assumes the src was not an RZA
-              iface->getPCID(pcid),
-              prec);
-}
-#endif
-
-// NOTE: We save the full ZOP to memory; we will need the header info
-// (especially the src location) to send credits back
-// application s/w is going to have to handle some of that for now...
-#if 0
-void ZEN::prepSendRZAStore() {
-  if (to_rza_q.empty())
-    return;
-
-  for (uint64_t i = 0; i < process_per_cycle; i++){
-    auto *ev = to_rza_q.front();
-    // Need to add 2 words to length for acs and wr_addr
-    uint8_t num_msg_ids_req = ( dma_enabled ) ? 1 : (ev->getLength() + 2);
-    // Get a set of message ids
-    std::vector<uint16_t> msg_ids = zoneMsgID->getSetOfMsgIds(num_msg_ids_req);
-    if (msg_ids.empty()){
-      // Not enough free message IDs to send the packet...done for now
-      break;
-    } else if (msg_ids.size() != num_msg_ids_req){
-      output.fatal(CALL_INFO, -1, "Invalid number of msg_ids returned\n");
-    }
-
-    // Get destination address for memory zop(s)
-    auto mbox_info = getDestMboxEntry(ev);
-    uint64_t wr_addr = mbox_info->getRzaWriteAddr(ev->getLength() + Z_NUM_HEADER_FLITS);
-    output.verbose(CALL_INFO, 9, 0, "Store messaging packet to RZA; packet_size=%" PRIu8 ", wr_addr=0x%"
-                   PRIx64 "\n", ev->getLength(), wr_addr);
-
-    // Send memory zops
-    std::vector<uint64_t> store_payload;
-    store_payload.push_back(mbox_info->acs_pair);
-    store_payload.push_back(wr_addr);
-    std::vector<uint64_t> pkt = ev->getPacket();
-    store_payload.insert(std::end(store_payload),
-                         std::begin(pkt),
-                         std::end(pkt));
-    if ( dma_enabled )
-      sendSdmaToRza(mbox_info, ev, store_payload, msg_ids[0], wr_addr);
-    else
-      sendSdmaToRzaAsSequence(mbox_info, ev, store_payload, msg_ids, wr_addr);
-
-    // Create MemReturnEntry and put into data struct to await the RZA return
-    // TODO: This need substantial improvement if we're turning a store into a 
-    // full sequence of ZOPs
-    auto *mem_retentry = new MemReturnEntry(ev, msg_ids);
-    rza_ret_wait_map.insert(std::pair<uint16_t, MemReturnEntry*>(msg_ids[0], mem_retentry));
-
-    // Finished with this packet
-    to_rza_q.pop();
-    if (to_rza_q.empty())
-      break;
-  }
-}
-#endif
 
 bool ZEN::clock(Cycle_t cycle){
   // new arch related
   ExecMsgPipeline();
   ExecSpawns();
-
-
-  //handleIncomingRZAMsg();
-  //prepSendRZAStore();
+  processIncomingRZAMsgs();
   return false;
 }
 
