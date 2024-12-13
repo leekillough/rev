@@ -101,6 +101,8 @@ inline constexpr uint64_t ZENEQC_MASK_RETRYNUM       = 0x01fff;
 inline constexpr uint64_t ZENEQC_MASK_MSGCLR         = 0x1;
 
 inline constexpr uint64_t ZENSTAT_SHIFT_SPNBUSY      = 32;
+inline constexpr uint64_t ZENSTAT_SHIFT_SEQNUMAVAIL  = 17;
+inline constexpr uint64_t ZENSTAT_MASK_SEQNUMAVAIL   = 0x01fffUL;  //13 bit field
 
 /**
  * Assumed format when updating the ZQM MBOXREG CSR:

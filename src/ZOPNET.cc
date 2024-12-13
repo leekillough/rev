@@ -121,20 +121,21 @@ zopNIC::zopStats zopNIC::getStatFromPacket( zopEvent* ev ) {
     output.fatal( CALL_INFO, -1, "Error: recording stat for a null packet\n" );
   }
 
-  zopMsgT Type = ev->getType();
-  switch( Type ) {
-  case zopMsgT::Z_MZOP: return zopStats::MZOPSent; break;
-  case zopMsgT::Z_HZOPAC: return zopStats::HZOPACSent; break;
-  //case zopMsgT::Z_HZOPV: return zopStats::HZOPVSent; break;
-  //case zopMsgT::Z_RZOP: return zopStats::RZOPSent; break;
-  case zopMsgT::Z_MSG: return zopStats::MSGSent; break;
-  case zopMsgT::Z_TMIG: return zopStats::TMIGSent; break;
-  //case zopMsgT::Z_TMGT: return zopStats::TMGTSent; break;
-  //case zopMsgT::Z_SYSC: return zopStats::SYSCSent; break;
-  case zopMsgT::Z_RESP: return zopStats::RESPSent; break;
-  case zopMsgT::Z_FENCE: return zopStats::FENCESent; break;
-  case zopMsgT::Z_EXCP: return zopStats::EXCPSent; break;
-  default: output.fatal( CALL_INFO, -1, "Error: unknown packet type=%" PRIu8 "\n", static_cast<uint8_t>( Type ) ); break;
+  switch( ev->getType() ) {
+  case zopMsgT::Z_MZOP: return zopStats::MZOPSent;
+  case zopMsgT::Z_HZOPAC: return zopStats::HZOPACSent;
+  //case zopMsgT::Z_HZOPV: return zopStats::HZOPVSent;
+  //case zopMsgT::Z_RZOP: return zopStats::RZOPSent;
+  case zopMsgT::Z_MSG: return zopStats::MSGSent;
+  case zopMsgT::Z_TMIG: return zopStats::TMIGSent;
+  //case zopMsgT::Z_TMGT: return zopStats::TMGTSent;
+  //case zopMsgT::Z_SYSC: return zopStats::SYSCSent;
+  case zopMsgT::Z_RESP: return zopStats::RESPSent;
+  case zopMsgT::Z_FENCE: return zopStats::FENCESent;
+  case zopMsgT::Z_EXCP: return zopStats::EXCPSent;
+  default:
+    output.fatal( CALL_INFO, -1, "Error: unknown packet type=%" PRIu8 "\n", RevCPU::safe_static_cast<uint8_t>( ev->getType() ) );
+    break;
   }
 
   // we should never reach this point
