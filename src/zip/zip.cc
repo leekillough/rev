@@ -209,7 +209,8 @@ bool ZIP::aggregateRVPackets(uint16_t DestPrec, ZIPMemTarget* Target, bool* hasS
       uint64_t sentFlits = 0;
       while (sentFlits < payload.size()) {
         uint64_t toSend = std::min(p_MTU, (unsigned)payload.size());
-        ZIPAggRVEvent* event = new ZIPAggRVEvent(num, std::vector<uint64_t>(payload.begin()+sentFlits, payload.begin()+sentFlits+toSend));
+        ZIPAggRVEvent* event = new ZIPAggRVEvent(num, std::vector<uint64_t>(payload.begin() + ptrdiff_t(sentFlits),
+          payload.begin()+ ptrdiff_t(sentFlits+toSend) );
 
         event->dest = DestPrec;
         event->src = p_precID;

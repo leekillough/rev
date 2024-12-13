@@ -129,7 +129,7 @@ namespace SST::Forza{
     /// ZIPMemCtrl: constructor
     ZIPMemCtrl(ComponentId_t id, const Params& params)
       : SubComponent(id) {
-      const int Verbosity = params.find<int>("verbose", 0);
+      const uint32_t Verbosity = params.find<uint32_t>("verbose", 0);
       output.init("ZIPMemCtrl[" + getName() + ":@p:@t]: ",
                   Verbosity, 0, SST::Output::STDOUT);
     }
@@ -138,13 +138,13 @@ namespace SST::Forza{
     virtual ~ZIPMemCtrl() = default;
 
     /// ZIPMemCtrl: initialization function
-    virtual void init(unsigned int phase) = 0;
+    void init( unsigned int phase ) override                                          = 0;
 
     /// ZIPMemCtrl: setup function
-    virtual void setup() = 0;
+    void setup() override                                                             = 0;
 
     /// ZIPMemCtrl: finish function
-    virtual void finish() = 0;
+    void finish() override                                                            = 0;
 
     // ZIPMemCtrl: handle a read response
     virtual void handleReadResp(StandardMem::ReadResp* ev) = 0;
@@ -267,27 +267,27 @@ namespace SST::Forza{
       virtual ~ZIPStdMemHandlers() = default;
 
       /// ZIPStdMemHandlers: handle read response
-      virtual void handle(StandardMem::ReadResp* ev){
+      void handle( StandardMem::ReadResp* ev ) override {
         Ctrl->handleReadResp(ev);
       }
 
       /// ZIPStdMemhandlers: handle write response
-      virtual void handle(StandardMem::WriteResp* ev){
+      void handle( StandardMem::WriteResp* ev ) override {
         Ctrl->handleWriteResp(ev);
       }
 
       /// ZIPStdMemHandlers: handle flush response
-      virtual void handle(StandardMem::FlushResp* ev){
+      void handle( StandardMem::FlushResp* ev ) override {
         Ctrl->handleFlushResp(ev);
       }
 
       /// ZIPStdMemHandlers: handle custom response
-      virtual void handle(StandardMem::CustomResp* ev){
+      void handle( StandardMem::CustomResp* ev ) override {
         Ctrl->handleCustomResp(ev);
       }
 
       /// ZIPStdMemHandlers: handle invalidate response
-      virtual void handle(StandardMem::InvNotify* ev){
+      void handle( StandardMem::InvNotify* ev ) override {
         Ctrl->handleInvResp(ev);
       }
 

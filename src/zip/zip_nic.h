@@ -17,8 +17,9 @@ namespace SST::Forza{
     nicAPI(ComponentId_t id, Params& params) : SubComponent(id) { }
     virtual ~nicAPI() = default;
     virtual void setMsgHandler(Event::HandlerBase* handler) = 0;
-    virtual void init(unsigned int phase) = 0;
-    virtual void setup() { }
+    void init( unsigned int phase ) override          = 0;
+
+    void setup() override { }
     virtual void send(ZIPEvent *ev, int dest) = 0;
     virtual int getNumDestinations() = 0;
     virtual SST::Interfaces::SimpleNetwork::nid_t getAddress() = 0;
@@ -61,22 +62,22 @@ namespace SST::Forza{
     virtual ~ZIPHFINIC();
 
     /// ZIPHFINIC: Callback to parent on received messages
-    virtual void setMsgHandler(Event::HandlerBase* handler);
+    void setMsgHandler( Event::HandlerBase* handler ) override;
 
     /// ZIPHFINIC: initialization function
-    virtual void init(unsigned int phase);
+    void init( unsigned int phase ) override;
 
     /// ZIPHFINIC: setup function
-    virtual void setup();
+    void setup() override;
 
     /// ZIPHFINIC: send event to the destination id
-    virtual void send(ZIPEvent *ev, int dest);
+    void send( ZIPEvent* ev, int dest ) override;
 
     /// ZIPHFINIC: retrieve the number of destinations
-    virtual int getNumDestinations();
+    int getNumDestinations() override;
 
     /// ZIPHFINIC: get the endpoint's network address
-    virtual SST::Interfaces::SimpleNetwork::nid_t getAddress();
+    SST::Interfaces::SimpleNetwork::nid_t getAddress() override;
 
     /// ZIPHFINIC: callback function for the SimpleNetwork interface
     bool msgNotify(int virtualNetwork);
