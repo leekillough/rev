@@ -123,17 +123,17 @@ enum class zopMsgT : uint8_t {
 // --------------------------------------------
 enum class zopOpc : uint8_t {
   // -- MZOPs --
-  Z_MZOP_LB            = 0b00000000,  /// zopOpc: MZOP Load uint32_t byte
-  Z_MZOP_LH            = 0b00000001,  /// zopOpc: MZOP Load uint32_t half
-  Z_MZOP_LW            = 0b00000010,  /// zopOpc: MZOP Load uint32_t word
+  Z_MZOP_LB            = 0b00000000,  /// zopOpc: MZOP Load unsigned byte
+  Z_MZOP_LH            = 0b00000001,  /// zopOpc: MZOP Load unsigned half
+  Z_MZOP_LW            = 0b00000010,  /// zopOpc: MZOP Load unsigned word
   Z_MZOP_LD            = 0b00000011,  /// zopOpc: MZOP Load doubleword
   Z_MZOP_LSB           = 0b00000100,  /// zopOpc: MZOP Load signed byte
   Z_MZOP_LSH           = 0b00000101,  /// zopOpc: MZOP Load signed half
   Z_MZOP_LSW           = 0b00000110,  /// zopOpc: MZOP Load signed word
   Z_MZOP_LDMA          = 0b00000111,  /// zopOpc: MZOP Load DMA
-  Z_MZOP_SB            = 0b00001000,  /// zopOpc: MZOP Store uint32_t byte
-  Z_MZOP_SH            = 0b00001001,  /// zopOpc: MZOP Store uint32_t half
-  Z_MZOP_SW            = 0b00001010,  /// zopOpc: MZOP Store uint32_t word
+  Z_MZOP_SB            = 0b00001000,  /// zopOpc: MZOP Store unsigned byte
+  Z_MZOP_SH            = 0b00001001,  /// zopOpc: MZOP Store unsigned half
+  Z_MZOP_SW            = 0b00001010,  /// zopOpc: MZOP Store unsigned word
   Z_MZOP_SD            = 0b00001011,  /// zopOpc: MZOP Store doubleword
   Z_MZOP_SSB           = 0b00001100,  /// zopOpc: MZOP Store signed byte
   Z_MZOP_SSH           = 0b00001101,  /// zopOpc: MZOP Store signed half
