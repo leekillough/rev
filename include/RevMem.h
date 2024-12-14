@@ -473,8 +473,8 @@ private:
   RevMemCtrl*         ctrl{};      ///< RevMem: memory controller object
   SST::Output*        output{};    ///< RevMem: output handler
 
-  Forza::zopAPI* zNic{};  ///< RevMem: FORZA ZOP NIC
-  bool           isRZA;   ///< RevMem: FORZA RZA flag; true if this device is an RZA
+  Forza::zopAPI* zNic{};   ///< RevMem: FORZA ZOP NIC
+  bool           isRZA{};  ///< RevMem: FORZA RZA flag; true if this device is an RZA
 
   std::vector<std::shared_ptr<MemSegment>> MemSegs{};        // Currently Allocated MemSegs
   std::vector<std::shared_ptr<MemSegment>> FreeMemSegs{};    // MemSegs that have been unallocated
@@ -501,11 +501,11 @@ private:
   uint32_t                                      nextPage{};   ///< RevMem: next physical page to be allocated. Will result in index
   /// nextPage * pageSize into physMem
 
-  uint64_t brk;          ///< RevMem: Program BRK FIXME: HACK
-  uint64_t mmapRegion;   ///< RevMem: FIXME: HACK
-  uint64_t heapend{};    ///< RevMem: top of the stack
-  uint64_t heapstart{};  ///< RevMem: top of the stack
-  uint64_t stacktop{};   ///< RevMem: top of the stack
+  uint64_t brk{};         ///< RevMem: Program BRK FIXME: HACK
+  uint64_t mmapRegion{};  ///< RevMem: FIXME: HACK
+  uint64_t heapend{};     ///< RevMem: top of the stack
+  uint64_t heapstart{};   ///< RevMem: top of the stack
+  uint64_t stacktop{};    ///< RevMem: top of the stack
 
   std::vector<uint64_t>                                     FutureRes{};  ///< RevMem: future operation reservations
   std::unordered_map<uint32_t, std::pair<uint64_t, size_t>> LRSC{};       ///< RevMem: load reserve/store conditional set
@@ -516,8 +516,8 @@ private:
   // FORZA Security Test
   std::map<uint64_t, std::tuple<std::string, bool, int>>              OutputPhysAddrHist;  //History to Output file
   std::map<uint64_t, std::tuple<std::string, bool, std::vector<int>>> InputPhysAddrHist;   //Read from Input file
-  bool                                                                PhysAddrCheck;
-  bool                                                                PhysAddrLogging;
+  bool                                                                PhysAddrCheck{};
+  bool                                                                PhysAddrLogging{};
   std::string                                                         outputFile;
   // std::ofstream output_file;
   // std::ofstream input_file;
