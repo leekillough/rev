@@ -233,13 +233,7 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params ) : SST::Compon
   Mem->SetMaxHeapSize( maxHeapSize );
 
   // Load the binary into memory
-  Loader = std::make_unique<RevLoader>( Exe, Opts->GetArgv(), Mem.get(), &output, !EnableZopNIC || EnableRZA );
-
-  // Create the processor objects
-  Procs.reserve( Procs.size() + numCores );
-  for( uint32_t i = 0; i < numCores; i++ ) {
-    Procs.push_back( std::make_unique<RevCore>( i, Opts.get(), numHarts, Mem.get(), Loader.get(), this->GetNewTID(), &output ) );
-  }
+  Loader       = std::make_unique<RevLoader>( Exe, Opts->GetArgv(), Mem.get(), &output, !EnableZopNIC || EnableRZA );
 
   EnableCoProc = params.find<bool>( "enableCoProc", 0 );
   if( EnableCoProc ) {
@@ -608,7 +602,7 @@ void RevCPU::processZOPQ() {
   }
 
   bool     flag = false;
-  uint64_t Addr = 0x00ull;
+  uint64_t Addr = 0;
 
   /// put the ZRqst structure in RevMem
 
@@ -706,13 +700,13 @@ void RevCPU::handleZOPMZOP( Forza::zopEvent* zev ) {
     output.fatal( CALL_INFO, -1, "[FORZA][ZAP]: Cannot handle null MZOP\n" );
   }
 
-  uint64_t addr                                                  = 0x00ull;
-  uint64_t data                                                  = 0x00ull;
+  uint64_t addr                                                  = 0;
+  uint64_t data                                                  = 0;
   bool     isLoad                                                = false;
 
   // used only for load operations
   std::function<void( const MemReq& )> LocalMarkLoadCompleteFunc = [=]( const MemReq& req ) { this->MarkLoadCompleteDummy( req ); };
-  MemReq req{ addr, 0x00, RevRegClass::RegGPR, zev->getSrcHart(), MemOp::MemOpREAD, true, LocalMarkLoadCompleteFunc };
+  MemReq req{ addr, 0, RevRegClass::RegGPR, zev->getSrcHart(), MemOp::MemOpREAD, true, LocalMarkLoadCompleteFunc };
 
   // retrieve the address
   if( !zev->getFLIT( Forza::Z_FLIT_ADDR, &addr ) ) {
@@ -870,7 +864,7 @@ void RevCPU::handleZOPMZOP( Forza::zopEvent* zev ) {
 
     // set the payload
     std::vector<uint64_t> payload;
-    payload.push_back( 0x00ull );  // ACS
+    payload.push_back( 0 );  // ACS
     payload.push_back( data );     // load response data
     rsp_zev->setPayload( payload );
 
@@ -897,7 +891,7 @@ void RevCPU::handleZOPMZOP( Forza::zopEvent* zev ) {
 
     // set the payload
     std::vector<uint64_t> payload;
-    payload.push_back( 0x00ull );  // ACS
+    payload.push_back( 0 );  // ACS
     rsp_zev->setPayload( payload );
 
     // inject the packet
@@ -930,7 +924,7 @@ void RevCPU::handleZOPThreadMigrateIntRegs( Forza::zopEvent* zev ) {
 
   // Create the regfile
   std::unique_ptr<RevRegFile> MigratedRegState = std::make_unique<RevRegFile>( Procs[0].get() );
-  uint64_t                    pc               = pkt[2] & ( 0x0FFFFFFFFUL );
+  uint64_t                    pc               = uint32_t( pkt[2] );
   MigratedRegState->SetPC( pc );
   for( uint32_t i = 1; i < 32; i++ ) {
     MigratedRegState->SetX( i, pkt[2 + i] );  //x0 == 0
@@ -966,7 +960,7 @@ void RevCPU::handleZOPThreadMigrateSpawn( Forza::zopEvent* zev ) {
 
   // Create the regfile
   std::unique_ptr<RevRegFile> MigratedRegState = std::make_unique<RevRegFile>( Procs[0].get() );
-  uint64_t                    pc               = pkt[2] & ( 0x0FFFFFFFFUL );
+  uint64_t                    pc               = uint32_t( pkt[2] );
   MigratedRegState->SetPC( pc );
   for( uint32_t i = 1; i < 31; i++ ) {
     MigratedRegState->SetX( i, 0 );

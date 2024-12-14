@@ -135,8 +135,8 @@ template<typename T>
 bool load( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) {
 
   // FORZA: check the address to see whether we need to migrate the thread
-  uint32_t Zone     = 0x00;
-  uint32_t Precinct = 0x00;
+  uint32_t Zone     = 0;
+  uint32_t Precinct = 0;
   if( !M->isLocalAddr( R->GetX<uint64_t>( Inst.rs1 ) + uint64_t( Inst.ImmSignExt( 12 ) ), Zone, Precinct ) ) {
     // trigger the migration
     std::vector<uint64_t> P;
@@ -146,7 +146,7 @@ bool load( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) 
       P.push_back( R->GetX<uint64_t>( i ) );
     }
     for( uint32_t i = 0; i < 32; i++ ) {
-      uint64_t t = 0x00ull;
+      uint64_t t = 0;
       double   s = R->DPF[i];
       memcpy( &t, &s, sizeof( t ) );
       P.push_back( t );
@@ -210,8 +210,8 @@ bool load( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) 
 template<typename T>
 bool store( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) {
   // FORZA: check the address to see whether we need to migrate the thread
-  uint32_t Zone     = 0x00;
-  uint32_t Precinct = 0x00;
+  uint32_t Zone     = 0;
+  uint32_t Precinct = 0;
   if( !M->isLocalAddr( R->GetX<uint64_t>( Inst.rs1 ) + uint64_t( Inst.ImmSignExt( 12 ) ), Zone, Precinct ) ) {
     // trigger the migration
     std::vector<uint64_t> P;
@@ -220,7 +220,7 @@ bool store( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst )
       P.push_back( R->GetX<uint64_t>( i ) );
     }
     for( uint32_t i = 0; i < 32; i++ ) {
-      uint64_t t = 0x00ull;
+      uint64_t t = 0;
       double   s = R->DPF[i];
       memcpy( &t, &s, sizeof( t ) );
       P.push_back( t );
@@ -241,8 +241,8 @@ template<typename T>
 bool fload( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) {
 
   // FORZA: check the address to see whether we need to migrate the thread
-  uint32_t Zone     = 0x00;
-  uint32_t Precinct = 0x00;
+  uint32_t Zone     = 0;
+  uint32_t Precinct = 0;
   if( !M->isLocalAddr( R->GetX<uint64_t>( Inst.rs1 ) + uint64_t( Inst.ImmSignExt( 12 ) ), Zone, Precinct ) ) {
     // trigger the migration
     std::vector<uint64_t> P;
@@ -251,7 +251,7 @@ bool fload( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst )
       P.push_back( R->GetX<uint64_t>( i ) );
     }
     for( uint32_t i = 0; i < 32; i++ ) {
-      uint64_t t = 0x00ull;
+      uint64_t t = 0;
       double   s = R->DPF[i];
       memcpy( &t, &s, sizeof( t ) );
       P.push_back( t );
@@ -305,8 +305,8 @@ bool fload( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst )
 template<typename T>
 bool fstore( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) {
   // FORZA: check the address to see whether we need to migrate the thread
-  uint32_t Zone     = 0x00;
-  uint32_t Precinct = 0x00;
+  uint32_t Zone     = 0;
+  uint32_t Precinct = 0;
   if( !M->isLocalAddr( R->GetX<uint64_t>( Inst.rs1 ) + uint64_t( Inst.ImmSignExt( 12 ) ), Zone, Precinct ) ) {
     // trigger the migration
     std::vector<uint64_t> P;
@@ -315,7 +315,7 @@ bool fstore( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst 
       P.push_back( R->GetX<uint64_t>( i ) );
     }
     for( uint32_t i = 0; i < 32; i++ ) {
-      uint64_t t = 0x00ull;
+      uint64_t t = 0;
       double   s = R->DPF[i];
       memcpy( &t, &s, sizeof( t ) );
       P.push_back( t );

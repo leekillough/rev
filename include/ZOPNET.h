@@ -32,6 +32,8 @@
 
 namespace SST::Forza {
 
+using namespace SST::RevCPU;
+
 // --------------------------------------------
 // Preprocessor defs
 // --------------------------------------------
@@ -536,29 +538,29 @@ public:
   //  This constructor is ONLY utilized for initialization
   //  DO NOT use this constructor for normal packet construction
   explicit zopEvent( uint32_t srcId, zopCompID Type, uint32_t ZoneID, uint32_t PrecinctID ) : Event() {
-    Packet.push_back( (uint64_t) ( Type ) );
-    Packet.push_back( (uint64_t) ( srcId ) );
-    Packet.push_back( (uint64_t) ( ZoneID ) );
-    Packet.push_back( (uint64_t) ( PrecinctID ) );
+    Packet.push_back( safe_static_cast<uint64_t>( Type ) );
+    Packet.push_back( srcId );
+    Packet.push_back( ZoneID );
+    Packet.push_back( PrecinctID );
   }
 
   /// zopEvent: raw event constructor
   explicit zopEvent() : Event() {
-    Packet.push_back( 0x00ull );
-    Packet.push_back( 0x00ull );
-    Packet.push_back( 0x00ull );
+    Packet.push_back( 0 );
+    Packet.push_back( 0 );
+    Packet.push_back( 0 );
   }
 
   explicit zopEvent( zopMsgT T, zopOpc O ) : Event() {
-    Packet.push_back( 0x00ul );
-    Packet.push_back( 0x00ul );
-    Packet.push_back( 0x00ul );
+    Packet.push_back( 0 );
+    Packet.push_back( 0 );
+    Packet.push_back( 0 );
     Type = T;
     Opc  = O;
   }
 
   /// zopEvent: virtual function to clone an event
-  Event* clone( void ) override {
+  Event* clone() override {
     zopEvent* ev = new zopEvent( *this );
     return ev;
   }

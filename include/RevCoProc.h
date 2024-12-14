@@ -57,7 +57,7 @@ public:
   RegAlloc() {
     for( uint32_t i = 0; i < _RA_NUM_REG; i++ ) {
       hazard[i] = _H_CLEAR;
-      regs[i]   = 0x00ull;
+      regs[i]   = 0;
     }
   }
 
@@ -184,7 +184,7 @@ public:
   void clearReg( uint32_t reg ) {
     if( reg < _RA_NUM_REG ) {
       hazard[reg] = _H_CLEAR;
-      regs[reg]   = 0x00ull;
+      regs[reg]   = 0;
     }
   }
 
@@ -200,7 +200,7 @@ public:
     if( Idx < _RA_NUM_REG - 1 ) {
       return regs[Idx];
     }
-    return 0x00ull;
+    return 0;
   }
 
   /// RegAlloc: get the address for the target reigster
@@ -980,7 +980,7 @@ public:
   bool IssueInst( const RevFeature* F, RevRegFile* R, RevMem* M, uint32_t Inst ) override;
 
   /// RZAAMOCoProc: reset the coproc
-  bool Reset() final override;
+  bool Reset() final;
 
   /// RZAAMOCoProc: teardown function when the attached Proc is complete
   bool Teardown() override { return Reset(); }
