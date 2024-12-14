@@ -269,7 +269,7 @@ EOF
             # check filename extensions and magic
             if [[ $file != .githooks/* ]]; then
                 check_extension  "$file"  ".sh"  "text/x-shellscript"    "#!/bin/bash"
-                check_extension  "$file"  ".py"  "text/x-script.python"  "#!/usr/bin/env python"
+                check_extension  "$file"  ".py"  "text/x-script.python"  "#!/usr/bin/env python3"
                 check_extension  "$file"  ".pl"  "text/x-perl"           "#!/usr/bin/perl"
             fi
 
