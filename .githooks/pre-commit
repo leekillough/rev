@@ -267,7 +267,7 @@ EOF
             detect_change "$file" "$temp" "%s: Adding missing newline at end of file"
 
             # check filename extensions and magic
-            if [[ $file != .githooks/* ]]; then
+            if [[ $file != **/pre-commit ]]; then
                 check_extension  "$file"  ".sh"  "text/x-shellscript"    "#!/bin/bash"
                 check_extension  "$file"  ".py"  "text/x-script.python"  "#!/usr/bin/env python"
                 check_extension  "$file"  ".pl"  "text/x-perl"           "#!/usr/bin/perl"
@@ -285,7 +285,7 @@ EOF
             fi
 
             # Shell scripts
-            if [[ $file = *.sh || $file = .githooks/pre-commit ]]; then
+            if [[ $file = *.sh || $file = **/pre-commit ]]; then
                 if command -v shellcheck >/dev/null 2>&1 && shellcheck -o all -e2148 /dev/null >/dev/null 2>&1; then
                     shellcheck -o all -e 1091,2059,2154,2248,2250,2312 "$file" || errors=true
                 else
