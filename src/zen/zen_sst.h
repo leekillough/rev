@@ -7,6 +7,14 @@
 #ifndef _ZEN_SST_H_
 #define _ZEN_SST_H_
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wnon-virtual-dtor"
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#pragma GCC diagnostic ignored "-Wsuggest-override"
+#pragma GCC diagnostic ignored "-Wdouble-promotion"
+#pragma GCC diagnostic ignored "-Wsign-conversion"
+
+
 #include <sst/core/sst_config.h>
 #include <sst/core/component.h>
 #include <sst/core/event.h>

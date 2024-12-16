@@ -210,7 +210,7 @@ bool ZIP::aggregateRVPackets(uint16_t DestPrec, ZIPMemTarget* Target, bool* hasS
       while (sentFlits < payload.size()) {
         uint64_t toSend = std::min(p_MTU, (unsigned)payload.size());
         ZIPAggRVEvent* event = new ZIPAggRVEvent(num, std::vector<uint64_t>(payload.begin() + ptrdiff_t(sentFlits),
-          payload.begin()+ ptrdiff_t(sentFlits+toSend) );
+          payload.begin()+ ptrdiff_t(sentFlits+toSend) ) );
 
         event->dest = DestPrec;
         event->src = p_precID;
@@ -384,7 +384,7 @@ void ZIP::handleHFIEvent(SST::Event* ev) {
   // check if event is a credit event, in which case replenish credits
   ZIPCreditEvent* cEvent = dynamic_cast<ZIPCreditEvent*>(event);
   if (cEvent) {
-    outCredit[SrcPrec] += cEvent->getCredits();
+    outCredit[SrcPrec] += (uint64_t)cEvent->getCredits(); //TODO: getCredits returns an int, but outCredit[] is a vec of uint64_t
     output.verbose(CALL_INFO, 9, 0, "handleHFIEvent: received %d credits for %" PRIu16 ", now at %" PRIu64 "\n", cEvent->getCredits(), SrcPrec, outCredit[SrcPrec]);
     delete ev;
     return;
