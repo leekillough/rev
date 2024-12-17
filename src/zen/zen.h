@@ -178,7 +178,7 @@ class ZEN : public SST::Component{
     void execMsgPipe2();
     void updateMsgPipe0();
 
-    void handleMsgAck(zopEvent *ack);
+    void handleMsgResp(zopEvent *ack);
     void sendMsgToMemory( OutgoingMessage* out_msg );
 
     void ExecSpawns();

@@ -332,7 +332,8 @@ void ZQM::updateInMboxQueue()
   if( in_mbox.mbox_queue.empty() || in_mbox.head_ready )
     return;
 
-  auto msg        = in_mbox.mbox_queue.front().first;
+  auto qentry = in_mbox.mbox_queue.front();
+  auto msg        = qentry.first;
   auto dest_mbox = msg->getMbxID();
   auto& mbox      = PerHartCSRs[msg->getDestZCID()][msg->getDestHart()].mbox_buff_state[dest_mbox];
   if (mbox.getCurWrState() == msgBuffState::IDLE) {
@@ -341,14 +342,17 @@ void ZQM::updateInMboxQueue()
   } else {
     in_mbox.head_check_cycle_cntr++;
     if (in_mbox.head_check_cycle_cntr == cyclesPerRecycle) {
+
+      in_mbox.mbox_queue.pop();
       if (in_mbox.mbox_queue.front().second == recyclesToNack) {
         // TODO: NACK THIS MESSAGE
-        output.flush();
-        output.fatal( CALL_INFO, -1, "ZQM: NACK not yet implemented\n" );
+        //output.flush();
+        //output.fatal( CALL_INFO, -1, "ZQM: NACK not yet implemented\n" );
+        // NACK goes to where it came from; MUST have msg_id so the sender ZEN can retry
+        sendZopAck( msg, zopMsgT::Z_MSG, zopOpc::Z_MSG_NACK );
+        delete msg;
       } else {
         // Recycle this message
-        auto qentry = in_mbox.mbox_queue.front();
-        in_mbox.mbox_queue.pop();
         qentry.second++;
         in_mbox.mbox_queue.push( qentry );
         in_mbox.head_check_cycle_cntr = 0;
@@ -738,7 +742,7 @@ void ZQM::sendZopAck(SST::Forza::zopEvent *event, zopMsgT msg_type, zopOpc msg_o
 
     zone_nic->send(ack_msg, static_cast<zopCompID>(ack_msg->getDestZCID()));
     std::string str = ack_msg->msgTToStr(msg_type);
-    output.verbose(CALL_INFO, 9, 0, "ZQM [%s] sending ack %s:%u with msg_id=%" PRIu16 " from %s to %s\n",
+    output.verbose(CALL_INFO, 9, 0, "ZQM [%s] sending nack/ack %s:%u with msg_id=%" PRIu16 " from %s to %s\n",
                     getName().c_str(), str.c_str(), (uint8_t)msg_opc, event->getID(), ack_msg->getSrcString().c_str(), 
                     ack_msg->getDestString().c_str());
 }

@@ -389,9 +389,15 @@ void ZEN::execMsgPipe2()
   MsgPipeline[2] = nullptr;
 }
 
-void ZEN::handleMsgAck(zopEvent *ack)
+void ZEN::handleMsgResp(zopEvent *ack)
 {    
   ack->decodeEvent();
+
+  if ( ack->getOpc() == zopOpc::Z_MSG_NACK ) {
+    output.fatal(CALL_INFO, -1, "ZEN[%s]: received a MSG NACK packet - not yet implemented\n",
+                 getName().c_str());
+  }
+
   // Reduce the mailbox counter
   auto &regs = PerHartCSRs[ack->getDestZCID()][ack->getDestHart()];
   auto &cntr = regs.mbox_cntrs[ack->getMbxID()];
@@ -451,7 +457,7 @@ void ZEN::execMsgPipe1()
   if ( !MsgAckQueue.empty() ) {
     auto ack = MsgAckQueue.front();
     MsgAckQueue.pop();
-    handleMsgAck(ack);
+    handleMsgResp(ack);
     delete ack;
   }
 
@@ -686,24 +692,19 @@ void ZEN::helper_handleMsgZop(SST::Forza::zopEvent *ev)
 {
   // There are several of these that the ZEN needs to handle
   switch(ev->getOpc()){
+    case SST::Forza::zopOpc::Z_MSG_NACK: [[fallthrough]];
     case SST::Forza::zopOpc::Z_MSG_ACK:
-      // if for this locale, clear the retry msg entry for this ack; push it onto the queue to handle
-      // in the msg pipeline; if for diff locale, put it onto the precinct network
+      // if for this locale, push it onto the queue to handle in the msg pipeline;
+      // if for diff locale, put it onto the precinct network
       if ( isDestLocal( ev ) ){
-        output.verbose( CALL_INFO, 9, 0, "ZEN %s: received a MSG_ACK\n", getName().c_str() );
+        output.verbose( CALL_INFO, 9, 0, "ZEN %s: received a MSG_(N)ACK\n", getName().c_str() );
         MsgAckQueue.push(ev);
       } else {
-        output.verbose( CALL_INFO, 9, 0, "ZEN %s: received a MSG_ACK; PUT ON PRECINCT NOC\n", getName().c_str() );
+        output.verbose( CALL_INFO, 9, 0, "ZEN %s: received a MSG_(N)ACK; PUT ON PRECINCT NOC\n", getName().c_str() );
         precNic->send( ev, SST::Forza::zopCompID::Z_ZEN, ev->getPCID( ev->getDestPCID() ), ev->getDestPrec() );
       }
     break;
 
-    case SST::Forza::zopOpc::Z_MSG_NACK:
-      // Received a NACK, need to retry the message
-      output.fatal(CALL_INFO, -1, "ZEN[%s]: received a MSG NACK packet - not yet implemented\n",
-                 getName().c_str());
-      break;
-    
     case SST::Forza::zopOpc::Z_MSG_SENDP:
       output.verbose( CALL_INFO, 9, 0, "ZEN %s: received a MSG_SENDP\n", getName().c_str() );
       if ( (ev->getSrcPrec() == PrecinctId ) && ( ev->getSrcPCID() == ZoneId ) )
