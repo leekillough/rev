@@ -598,7 +598,11 @@ public:
   void setSeqNum( uint8_t SN ) { SeqNum = SN; }
 
   /// zopEvent: set the packet ID
-  void setID( uint16_t I ) { ID = I; }
+  void setID( uint16_t I ) {
+    if( I == 8191 )
+      assert( false );
+    ID = I;
+  }
 
   /// zopEvent: set the credit
   void setMboxID( uint8_t MB ) { MbxID = MB; }  // formerly setCredit
