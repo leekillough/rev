@@ -49,21 +49,9 @@ namespace SST::Forza{
       bool is_sending{}; //signifies that the hart is in the process of sending a message; OR'd with mbox_busy portion of status register when status is read 
       std::array<uint64_t, 2> spawn_thread{};
       uint8_t spawn_cur_word{0};
+
+    void allowNextMsg() { this->is_sending = false; this->msg_cur_word = 1; }
   };
-
-// Configure these as a base + inhereted classes?
-class OutgoingMessage {
-  public:
-    OutgoingMessage( std::array<uint64_t, ACTOR_MSG_LENGTH> data, uint8_t zap, uint16_t hart ) :
-      msg(data), src_zap(zap), src_hart(hart)
-      { /* empty */}
-
-    // More info needed?
-    std::array<uint64_t, ACTOR_MSG_LENGTH> msg{};
-    uint8_t src_zap;
-    uint16_t src_hart;
-    uint32_t msg_id{UINT32_MAX}; // retry number/id
-};
 
 class OutgoingSpawn {
   public:
@@ -169,9 +157,9 @@ class ZEN : public SST::Component{
     void handleRingSpawn( SST::Forza::ringEvent *ev );
     
 
-    void sendRingResponse( SST::Forza::ringEvent *ev, uint64_t data );
+    void sendRingResponse( SST::Forza::ringEvent* ev, uint64_t data );
 
-    uint32_t getRetrySeqNum();
+    uint16_t getRetrySeqNum();
     void ExecMsgPipeline();
     void execMsgPipe0();
     void execMsgPipe1();
@@ -179,7 +167,7 @@ class ZEN : public SST::Component{
     void updateMsgPipe0();
 
     void handleMsgResp(zopEvent *ack);
-    void sendMsgToMemory( OutgoingMessage* out_msg );
+    void sendMsgToMemory( zopEvent* out_msg );
 
     void ExecSpawns();
 
@@ -187,7 +175,9 @@ class ZEN : public SST::Component{
      * msg: zen msg to be sent
      * is_msg: true if sending a message, false is to rza/retry buffer memory
      */
-    void sendMsgZop( OutgoingMessage* msg, bool is_msg );
+    //void sendMsgZop( OutgoingMessage* msg, bool is_msg );
+
+    zopEvent* createMsgZop( std::array<uint64_t, ACTOR_MSG_LENGTH> msg_data, ringEvent* ring_event );
 
     /// ZEN: handle incoming RZA messages
     /// (12-dec-2024 - just store acks for now)
@@ -260,7 +250,7 @@ class ZEN : public SST::Component{
         dest_packet->setDestPrec(src_packet->getDestPrec());
     }
 
-    uint64_t getRetryBuffAddr( uint32_t idx ) {
+    uint64_t getRetryBuffAddr( uint16_t idx ) {
       uint64_t incr = ( idx * BytesPerActorMsg );
       return ( memStartAddr + incr );
     }
@@ -288,8 +278,8 @@ class ZEN : public SST::Component{
     // Internal data structures
     std::vector<std::vector<ZenPerHartRegs>> PerHartCSRs;
     std::vector<seqNumEntry> SeqNumMgrList;
-    std::queue<OutgoingMessage*> OutMsgQueue;
-    std::array<OutgoingMessage*, 3> MsgPipeline{};
+    std::queue<zopEvent*> OutMsgQueue;
+    std::array<zopEvent*, 3> MsgPipeline{};
     std::queue<zopEvent*> MsgAckQueue;
     std::queue<zopEvent*> RzaRespQueue;
     std::queue<OutgoingSpawn*> OutSpawnQueue;
