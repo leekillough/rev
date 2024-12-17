@@ -399,7 +399,6 @@ enum class zopOpc : uint8_t {
 
   // -- MESSAGING --
   Z_MSG_SENDP          = 0b00000000,  /// zopOpc: MESSAGING Send with payload
-  //Z_MSG_SENDAS        = 0b00000001,  /// zopOpc: MESSAGING Send with address and size -- Unused; Delete?
   Z_MSG_ACK            = 0b11110000,  /// zopOpc: MESSAGING Send Ack
   Z_MSG_NACK           = 0b11110001,  /// zopOpc: MESSAGING Send Nack
   Z_MSG_EXCP           = 0b11110010,  /// zopOpc: MESSAGING Send exception
