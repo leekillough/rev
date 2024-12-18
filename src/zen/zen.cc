@@ -288,7 +288,7 @@ void ZEN::sendRingResponse( SST::Forza::ringEvent* ev, uint64_t data ) {
 
 uint16_t ZEN::getRetrySeqNum()
 {
-  for (uint16_t i = 50; i < SeqNumMgrList.size(); i++){
+  for (uint16_t i = 0; i < SeqNumMgrList.size(); i++){
     if (!SeqNumMgrList[i].in_use){
       SeqNumMgrList[i].set();
       seqNumsAvail--;
