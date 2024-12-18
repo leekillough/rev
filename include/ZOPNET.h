@@ -799,6 +799,9 @@ public:
 
   /// zopEvent: encode this event and set the appropriate internal packet structures
   void encodeEvent() {
+    for( uint8_t i = 0; i < Z_NUM_HEADER_FLITS; i++ ) {
+      Packet[i] = 0;  // ensure any "old" data is cleared out
+    }
     Length = Packet.size() - Z_NUM_HEADER_FLITS;
     Packet[Z_FLIT_DEST] |= ( (uint64_t) ( DestHart & Z_MASK_HARTID ) << Z_SHIFT_HARTID );
     Packet[Z_FLIT_DEST] |= ( (uint64_t) ( DestZCID & Z_MASK_ZCID ) << Z_SHIFT_ZCID );

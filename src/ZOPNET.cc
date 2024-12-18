@@ -528,16 +528,6 @@ bool zopNIC::msgNotify( int vn ) {
   // if this is a ZEN/ZQM/ZIP, forward it in the incoming queue
   if( Type == zopCompID::Z_RZA || Type == zopCompID::Z_RZA1 || Type == zopCompID::Z_ZEN || Type == zopCompID::Z_ZQM ||
       Type == zopCompID::Z_PREC_ZIP ) {
-    output.verbose(
-      CALL_INFO,
-      9,
-      0,
-      "ZOPNET: Sending message %s to %s with Id=%" PRIu16 " to Type=%s\n",
-      ev->getSrcString().c_str(),
-      ev->getDestString().c_str(),
-      ev->getID(),
-      endPToStr( Type ).c_str()
-    );
     ( *msgHandler )( ev );
     return true;
   }
@@ -733,16 +723,6 @@ bool zopNIC::clockTick( SST::Cycle_t cycle ) {
           iFace->send( ( *it ), 0 );
           it    = sendQ.erase( it );
           erase = true;
-          output.verbose(
-            CALL_INFO,
-            9,
-            0,
-            "ZOPNET: Sending message %s to %s with Id=%" PRIu16 " to Type=%s\n",
-            ev->getSrcString().c_str(),
-            ev->getDestString().c_str(),
-            ev->getID(),
-            endPToStr( Type ).c_str()
-          );
         }
       } else if( ev->getType() == SST::Forza::zopMsgT::Z_FENCE ) {
         // handle the fence operation
@@ -774,16 +754,6 @@ bool zopNIC::clockTick( SST::Cycle_t cycle ) {
             ev->setID( msgId[Hart].getMsgId() );
             auto V = std::make_tuple( Hart, ev->getID(), ev->isRead(), ev->getTarget(), ev->getOpc(), ev->getMemReq() );
             outstanding.push_back( V );
-            output.verbose(
-              CALL_INFO,
-              9,
-              0,
-              "ZOPNET: Print2 Sending message %s to %s with Id=%" PRIu16 " to Type=%s\n",
-              ev->getSrcString().c_str(),
-              ev->getDestString().c_str(),
-              ev->getID(),
-              endPToStr( Type ).c_str()
-            );
           }
           ev->encodeEvent();
           recordStat( getStatFromPacket( ev ), 1 );
