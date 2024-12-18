@@ -4,15 +4,7 @@
 
 #include "zqm.h"
 #include "ZOPNET.h"
-#include <sst/core/sst_config.h>
-
 #include <RevMem.h>
-
-/**
- * NOTE: There are numerous places where the code uses extra variables, etc.
- * I don't care.  My goal is to make this easy to follow and ensure the spec matches since
- * it's being developed alongside the code.
- */
 
 using namespace SST::Forza;
 

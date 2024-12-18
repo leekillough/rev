@@ -298,68 +298,6 @@ uint16_t ZEN::getRetrySeqNum()
   return UINT16_MAX;
 } 
 
-#if 0
-void ZEN::sendMsgZop( OutgoingMessage* msg, bool is_msg )
-{
-  auto *zop = new SST::Forza::zopEvent();
-  // Set packet header info
-  zop->setType(SST::Forza::zopMsgT::Z_MSG);
-  zop->setOpc(SST::Forza::zopOpc::Z_MSG_SENDP);
-
-  // Set source to be the sending hart
-  zop->setSrcHart(msg->src_hart);
-  zop->setSrcZCID(msg->src_zap);
-  zop->setSrcPCID(ZoneId);
-  zop->setSrcPrec(PrecinctId);
-
-  auto ctrl_word = msg->msg[0];
-  auto aid = ( ctrl_word >> ZENEQC_SHIFT_MSGAID ) & ZENEQC_MASK_MSGAID;
-  zop->setAppID(aid);
-  auto mbox_id = ( ctrl_word >> ZENEQC_SHIFT_DESTMBOX ) & ZENEQC_MASK_DESTMBOX;
-  zop->setMboxID(mbox_id);
-
-  if ( is_msg ){
-    // going to dest zone/precinct
-    auto dest_logic_pe = ctrl_word & ZENEQC_MASK_DESTPE;
-    auto dest_zone = ( ctrl_word >> ZENEQC_SHIFT_DESTZONE ) & ZENEQC_MASK_DESTZONE;
-    auto dest_prec = ( ctrl_word >> ZENEQC_SHIFT_DESTPREC ) & ZENEQC_MASK_DESTPREC;
-
-    // Need to divide the 11 bit dest logical PE to a 9 bit hart and 2 bit "zcid"
-    // zopnet.cc should ensure all packets of this type are delivered to the zqm
-    // so we can use this bit of hackery - provided we can reassemble properly
-    zop->setDestHart( dest_logic_pe );
-    zop->setDestZCID( zopCompID::Z_ZQM );
-    zop->setDestPCID(dest_zone);
-    zop->setDestPrec(dest_prec);
-    zop->setID( msg->msg_id );
-
-  } else {
-    output.fatal( CALL_INFO, -1, "ZEN [%s] Not yet supported\n", getName().c_str() );
-    //setLocalRzaAsZopDest(zop);
-  }
-  
-  std::vector<uint64_t> payload;
-  for (uint16_t i = 0; i < msg->msg.size(); i++){
-    payload.push_back(msg->msg[i]);
-    //output.verbose( CALL_INFO, 5, 0, "Packet payload[%u] = 0x%" PRIx64 "\n", i, msg->msg[i] );
-  }
-  zop->setPayload(payload);
-  zop->encodeEvent();
-  //output.flush();
-  output.verbose(CALL_INFO, 5, 0, "ZEN[%s]: Send msg from %s to %s\n", getName().c_str(),
-                 zop->getSrcString().c_str(), zop->getDestString().c_str());
-  if ( (zop->getDestPrec() == PrecinctId ) && ( zop->getDestPCID() == ZoneId ) )
-    zNic->send(zop, zopCompID::Z_ZQM);
-  else {
-    if (!precNic) {
-      output.flush();
-      output.fatal( CALL_INFO, -1, "ZEN[%s]: Packet needs unavailable precinct NoC\n");
-    }
-    precNic->send(zop, zopCompID::Z_ZQM, zop->getPCID( zop->getDestPCID() ), zop->getDestPrec());
-  }
-}
-#endif
-
 void ZEN::execMsgPipe2() {
   if ( MsgPipeline[2] == nullptr )
     return;
@@ -654,12 +592,6 @@ void ZEN::handleIncomingPrecZOP(SST::Event *event) {
   }
 }
 
-/* 
-    TODO: Numerous cases that are not handled yet; will need to add them
-    As we can have {h,m,r} zops that pass through we need to handle those
-    Excption message types can be an error for now, but could be valid (need to do a bit more research)
-    Thread Mgmt, syscall, and fence types are not expected to be seen here (as of now)
-*/
 void ZEN::handleIncomingZOP(SST::Event *event) {
   SST::Forza::zopEvent* ev = static_cast<SST::Forza::zopEvent*>(event);
 
