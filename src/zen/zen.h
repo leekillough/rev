@@ -69,14 +69,15 @@ class OutgoingSpawn {
 class seqNumEntry {
   public:
     bool in_use{ false };
-    bool acked{ false }; // may need to be an enum
-    bool written{ false }; // may need to be an enum
+    bool acked{ false };
+    bool written{ false };
+    bool outstanding_read{ false };
 
   void set() {
-    in_use = true; acked = false; written = false;
+    in_use = true; acked = false; written = false; outstanding_read = false;
   }
   void clear() {
-    in_use = false; acked = false; written = false;
+    in_use = acked = written = outstanding_read = false;
   }
 };
 
@@ -170,12 +171,6 @@ class ZEN : public SST::Component{
     void sendMsgToMemory( zopEvent* out_msg );
 
     void ExecSpawns();
-
-    /**
-     * msg: zen msg to be sent
-     * is_msg: true if sending a message, false is to rza/retry buffer memory
-     */
-    //void sendMsgZop( OutgoingMessage* msg, bool is_msg );
 
     zopEvent* createMsgZop( std::array<uint64_t, ACTOR_MSG_LENGTH> msg_data, ringEvent* ring_event );
 

@@ -326,13 +326,20 @@ void ZEN::handleMsgResp(zopEvent *ack)
   if ( ack->getOpc() == zopOpc::Z_MSG_NACK ) {
     output.fatal(CALL_INFO, -1, "ZEN[%s]: received a MSG NACK packet - not yet implemented\n",
                  getName().c_str());
+    // Have to use the msg_id to generate a read address; wait on data return and then resend the msg zop
+    // does this end up re-writing to memory (i'd hope not...) probably means there's some state variable hanging
+    // around to track this...
+    // can at least use the written flag in the seqNumEntry to track mem write
+    // then we need an enum or bool for outstanding reads
+
+
   }
 
   // Reduce the mailbox counter
   auto &regs = PerHartCSRs[ack->getDestZCID()][ack->getDestHart()];
   auto &cntr = regs.mbox_cntrs[ack->getMbxID()];
-  output.verbose(CALL_INFO, 9, 0, "ZEN[%s]; Counter=%u; packet %s to %s; credit=%u \n", getName().c_str(), cntr,
-                 ack->getSrcString().c_str(), ack->getDestString().c_str(), ack->getMbxID());
+  output.verbose(CALL_INFO, 9, 0, "ZEN[%s]; ACK received; MboxId=%u, Orig Counter=%u; packet %s to %s\n",
+      getName().c_str(), ack->getMbxID(), cntr, ack->getSrcString().c_str(), ack->getDestString().c_str());
   
   // Sanity check
   if (cntr == 0){
@@ -354,12 +361,15 @@ void ZEN::handleMsgResp(zopEvent *ack)
     } else {
       // Have to wait for rza ack before releasing this retry number
       SeqNumMgrList[retry_num].acked = true;
+      output.verbose( CALL_INFO, 9, 0, "ZEN[%s]: SeqNum %" PRIu16 " ACKed, but awaiting RZA response\n", getName().c_str(), retry_num );
     }
   } else {
     output.flush();
     output.fatal(CALL_INFO, -3, "ZEN[%s]; SeqNumMgrList[%u].in_use was false; Packet %s to %s \n", getName().c_str(),
                  retry_num, ack->getSrcString().c_str(), ack->getDestString().c_str());
   }
+  // Had a regular ack, need to delete it
+  delete ack;
 }
 
 void ZEN::sendMsgToMemory( zopEvent* out_msg )
@@ -388,7 +398,6 @@ void ZEN::execMsgPipe1()
     auto ack = MsgAckQueue.front();
     MsgAckQueue.pop();
     handleMsgResp(ack);
-    delete ack;
   }
 
   // Pipeline stalled
@@ -710,6 +719,7 @@ void ZEN::processIncomingRZAMsgs() {
     } else {
       // Have to wait for msg ack before releasing this retry number
       SeqNumMgrList[retry_num].written = true;
+      output.verbose( CALL_INFO, 9, 0, "ZEN[%s]: SeqNum %" PRIu16 "; rza resp rec'd, awaiting ack\n", getName().c_str(), retry_num );
     }
   } else {
     output.fatal(CALL_INFO, -3, "ZEN[%s]; SeqNumMgrList[%u].in_use was false; Packet %s to %s \n", getName().c_str(),
