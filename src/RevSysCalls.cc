@@ -4375,6 +4375,8 @@ EcallStatus RevCore::ECALL_forza_zone_barrier() {
   }
 
   if( zNic->isBarrierComplete( HartToExecID ) ) {
+    //output->verbose( CALL_INFO, 5, 0, "ECALL: forza_zone_barrier complete for Thread=%u, HartToExecId=%u\n", GetActiveThreadID(), HartToExecID );
+    //output->flush();
     return EcallStatus::SUCCESS;
   }
 
@@ -4387,6 +4389,7 @@ EcallStatus RevCore::ECALL_forza_debug_print() {
   uint64_t b = RegFile->GetX<uint64_t>( RevReg::a1 );
   uint64_t c = RegFile->GetX<uint64_t>( RevReg::a2 );
 
+  output->flush();
   output->verbose(
     CALL_INFO,
     2,

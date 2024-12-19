@@ -308,14 +308,17 @@ void zopNIC::send_zone_barrier( unsigned Hart, unsigned endpoints ) {
       req->givePayload( ev );
 
       // inject the request
+      //output.verbose( CALL_INFO, 5, 0, "%s inject zone barrier packet %s to %s; real dest=%ld \n", getName().c_str(),
+      //  ev->getSrcString().c_str(), ev->getDestString().c_str(), realDest );
+      //output.flush();
       sendQ.push_back( req );
     }
   }
 
-  // signal my local barrier
-  for( unsigned i = 0; i < numHarts; i++ ) {
-    zoneBarrier[barrierSense[Hart]][i]++;
-  }
+  // signal my local barrier; don't do this - we send to ourself, count on receive
+  //for( unsigned i = 0; i < numHarts; i++ ) {
+  //  zoneBarrier[barrierSense[Hart]][i]++;
+  //}
 }
 
 void zopNIC::send( zopEvent* ev, zopCompID dest ) {
@@ -606,6 +609,10 @@ bool zopNIC::handleBarrier( zopEvent* ev ) {
   if( sense > 1 ) {
     output.fatal( CALL_INFO, -1, "%s, Error: received zone barrier with sense > 1; SENSE=%" PRIu32 "\n", getName().c_str(), sense );
   }
+
+  //output.verbose( CALL_INFO, 5, 0, "%s; received zone barrier %s to %s with sense=%" PRIu32 "\n",
+  //  getName().c_str(), ev->getSrcString().c_str(), ev->getDestString().c_str(), sense );
+  //output.flush();
 
   for( size_t i = 0; i < numHarts; i++ ) {
     zoneBarrier[sense][i]++;
