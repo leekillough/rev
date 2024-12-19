@@ -73,10 +73,10 @@ namespace SST::Forza{
     ~ZIP();
 
     // required SST component functions
-    void init(unsigned phase);
-    void setup();
-    void complete(unsigned phase);
-    void finish();
+    void init( unsigned phase ) override;
+    void setup() override;
+    void complete( unsigned phase ) override;
+    void finish() override;
     // void emergencyShutdown(SST::Output& out);
     // void printStatus();
 

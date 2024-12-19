@@ -90,7 +90,7 @@ ZQM::ZQM(ComponentId_t id, Params& params)
         : Component(id)
 {
     // Init the output handler
-    const int Verbosity = params.find<int>("verbose", 7);
+    const uint32_t Verbosity = params.find<uint32_t>("verbose", 7);
     output.init("ZQM[" + getName() + ":@p:@t]: ",
                 Verbosity, 0, SST::Output::STDOUT);
 
@@ -181,7 +181,7 @@ void ZQM::handleRingMsg( SST::Event *event )
   SST::Forza::ringEvent *ev = static_cast<SST::Forza::ringEvent*>(event);
 
   if ( ev->getDestComp() != zopCompID::Z_ZQM ){
-    uint64_t next_addr = zone_ring->getNextAddress();
+    int64_t next_addr = zone_ring->getNextAddress();
     zone_ring->send( ev, next_addr );
     output.verbose(CALL_INFO, 5, 0, "[ZQM] %s forwarding ring message; CSR=0x%" PRIx16 "; op=%" PRIu8 "; data=0x%" PRIx64 "\n", 
                    getName().c_str(), ev->getCSR(), (uint8_t)ev->getOp(), ev->getDatum());
@@ -305,7 +305,7 @@ void ZQM::sendRingResponse( SST::Forza::ringEvent *ev, uint64_t data )
     //output.fatal(CALL_INFO, -1, "[ZQM] %s function not yet implemented\n", getName().c_str());
 #if 1
     auto resp = new ringEvent(zopCompID::Z_ZQM, ev->getHart(), ev->getSrcComp(), ringMsgT::R_RETDATA, ev->getCSR(), data );
-    uint64_t next_dest = zone_ring->getNextAddress();
+    int64_t next_dest = zone_ring->getNextAddress();
     output.verbose(
       CALL_INFO,
       5,

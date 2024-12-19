@@ -12,7 +12,7 @@ ZOPGen::ZOPGen(ComponentId_t id, Params& params)
   : Component(id) {
 
   // Init the output handler
-  const int Verbosity = params.find<int>("verbose", 7);
+  const uint32_t Verbosity = params.find<uint32_t>("verbose", 7);
   output.init("ZOPGen[" + getName() + ":@p:@t]: ",
               Verbosity, params.find<unsigned int>("tests", 0), SST::Output::STDOUT);
 
@@ -318,7 +318,7 @@ void ZOPGen::sendMsgToZOPGen(int i) {
   zopgenMsg->setDestZCID((uint8_t)zopCompID::Z_ZAP1);
   zopgenMsg->setSrcPCID(m_zop_iface->getZoneID());
   zopgenMsg->setDestPCID(m_zop_iface->getZoneID());
-  payload.push_back(i);
+  payload.push_back((uint64_t)i);
   zopgenMsg->setPayload(payload);
   zopgenMsg->encodeEvent();
   // TODO: Update with RZA id
@@ -338,7 +338,7 @@ void ZOPGen::sendMsgToZOPGen2(int i) {
   zopgenMsg->setDestZCID((uint8_t)zopCompID::Z_ZAP1);
   zopgenMsg->setSrcPCID(m_zop_iface->getZoneID());
   zopgenMsg->setDestPCID(1);
-  payload.push_back(i);
+  payload.push_back((uint64_t)i);
   zopgenMsg->setPayload(payload);
   zopgenMsg->encodeEvent();
   // TODO: Update with RZA id
