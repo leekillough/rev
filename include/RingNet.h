@@ -267,22 +267,22 @@ public:
   virtual void setMsgHandler( Event::HandlerBase* handler ) = 0;
 
   /// RingNetAPI: initializes the network
-  void init( unsigned int phase ) override                  = 0;
+  void init( uint32_t phase ) override                      = 0;
 
   /// RingNetAPI: setup the network
   void setup() override {}
 
   /// RingNetAPI: send a message on the network
-  virtual void send( ringEvent* ev, uint64_t dest )          = 0;
+  virtual void send( ringEvent* ev, int64_t dest )           = 0;
 
   /// RingNetAPI: retrieve the number of destinations
-  virtual unsigned getNumDestinations()                      = 0;
+  virtual uint32_t getNumDestinations()                      = 0;
 
   /// RingNetAPI: returns NIC's network address
   virtual SST::Interfaces::SimpleNetwork::nid_t getAddress() = 0;
 
   /// RingNetAPI: return the next possible network address (ring topology)
-  virtual uint64_t getNextAddress()                          = 0;
+  virtual int64_t getNextAddress()                           = 0;
 
   /// RingNetAPI: set the type of the endpoint
   virtual void setEndpointType( zopCompID type )             = 0;
@@ -330,22 +330,22 @@ public:
   void setMsgHandler( Event::HandlerBase* handler ) override;
 
   /// RingNetNIC: init function
-  void init( unsigned int phase ) override;
+  void init( uint32_t phase ) override;
 
   /// RingNetNIC: setup function
   void setup() override;
 
   /// RingNetNIC: send event to the destination id
-  void send( ringEvent* ev, uint64_t dest ) override;
+  void send( ringEvent* ev, int64_t dest ) override;
 
   /// RingNetNIC: retrieve the number of destinations
-  unsigned getNumDestinations() override;
+  uint32_t getNumDestinations() override;
 
   /// RingNetNIC: get the endpoint's network address
   SST::Interfaces::SimpleNetwork::nid_t getAddress() override;
 
   /// RingNetAPI: return the next possible network address (ring topology)
-  uint64_t getNextAddress() override;
+  int64_t getNextAddress() override;
 
   /// RingNetNIC: set the endpoint type
   void setEndpointType( zopCompID type ) override { Type = type; }
@@ -361,7 +361,7 @@ public:
 
 protected:
   SST::Output output;       ///< RingNetNIC: SST output object
-  int         verbosity{};  ///< RingNetNIC: verbosity
+  uint32_t    verbosity{};  ///< RingNetNIC: verbosity
 
   TimeConverter*                   timeConverter{};  ///< SST time conversion handler
   SST::Clock::Handler<RingNetNIC>* clockHandler{};   ///< Clock Handler
@@ -374,7 +374,7 @@ protected:
 
   int numDest{};  ///< RingNetNIC: number of network destinations
 
-  std::vector<uint64_t> endPoints;  ///< RingNetNIC: vector of endpoint IDs
+  std::vector<int64_t> endPoints;  ///< RingNetNIC: vector of endpoint IDs
 
   std::queue<SST::Interfaces::SimpleNetwork::Request*> sendQ;  ///< buffered send queue
 

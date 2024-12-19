@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import argparse
 
 parser = argparse.ArgumentParser(description="Match SST output with asm file - use with __REV_DEEP_TRACE__ define")

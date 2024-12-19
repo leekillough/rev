@@ -41,6 +41,7 @@ protected:
     return make_dependent<T>( GetCore() )->output->fatal( CALL_INFO, -1, msg, GetPC() );
   }
 
+protected:
   RevZicntr()                              = default;
   RevZicntr( const RevZicntr& )            = delete;
   RevZicntr( RevZicntr&& )                 = default;

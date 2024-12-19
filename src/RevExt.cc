@@ -13,7 +13,7 @@
 namespace SST::RevCPU {
 
 /// Execute an instruction
-bool RevExt::Execute( unsigned Inst, const RevInst& payload, uint16_t HartID, RevRegFile* regFile ) const {
+bool RevExt::Execute( uint32_t Inst, const RevInst& payload, uint16_t HartID, RevRegFile* regFile ) const {
   bool ( *func )( const RevFeature*, RevRegFile*, RevMem*, const RevInst& );
 
   if( payload.compressed ) {
@@ -25,7 +25,7 @@ bool RevExt::Execute( unsigned Inst, const RevInst& payload, uint16_t HartID, Re
   }
 
   if( !func ) {
-    output->fatal( CALL_INFO, -1, "Error: instruction at index=%u does not exist in extension=%s", Inst, name.data() );
+    output->fatal( CALL_INFO, -1, "Error: instruction at index=%" PRIu32 " does not exist in extension=%s", Inst, name.data() );
     return false;
   }
 

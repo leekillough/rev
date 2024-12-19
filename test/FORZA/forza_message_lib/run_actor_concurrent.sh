@@ -9,7 +9,7 @@ program=actor_main_concurrent.exe
 if [[ -f $program ]]; then
   # Small 2 zone test
   sst --model-options="--hartsperzap 1 --zaps 4 --zones 2 --precincts 1 --shape 1,1:1 --program $program" ../forza-test-config-ring.py
-  # Full precinct 
+  # Full precinct
   #sst --model-options="--hartsperzap 1 --zaps 4 --zones 8 --precincts 1 --shape 1,1:1 --program $program" ./forza-test-config-ring.py
 else
   echo "Test FORZA $program not Found - likely build failed"

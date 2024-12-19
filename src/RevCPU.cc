@@ -32,7 +32,7 @@ const char splash_msg[] = R"(
 
 RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params ) : SST::Component( id ) {
 
-  const int Verbosity = params.find<int>( "verbose", 0 );
+  auto Verbosity = params.find<uint32_t>( "verbose", 0 );
 
   // Initialize the output handler
   output.init( "RevCPU[" + getName() + ":@p:@t]: ", Verbosity, 0, SST::Output::STDOUT );
@@ -104,7 +104,7 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params ) : SST::Compon
     Nic->setMsgHandler( new Event::Handler<RevCPU>( this, &RevCPU::handleMessage ) );
 
     // record the number of injected messages per cycle
-    msgPerCycle = params.find<unsigned>( "msgPerCycle", 1 );
+    msgPerCycle = params.find<uint32_t>( "msgPerCycle", 1 );
   }
 
   // Look for the fault injection logic
@@ -122,7 +122,7 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params ) : SST::Compon
   }
 
   // Create the memory object
-  const uint64_t memSize = params.find<unsigned long>( "memSize", 1073741824 );
+  const uint64_t memSize = params.find<uint64_t>( "memSize", 1073741824 );
   EnableMemH             = params.find<bool>( "enableMemH", 0 );
 
   // Added for the security test
@@ -164,8 +164,8 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params ) : SST::Compon
   EnableZopNIC = params.find<bool>( "enableZoneNIC", 0 );
   if( EnableZopNIC ) {
     output.verbose( CALL_INFO, 4, 0, "[FORZA] Enabling zone NIC on device=%s\n", getName().c_str() );
-    Precinct = params.find<unsigned>( "precinctId", 0 );
-    Zone     = params.find<unsigned>( "zoneId", 0 );
+    Precinct = params.find<uint32_t>( "precinctId", 0 );
+    Zone     = params.find<uint32_t>( "zoneId", 0 );
     zNic     = loadUserSubComponent<Forza::zopAPI>( "zone_nic" );
     if( !zNic ) {
       output.fatal( CALL_INFO, -1, "Error: no ZONE NIC object loaded into RevCPU\n" );
@@ -200,7 +200,7 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params ) : SST::Compon
     } else {
       // This Rev instance is a ZAP
       Mem->unsetRZA();
-      unsigned         zap   = params.find<unsigned>( "zapId", 0 );
+      uint32_t         zap   = params.find<uint32_t>( "zapId", 0 );
       Forza::zopCompID zapId = Forza::zopCompID::Z_ZAP0;
       switch( zap ) {
       case 0: zapId = Forza::zopCompID::Z_ZAP0; break;
@@ -225,11 +225,11 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params ) : SST::Compon
   }
 
   // Set TLB Size
-  const uint64_t tlbSize = params.find<unsigned long>( "tlbSize", 512 );
+  const uint64_t tlbSize = params.find<uint64_t>( "tlbSize", 512 );
   Mem->SetTLBSize( tlbSize );
 
   // Set max heap size
-  const uint64_t maxHeapSize = params.find<unsigned long>( "maxHeapSize", memSize / 4 );
+  const uint64_t maxHeapSize = params.find<uint64_t>( "maxHeapSize", memSize / 4 );
   Mem->SetMaxHeapSize( maxHeapSize );
 
   // Load the binary into memory
@@ -240,13 +240,13 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params ) : SST::Compon
 
     // Create the processor objects
     Procs.reserve( Procs.size() + numCores );
-    for( unsigned i = 0; i < numCores; i++ ) {
+    for( uint32_t i = 0; i < numCores; i++ ) {
       RevCore* tmpNewRevCore = new RevCore( i, Opts.get(), numHarts, Mem.get(), Loader.get(), this->GetNewTID(), &output );
       tmpNewRevCore->setZNic( zNic );
       Procs.push_back( std::unique_ptr<RevCore>( tmpNewRevCore ) );
     }
     // Create the co-processor objects
-    for( unsigned i = 0; i < numCores; i++ ) {
+    for( uint32_t i = 0; i < numCores; i++ ) {
       RevCoProc* CoProc = loadUserSubComponent<RevCoProc>( "co_proc", SST::ComponentInfo::SHARE_NONE, Procs[i].get() );
       if( !CoProc ) {
         output.fatal( CALL_INFO, -1, "Error : failed to inintialize the co-processor subcomponent\n" );
@@ -267,7 +267,7 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params ) : SST::Compon
     EnableCoProc = true;
 
     Procs.reserve( Procs.size() + numCores );
-    for( unsigned i = 0; i < numCores; i++ ) {
+    for( uint32_t i = 0; i < numCores; i++ ) {
       auto tmpNewRevCore =
         std::make_unique<RevCore>( i, Opts.get(), numHarts, Mem.get(), Loader.get(), this->GetNewTID(), &output );
       tmpNewRevCore->setZNic( zNic );
@@ -297,7 +297,7 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params ) : SST::Compon
   } else {
     // Create the processor objects
     Procs.reserve( Procs.size() + numCores );
-    for( unsigned i = 0; i < numCores; i++ ) {
+    for( uint32_t i = 0; i < numCores; i++ ) {
       auto tmpNewRevCore =
         std::make_unique<RevCore>( i, Opts.get(), numHarts, Mem.get(), Loader.get(), this->GetNewTID(), &output );
       tmpNewRevCore->setZNic( zNic );
@@ -344,7 +344,7 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params ) : SST::Compon
 #ifndef NO_REV_TRACER
   // Configure tracer and assign to each core
   if( output.getVerboseLevel() >= 5 ) {
-    for( unsigned i = 0; i < numCores; i++ ) {
+    for( uint32_t i = 0; i < numCores; i++ ) {
       // Each core gets its very own tracer
       RevTracer*  trc = new RevTracer( getName(), &output );
       std::string diasmType;
@@ -377,12 +377,12 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params ) : SST::Compon
   // Initial thread setup
   uint32_t MainThreadID = id + 1;  // Prevents having MainThreadID == 0 which is reserved for INVALID
 
-  uint64_t    StartAddr = 0x00ull;
+  uint64_t    StartAddr = 0;
   std::string StartSymbol;
 
   bool     IsStartSymbolProvided   = Opts->GetStartSymbol( id, StartSymbol );
-  bool     IsStartAddrProvided     = Opts->GetStartAddr( id, StartAddr ) && StartAddr != 0x00ull;
-  uint64_t ResolvedStartSymbolAddr = ( IsStartSymbolProvided ) ? Loader->GetSymbolAddr( StartSymbol ) : 0x00ull;
+  bool     IsStartAddrProvided     = Opts->GetStartAddr( id, StartAddr ) && StartAddr != 0;
+  uint64_t ResolvedStartSymbolAddr = ( IsStartSymbolProvided ) ? Loader->GetSymbolAddr( StartSymbol ) : 0;
 
   // If no start address has been provided ...
   if( !IsStartAddrProvided ) {
@@ -390,7 +390,7 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params ) : SST::Compon
     if( !IsStartSymbolProvided ) {
       // ... no, try to default to 'main' ...
       StartAddr = Loader->GetSymbolAddr( "main" );
-      if( StartAddr == 0x00ull ) {
+      if( StartAddr == 0 ) {
         // ... no hope left!
         output.fatal(
           CALL_INFO,
@@ -441,7 +441,7 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params ) : SST::Compon
   TLBHitsPerCore.reserve( numCores );
   TLBMissesPerCore.reserve( numCores );
 
-  for( unsigned s = 0; s < numCores; s++ ) {
+  for( uint32_t s = 0; s < numCores; s++ ) {
     auto core = "core_" + std::to_string( s );
     TotalCycles.push_back( registerStatistic<uint64_t>( "TotalCycles", core ) );
     CyclesWithIssue.push_back( registerStatistic<uint64_t>( "CyclesWithIssue", core ) );
@@ -462,7 +462,7 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params ) : SST::Compon
   // Create the completion array
   Enabled               = std::vector<bool>( numCores );
 
-  const unsigned Splash = params.find<bool>( "splash", 0 );
+  const uint32_t Splash = params.find<bool>( "splash", 0 );
 
   if( Splash > 0 )
     output.verbose( CALL_INFO, 1, 0, splash_msg );
@@ -485,7 +485,7 @@ void RevCPU::DecodeFaultWidth( const std::string& width ) {
   } else if( width == "word" ) {
     fault_width = 8;
   } else {
-    fault_width = std::stoi( width );
+    fault_width = std::stoul( width );
   }
 
   if( fault_width > 64 ) {
@@ -585,7 +585,7 @@ void RevCPU::setup() {
 
 void RevCPU::finish() {}
 
-void RevCPU::init( unsigned int phase ) {
+void RevCPU::init( uint32_t phase ) {
   if( EnableNIC )
     Nic->init( phase );
   if( EnableMemH )
@@ -602,11 +602,11 @@ void RevCPU::processZOPQ() {
   }
 
   bool     flag = false;
-  uint64_t Addr = 0x00ull;
+  uint64_t Addr = 0;
 
   /// put the ZRqst structure in RevMem
 
-  for( unsigned i = 0; i < ZIQ.size(); i++ ) {
+  for( uint32_t i = 0; i < ZIQ.size(); i++ ) {
     auto zev = ZIQ[i];
     if( !zev->getFLIT( Forza::Z_FLIT_ADDR, &Addr ) ) {
       output.fatal(
@@ -700,13 +700,13 @@ void RevCPU::handleZOPMZOP( Forza::zopEvent* zev ) {
     output.fatal( CALL_INFO, -1, "[FORZA][ZAP]: Cannot handle null MZOP\n" );
   }
 
-  uint64_t addr                                                  = 0x00ull;
-  uint64_t data                                                  = 0x00ull;
+  uint64_t addr                                                  = 0;
+  uint64_t data                                                  = 0;
   bool     isLoad                                                = false;
 
   // used only for load operations
   std::function<void( const MemReq& )> LocalMarkLoadCompleteFunc = [=]( const MemReq& req ) { this->MarkLoadCompleteDummy( req ); };
-  MemReq req{ addr, 0x00, RevRegClass::RegGPR, zev->getSrcHart(), MemOp::MemOpREAD, true, LocalMarkLoadCompleteFunc };
+  MemReq req{ addr, 0, RevRegClass::RegGPR, zev->getSrcHart(), MemOp::MemOpREAD, true, LocalMarkLoadCompleteFunc };
 
   // retrieve the address
   if( !zev->getFLIT( Forza::Z_FLIT_ADDR, &addr ) ) {
@@ -864,7 +864,7 @@ void RevCPU::handleZOPMZOP( Forza::zopEvent* zev ) {
 
     // set the payload
     std::vector<uint64_t> payload;
-    payload.push_back( 0x00ull );  // ACS
+    payload.push_back( 0 );  // ACS
     payload.push_back( data );     // load response data
     rsp_zev->setPayload( payload );
 
@@ -891,7 +891,7 @@ void RevCPU::handleZOPMZOP( Forza::zopEvent* zev ) {
 
     // set the payload
     std::vector<uint64_t> payload;
-    payload.push_back( 0x00ull );  // ACS
+    payload.push_back( 0 );  // ACS
     rsp_zev->setPayload( payload );
 
     // inject the packet
@@ -924,9 +924,9 @@ void RevCPU::handleZOPThreadMigrateIntRegs( Forza::zopEvent* zev ) {
 
   // Create the regfile
   std::unique_ptr<RevRegFile> MigratedRegState = std::make_unique<RevRegFile>( Procs[0].get() );
-  uint64_t                    pc               = pkt[2] & ( 0x0FFFFFFFFUL );
+  uint64_t                    pc               = uint32_t( pkt[2] );
   MigratedRegState->SetPC( pc );
-  for( unsigned i = 1; i < 32; i++ ) {
+  for( uint32_t i = 1; i < 32; i++ ) {
     MigratedRegState->SetX( i, pkt[2 + i] );  //x0 == 0
   }
 
@@ -960,9 +960,9 @@ void RevCPU::handleZOPThreadMigrateSpawn( Forza::zopEvent* zev ) {
 
   // Create the regfile
   std::unique_ptr<RevRegFile> MigratedRegState = std::make_unique<RevRegFile>( Procs[0].get() );
-  uint64_t                    pc               = pkt[2] & ( 0x0FFFFFFFFUL );
+  uint64_t                    pc               = uint32_t( pkt[2] );
   MigratedRegState->SetPC( pc );
-  for( unsigned i = 1; i < 31; i++ ) {
+  for( uint32_t i = 1; i < 31; i++ ) {
     MigratedRegState->SetX( i, 0 );
   }
   MigratedRegState->SetX( 31, pkt[3] );
@@ -1058,7 +1058,7 @@ void RevCPU::handleRingMsg( Event* ev ) {
       ring_ev->getCSR(),
       (uint8_t) ring_ev->getOp()
     );
-    uint64_t next_addr = zoneRing->getNextAddress();
+    int64_t next_addr = zoneRing->getNextAddress();
     zoneRing->send( ring_ev, next_addr );
     return;
   }
@@ -1097,7 +1097,7 @@ void RevCPU::HandleCrackFault( SST::Cycle_t currentCycle ) {
   output.verbose( CALL_INFO, 4, 0, "FAULT: Crack fault injected at cycle: %" PRIu64 "\n", currentCycle );
 
   // select a random processor core
-  unsigned Core = 0;
+  uint32_t Core = 0;
   if( numCores > 1 ) {
     Core = RevRand( 0, numCores - 1 );
   }
@@ -1114,7 +1114,7 @@ void RevCPU::HandleRegFault( SST::Cycle_t currentCycle ) {
   output.verbose( CALL_INFO, 4, 0, "FAULT: Register fault injected at cycle: %" PRIu64 "\n", currentCycle );
 
   // select a random processor core
-  unsigned Core = 0;
+  uint32_t Core = 0;
   if( numCores > 1 ) {
     Core = RevRand( 0, numCores - 1 );
   }
@@ -1126,7 +1126,7 @@ void RevCPU::HandleALUFault( SST::Cycle_t currentCycle ) {
   output.verbose( CALL_INFO, 4, 0, "FAULT: ALU fault injected at cycle: %" PRIu64 "\n", currentCycle );
 
   // select a random processor core
-  unsigned Core = 0;
+  uint32_t Core = 0;
   if( numCores > 1 ) {
     Core = RevRand( 0, numCores - 1 );
   }
@@ -1155,9 +1155,9 @@ void RevCPU::HandleFaultInjection( SST::Cycle_t currentCycle ) {
     output.fatal( CALL_INFO, -1, "Error: no faults enabled; add a fault vector in the 'faults' param\n" );
   }
 
-  unsigned selector = 0;
+  uint32_t selector = 0;
   if( myfaults.size() != 1 ) {
-    selector = RevRand( 0, int( myfaults.size() ) - 1 );
+    selector = RevRand( 0u, int( myfaults.size() ) - 1 );
   }
 
   // handle the selected fault
@@ -1174,7 +1174,7 @@ void RevCPU::HandleFaultInjection( SST::Cycle_t currentCycle ) {
   }
 }
 
-void RevCPU::UpdateCoreStatistics( unsigned coreNum ) {
+void RevCPU::UpdateCoreStatistics( uint32_t coreNum ) {
   auto [stats, memStats] = Procs[coreNum]->GetAndClearStats();
   TotalCycles[coreNum]->addData( stats.totalCycles );
   CyclesWithIssue[coreNum]->addData( stats.cyclesBusy );
@@ -1197,7 +1197,7 @@ bool RevCPU::clockTick( SST::Cycle_t currentCycle ) {
   // Process the ZOPQ
   if( EnableRZA ) {
     processZOPQ();
-    for( unsigned i = 0; i < CoProcs.size(); i++ ) {
+    for( uint32_t i = 0; i < CoProcs.size(); i++ ) {
       CoProcs[i]->ClockTick( currentCycle );
     }
     return false;
@@ -1264,7 +1264,7 @@ bool RevCPU::clockTick( SST::Cycle_t currentCycle ) {
   }
 
   if( rtn && CompletedThreads.size() ) {
-    for( unsigned i = 0; i < numCores; i++ ) {
+    for( uint32_t i = 0; i < numCores; i++ ) {
       UpdateCoreStatistics( i );
       Procs[i]->PrintStatSummary();
     }
@@ -1305,7 +1305,7 @@ void RevCPU::InitThread( std::unique_ptr<RevThread>&& ThreadToInit ) {
 
 // Assigns a RevThred to a specific Proc which then loads it into a RevHart
 // This should not be called without first checking if the Proc has an IdleHart
-void RevCPU::AssignThread( std::unique_ptr<RevThread>&& ThreadToAssign, unsigned ProcID ) {
+void RevCPU::AssignThread( std::unique_ptr<RevThread>&& ThreadToAssign, uint32_t ProcID ) {
   output.verbose( CALL_INFO, 4, 0, "Assigning Thread %" PRIu32 " to Processor %" PRIu32 "\n", ThreadToAssign->GetID(), ProcID );
   Procs[ProcID]->AssignThread( std::move( ThreadToAssign ) );
   return;
