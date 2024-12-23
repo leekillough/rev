@@ -32,12 +32,15 @@ ZQM::ZQM(ComponentId_t id, Params& params)
   processPerCycle       = params.find<unsigned>( "processPerCycle", 10 );
   msgQueueDepth         = params.find<uint32_t>( "msgQueueDepth", 512 );
   memStartAddr          = params.find<uint64_t>( "memStartAddr", 0x100000UL );
-  //msgsPerMbox           = params.find<uint32_t>( "msgsPerMbox", 2 );
-  //cyclesPerRecycle      = params.find<uint32_t>( "cyclesPerRecycle", 1024 );
-  //recyclesToNack        = params.find<uint32_t>( "recyclesToNack", 64 );
+#if 1 // "Typical" values
+  msgsPerMbox           = params.find<uint32_t>( "msgsPerMbox", 2 );
+  cyclesPerRecycle      = params.find<uint32_t>( "cyclesPerRecycle", 1024 );
+  recyclesToNack        = params.find<uint32_t>( "recyclesToNack", 64 );
+#else // "Force nack" values
   msgsPerMbox           = params.find<uint32_t>( "msgsPerMbox", 1 );
   cyclesPerRecycle      = params.find<uint32_t>( "cyclesPerRecycle", 10 );
   recyclesToNack        = params.find<uint32_t>( "recyclesToNack", 1 );
+#endif
 
   // Validate parameters
   if ( ( memStartAddr % 0x400 ) != 0 ) {
@@ -148,7 +151,6 @@ void ZQM::handleRingMsg( SST::Event *event )
   }
 
   output.verbose(CALL_INFO, 5, 0, "[ZQM] %s handling ring message; CSR=0x%" PRIx16 "; op=%" PRIu8 "\n", getName().c_str(), ev->getCSR(), (uint8_t)ev->getOp());
-  output.flush();
   if ( ev->getCSR() == R_ZQMSTAT ){
     handleRingStatus(ev);    
   } else if ( ev->getCSR() == R_ZQMMBOXREG ){
@@ -201,7 +203,6 @@ void ZQM::handleRingMboxReg( SST::Forza::ringEvent *ev )
     uint16_t logic_pe = ( x >> ZQMMBOXREG_SHIFT_LOGICALPE ) & ZQMMBOXREG_MASK_LOGICALPE;
     uint8_t mbx_bitmap = ( x >> ZQMMBOXREG_SHIFT_MBXSUSED ) & ZQMMBOXREG_MASK_MBXSUSED;
     output.verbose(CALL_INFO, 7, 0, "[ZQM] %s; handling a mailbox registration message; datum = 0x%" PRIx64 "\n", getName().c_str(), x );
-    output.flush();
 
     std::pair<uint8_t, uint16_t> p1(aid, logic_pe);
     auto iter = LogicalToPhysicalMap.find( p1 );
@@ -340,9 +341,6 @@ void ZQM::updateInMboxQueue()
 
       in_mbox.mbox_queue.pop();
       if (in_mbox.mbox_queue.front().second == recyclesToNack) {
-        // TODO: NACK THIS MESSAGE
-        //output.flush();
-        //output.fatal( CALL_INFO, -1, "ZQM: NACK not yet implemented\n" );
         // NACK goes to where it came from; MUST have msg_id so the sender ZEN can retry
         sendZopAck( msg, zopMsgT::Z_MSG, zopOpc::Z_MSG_NACK );
         delete msg;
@@ -380,7 +378,6 @@ void ZQM::handleIncomingZOP(SST::Event *event)
                      getName().c_str(),
                      ev->getID());
     }
-  output.flush();
 }
 
 #if 0
@@ -719,7 +716,6 @@ void ZQM::processMessagingMsgs()
         if ( msg_zop_q.empty() )
             break;
     }
-  output.flush();
 }
 
 void ZQM::sendZopAck(SST::Forza::zopEvent *event, zopMsgT msg_type, zopOpc msg_opc)
