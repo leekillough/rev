@@ -32,9 +32,12 @@ ZQM::ZQM(ComponentId_t id, Params& params)
   processPerCycle       = params.find<unsigned>( "processPerCycle", 10 );
   msgQueueDepth         = params.find<uint32_t>( "msgQueueDepth", 512 );
   memStartAddr          = params.find<uint64_t>( "memStartAddr", 0x100000UL );
-  msgsPerMbox           = params.find<uint32_t>( "msgsPerMbox", 2 );
-  cyclesPerRecycle      = params.find<uint32_t>( "cyclesPerRecycle", 1024 );
-  recyclesToNack        = params.find<uint32_t>( "recyclesToNack", 64 );
+  //msgsPerMbox           = params.find<uint32_t>( "msgsPerMbox", 2 );
+  //cyclesPerRecycle      = params.find<uint32_t>( "cyclesPerRecycle", 1024 );
+  //recyclesToNack        = params.find<uint32_t>( "recyclesToNack", 64 );
+  msgsPerMbox           = params.find<uint32_t>( "msgsPerMbox", 1 );
+  cyclesPerRecycle      = params.find<uint32_t>( "cyclesPerRecycle", 10 );
+  recyclesToNack        = params.find<uint32_t>( "recyclesToNack", 1 );
 
   // Validate parameters
   if ( ( memStartAddr % 0x400 ) != 0 ) {

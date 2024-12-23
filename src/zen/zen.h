@@ -72,12 +72,22 @@ class seqNumEntry {
     bool acked{ false };
     bool written{ false };
     bool outstanding_read{ false };
+    uint8_t src_zap{ UINT8_MAX };
+    uint16_t src_hart{ UINT16_MAX };
 
   void set() {
-    in_use = true; acked = false; written = false; outstanding_read = false;
+    in_use = true; acked = written = outstanding_read = false;
   }
+
+  void setMsgSrc( uint8_t zap, uint16_t hart ) {
+    src_zap = zap;
+    src_hart = hart;
+  }
+
   void clear() {
     in_use = acked = written = outstanding_read = false;
+    src_zap = UINT8_MAX;
+    src_hart = UINT16_MAX;
   }
 };
 
@@ -278,9 +288,16 @@ class ZEN : public SST::Component{
     std::queue<zopEvent*> MsgAckQueue;
     std::queue<zopEvent*> RzaRespQueue;
     std::queue<OutgoingSpawn*> OutSpawnQueue;
+    std::queue<zopEvent*> NackRdReqQueue;
+
+    // This map is because we don't have a LoadDMA option in memory right now
+    // so, this gets used to store the message and we'll get the payload from here
+    // on the read return
+    std::map<uint32_t, std::vector<uint64_t> > MsgDataMap;
 
     // Other counters, etc
     uint64_t seqNumsAvail;
+    bool pipe2_alternate{false};
 
   }; // class SST::ZEN
 } // namespace SST::Forza
