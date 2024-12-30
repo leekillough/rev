@@ -17,7 +17,7 @@ ZIPBasicMemCtrl::ZIPBasicMemCtrl(ComponentId_t id, const Params& params)
     LineSize(0), OutstandingReads(0), OutstandingWrites(0){
 
   // read the parameters
-  int verbosity = params.find<int>("verbose", 0);
+  auto verbosity = params.find<uint32_t>("verbose", 0);
   output.init("ZIPBasicMemCtrl["+getName()+":@p:@t]: ", verbosity, 0, SST::Output::STDOUT);
 
   // initialize the memory handlers

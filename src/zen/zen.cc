@@ -14,7 +14,7 @@ ZEN::ZEN(ComponentId_t id, Params& params)
     zip_credits(_ZEN_DEFAULT_ZIP_CREDITS_)*/{
 
   // Init the output handler
-  const int Verbosity = params.find<int>("verbose", 7);
+  const uint32_t Verbosity = params.find<uint32_t>("verbose", 7);
   output.init("ZEN[" + getName() + ":@p:@t]: ",
               Verbosity, 0, SST::Output::STDOUT);
 
@@ -129,7 +129,7 @@ void ZEN::handleRingMsg( SST::Event *event )
 {
   auto *ev = static_cast<ringEvent*>(event);
   if ( ev->getDestComp() != zopCompID::Z_ZEN ){
-    uint64_t next_addr = zone_ring->getNextAddress();
+    int64_t next_addr = zone_ring->getNextAddress();
     zone_ring->send( ev, next_addr );
     output.verbose(CALL_INFO, 5, 0, "[ZEN] %s forwarding ring message; CSR=0x%" PRIx16 "; op=%" PRIu8 "\n", getName().c_str(), ev->getCSR(), (uint8_t)ev->getOp());
     return;
@@ -282,7 +282,7 @@ void ZEN::sendRingResponse( SST::Forza::ringEvent* ev, uint64_t data ) {
     0,
     "[ZEN] sending ring message; CSR=0x%" PRIx16 "; op=%" PRIu8 "; data=0x%" PRIx64 "\n",
     resp->getCSR(),
-    (uint8_t) resp->getOp(),
+    RevCPU::safe_static_cast<uint8_t>( resp->getOp() ),
     data
   );
   zone_ring->send( resp, next_dest );

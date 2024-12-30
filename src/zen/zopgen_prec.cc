@@ -8,7 +8,7 @@ ZOPGen_prec::ZOPGen_prec(ComponentId_t id, Params& params)
   : Component(id) {
 
   // Init the output handler
-  const int Verbosity = params.find<int>("verbose", 0);
+  const uint32_t Verbosity = params.find<uint32_t>("verbose", 0);
   output.init("ZOPGen_prec[" + getName() + ":@p:@t]: ",
               Verbosity, 0, SST::Output::STDOUT);
 

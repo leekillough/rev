@@ -13,9 +13,10 @@ static constexpr uint16_t ZAP_TO_HART_SHIFT = 9;
 ZQM::ZQM(ComponentId_t id, Params& params)
         : Component(id)
 {
-  // Init the output handler
-  const int Verbosity = params.find<int>( "verbose", 7 );
-  output.init( "ZQM[" + getName() + ":@p:@t]: ", Verbosity, 0, SST::Output::STDOUT );
+    // Init the output handler
+    const uint32_t Verbosity = params.find<uint32_t>("verbose", 7);
+    output.init("ZQM[" + getName() + ":@p:@t]: ",
+                Verbosity, 0, SST::Output::STDOUT);
 
   // read the remaining parameters
   clockFreq = params.find<std::string>( "clockFreq", "1GHz" );
@@ -139,7 +140,7 @@ void ZQM::handleRingMsg( SST::Event *event )
   SST::Forza::ringEvent *ev = static_cast<SST::Forza::ringEvent*>(event);
 
   if ( ev->getDestComp() != zopCompID::Z_ZQM ){
-    uint64_t next_addr = zone_ring->getNextAddress();
+    int64_t next_addr = zone_ring->getNextAddress();
     zone_ring->send( ev, next_addr );
     output.verbose(CALL_INFO, 5, 0, "[ZQM] %s forwarding ring message; CSR=0x%" PRIx16 "; op=%" PRIu8 "; data=0x%" PRIx64 "\n", 
                    getName().c_str(), ev->getCSR(), (uint8_t)ev->getOp(), ev->getDatum());
@@ -262,7 +263,7 @@ void ZQM::handleRingDq( SST::Forza::ringEvent* ev ) {
 void ZQM::sendRingResponse( SST::Forza::ringEvent *ev, uint64_t data )
 {
     auto resp = new ringEvent(zopCompID::Z_ZQM, ev->getHart(), ev->getSrcComp(), ringMsgT::R_RETDATA, ev->getCSR(), data );
-    uint64_t next_dest = zone_ring->getNextAddress();
+    int64_t next_dest = zone_ring->getNextAddress();
     output.verbose(
       CALL_INFO,
       5,

@@ -144,16 +144,16 @@ class ZEN : public SST::Component{
     ~ZEN();
 
     /// ZEN: init function
-    void init(unsigned int phase);
+    void init( unsigned int phase ) override;
 
     /// ZEN: setup function
-    void setup();
+    void setup() override;
 
     /// ZEN: completion function
-    void complete(unsigned int phase);
+    void complete( unsigned int phase ) override;
 
     /// ZEN: finish function
-    void finish();
+    void finish() override;
 
     /// ZEN: clock handler
     bool clock(SST::Cycle_t cycle);
