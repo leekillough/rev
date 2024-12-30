@@ -453,8 +453,7 @@ enum class zopCompID : uint8_t {
   Z_ZAP2     = 0b00000010,  /// zopCompID: ZAP2
   Z_ZAP3     = 0b00000011,  /// zopCompID: ZAP3
   Z_RZA      = 0b00001000,  /// zopCompID: RZA
-  Z_RZA1     = 0b00001001,  /// zopCompID: RZA1 - for ZEN and ZQM
-  // TODO: Eventually add multiple RZAs
+  Z_RZA1     = 0b00001001,  /// zopCompID: RZA1 - for ZEN and ZQM messaging (run queue to be added still)
   Z_ZQM      = 0b00001010,  /// zopCompID: ZQM // RTL value is 9
   Z_ZEN      = 0b00001100,  /// zopCompID: ZEN // RTL value is 8
   Z_PREC_ZIP = 0b00001110,  /// zopCompID: PRECINCT ZIP - update doc?
@@ -600,11 +599,7 @@ public:
   void setSeqNum( uint8_t SN ) { SeqNum = SN; }
 
   /// zopEvent: set the packet ID
-  void setID( uint16_t I ) {
-    if( I == 8191 )
-      assert( false );
-    ID = I;
-  }
+  void setID( uint16_t I ) { ID = I; }
 
   /// zopEvent: set the credit
   void setMboxID( uint8_t MB ) { MbxID = MB; }  // formerly setCredit

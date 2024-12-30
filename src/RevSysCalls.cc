@@ -3909,7 +3909,6 @@ EcallStatus RevCore::ECALL_forza_send_word() {
       static_cast<uint8_t>( ring_ev->getOp() )
     );
     zoneRing->send( ring_ev, next_dest );
-    //output->verbose( CALL_INFO, 5, 0, "SENDING RING MESSAGE, next addr = %" PRIu64 "\n", next_dest );
   } else {
     output->verbose( CALL_INFO, 5, 0, "[ERROR] NO RING NETWORK\n" );
     delete ring_ev;
@@ -4115,8 +4114,8 @@ EcallStatus RevCore::ECALL_forza_receive_word() {
   );
   output->flush();
   uint64_t mbox_id     = (uint64_t) RegFile->GetX<uint64_t>( RevReg::a0 );
+  // Assuming s/w above this is checking that the mbox_id is valid
   bool     release_msg = (bool) RegFile->GetX<bool>( RevReg::a1 );
-  // TODO: ensure mbox_id 0 <= mbox_id <= 7
   uint64_t reg_id      = Forza::R_ZQMDQ_0 + mbox_id;
 
   Forza::ringMsgT rt   = Forza::ringMsgT::R_READ;
@@ -4375,8 +4374,6 @@ EcallStatus RevCore::ECALL_forza_zone_barrier() {
   }
 
   if( zNic->isBarrierComplete( HartToExecID ) ) {
-    //output->verbose( CALL_INFO, 5, 0, "ECALL: forza_zone_barrier complete for Thread=%u, HartToExecId=%u\n", GetActiveThreadID(), HartToExecID );
-    //output->flush();
     return EcallStatus::SUCCESS;
   }
 

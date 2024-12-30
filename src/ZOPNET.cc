@@ -308,9 +308,6 @@ void zopNIC::send_zone_barrier( uint32_t Hart, uint32_t endpoints ) {
       req->givePayload( ev );
 
       // inject the request
-      //output.verbose( CALL_INFO, 5, 0, "%s inject zone barrier packet %s to %s; real dest=%ld \n", getName().c_str(),
-      //  ev->getSrcString().c_str(), ev->getDestString().c_str(), realDest );
-      //output.flush();
       sendQ.push_back( req );
     }
   }
@@ -610,10 +607,6 @@ bool zopNIC::handleBarrier( zopEvent* ev ) {
     output.fatal( CALL_INFO, -1, "%s, Error: received zone barrier with sense > 1; SENSE=%" PRIu32 "\n", getName().c_str(), sense );
   }
 
-  //output.verbose( CALL_INFO, 5, 0, "%s; received zone barrier %s to %s with sense=%" PRIu32 "\n",
-  //  getName().c_str(), ev->getSrcString().c_str(), ev->getDestString().c_str(), sense );
-  //output.flush();
-
   for( size_t i = 0; i < numHarts; i++ ) {
     zoneBarrier[sense][i]++;
   }
@@ -715,7 +708,7 @@ bool zopNIC::clockTick( SST::Cycle_t cycle ) {
     erase = false;
     if( thisCycle < ReqPerCycle ) {
       zopEvent* ev = static_cast<zopEvent*>( ( *it )->inspectPayload() );
-      Hart         = (unsigned) ( ev->getSrcHart() );
+      Hart         = (uint32_t) ( ev->getSrcHart() );
       if( Type == zopCompID::Z_RZA || Type == zopCompID::Z_RZA1 || Type == zopCompID::Z_ZEN || Type == zopCompID::Z_ZQM ) {
         // I am an RZA... I don't need to reserve any message IDs
         // ZEN ACKs and NACKs do not use message IDs, ZEN ZOPs to the RZA internally

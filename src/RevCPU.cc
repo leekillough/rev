@@ -195,13 +195,14 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params ) : SST::Compon
           "instance is an RZA\n"
         );
       }
-      if( !enableMsgRza )
+      if( !enableMsgRza ) {
         zNic->setEndpointType( Forza::zopCompID::Z_RZA );
-      else {
-        output.verbose( CALL_INFO, 5, 0, "[FORZA] - Enable MSGRZA Endpoint\n" );
+        output.verbose( CALL_INFO, 4, 0, "[FORZA] device=%s initialized as RZA device\n", getName().c_str() );
+      } else {
+        output.verbose( CALL_INFO, 4, 0, "[FORZA] device=%s initialized as MSGRZA device\n", getName().c_str() );
         zNic->setEndpointType( Forza::zopCompID::Z_RZA1 );
       }
-      output.verbose( CALL_INFO, 4, 0, "[FORZA] device=%s initialized as RZA device\n", getName().c_str() );
+
       // ensure the memory controller knows that it is an RZA device
       Mem->setRZA();
     } else {

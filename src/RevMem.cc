@@ -1001,9 +1001,6 @@ bool RevMem::ZOP_READMem( uint32_t Hart, uint64_t Addr, size_t Len, void* Target
   SST::Forza::zopEvent* zev = new SST::Forza::zopEvent();
 
   uint64_t memSeg           = ( Addr >> Z_SEG_SHIFT ) & Z_SEG_MASK;
-
-  //output->verbose(CALL_INFO, 5, 0, "TJD: ZOP Read; Addr=0x%" PRIx64 "; MemSeg=0x%" PRIx64 "\n", Addr, memSeg );
-
   // set all the fields : FIXME
   zev->setType( SST::Forza::zopMsgT::Z_MZOP );
   zev->setID( Hart );  // -- we set this to the Hart temporarily.  The zNic will set the actual message ID

@@ -58,8 +58,8 @@ bool RevCoProc::sendSuccessResp( Forza::zopAPI* zNic, Forza::zopEvent* zev, uint
 
   // no payload
   //if (zev->getOpc() == SST::Forza::zopOpc::Z_MZOP_SDMA) {
-  //output->verbose(CALL_INFO, 5, 0, "TJD: Rec'd SDMA from %s to %s\n", zev->getSrcString().c_str(), zev->getDestString().c_str() );
-  //output->verbose(CALL_INFO, 5, 0, "TJD: Sending RESP_SACK from %s to %s\n", rsp_zev->getSrcString().c_str(), rsp_zev->getDestString().c_str() );
+  //output->verbose(CALL_INFO, 5, 0, "Received SDMA from %s to %s\n", zev->getSrcString().c_str(), zev->getDestString().c_str() );
+  //output->verbose(CALL_INFO, 5, 0, "Sending RESP_SACK from %s to %s\n", rsp_zev->getSrcString().c_str(), rsp_zev->getDestString().c_str() );
   //}
 
   // inject the packet
@@ -101,12 +101,6 @@ bool RevCoProc::sendSuccessResp( Forza::zopAPI* zNic, Forza::zopEvent* zev, uint
   payload.push_back( Data );  // load response data
   rsp_zev->setPayload( payload );
   rsp_zev->encodeEvent();
-  /*
-  if (zev->getDestZCID() == (uint8_t)Forza::zopCompID::Z_RZA1) {
-    output->verbose( CALL_INFO, 5, 0,   "TJD: Send Response from %s, %u with Data=0x%" PRIx64 " with packet %s to %s\n",
-       getName().c_str(), (uint16_t)zNic->getEndpointType(), Data, rsp_zev->getSrcString().c_str(), rsp_zev->getDestString().c_str() );
-  }
-  */
 
   // inject the packet
   zNic->send( rsp_zev, ( SST::Forza::zopCompID )( zev->getSrcZCID() ) );
@@ -489,8 +483,6 @@ bool RZALSCoProc::handleMZOP( Forza::zopEvent* zev, bool& flag ) {
         cur++;
       }
     }
-
-    output->verbose( CALL_INFO, 5, 0, "SDMA payload size=%u\n", RealFlitLen * 8 );
 
     // write buffer
     Mem->WriteMem( Forza::Z_MZOP_PIPE_HART, Addr, RealFlitLen * 8, Buf );
