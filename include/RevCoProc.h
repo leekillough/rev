@@ -55,9 +55,9 @@ class RegAlloc {
 public:
   /// RegAlloc: constructor
   RegAlloc() {
-    for( unsigned i = 0; i < _RA_NUM_REG; i++ ) {
+    for( uint32_t i = 0; i < _RA_NUM_REG; i++ ) {
       hazard[i] = _H_CLEAR;
-      regs[i]   = 0x00ull;
+      regs[i]   = 0;
     }
   }
 
@@ -65,10 +65,10 @@ public:
   ~RegAlloc() {}
 
   /// RegAlloc: retrieve a single operand register
-  bool getRegs( unsigned& rs1 ) {
-    unsigned t_rs1 = _RA_NUM_REG + 1;
+  bool getRegs( uint32_t& rs1 ) {
+    uint32_t t_rs1 = _RA_NUM_REG + 1;
 
-    unsigned cur   = 0;
+    uint32_t cur   = 0;
     while( cur < _RA_NUM_REG ) {
       if( hazard[cur] == _H_CLEAR ) {
         hazard[cur] = _H_SET;
@@ -87,12 +87,12 @@ public:
   }
 
   /// RegAlloc: retrieve a two operand register set
-  bool getRegs( unsigned& rs1, unsigned& rs2 ) {
-    unsigned t_rs1 = _RA_NUM_REG + 1;
-    unsigned t_rs2 = _RA_NUM_REG + 1;
+  bool getRegs( uint32_t& rs1, uint32_t& rs2 ) {
+    uint32_t t_rs1 = _RA_NUM_REG + 1;
+    uint32_t t_rs2 = _RA_NUM_REG + 1;
 
     // find two register slots
-    unsigned cur   = 0;
+    uint32_t cur   = 0;
     while( cur < _RA_NUM_REG ) {
       if( hazard[cur] == _H_CLEAR ) {
         hazard[cur] = _H_SET;
@@ -126,14 +126,14 @@ public:
   }
 
   /// RegAlloc: retrieve a three operand register set
-  bool getRegs( unsigned& rd, unsigned& rs1, unsigned& rs2 ) {
-    unsigned t_rd  = _RA_NUM_REG + 1;
-    unsigned t_rs1 = _RA_NUM_REG + 1;
-    unsigned t_rs2 = _RA_NUM_REG + 1;
+  bool getRegs( uint32_t& rd, uint32_t& rs1, uint32_t& rs2 ) {
+    uint32_t t_rd  = _RA_NUM_REG + 1;
+    uint32_t t_rs1 = _RA_NUM_REG + 1;
+    uint32_t t_rs2 = _RA_NUM_REG + 1;
 
     // find three register slots
     // -- Rd
-    unsigned cur   = 0;
+    uint32_t cur   = 0;
     while( cur < _RA_NUM_REG ) {
       if( hazard[cur] == _H_CLEAR ) {
         hazard[cur] = _H_SET;
@@ -181,30 +181,30 @@ public:
   }
 
   /// RegAlloc: clear the hazard on the target register
-  void clearReg( unsigned reg ) {
+  void clearReg( uint32_t reg ) {
     if( reg < _RA_NUM_REG ) {
       hazard[reg] = _H_CLEAR;
-      regs[reg]   = 0x00ull;
+      regs[reg]   = 0;
     }
   }
 
   /// RegAlloc: set the target value
-  void SetX( unsigned Idx, uint64_t Val ) {
+  void SetX( uint32_t Idx, uint64_t Val ) {
     if( Idx < _RA_NUM_REG - 1 ) {
       regs[Idx] = Val;
     }
   }
 
   /// RegAlloc: get the target value
-  uint64_t GetX( unsigned Idx ) {
+  uint64_t GetX( uint32_t Idx ) {
     if( Idx < _RA_NUM_REG - 1 ) {
       return regs[Idx];
     }
-    return 0x00ull;
+    return 0;
   }
 
   /// RegAlloc: get the address for the target reigster
-  uint64_t* getRegAddr( unsigned Idx ) {
+  uint64_t* getRegAddr( uint32_t Idx ) {
     if( Idx < _RA_NUM_REG - 1 ) {
       return ( &regs[Idx] );
     }
@@ -212,7 +212,7 @@ public:
   }
 
   /// RegAlloc: get the hazard state
-  uint8_t getState( unsigned Idx ) {
+  uint8_t getState( uint32_t Idx ) {
     if( Idx < _RA_NUM_REG - 1 ) {
       return hazard[Idx];
     }
@@ -220,7 +220,7 @@ public:
   }
 
   /// RegAlloc: set the target register as dirty
-  void setDirty( unsigned Idx ) {
+  void setDirty( uint32_t Idx ) {
     if( Idx < _RA_NUM_REG - 1 ) {
       hazard[Idx] = _H_DIRTY;
     }
@@ -258,12 +258,11 @@ public:
   virtual bool sendRawData( std::vector<uint8_t> Data ) { return true; }
 
   /// RevCoProc: retrieve raw data from the coprocessor
-  virtual const std::vector<uint8_t> getRawData() {
+  virtual std::vector<uint8_t> getRawData() {
     output->fatal( CALL_INFO, -1, "Error : no override method defined for getRawData()\n" );
 
     // inserting code to quiesce warnings
-    std::vector<uint8_t> D;
-    return D;
+    return {};
   }
 
   // --------------------
@@ -321,7 +320,7 @@ protected:
 // ----------------------------------------
 // RevSimpleCoProc
 // ----------------------------------------
-class RevSimpleCoProc : public RevCoProc {
+class RevSimpleCoProc final : public RevCoProc {
 public:
   SST_ELI_REGISTER_SUBCOMPONENT(
     RevSimpleCoProc,
@@ -349,7 +348,7 @@ public:
   );
 
   // Enum for referencing statistics
-  enum CoProcStats {
+  enum class CoProcStats {
     InstRetired = 0,
   };
 
@@ -357,30 +356,30 @@ public:
   RevSimpleCoProc( ComponentId_t id, Params& params, RevCore* parent );
 
   /// RevSimpleCoProc: destructor
-  virtual ~RevSimpleCoProc()                           = default;
+  ~RevSimpleCoProc() final                             = default;
 
   /// RevSimpleCoProc: disallow copying and assignment
   RevSimpleCoProc( const RevSimpleCoProc& )            = delete;
   RevSimpleCoProc& operator=( const RevSimpleCoProc& ) = delete;
 
-  /// RevSimpleCoProc: clock tick function - currently not registeres with SST, called by RevCPU
-  virtual bool ClockTick( SST::Cycle_t cycle );
+  /// RevSimpleCoProc: clock tick function - currently not registered with SST, called by RevCPU
+  bool ClockTick( SST::Cycle_t cycle ) final;
 
   void registerStats();
 
   /// RevSimpleCoProc: Enqueue Inst into the InstQ and return
-  virtual bool IssueInst( const RevFeature* F, RevRegFile* R, RevMem* M, uint32_t Inst );
+  bool IssueInst( const RevFeature* F, RevRegFile* R, RevMem* M, uint32_t Inst ) final;
 
   /// RevSimpleCoProc: Reset the co-processor by emmptying the InstQ
-  virtual bool Reset();
+  bool Reset() final;
 
-  /// RevSimpleCoProv: Called when the attached RevCore completes simulation. Could be used to
+  /// RevSimpleCoProc: Called when the attached RevCore completes simulation. Could be used to
   ///                   also signal to SST that the co-processor is done if ClockTick is registered
   ///                   to SSTCore vs. being driven by RevCPU
-  virtual bool Teardown() { return Reset(); };
+  bool Teardown() final { return Reset(); };
 
   /// RevSimpleCoProc: Returns true if instruction queue is empty
-  virtual bool IsDone() { return InstQ.empty(); }
+  bool IsDone() final { return InstQ.empty(); }
 
 private:
   struct RevCoProcInst {
@@ -406,7 +405,7 @@ private:
 // ----------------------------------------
 // RZALSCoProc
 // ----------------------------------------
-class RZALSCoProc : public RevCoProc {
+class RZALSCoProc final : public RevCoProc {
 public:
   // Subcomponent info
   SST_ELI_REGISTER_SUBCOMPONENT(
@@ -468,31 +467,31 @@ public:
   virtual ~RZALSCoProc();
 
   /// RZALSCoProc: clock tick function
-  virtual bool ClockTick( SST::Cycle_t cycle ) override;
+  bool ClockTick( SST::Cycle_t cycle ) override;
 
   /// RZALSCoProc: Enqueue a new instruction
-  virtual bool IssueInst( const RevFeature* F, RevRegFile* R, RevMem* M, uint32_t Inst ) override;
+  bool IssueInst( const RevFeature* F, RevRegFile* R, RevMem* M, uint32_t Inst ) override;
 
   /// RZALSCoProc: reset the coproc
-  virtual bool Reset() override;
+  bool Reset() override;
 
   /// RZALSCoProc: teardown function when the attached Proc is complete
-  virtual bool Teardown() override { return Reset(); }
+  bool Teardown() override { return Reset(); }
 
   /// RZALSCoProc: determines whether the coproc is complete
-  virtual bool IsDone() override;
+  bool IsDone() override;
 
   /// RZALSCoProc: injects a packet into the HZOP AMO pipeline
-  virtual bool InjectZOP( Forza::zopEvent* zev, bool& flag ) override;
+  bool InjectZOP( Forza::zopEvent* zev, bool& flag ) override;
 
   /// RZALSCoProc: marks a load as being complete
-  virtual void MarkLoadComplete( const MemReq& req ) override;
+  void MarkLoadComplete( const MemReq& req ) override;
 
   /// RZALSCoProc: Set the memory handler
-  virtual void setMem( RevMem* M ) override { Mem = M; }
+  void setMem( RevMem* M ) override { Mem = M; }
 
   /// RZALSCoProc: Set the ZOP NIC handler
-  virtual void setZNic( Forza::zopAPI* Z ) override { zNic = Z; }
+  void setZNic( Forza::zopAPI* Z ) override { zNic = Z; }
 
 private:
   RevMem*        Mem;    ///< RZALSCoProc: RevMem object
@@ -510,7 +509,7 @@ private:
 
 #define LOADQ_ZEV 0
 #define LOADQ_RS2 1
-  std::vector<std::pair<Forza::zopEvent*, unsigned>> LoadQ;  ///< RZALSCoProc: Outstanding load queue
+  std::vector<std::pair<Forza::zopEvent*, uint32_t>> LoadQ;  ///< RZALSCoProc: Outstanding load queue
 
   std::function<void( const MemReq& )> MarkLoadCompleteFunc;  ///< RZALSCoProc: Hazard function
 
@@ -524,7 +523,7 @@ private:
 // ----------------------------------------
 // RZAAMOCoProc
 // ----------------------------------------
-class RZAAMOCoProc : public RevCoProc {
+class RZAAMOCoProc final : public RevCoProc {
 public:
   // Subcomponent info
   SST_ELI_REGISTER_SUBCOMPONENT(
@@ -975,31 +974,31 @@ public:
   virtual ~RZAAMOCoProc();
 
   /// RZAAMOCoProc: clock tick function
-  virtual bool ClockTick( SST::Cycle_t cycle ) override;
+  bool ClockTick( SST::Cycle_t cycle ) override;
 
   /// RZAAMOCoProc: Enqueue a new instruction
-  virtual bool IssueInst( const RevFeature* F, RevRegFile* R, RevMem* M, uint32_t Inst ) override;
+  bool IssueInst( const RevFeature* F, RevRegFile* R, RevMem* M, uint32_t Inst ) override;
 
   /// RZAAMOCoProc: reset the coproc
-  virtual bool Reset() override;
+  bool Reset() final;
 
   /// RZAAMOCoProc: teardown function when the attached Proc is complete
-  virtual bool Teardown() override { return Reset(); }
+  bool Teardown() override { return Reset(); }
 
   /// RZAAMOCoProc: determines whether the coproc is complete
-  virtual bool IsDone() override;
+  bool IsDone() override;
 
   /// RZAMOCoProc: injects a packet into the HZOP AMO pipeline
-  virtual bool InjectZOP( Forza::zopEvent* zev, bool& flag ) override;
+  bool InjectZOP( Forza::zopEvent* zev, bool& flag ) override;
 
   /// RZAAMOCoProc: marks a load as being complete
-  virtual void MarkLoadComplete( const MemReq& req ) override;
+  void MarkLoadComplete( const MemReq& req ) override;
 
   /// RZAAMOCoProc: Set the memory handler
-  virtual void setMem( RevMem* M ) override { Mem = M; }
+  void setMem( RevMem* M ) override { Mem = M; }
 
   /// RZAAMOCoProc: Set the ZOP NIC handler
-  virtual void setZNic( Forza::zopAPI* Z ) override { zNic = Z; }
+  void setZNic( Forza::zopAPI* Z ) override { zNic = Z; }
 
 private:
   RevMem*        Mem;    ///< RZAAMOCoProc: RevMem object
@@ -1018,7 +1017,7 @@ private:
 #define AMOQ_ZEV 0
 #define AMOQ_RS1 1
 #define AMOQ_RS2 2
-  std::vector<std::tuple<Forza::zopEvent*, unsigned, unsigned>> AMOQ;  ///< RZAAMOCoProc: Outstanding load queue
+  std::vector<std::tuple<Forza::zopEvent*, uint32_t, uint32_t>> AMOQ;  ///< RZAAMOCoProc: Outstanding load queue
 
   std::function<void( const MemReq& )> MarkLoadCompleteFunc;  ///< RZAAMOCoProc: Hazard function
 

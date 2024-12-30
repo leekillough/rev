@@ -32,6 +32,8 @@
 
 namespace SST::Forza {
 
+using namespace SST::RevCPU;
+
 // --------------------------------------------
 // Preprocessor defs
 // --------------------------------------------
@@ -530,7 +532,7 @@ private:
 // --------------------------------------------
 // zopEvent
 // --------------------------------------------
-class zopEvent : public SST::Event {
+class zopEvent final : public SST::Event {
 public:
   // Note: all constructors create three full FLITs
   // This is comprised of 3 x 64bit words
@@ -538,30 +540,30 @@ public:
   /// zopEvent: init broadcast constructor
   //  This constructor is ONLY utilized for initialization
   //  DO NOT use this constructor for normal packet construction
-  explicit zopEvent( unsigned srcId, zopCompID Type, unsigned ZoneID, unsigned PrecinctID ) : Event() {
-    Packet.push_back( (uint64_t) ( Type ) );
-    Packet.push_back( (uint64_t) ( srcId ) );
-    Packet.push_back( (uint64_t) ( ZoneID ) );
-    Packet.push_back( (uint64_t) ( PrecinctID ) );
+  explicit zopEvent( uint32_t srcId, zopCompID Type, uint32_t ZoneID, uint32_t PrecinctID ) : Event() {
+    Packet.push_back( safe_static_cast<uint64_t>( Type ) );
+    Packet.push_back( srcId );
+    Packet.push_back( ZoneID );
+    Packet.push_back( PrecinctID );
   }
 
   /// zopEvent: raw event constructor
   explicit zopEvent() : Event() {
-    Packet.push_back( 0x00ull );
-    Packet.push_back( 0x00ull );
-    Packet.push_back( 0x00ull );
+    Packet.push_back( 0 );
+    Packet.push_back( 0 );
+    Packet.push_back( 0 );
   }
 
   explicit zopEvent( zopMsgT T, zopOpc O ) : Event() {
-    Packet.push_back( 0x00ul );
-    Packet.push_back( 0x00ul );
-    Packet.push_back( 0x00ul );
+    Packet.push_back( 0 );
+    Packet.push_back( 0 );
+    Packet.push_back( 0 );
     Type = T;
     Opc  = O;
   }
 
   /// zopEvent: virtual function to clone an event
-  virtual Event* clone( void ) override {
+  Event* clone() override {
     zopEvent* ev = new zopEvent( *this );
     return ev;
   }
@@ -668,7 +670,7 @@ public:
   /// zopEvent: retrieve the data payload from the packet
   std::vector<uint64_t> getPayload() {
     std::vector<uint64_t> P;
-    for( unsigned i = Z_NUM_HEADER_FLITS; i < Packet.size(); i++ ) {
+    for( uint32_t i = Z_NUM_HEADER_FLITS; i < Packet.size(); i++ ) {
       P.push_back( Packet[i] );
     }
     return P;
@@ -759,7 +761,7 @@ public:
   bool getFence() { return FenceEncountered; }
 
   /// zopEvent: retrieve the FLIT at the target location
-  bool getFLIT( unsigned flit, uint64_t* F ) {
+  bool getFLIT( uint32_t flit, uint64_t* F ) {
     if( flit > ( Packet.size() - 1 ) ) {
       return false;
     }
@@ -870,7 +872,7 @@ public:
   }
 
   /// zopAPI: convert the precinct ID to zopPrecID
-  zopPrecID getPCID( unsigned Z ) {
+  zopPrecID getPCID( uint32_t Z ) {
     switch( Z ) {
     case 0: return zopPrecID::Z_ZONE0;
     case 1: return zopPrecID::Z_ZONE1;
@@ -902,7 +904,7 @@ public:
     }
   }
 
-  std::string PCIDToStr( unsigned P ) { return PCIDToStr( static_cast<zopPrecID>( P ) ); }
+  std::string PCIDToStr( uint32_t P ) { return PCIDToStr( static_cast<zopPrecID>( P ) ); }
 
   /// zopEvent : convert message type to string name
   std::string msgTToStr( zopMsgT T ) {
@@ -982,28 +984,28 @@ public:
   virtual void setMsgHandler( Event::HandlerBase* handler ) = 0;
 
   /// zopAPI: initializes the network
-  virtual void init( unsigned int phase )                   = 0;
+  void init( uint32_t phase ) override                      = 0;
 
   /// zopAPI : setup the network
-  virtual void setup() {}
+  void setup() override {}
 
   /// zopAPI : send a message on the network
   virtual void send( zopEvent* ev, zopCompID dest )                                    = 0;
 
   /// zopAPI : send a message on the network to a specific zone+precinct
-  virtual void send( zopEvent* ev, zopCompID dest, zopPrecID zone, unsigned precinct ) = 0;
+  virtual void send( zopEvent* ev, zopCompID dest, zopPrecID zone, uint32_t precinct ) = 0;
 
   /// zopAPI : send a zone barrier request
-  virtual void send_zone_barrier( unsigned hart, unsigned endpoints )                  = 0;
+  virtual void send_zone_barrier( uint32_t hart, uint32_t endpoints )                  = 0;
 
   /// zopAPI: query the nic to see if the barrier is complete
-  virtual bool isBarrierComplete( unsigned Hart )                                      = 0;
+  virtual bool isBarrierComplete( uint32_t Hart )                                      = 0;
 
   /// zopAPI: query the NIC to see if it already exists in a barrier state
-  virtual bool hasBarrier( unsigned Hart )                                             = 0;
+  virtual bool hasBarrier( uint32_t Hart )                                             = 0;
 
   /// zopAPI : retrieve the number of potential endpoints
-  virtual unsigned getNumDestinations()                                                = 0;
+  virtual uint32_t getNumDestinations()                                                = 0;
 
   /// zopAPI: return the NIC's network address
   virtual SST::Interfaces::SimpleNetwork::nid_t getAddress()                           = 0;
@@ -1015,34 +1017,34 @@ public:
   virtual zopCompID getEndpointType()                                                  = 0;
 
   /// zopAPI: set the number of harts
-  virtual void setNumHarts( unsigned Hart )                                            = 0;
+  virtual void setNumHarts( uint32_t Hart )                                            = 0;
 
   /// zopAPI: set the precinct ID
-  virtual void setPrecinctID( unsigned Precinct )                                      = 0;
+  virtual void setPrecinctID( uint32_t Precinct )                                      = 0;
 
   /// zopAPI: set the zone ID
-  virtual void setZoneID( unsigned Zone )                                              = 0;
+  virtual void setZoneID( uint32_t Zone )                                              = 0;
 
   /// zopAPI: get the precinct ID
-  virtual unsigned getPrecinctID()                                                     = 0;
+  virtual uint32_t getPrecinctID()                                                     = 0;
 
   /// zopAPI: get the zone ID
-  virtual unsigned getZoneID()                                                         = 0;
+  virtual uint32_t getZoneID()                                                         = 0;
 
   /// zopAPI: get the number of ZAPs
-  virtual unsigned getNumZaps()                                                        = 0;
+  virtual uint32_t getNumZaps()                                                        = 0;
 
   /// zopAPI: get the number of zones in this precinct
-  virtual unsigned getNumZones()                                                       = 0;
+  virtual uint32_t getNumZones()                                                       = 0;
 
   /// zopAPI: get the number of precincts
-  virtual unsigned getNumPrecincts()                                                   = 0;
+  virtual uint32_t getNumPrecincts()                                                   = 0;
 
   /// zopAPI: clear the message Id hazard
-  virtual void clearMsgID( unsigned Hart, uint8_t Id )                                 = 0;
+  virtual void clearMsgID( uint32_t Hart, uint8_t Id )                                 = 0;
 
   /// zopAPI: convert the precinct ID to zopPrecID
-  zopPrecID getPCID( unsigned Z ) {
+  zopPrecID getPCID( uint32_t Z ) {
     switch( Z ) {
     case 0: return zopPrecID::Z_ZONE0;
     case 1: return zopPrecID::Z_ZONE1;
@@ -1057,7 +1059,7 @@ public:
   }
 
   /// zopAPI: convert the zone ID to zopCompID
-  zopCompID getZCID( unsigned Z, bool isRZA ) {
+  zopCompID getZCID( uint32_t Z, bool isRZA ) {
     if( isRZA )
       return zopCompID::Z_RZA;
 
@@ -1107,7 +1109,7 @@ public:
 // --------------------------------------------
 // zopNIC
 // --------------------------------------------
-class zopNIC : public zopAPI {
+class zopNIC final : public zopAPI {
 public:
   // register ELI with the SST core
   SST_ELI_REGISTER_SUBCOMPONENT(
@@ -1162,43 +1164,43 @@ public:
   zopNIC( ComponentId_t id, Params& params );
 
   /// zopNIC: destructor
-  virtual ~zopNIC();
+  ~zopNIC() override;
 
   /// zopNIC: callback to parent on received messages
-  virtual void setMsgHandler( Event::HandlerBase* handler );
+  void setMsgHandler( Event::HandlerBase* handler ) override;
 
   /// zopNIC: initialization function
-  virtual void init( unsigned int phase );
+  void init( uint32_t phase ) override;
 
   /// zopNIC: setup function
-  virtual void setup();
+  void setup() override;
 
   /// zopNIC: send an event
-  virtual void send( zopEvent* ev, zopCompID dest );
+  void send( zopEvent* ev, zopCompID dest ) override;
 
   /// zopNIC: send an event
-  virtual void send( zopEvent* ev, zopCompID dest, zopPrecID zone, unsigned precinct );
+  void send( zopEvent* ev, zopCompID dest, zopPrecID zone, uint32_t precinct ) override;
 
   /// zopNIC: send a zone barrier request
-  virtual void send_zone_barrier( unsigned hart, unsigned endpoints );
+  void send_zone_barrier( uint32_t hart, uint32_t endpoints ) override;
 
   /// zopNIC: query the nic to see if the barrier is complete
-  virtual bool isBarrierComplete( unsigned Hart );
+  bool isBarrierComplete( uint32_t Hart ) override;
 
   /// zopNIC: query the NIC to see if it already exists in a barrier state
-  virtual bool hasBarrier( unsigned Hart );
+  bool hasBarrier( uint32_t Hart ) override;
 
   /// zopNIC: get the number of destinations
-  virtual unsigned getNumDestinations();
+  uint32_t getNumDestinations() override;
 
   /// zopNIC: get the end network address
-  virtual SST::Interfaces::SimpleNetwork::nid_t getAddress();
+  SST::Interfaces::SimpleNetwork::nid_t getAddress() override;
 
   /// zopNIC: set the endpoint type
-  virtual void setEndpointType( zopCompID type ) { Type = type; }
+  void setEndpointType( zopCompID type ) override { Type = type; }
 
   /// zopNic: get the endpoint type
-  virtual zopCompID getEndpointType() { return Type; }
+  zopCompID getEndpointType() override { return Type; }
 
   /// zopNIC: handle load responses
   void handleLoadResponse(
@@ -1209,31 +1211,31 @@ public:
   bool msgNotify( int virtualNetwork );
 
   /// zopNIC: initialize the number of Harts
-  virtual void setNumHarts( unsigned Hart );
+  void setNumHarts( uint32_t Hart ) override;
 
   /// zopNIC: set the precinct ID
-  virtual void setPrecinctID( unsigned P ) { Precinct = P; }
+  void setPrecinctID( uint32_t P ) override { Precinct = P; }
 
   /// zopNIC: set the zone ID
-  virtual void setZoneID( unsigned Z ) { Zone = Z; }
+  void setZoneID( uint32_t Z ) override { Zone = Z; }
 
   /// zopNIC: get the precinct ID
-  virtual unsigned getPrecinctID() { return Precinct; }
+  uint32_t getPrecinctID() override { return Precinct; }
 
   /// zopNIC: get the zone ID
-  virtual unsigned getZoneID() { return Zone; }
+  uint32_t getZoneID() override { return Zone; }
 
   /// zopNIC: get the number of ZAPs
-  virtual unsigned getNumZaps();
+  uint32_t getNumZaps() override;
 
   /// zopNIC: get the number of zones in this precinct
-  virtual unsigned getNumZones() { return numZones; }
+  uint32_t getNumZones() override { return numZones; }
 
   /// zopNIC: get the number of precincts
-  virtual unsigned getNumPrecincts() { return numPrecincts; }
+  uint32_t getNumPrecincts() override { return numPrecincts; }
 
   /// zopNIC: clear the message Id hazard
-  virtual void clearMsgID( unsigned Hart, uint8_t Id ) { msgId[Hart].clearMsgId( Id ); }
+  void clearMsgID( uint32_t Hart, uint8_t Id ) override { msgId[Hart].clearMsgId( Id ); }
 
   /// zopNIC: clock tick function
   virtual bool clockTick( Cycle_t cycle );
@@ -1258,22 +1260,22 @@ private:
   SST::Interfaces::SimpleNetwork* iFace;              ///< zopNIC: SST network interface
   SST::Event::HandlerBase*        msgHandler;         ///< zopNIC: SST message handler
   bool                            initBroadcastSent;  ///< zopNIC: has the broadcast msg been sent
-  unsigned                        numDest;            ///< zopNIC: number of destination endpoints
-  unsigned                        ReqPerCycle;        ///< zopNIC: max requests to send per cycle
-  unsigned                        numHarts;           ///< zopNIC: number of attached Harts
-  unsigned                        Precinct;           ///< zopNIC: precinct ID
-  unsigned                        Zone;               ///< zopNIC: zone ID
+  uint32_t                        numDest;            ///< zopNIC: number of destination endpoints
+  uint32_t                        ReqPerCycle;        ///< zopNIC: max requests to send per cycle
+  uint32_t                        numHarts;           ///< zopNIC: number of attached Harts
+  uint32_t                        Precinct;           ///< zopNIC: precinct ID
+  uint32_t                        Zone;               ///< zopNIC: zone ID
   zopCompID                       Type;               ///< zopNIC: endpoint type
-  unsigned                        numZones;           ///< zopNIC: number of zones per precinct
-  unsigned                        numPrecincts;       ///< zopNIC: number of precincts
+  uint32_t                        numZones;           ///< zopNIC: number of zones per precinct
+  uint32_t                        numPrecincts;       ///< zopNIC: number of precincts
   bool                            enableTestHarness;  ///< zopNIC: enable the test harness
 
   SST::Forza::zopMsgID* msgId;      ///< zopNIC: per hart message ID objects
-  unsigned*             HARTFence;  ///< zopNIC: per hart fence counters
+  uint32_t*             HARTFence;  ///< zopNIC: per hart fence counters
 
-  unsigned*              barrierSense;      ///< zopNIC: barrier sense flags for A & B
-  std::vector<unsigned*> zoneBarrier;       ///< zopNIC: Zone Barrier counters for A & B
-  std::vector<unsigned*> barrierEndpoints;  ///< zopNIC: Number of endpoints to wait for A & B barriers
+  uint32_t*              barrierSense;      ///< zopNIC: barrier sense flags for A & B
+  std::vector<uint32_t*> zoneBarrier;       ///< zopNIC: Zone Barrier counters for A & B
+  std::vector<uint32_t*> barrierEndpoints;  ///< zopNIC: Number of endpoints to wait for A & B barriers
 
   std::vector<std::pair<zopEvent*, zopCompID>>          preInitQ;  ///< zopNIC: holds buffered requests before the network boots
   std::vector<SST::Interfaces::SimpleNetwork::Request*> sendQ;     ///< zopNIC: buffered send queue
@@ -1281,7 +1283,7 @@ private:
 #define _HM_ENDP_T 0
 #define _HM_ZID    1
 #define _HM_PID    2
-  std::map<SST::Interfaces::SimpleNetwork::nid_t, std::tuple<zopCompID, zopPrecID, unsigned>>
+  std::map<SST::Interfaces::SimpleNetwork::nid_t, std::tuple<zopCompID, zopPrecID, uint32_t>>
     hostMap;  ///< zopNIC: network ID to endpoint type mapping
 
 #define _ZNIC_OUT_HART   0

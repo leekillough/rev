@@ -1053,7 +1053,7 @@ EcallStatus RevCore::ECALL_exit() {
     status
   );
   exit( status );
-  return EcallStatus::SUCCESS;
+  // return EcallStatus::SUCCESS;
 }
 
 // 94, rev_exit_group(int error_code)
@@ -1221,8 +1221,8 @@ EcallStatus RevCore::ECALL_clock_gettime() {
   }
   memset( &src, 0, sizeof( *tp ) );
   SimTime_t x = timeConverter->convertToCoreTime( Stats.totalCycles );
-  src.tv_sec  = x / 1000000000000ull;
-  src.tv_nsec = ( x / 1000 ) % 1000000000ull;
+  src.tv_sec  = time_t( x / 1000000000000 );
+  src.tv_nsec = long( ( x / 1000 ) % 1000000000 );
   mem->WriteMem( HartToExecID, (size_t) tp, sizeof( *tp ), &src );
   RegFile->SetX( RevReg::a0, 0 );
   return EcallStatus::SUCCESS;
@@ -3165,7 +3165,7 @@ EcallStatus RevCore::ECALL_cpuinfo() {
   auto               addr = RegFile->GetX<int>( RevReg::a0 );
   info.cores              = opts->GetNumCores();
   info.harts_per_core     = opts->GetNumHarts();
-  mem->WriteMem( HartToExecID, addr, sizeof( info ), &info );
+  mem->WriteMem( HartToExecID, uint64_t( addr ), sizeof( info ), &info );
   RegFile->SetX( RevReg::a0, 0 );
   return EcallStatus::SUCCESS;
 }
@@ -3253,7 +3253,7 @@ EcallStatus RevCore::ECALL_dump_mem_range() {
   return EcallStatus::SUCCESS;
 }
 
-// 9001, rev_dump_mem_range(const char* outputFile, uint64_t addr, uint64_t size)
+// 9001, rev_dump_mem_range(const unsigned char* outputFile, uint64_t addr, uint64_t size)
 EcallStatus RevCore::ECALL_dump_mem_range_to_file() {
   auto& EcallState = Harts.at( HartToExecID )->GetEcallState();
   if( EcallState.bytesRead == 0 ) {
@@ -3288,7 +3288,7 @@ EcallStatus RevCore::ECALL_dump_stack() {
   return EcallStatus::SUCCESS;
 }
 
-// 9003, rev_dump_stck_to_file(const char* outputFile)
+// 9003, rev_dump_stck_to_file(const unsigned char* outputFile)
 EcallStatus RevCore::ECALL_dump_stack_to_file() {
   auto& EcallState = Harts.at( HartToExecID )->GetEcallState();
   if( EcallState.bytesRead == 0 ) {
@@ -3770,13 +3770,13 @@ const std::unordered_map<uint32_t, EcallStatus(RevCore::*)()> RevCore::Ecalls = 
     { 4015, &RevCore::ECALL_forza_debug_print }, //, forza_debug_print();
     { 4016, &RevCore::ECALL_forza_remote_update },      //, forza_remote_update(uint64_t *dest, uint64_t data);
     { 9000, &RevCore::ECALL_dump_mem_range },           // rev_dump_mem_range(uint64_t addr, uint64_t size)
-    { 9001, &RevCore::ECALL_dump_mem_range_to_file },   // rev_dump_mem_range_to_file(const char* outputFile, uint64_t addr, uint64_t size)
+    { 9001, &RevCore::ECALL_dump_mem_range_to_file },   // rev_dump_mem_range_to_file(const unsigned char* outputFile, uint64_t addr, uint64_t size)
     { 9002, &RevCore::ECALL_dump_stack },               // rev_dump_stack()
-    { 9003, &RevCore::ECALL_dump_stack_to_file },       // rev_dump_stack(const char* outputFile)
+    { 9003, &RevCore::ECALL_dump_stack_to_file },       // rev_dump_stack(const unsigned char* outputFile)
     { 9004, &RevCore::ECALL_dump_valid_mem },           // rev_dump_valid_mem()
-    { 9005, &RevCore::ECALL_dump_valid_mem_to_file },   // rev_dump_valid_mem_to_file(const char* filename)
+    { 9005, &RevCore::ECALL_dump_valid_mem_to_file },   // rev_dump_valid_mem_to_file(const unsigned char* filename)
     { 9004, &RevCore::ECALL_dump_thread_mem },          // rev_dump_thread_mem()
-    { 9005, &RevCore::ECALL_dump_thread_mem_to_file },  // rev_dump_thread_mem_to_file(const char* filename)
+    { 9005, &RevCore::ECALL_dump_thread_mem_to_file },  // rev_dump_thread_mem_to_file(const unsigned char* filename)
     { 9110, &RevCore::ECALL_fast_printf },              // rev_fast_printf(const char *, ...)
 };
 
@@ -3798,7 +3798,7 @@ EcallStatus RevCore::ECALL_forza_read_zen_status() {
   );
 
   if( zoneRing ) {
-    uint64_t next_dest = zoneRing->getNextAddress();
+    int64_t next_dest = zoneRing->getNextAddress();
     output->verbose(
       CALL_INFO,
       5,
@@ -3834,7 +3834,7 @@ EcallStatus RevCore::ECALL_forza_read_zqm_status() {
   );
 
   if( zoneRing ) {
-    uint64_t next_dest = zoneRing->getNextAddress();
+    int64_t next_dest = zoneRing->getNextAddress();
     output->verbose(
       CALL_INFO,
       5,
@@ -3898,7 +3898,7 @@ EcallStatus RevCore::ECALL_forza_send_word() {
   );
 
   if( zoneRing ) {
-    uint64_t next_dest = zoneRing->getNextAddress();
+    int64_t next_dest = zoneRing->getNextAddress();
     output->verbose(
       CALL_INFO,
       5,
@@ -4127,7 +4127,7 @@ EcallStatus RevCore::ECALL_forza_receive_word() {
     new SST::Forza::ringEvent( zNic->getEndpointType(), HartToExecID, SST::Forza::zopCompID::Z_ZQM, rt, reg_id, 0 );
 
   if( zoneRing ) {
-    uint64_t next_dest = zoneRing->getNextAddress();
+    int64_t next_dest = zoneRing->getNextAddress();
     output->verbose(
       CALL_INFO,
       5,
@@ -4163,7 +4163,7 @@ EcallStatus RevCore::ECALL_forza_zen_get_cntrs() {
   );
 
   if( zoneRing ) {
-    uint64_t next_dest = zoneRing->getNextAddress();
+    int64_t next_dest = zoneRing->getNextAddress();
     output->verbose(
       CALL_INFO,
       5,
@@ -4230,7 +4230,7 @@ EcallStatus RevCore::ECALL_forza_zqm_setup() {
   );
 
   if( zoneRing ) {
-    uint64_t next_dest = zoneRing->getNextAddress();
+    int64_t next_dest = zoneRing->getNextAddress();
     output->verbose(
       CALL_INFO,
       5,
