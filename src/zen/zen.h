@@ -2,28 +2,6 @@
 // _zen_h_
 //
 
-/* STATUS */
-/**
- * 
- * 30-aug-2024: added very preliminary support for spawning threads via csrs; the specs are missing a lot of
- * detail on the mechanics of this process (thread id, aid, total transmitted size, location, etc) that need
- * to be clarified.  Additionally, I just have spawned threads heading straight out to the zone crossbar (the
- * same way messages do) rather than share the access to the zone crossbar.  Probably not a huge deal for now,
- * but something we should be aware of.  Of course, there is no support on the zqm side (yet) for receiving 
- * said spawned threads.
- * 
- * 22-aug-2024: made steering changes to zopnet; need to revamp zopEvent structure to allow wider hart IDs (or 
- * revamp into logical/physical id)
- * 
- * 21-aug-2024: need the actual ring interface to finish this up (and add the ring response code); currently this will only handle sending messages 
- * and accept receiving acks.  We don't actually send and memory zops (nor write acks) for the retry buffer.  No 
- * support for migrations or spawns.  Overall, just trying to get the messaging process within a zone to work 
- * properly (due to forzarev issue #120, we have limited multizone testing; plus zopnet is going to need some work).
- * And actually, coming back to zopnet, that will need to be modified to properly steer messages to zen/zqm even
- * though the actual src/dest info may be a specific hart/pe
- * 
- */
-
 #ifndef _ZEN_H_
 #define _ZEN_H_
 
@@ -185,7 +163,6 @@ class ZEN : public SST::Component{
     zopEvent* createMsgZop( std::array<uint64_t, ACTOR_MSG_LENGTH> msg_data, ringEvent* ring_event );
 
     /// ZEN: handle incoming RZA messages
-    /// (12-dec-2024 - just store acks for now)
     void processIncomingRZAMsgs();
 
     /// ZEN: handle incoming ZOP messages (from zone NoC)
@@ -291,7 +268,7 @@ class ZEN : public SST::Component{
     std::queue<zopEvent*> NackRdReqQueue;
 
     // This map is because we don't have a LoadDMA option in memory right now
-    // so, this gets used to store the message and we'll get the payload from here
+    // thus, this stores the message and we'll get the payload from here
     // on the read return
     std::map<uint32_t, std::vector<uint64_t> > MsgDataMap;
 

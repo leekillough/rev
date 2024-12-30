@@ -3,7 +3,6 @@
 //
 
 #include "zen.h"
-#include <sst/core/sst_config.h>
 
 #include "../zqm/src/zqm.h"
 
@@ -356,12 +355,10 @@ void ZEN::handleMsgResp(zopEvent *ack)
 
   if ( ack->getOpc() == zopOpc::Z_MSG_NACK ) {
     // Have to use the msg_id to generate a read address; wait on data return and then resend the msg zop
-    // does this end up re-writing to memory (i'd hope not...) probably means there's some state variable hanging
-    // around to track this...
-    // can at least use the written flag in the seqNumEntry to track mem write
-    // then we need an enum or bool for outstanding reads
+    // Does not rewrite memory
 
-    // TODO: Could just convert the ack into the LDMA zop - maybe later
+    // Nominally, this would be a LDMA request with a single payload word of 8 (as a request of 8 words); however, the RZA doesn't
+    // support that operation. Thus, no payload for now and we just do a single load
     auto zop = new SST::Forza::zopEvent();
     zop->setType(SST::Forza::zopMsgT::Z_MZOP);
     zop->setOpc(SST::Forza::zopOpc::Z_MZOP_LD);
@@ -371,7 +368,6 @@ void ZEN::handleMsgResp(zopEvent *ack)
     zop->setAppID(ack->getAppID() );
     uint64_t wr_addr = getRetryBuffAddr( ack->getID() );
     zop->setAddr( wr_addr );
-    // TODO: Add comment about the payload here...
     //std::vector<uint64_t> payload;
     //payload.push_back( ACTOR_MSG_LENGTH );
     //zop->setPayload( payload );
@@ -663,7 +659,6 @@ void ZEN::handleIncomingZOP(SST::Event *event) {
 
   // Sanity check for incoming packets
   if (!isSrcLocal(ev)) {
-    output.flush();
     output.fatal(CALL_INFO, -1, "ZEN %s: received a packet from zone NoC with non-local source.\n",
         getName().c_str());
   }
@@ -754,7 +749,6 @@ void ZEN::processIncomingRZAMsgs() {
 
   // Ensure this is an rza1 response
   if ( resp->getSrcZCID() != RevCPU::safe_static_cast<uint8_t>( zopCompID::Z_RZA1 ) ) {
-    output.flush();
     output.fatal( CALL_INFO, -1, "ZEN[%s]: Received RZA Response from not RZA1 %s to %s\n", getName().c_str(),
                    resp->getSrcString().c_str(), resp->getDestString().c_str() );
   }

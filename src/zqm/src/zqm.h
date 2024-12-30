@@ -2,14 +2,6 @@
 // _zqm_h_
 //
 
-/** STATUS **/
-/**
- * 20-nov-2024: some support for spawns and the run queue (have been prioritizing messaging), but mostly
- * commented out.  currently this will only handle receiving messages and send
- * acks.  We don't actually send any memory zops for handling messages - everything is handled by
- * structures here in the ZQM (moving these messages to memory is next on the hit list)
- */
-
 #ifndef _ZQM_H_
 #define _ZQM_H_
 
