@@ -177,7 +177,7 @@ namespace SST::Forza{
   // ------------------------------------------------------------
   // ZIPBasicMemCtrl Inherited Subcomponent Class
   // ------------------------------------------------------------
-  class ZIPBasicMemCtrl : public ZIPMemCtrl{
+  class ZIPBasicMemCtrl final : public ZIPMemCtrl{
   public:
     SST_ELI_REGISTER_SUBCOMPONENT(
       ZIPBasicMemCtrl,

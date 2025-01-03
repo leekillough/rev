@@ -19,7 +19,7 @@ namespace SST::Forza{
     virtual void setMsgHandler(Event::HandlerBase* handler) = 0;
     void init( unsigned int phase ) override          = 0;
 
-    void setup() override { }
+    void setup() override = 0;
     virtual void send(ZIPEvent *ev, int dest) = 0;
     virtual int getNumDestinations() = 0;
     virtual SST::Interfaces::SimpleNetwork::nid_t getAddress() = 0;

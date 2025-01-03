@@ -363,7 +363,7 @@ void ZIP::handleNOCEvent(SST::Event* ev) {
       uint16_t DestPrec = event->getDestPrec();
 
       // store zopEvent in the buffer
-      waitMemWriteComplete((2*DestPrec+1)*p_maxBuff*8+bufOutSize[DestPrec], event->getPacket().size()*8, event->getPacket());
+      waitMemWriteComplete((2*(uint64_t)DestPrec+1)*p_maxBuff*8+bufOutSize[DestPrec], event->getPacket().size()*8, event->getPacket());
       bufOutSize[DestPrec] += event->getPacket().size()*8;
 
       // if remaining buffer space can no longer fit a zopEvent of maximum size, add the destination precinct to the outgoing queue
@@ -434,14 +434,14 @@ void ZIP::handleHFIEvent(SST::Event* ev) {
 
 void ZIP::addToOutQ(uint16_t DestPrec) {
   if (bufOutSize[DestPrec] < p_RVThresh*8) {
-    outQ.push(std::tuple<uint16_t, ZIPMemTarget*, Cycle_t, bool*>(DestPrec, waitMemReadComplete((2*DestPrec+1)*p_maxBuff*8, bufOutSize[DestPrec]), getNextClockCycle(zipTime), new bool(false)));
+    outQ.push(std::tuple<uint16_t, ZIPMemTarget*, Cycle_t, bool*>(DestPrec, waitMemReadComplete((2*(uint64_t)DestPrec+1)*p_maxBuff*8, bufOutSize[DestPrec]), getNextClockCycle(zipTime), new bool(false)));
   } else {
     ZIPRVEvent* RVEvent = new ZIPRVEvent(bufOutSize[DestPrec]);
     RVEvent->dest = DestPrec;
     RVEvent->src = p_precID;
     link_HFI->send(RVEvent, DestPrec);
 
-    outRVQ.push(std::tuple<uint16_t, ZIPMemTarget*, Cycle_t, bool*>(DestPrec, waitMemReadComplete((2*DestPrec+1)*p_maxBuff*8, bufOutSize[DestPrec]), getNextClockCycle(zipTime), new bool(false)));
+    outRVQ.push(std::tuple<uint16_t, ZIPMemTarget*, Cycle_t, bool*>(DestPrec, waitMemReadComplete((2*(uint64_t)DestPrec+1)*p_maxBuff*8, bufOutSize[DestPrec]), getNextClockCycle(zipTime), new bool(false)));
   }
   s_numPackets->addData(1);
 }
