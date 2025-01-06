@@ -174,7 +174,7 @@ void ZEN::handleRingMsg( SST::Event *event )
 
 void ZEN::handleRingOmc( SST::Forza::ringEvent *ev )
 {
-  output.verbose(CALL_INFO, 7, 0, "[ZEN] %s handle ZENOMC message\n", getName().c_str());
+  output.verbose(CALL_INFO, 7, 0, "[ZEN] %s handle ZENOMC (Outstanding Msg Cntr) message\n", getName().c_str());
   if ( ev->getOp() != SST::Forza::ringMsgT::R_READ )
     output.fatal(CALL_INFO, -1, "[ZEN] %s unexpected optype message; OpType=%" PRIu8 "\n", getName().c_str(), static_cast<uint8_t>(ev->getOp()));
 

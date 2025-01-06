@@ -359,14 +359,16 @@ void ZQM::updateInMboxQueue()
 
 void ZQM::handleIncomingZOP(SST::Event *event)
 {
-    SST::Forza::zopEvent* ev = dynamic_cast<SST::Forza::zopEvent*>(event);
+    SST::Forza::zopEvent* ev = static_cast<SST::Forza::zopEvent*>(event);
     ev->decodeEvent();
-    output.verbose(CALL_INFO, 1, 0, "%s Received ZOP: %s to %s with id=%u\n",
+#if 0
+    output.verbose(CALL_INFO, 7, 0, "%s Received ZOP: %s to %s with id=%u\n",
                    my_name.c_str(),
                    ev->getSrcString().c_str(), 
                    ev->getDestString().c_str(),
                    ev->getID());
-
+    output.flush();
+#endif
     if (ev->getType() == SST::Forza::zopMsgT::Z_RESP) {
         rza_response_q.push(ev);
     } else if (ev->getType() == SST::Forza::zopMsgT::Z_MSG) {
