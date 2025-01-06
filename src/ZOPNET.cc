@@ -1,7 +1,7 @@
 //
 // _ZOPNET_cc_
 //
-// Copyright (C) 2017-2024 Tactical Computing Laboratories, LLC
+// Copyright (C) 2017-2025 Tactical Computing Laboratories, LLC
 // All Rights Reserved
 // contact@tactcomplabs.com
 //
@@ -495,10 +495,11 @@ bool zopNIC::msgNotify( int vn ) {
     CALL_INFO,
     9,
     0,
-    "%s:%s received zop message of type %s, ID=%" PRIu16 "\n",
+    "%s:%s received zop message %s to %s, ID=%" PRIu16 "\n",
     getName().c_str(),
     endPToStr( getEndpointType() ).c_str(),
-    msgTToStr( ev->getType() ).c_str(),
+    ev->getSrcString().c_str(),
+    ev->getDestString().c_str(),
     ev->getID()
   );
 
