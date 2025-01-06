@@ -30,7 +30,7 @@ public:
   RevPrefetcher(
     RevMem*                                                    Mem,
     RevFeature*                                                Feature,
-    unsigned                                                   Depth,
+    uint32_t                                                   Depth,
     std::shared_ptr<std::unordered_multimap<uint64_t, MemReq>> lsq,
     std::function<void( const MemReq& )>                       func
   )
@@ -55,7 +55,7 @@ public:
 private:
   RevMem*                                                    mem{};       ///< RevMem object
   RevFeature*                                                feature{};   ///< RevFeature object
-  unsigned                                                   depth{};     ///< Depth of each prefetcher stream
+  uint32_t                                                   depth{};     ///< Depth of each prefetcher stream
   std::vector<uint64_t>                                      baseAddr{};  ///< Vector of base addresses for each stream
   std::vector<std::vector<uint32_t>>                         iStack{};    ///< Vector of instruction vectors
   std::shared_ptr<std::unordered_multimap<uint64_t, MemReq>> LSQueue{};
