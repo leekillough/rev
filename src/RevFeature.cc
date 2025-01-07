@@ -1,7 +1,7 @@
 //
 // _RevFeature_cc_
 //
-// Copyright (C) 2017-2024 Tactical Computing Laboratories, LLC
+// Copyright (C) 2017-2025 Tactical Computing Laboratories, LLC
 // All Rights Reserved
 // contact@tactcomplabs.com
 //
@@ -45,6 +45,7 @@ bool RevFeature::ParseMachineModel() {
   ///< List of architecture extensions. These must listed in canonical order
   ///< as shown in Table 27.11, Chapter 27, of the RISC-V Unprivileged Spec
   ///< (Table 74 of Chapter 36 in the 2024 version).
+  ///< (Table 79 of Chapter 38 in the RISC-V Instruction Set Manual Volume I Version 20240411)
   ///<
   ///< By using a canonical ordering, the extensions' presence can be tested
   ///< in linear time complexity of the table and the string. Some of the
@@ -81,6 +82,9 @@ bool RevFeature::ParseMachineModel() {
     { "Zfh",        1, 0, -1, 0, RV_ZFH | RV_ZFHMIN | RV_F | RV_ZICSR   }, // Unsupported
     { "Zfhmin",     1, 0, -1, 0, RV_ZFHMIN | RV_F | RV_ZICSR            }, // Unsupported
     { "Ztso",       1, 0, -1, 0, RV_ZTSO                                }, // Unsupported
+    { "Xforza",     1, 0,  1, 1, RV_I | RV_M | RV_ZMMUL | RV_ZAAMO | RV_ZALRSC |
+                                 RV_F | RV_D | RV_ZICSR | RV_ZIFENCEI |
+                                 RV_ZICNTR | RV_ZICSR | RV_XFORZA       },
   };
   // clang-format on
 

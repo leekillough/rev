@@ -1,7 +1,7 @@
 //
 // _RevFeature_h_
 //
-// Copyright (C) 2017-2024 Tactical Computing Laboratories, LLC
+// Copyright (C) 2017-2025 Tactical Computing Laboratories, LLC
 // All Rights Reserved
 // contact@tactcomplabs.com
 //
@@ -45,6 +45,7 @@ enum RevFeatureType : uint32_t {
   RV_ZFH      = 1 << 19,  ///< RevFeatureType: H-extension
   RV_ZFHMIN   = 1 << 20,  ///< RevFeatureRtpe: Zfhmin extension
   RV_ZTSO     = 1 << 21,  ///< RevFeatureType: Ztso-extension
+  RV_XFORZA   = 1 << 22,  ///< RevFeatureType: XForza-extension
 };
 
 class RevFeature {

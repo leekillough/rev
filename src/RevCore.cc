@@ -1,7 +1,7 @@
 //
 // _RevCore_cc_
 //
-// Copyright (C) 2017-2024 Tactical Computing Laboratories, LLC
+// Copyright (C) 2017-2025 Tactical Computing Laboratories, LLC
 // All Rights Reserved
 // contact@tactcomplabs.com
 //
@@ -212,6 +212,11 @@ bool RevCore::SeedInstTable() try {
   // Zfa Extension
   if( feature->IsModeEnabled( RV_ZFA ) ) {
     EnableExt( new Zfa( feature, mem, output ) );
+  }
+
+  // XForza Extension
+  if( feature->IsModeEnabled( RV_XFORZA ) ) {
+    EnableExt( new XForza( feature, mem, output ) );
   }
 
   return true;

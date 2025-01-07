@@ -1,7 +1,7 @@
 //
 // _RevInstTables_h_
 //
-// Copyright (C) 2017-2024 Tactical Computing Laboratories, LLC
+// Copyright (C) 2017-2025 Tactical Computing Laboratories, LLC
 // All Rights Reserved
 // contact@tactcomplabs.com
 //
@@ -31,6 +31,7 @@
 #ifdef REVVEC
 #include "insns/RVVec.h"
 #endif
+#include "insns/XForza.h"
 #include "insns/Zaamo.h"
 #include "insns/Zalrsc.h"
 #include "insns/Zfa.h"
