@@ -54,27 +54,25 @@ enum class RevFlag : uint32_t {
   F_AQ           = 1u << 21,  /// AMO AQ Flag
   F_RL           = 1u << 22,  /// AMO RL Flag
 
-  F_AMOADD       = 1u << 23,  /// AMO Add
-  F_AMOXOR       = 2u << 23,  /// AMO Xor
-  F_AMOAND       = 3u << 23,  /// AMO And
-  F_AMOOR        = 4u << 23,  /// AMO Or
-  F_AMOMIN       = 5u << 23,  /// AMO Min
-  F_AMOMAX       = 6u << 23,  /// AMO Max
-  F_AMOMINU      = 7u << 23,  /// AMO Minu
-  F_AMOMAXU      = 8u << 23,  /// AMO Maxu
-  F_AMOSWAP      = 9u << 23,  /// AMO Swap
+  F_AMOADD       = 1u << 23,   /// AMO Add
+  F_AMOXOR       = 2u << 23,   /// AMO Xor
+  F_AMOAND       = 3u << 23,   /// AMO And
+  F_AMOOR        = 4u << 23,   /// AMO Or
+  F_AMOMIN       = 5u << 23,   /// AMO Min
+  F_AMOMAX       = 6u << 23,   /// AMO Max
+  F_AMOMINU      = 7u << 23,   /// AMO Minu
+  F_AMOMAXU      = 8u << 23,   /// AMO Maxu
+  F_AMOSWAP      = 9u << 23,   /// AMO Swap
+  F_FORZASUB     = 10u << 23,  /// XForza: AMO SUB
+  F_FORZATHRS    = 11u << 23,  /// XForza: AMO THRS
+  F_FORZAFADD    = 12u << 23,  /// XForza: AMO FADD
+  F_FORZAFSUB    = 13u << 23,  /// XForza: AMO FSUB
+  F_FORZAFSUBR   = 14u << 23,  /// XForza: AMO FSUBR
   F_ATOMIC       = F_AMOADD | F_AMOXOR | F_AMOAND | F_AMOOR | F_AMOMIN | F_AMOMAX | F_AMOMINU | F_AMOMAXU | F_AMOSWAP,
 
-  F_FORZASUB     = 1u << 27,  /// XForza: AMO SUB
-  F_FORZATHRS    = 2u << 27,  /// XForza: AMO THRS
-  F_FORZAFADD    = 3u << 27,  /// XForza: AMO FADD
-  F_FORZAFSUB    = 4u << 27,  /// XForza: AMO FSUB
-  F_FORZAFSUBR   = 5u << 27,  /// XForza: AMO FSUBR
-  F_FORZA        = F_FORZASUB | F_FORZATHRS | F_FORZAFADD | F_FORZAFSUB | F_FORZAFSUBR,
-
-  F_FORZANN      = 1u << 30,  /// XForza: AMO RETURN NN
-  F_FORZAON      = 2u << 30,  /// XForza: AMO RETURN ON
-  F_FORZANO      = 3u << 30,  /// XForza: AMO RETURN NO
+  F_FORZANN      = 1u << 27,  /// XForza: AMO RETURN NN
+  F_FORZAON      = 2u << 27,  /// XForza: AMO RETURN ON
+  F_FORZANO      = 3u << 27,  /// XForza: AMO RETURN NO
   F_RETURN       = F_FORZANN | F_FORZAON | F_FORZANO,
 };
 
@@ -94,11 +92,6 @@ constexpr void RevFlagSet( RevFlag& flag, RevFlag set ) {
 /// RevFlag: determine if the request is an AMO, and if so, return the operation; otherwise return 0
 constexpr RevFlag RevFlagAtomic( RevFlag flag ) {
   return RevFlag{ safe_static_cast<uint32_t>( flag ) & safe_static_cast<uint32_t>( RevFlag::F_ATOMIC ) };
-}
-
-/// RevFlag: determine the Forza op
-constexpr RevFlag RevFlagForza( RevFlag flag ) {
-  return RevFlag{ safe_static_cast<uint32_t>( flag ) & safe_static_cast<uint32_t>( RevFlag::F_FORZA ) };
 }
 
 /// RevFlag: determine the return flags
