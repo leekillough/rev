@@ -196,7 +196,7 @@ void RevMem::AddToTLB( uint64_t vAddr, uint64_t physAddr ) {
     // Insert the vAddr and physAddr into the TLB and LRU list
     LRUQueue.push_front( vAddr );
     TLB.insert( {
-      vAddr, {physAddr, LRUQueue.begin()}
+      vAddr, { physAddr, LRUQueue.begin() }
     } );
   }
 }
@@ -842,24 +842,22 @@ uint64_t RevMem::ExpandHeap( uint64_t Size ) {
 // ----------------------------------------------------
 SST::Forza::zopOpc RevMem::flagToZOP( RevFlag flags, size_t Len ) {
 
-  if( RevFlagAtomic( flags ) != RevFlag::F_NONE ) {
-    output->verbose(
-      CALL_INFO,
-      4,
-      0,
-      "Decoding flags: "
-      "flags=%" PRIu32 ", len=%" PRIuPTR "\n",
-      safe_static_cast<uint32_t>( flags ),
-      Len
-    );
-  }
+  output->verbose(
+    CALL_INFO,
+    4,
+    0,
+    "Decoding all flags ZOPs: "
+    "flags=%" PRIu32 ", len=%" PRIuPTR "\n",
+    safe_static_cast<uint32_t>( flags ),
+    Len
+  );
 
   // Note: This table is effectively populated in reverse order
   // The values at the  bottom of the table correspond to the U-style atomics
   // that have no return value (on an ACK).  They are matched last as the second
   // array value `RevFlag::F_NONE`
   static constexpr std::tuple<RevFlag, RevFlag, size_t, Forza::zopOpc> table[] = {
-  // clang-format off
+    // clang-format off
     { RevFlag::F_AMOADD,  RevFlag::F_FORZANN, 1, Forza::zopOpc::Z_HAC_8_M_ADD      },
     { RevFlag::F_AMOXOR,  RevFlag::F_FORZANN, 1, Forza::zopOpc::Z_HAC_8_M_XOR      },
     { RevFlag::F_AMOAND,  RevFlag::F_FORZANN, 1, Forza::zopOpc::Z_HAC_8_M_AND      },
@@ -933,7 +931,7 @@ SST::Forza::zopOpc RevMem::flagToZOP( RevFlag flags, size_t Len ) {
     { RevFlag::F_AMOMAX,  RevFlag::F_NONE,    8, Forza::zopOpc::Z_HAC_64_BASE_SMAX },
     { RevFlag::F_AMOMINU, RevFlag::F_NONE,    8, Forza::zopOpc::Z_HAC_64_BASE_MIN  },
     { RevFlag::F_AMOMAXU, RevFlag::F_NONE,    8, Forza::zopOpc::Z_HAC_64_BASE_MAX  },
-  // clang-format on
+    // clang-format on
   };
 
   for( const auto& [amo, ret, len, opc] : table ) {
@@ -956,7 +954,7 @@ SST::Forza::zopOpc RevMem::flagToZOP( RevFlag flags, size_t Len ) {
 SST::Forza::zopOpc RevMem::memToZOP( RevFlag flags, size_t Len, bool Write ) {
 
   static constexpr std::tuple<RevFlag, size_t, bool, Forza::zopOpc> table[] = {
-  // clang-format off
+    // clang-format off
     {   RevFlag::F_NONE, 1, false,  SST::Forza::zopOpc::Z_MZOP_LB },
     {   RevFlag::F_NONE, 2, false,  SST::Forza::zopOpc::Z_MZOP_LH },
     {   RevFlag::F_NONE, 4, false,  SST::Forza::zopOpc::Z_MZOP_LW },
@@ -984,7 +982,7 @@ SST::Forza::zopOpc RevMem::memToZOP( RevFlag flags, size_t Len, bool Write ) {
     { RevFlag::F_SEXT64, 1,  true, SST::Forza::zopOpc::Z_MZOP_SSB },
     { RevFlag::F_SEXT64, 2,  true, SST::Forza::zopOpc::Z_MZOP_SSH },
     { RevFlag::F_SEXT64, 4,  true, SST::Forza::zopOpc::Z_MZOP_SSW },
-  // clang-format on
+    // clang-format on
   };
 
   for( const auto& [resp, len, write, opc] : table ) {
