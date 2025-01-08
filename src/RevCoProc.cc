@@ -1,7 +1,7 @@
 //
 // _RevCoProc_cc_
 //
-// Copyright (C) 2017-2024 Tactical Computing Laboratories, LLC
+// Copyright (C) 2017-2025 Tactical Computing Laboratories, LLC
 // All Rights Reserved
 // contact@tactcomplabs.com
 //
@@ -662,9 +662,47 @@ bool RZAAMOCoProc::handleHZOP( Forza::zopEvent* zev, bool& flag ) {
   Alloc.SetX( Rs2, 0 );
   zev->setMemReq( req );
 
-  // TODO: Add 8 and 16 bit cases to the below switch statement
-  // TODO: Handle the other (non-BASE) cases
   switch( zev->getOpc() ) {
+  // 8bit base
+  case Forza::zopOpc::Z_HAC_8_BASE_ADD:
+  case Forza::zopOpc::Z_HAC_8_BASE_AND:
+  case Forza::zopOpc::Z_HAC_8_BASE_OR:
+  case Forza::zopOpc::Z_HAC_8_BASE_XOR:
+  case Forza::zopOpc::Z_HAC_8_BASE_SMAX:
+  case Forza::zopOpc::Z_HAC_8_BASE_MAX:
+  case Forza::zopOpc::Z_HAC_8_BASE_SMIN:
+  case Forza::zopOpc::Z_HAC_8_BASE_MIN:
+  case Forza::zopOpc::Z_HAC_8_BASE_SWAP:
+  case Forza::zopOpc::Z_HAC_8_BASE_CAS:
+  case Forza::zopOpc::Z_HAC_8_BASE_FADD:
+  case Forza::zopOpc::Z_HAC_8_BASE_FSUB:
+  case Forza::zopOpc::Z_HAC_8_BASE_FRSUB:
+  case Forza::zopOpc::Z_HAC_8_BASE_THRESH:
+    output->verbose(
+      CALL_INFO, 9, 0, "[FORZA][RZA][HZOP]: Unimplemented HZOP opcode=%" PRIu8 "\n", static_cast<uint8_t>( zev->getOpc() )
+    );
+    return false;
+    break;
+  // 16bit base
+  case Forza::zopOpc::Z_HAC_16_BASE_ADD:
+  case Forza::zopOpc::Z_HAC_16_BASE_AND:
+  case Forza::zopOpc::Z_HAC_16_BASE_OR:
+  case Forza::zopOpc::Z_HAC_16_BASE_XOR:
+  case Forza::zopOpc::Z_HAC_16_BASE_SMAX:
+  case Forza::zopOpc::Z_HAC_16_BASE_MAX:
+  case Forza::zopOpc::Z_HAC_16_BASE_SMIN:
+  case Forza::zopOpc::Z_HAC_16_BASE_MIN:
+  case Forza::zopOpc::Z_HAC_16_BASE_SWAP:
+  case Forza::zopOpc::Z_HAC_16_BASE_CAS:
+  case Forza::zopOpc::Z_HAC_16_BASE_FADD:
+  case Forza::zopOpc::Z_HAC_16_BASE_FSUB:
+  case Forza::zopOpc::Z_HAC_16_BASE_FRSUB:
+  case Forza::zopOpc::Z_HAC_16_BASE_THRESH:
+    output->verbose(
+      CALL_INFO, 9, 0, "[FORZA][RZA][HZOP]: Unimplemented HZOP opcode=%" PRIu8 "\n", static_cast<uint8_t>( zev->getOpc() )
+    );
+    return false;
+    break;
   // 32bit base
   case Forza::zopOpc::Z_HAC_32_BASE_ADD:
     Mem->AMOVal(
@@ -801,6 +839,246 @@ bool RZAAMOCoProc::handleHZOP( Forza::zopEvent* zev, bool& flag ) {
   case Forza::zopOpc::Z_HAC_64_BASE_SWAP:
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, RevFlag::F_AMOSWAP );
     recordStat( HZOP_64_BASE_SWAP, 1 );
+    break;
+  // 8bit M
+  case Forza::zopOpc::Z_HAC_8_M_ADD:
+  case Forza::zopOpc::Z_HAC_8_M_AND:
+  case Forza::zopOpc::Z_HAC_8_M_OR:
+  case Forza::zopOpc::Z_HAC_8_M_XOR:
+  case Forza::zopOpc::Z_HAC_8_M_SMAX:
+  case Forza::zopOpc::Z_HAC_8_M_MAX:
+  case Forza::zopOpc::Z_HAC_8_M_SMIN:
+  case Forza::zopOpc::Z_HAC_8_M_MIN:
+  case Forza::zopOpc::Z_HAC_8_M_SWAP:
+  case Forza::zopOpc::Z_HAC_8_M_CAS:
+  case Forza::zopOpc::Z_HAC_8_M_FADD:
+  case Forza::zopOpc::Z_HAC_8_M_FSUB:
+  case Forza::zopOpc::Z_HAC_8_M_FRSUB:
+  case Forza::zopOpc::Z_HAC_8_M_THRESH:
+    output->verbose(
+      CALL_INFO, 9, 0, "[FORZA][RZA][HZOP]: Unimplemented HZOP opcode=%" PRIu8 "\n", static_cast<uint8_t>( zev->getOpc() )
+    );
+    return false;
+    break;
+  // 16bit M
+  case Forza::zopOpc::Z_HAC_16_M_ADD:
+  case Forza::zopOpc::Z_HAC_16_M_AND:
+  case Forza::zopOpc::Z_HAC_16_M_OR:
+  case Forza::zopOpc::Z_HAC_16_M_XOR:
+  case Forza::zopOpc::Z_HAC_16_M_SMAX:
+  case Forza::zopOpc::Z_HAC_16_M_MAX:
+  case Forza::zopOpc::Z_HAC_16_M_SMIN:
+  case Forza::zopOpc::Z_HAC_16_M_MIN:
+  case Forza::zopOpc::Z_HAC_16_M_SWAP:
+  case Forza::zopOpc::Z_HAC_16_M_CAS:
+  case Forza::zopOpc::Z_HAC_16_M_FADD:
+  case Forza::zopOpc::Z_HAC_16_M_FSUB:
+  case Forza::zopOpc::Z_HAC_16_M_FRSUB:
+  case Forza::zopOpc::Z_HAC_16_M_THRESH:
+    output->verbose(
+      CALL_INFO, 9, 0, "[FORZA][RZA][HZOP]: Unimplemented HZOP opcode=%" PRIu8 "\n", static_cast<uint8_t>( zev->getOpc() )
+    );
+    return false;
+    break;
+  // 32bit M
+  case Forza::zopOpc::Z_HAC_32_M_ADD:
+  case Forza::zopOpc::Z_HAC_32_M_AND:
+  case Forza::zopOpc::Z_HAC_32_M_OR:
+  case Forza::zopOpc::Z_HAC_32_M_XOR:
+  case Forza::zopOpc::Z_HAC_32_M_SMAX:
+  case Forza::zopOpc::Z_HAC_32_M_MAX:
+  case Forza::zopOpc::Z_HAC_32_M_SMIN:
+  case Forza::zopOpc::Z_HAC_32_M_MIN:
+  case Forza::zopOpc::Z_HAC_32_M_SWAP:
+  case Forza::zopOpc::Z_HAC_32_M_CAS:
+  case Forza::zopOpc::Z_HAC_32_M_FADD:
+  case Forza::zopOpc::Z_HAC_32_M_FSUB:
+  case Forza::zopOpc::Z_HAC_32_M_FRSUB:
+  case Forza::zopOpc::Z_HAC_32_M_THRESH:
+    output->verbose(
+      CALL_INFO, 9, 0, "[FORZA][RZA][HZOP]: Unimplemented HZOP opcode=%" PRIu8 "\n", static_cast<uint8_t>( zev->getOpc() )
+    );
+    return false;
+    break;
+  // 64bit M
+  case Forza::zopOpc::Z_HAC_64_M_ADD:
+  case Forza::zopOpc::Z_HAC_64_M_AND:
+  case Forza::zopOpc::Z_HAC_64_M_OR:
+  case Forza::zopOpc::Z_HAC_64_M_XOR:
+  case Forza::zopOpc::Z_HAC_64_M_SMAX:
+  case Forza::zopOpc::Z_HAC_64_M_MAX:
+  case Forza::zopOpc::Z_HAC_64_M_SMIN:
+  case Forza::zopOpc::Z_HAC_64_M_MIN:
+  case Forza::zopOpc::Z_HAC_64_M_SWAP:
+  case Forza::zopOpc::Z_HAC_64_M_CAS:
+  case Forza::zopOpc::Z_HAC_64_M_FADD:
+  case Forza::zopOpc::Z_HAC_64_M_FSUB:
+  case Forza::zopOpc::Z_HAC_64_M_FRSUB:
+  case Forza::zopOpc::Z_HAC_64_M_THRESH:
+    output->verbose(
+      CALL_INFO, 9, 0, "[FORZA][RZA][HZOP]: Unimplemented HZOP opcode=%" PRIu8 "\n", static_cast<uint8_t>( zev->getOpc() )
+    );
+    return false;
+    break;
+  // 8bit S
+  case Forza::zopOpc::Z_HAC_8_S_ADD:
+  case Forza::zopOpc::Z_HAC_8_S_AND:
+  case Forza::zopOpc::Z_HAC_8_S_OR:
+  case Forza::zopOpc::Z_HAC_8_S_XOR:
+  case Forza::zopOpc::Z_HAC_8_S_SMAX:
+  case Forza::zopOpc::Z_HAC_8_S_MAX:
+  case Forza::zopOpc::Z_HAC_8_S_SMIN:
+  case Forza::zopOpc::Z_HAC_8_S_MIN:
+  case Forza::zopOpc::Z_HAC_8_S_SWAP:
+  case Forza::zopOpc::Z_HAC_8_S_CAS:
+  case Forza::zopOpc::Z_HAC_8_S_FADD:
+  case Forza::zopOpc::Z_HAC_8_S_FSUB:
+  case Forza::zopOpc::Z_HAC_8_S_FRSUB:
+  case Forza::zopOpc::Z_HAC_8_S_THRESH:
+    output->verbose(
+      CALL_INFO, 9, 0, "[FORZA][RZA][HZOP]: Unimplemented HZOP opcode=%" PRIu8 "\n", static_cast<uint8_t>( zev->getOpc() )
+    );
+    return false;
+    break;
+  // 16bit S
+  case Forza::zopOpc::Z_HAC_16_S_ADD:
+  case Forza::zopOpc::Z_HAC_16_S_AND:
+  case Forza::zopOpc::Z_HAC_16_S_OR:
+  case Forza::zopOpc::Z_HAC_16_S_XOR:
+  case Forza::zopOpc::Z_HAC_16_S_SMAX:
+  case Forza::zopOpc::Z_HAC_16_S_MAX:
+  case Forza::zopOpc::Z_HAC_16_S_SMIN:
+  case Forza::zopOpc::Z_HAC_16_S_MIN:
+  case Forza::zopOpc::Z_HAC_16_S_SWAP:
+  case Forza::zopOpc::Z_HAC_16_S_CAS:
+  case Forza::zopOpc::Z_HAC_16_S_FADD:
+  case Forza::zopOpc::Z_HAC_16_S_FSUB:
+  case Forza::zopOpc::Z_HAC_16_S_FRSUB:
+  case Forza::zopOpc::Z_HAC_16_S_THRESH:
+    output->verbose(
+      CALL_INFO, 9, 0, "[FORZA][RZA][HZOP]: Unimplemented HZOP opcode=%" PRIu8 "\n", static_cast<uint8_t>( zev->getOpc() )
+    );
+    return false;
+    break;
+  // 32bit S
+  case Forza::zopOpc::Z_HAC_32_S_ADD:
+  case Forza::zopOpc::Z_HAC_32_S_AND:
+  case Forza::zopOpc::Z_HAC_32_S_OR:
+  case Forza::zopOpc::Z_HAC_32_S_XOR:
+  case Forza::zopOpc::Z_HAC_32_S_SMAX:
+  case Forza::zopOpc::Z_HAC_32_S_MAX:
+  case Forza::zopOpc::Z_HAC_32_S_SMIN:
+  case Forza::zopOpc::Z_HAC_32_S_MIN:
+  case Forza::zopOpc::Z_HAC_32_S_SWAP:
+  case Forza::zopOpc::Z_HAC_32_S_CAS:
+  case Forza::zopOpc::Z_HAC_32_S_FADD:
+  case Forza::zopOpc::Z_HAC_32_S_FSUB:
+  case Forza::zopOpc::Z_HAC_32_S_FRSUB:
+  case Forza::zopOpc::Z_HAC_32_S_THRESH:
+    output->verbose(
+      CALL_INFO, 9, 0, "[FORZA][RZA][HZOP]: Unimplemented HZOP opcode=%" PRIu8 "\n", static_cast<uint8_t>( zev->getOpc() )
+    );
+    return false;
+    break;
+  // 64bit S
+  case Forza::zopOpc::Z_HAC_64_S_ADD:
+  case Forza::zopOpc::Z_HAC_64_S_AND:
+  case Forza::zopOpc::Z_HAC_64_S_OR:
+  case Forza::zopOpc::Z_HAC_64_S_XOR:
+  case Forza::zopOpc::Z_HAC_64_S_SMAX:
+  case Forza::zopOpc::Z_HAC_64_S_MAX:
+  case Forza::zopOpc::Z_HAC_64_S_SMIN:
+  case Forza::zopOpc::Z_HAC_64_S_MIN:
+  case Forza::zopOpc::Z_HAC_64_S_SWAP:
+  case Forza::zopOpc::Z_HAC_64_S_CAS:
+  case Forza::zopOpc::Z_HAC_64_S_FADD:
+  case Forza::zopOpc::Z_HAC_64_S_FSUB:
+  case Forza::zopOpc::Z_HAC_64_S_FRSUB:
+  case Forza::zopOpc::Z_HAC_64_S_THRESH:
+    output->verbose(
+      CALL_INFO, 9, 0, "[FORZA][RZA][HZOP]: Unimplemented HZOP opcode=%" PRIu8 "\n", static_cast<uint8_t>( zev->getOpc() )
+    );
+    return false;
+    break;
+  // 8bit MS
+  case Forza::zopOpc::Z_HAC_8_MS_ADD:
+  case Forza::zopOpc::Z_HAC_8_MS_AND:
+  case Forza::zopOpc::Z_HAC_8_MS_OR:
+  case Forza::zopOpc::Z_HAC_8_MS_XOR:
+  case Forza::zopOpc::Z_HAC_8_MS_SMAX:
+  case Forza::zopOpc::Z_HAC_8_MS_MAX:
+  case Forza::zopOpc::Z_HAC_8_MS_SMIN:
+  case Forza::zopOpc::Z_HAC_8_MS_MIN:
+  case Forza::zopOpc::Z_HAC_8_MS_SWAP:
+  case Forza::zopOpc::Z_HAC_8_MS_CAS:
+  case Forza::zopOpc::Z_HAC_8_MS_FADD:
+  case Forza::zopOpc::Z_HAC_8_MS_FSUB:
+  case Forza::zopOpc::Z_HAC_8_MS_FRSUB:
+  case Forza::zopOpc::Z_HAC_8_MS_THRESH:
+    output->verbose(
+      CALL_INFO, 9, 0, "[FORZA][RZA][HZOP]: Unimplemented HZOP opcode=%" PRIu8 "\n", static_cast<uint8_t>( zev->getOpc() )
+    );
+    return false;
+    break;
+  // 16bit MS
+  case Forza::zopOpc::Z_HAC_16_MS_ADD:
+  case Forza::zopOpc::Z_HAC_16_MS_AND:
+  case Forza::zopOpc::Z_HAC_16_MS_OR:
+  case Forza::zopOpc::Z_HAC_16_MS_XOR:
+  case Forza::zopOpc::Z_HAC_16_MS_SMAX:
+  case Forza::zopOpc::Z_HAC_16_MS_MAX:
+  case Forza::zopOpc::Z_HAC_16_MS_SMIN:
+  case Forza::zopOpc::Z_HAC_16_MS_MIN:
+  case Forza::zopOpc::Z_HAC_16_MS_SWAP:
+  case Forza::zopOpc::Z_HAC_16_MS_CAS:
+  case Forza::zopOpc::Z_HAC_16_MS_FADD:
+  case Forza::zopOpc::Z_HAC_16_MS_FSUB:
+  case Forza::zopOpc::Z_HAC_16_MS_FRSUB:
+  case Forza::zopOpc::Z_HAC_16_MS_THRESH:
+    output->verbose(
+      CALL_INFO, 9, 0, "[FORZA][RZA][HZOP]: Unimplemented HZOP opcode=%" PRIu8 "\n", static_cast<uint8_t>( zev->getOpc() )
+    );
+    return false;
+    break;
+  // 32bit MS
+  case Forza::zopOpc::Z_HAC_32_MS_ADD:
+  case Forza::zopOpc::Z_HAC_32_MS_AND:
+  case Forza::zopOpc::Z_HAC_32_MS_OR:
+  case Forza::zopOpc::Z_HAC_32_MS_XOR:
+  case Forza::zopOpc::Z_HAC_32_MS_SMAX:
+  case Forza::zopOpc::Z_HAC_32_MS_MAX:
+  case Forza::zopOpc::Z_HAC_32_MS_SMIN:
+  case Forza::zopOpc::Z_HAC_32_MS_MIN:
+  case Forza::zopOpc::Z_HAC_32_MS_SWAP:
+  case Forza::zopOpc::Z_HAC_32_MS_CAS:
+  case Forza::zopOpc::Z_HAC_32_MS_FADD:
+  case Forza::zopOpc::Z_HAC_32_MS_FSUB:
+  case Forza::zopOpc::Z_HAC_32_MS_FRSUB:
+  case Forza::zopOpc::Z_HAC_32_MS_THRESH:
+    output->verbose(
+      CALL_INFO, 9, 0, "[FORZA][RZA][HZOP]: Unimplemented HZOP opcode=%" PRIu8 "\n", static_cast<uint8_t>( zev->getOpc() )
+    );
+    return false;
+    break;
+  // 64bit MS
+  case Forza::zopOpc::Z_HAC_64_MS_ADD:
+  case Forza::zopOpc::Z_HAC_64_MS_AND:
+  case Forza::zopOpc::Z_HAC_64_MS_OR:
+  case Forza::zopOpc::Z_HAC_64_MS_XOR:
+  case Forza::zopOpc::Z_HAC_64_MS_SMAX:
+  case Forza::zopOpc::Z_HAC_64_MS_MAX:
+  case Forza::zopOpc::Z_HAC_64_MS_SMIN:
+  case Forza::zopOpc::Z_HAC_64_MS_MIN:
+  case Forza::zopOpc::Z_HAC_64_MS_SWAP:
+  case Forza::zopOpc::Z_HAC_64_MS_CAS:
+  case Forza::zopOpc::Z_HAC_64_MS_FADD:
+  case Forza::zopOpc::Z_HAC_64_MS_FSUB:
+  case Forza::zopOpc::Z_HAC_64_MS_FRSUB:
+  case Forza::zopOpc::Z_HAC_64_MS_THRESH:
+    output->verbose(
+      CALL_INFO, 9, 0, "[FORZA][RZA][HZOP]: Unimplemented HZOP opcode=%" PRIu8 "\n", static_cast<uint8_t>( zev->getOpc() )
+    );
+    return false;
     break;
   default:
     output->verbose(

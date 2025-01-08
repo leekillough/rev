@@ -30,6 +30,11 @@ class Zaamo : public RevExt {
       RevFlagSet( flags, RevFlag::F_RL );
     }
 
+    // Forza mask to NO style AMO
+    if( !Inst.aq && !Inst.rl ) {
+      RevFlagSet( flags, RevFlag::F_FORZANO );
+    }
+
     if( !F->IsRV64() ) {
       MemReq req(
         R->RV32[Inst.rs1], Inst.rd, RevRegClass::RegGPR, F->GetHartToExecID(), MemOp::MemOpAMO, true, R->GetMarkLoadComplete()

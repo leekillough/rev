@@ -1,7 +1,7 @@
 //
 // _RevMem_cc_
 //
-// Copyright (C) 2017-2024 Tactical Computing Laboratories, LLC
+// Copyright (C) 2017-2025 Tactical Computing Laboratories, LLC
 // All Rights Reserved
 // contact@tactcomplabs.com
 //
@@ -842,53 +842,115 @@ uint64_t RevMem::ExpandHeap( uint64_t Size ) {
 // ----------------------------------------------------
 SST::Forza::zopOpc RevMem::flagToZOP( uint32_t flags, size_t Len ) {
 
-  static const std::tuple<RevCPU::RevFlag, size_t, Forza::zopOpc> table[] = {
-    { RevCPU::RevFlag::F_AMOADD, 1,   Forza::zopOpc::Z_HAC_8_BASE_ADD},
-    { RevCPU::RevFlag::F_AMOXOR, 1,   Forza::zopOpc::Z_HAC_8_BASE_XOR},
-    { RevCPU::RevFlag::F_AMOAND, 1,   Forza::zopOpc::Z_HAC_8_BASE_AND},
-    {  RevCPU::RevFlag::F_AMOOR, 1,    Forza::zopOpc::Z_HAC_8_BASE_OR},
-    {RevCPU::RevFlag::F_AMOSWAP, 1,  Forza::zopOpc::Z_HAC_8_BASE_SWAP},
-    { RevCPU::RevFlag::F_AMOMIN, 1,  Forza::zopOpc::Z_HAC_8_BASE_SMIN},
-    { RevCPU::RevFlag::F_AMOMAX, 1,  Forza::zopOpc::Z_HAC_8_BASE_SMAX},
-    {RevCPU::RevFlag::F_AMOMINU, 1,   Forza::zopOpc::Z_HAC_8_BASE_MIN},
-    {RevCPU::RevFlag::F_AMOMAXU, 1,   Forza::zopOpc::Z_HAC_8_BASE_MAX},
-    { RevCPU::RevFlag::F_AMOADD, 2,  Forza::zopOpc::Z_HAC_16_BASE_ADD},
-    { RevCPU::RevFlag::F_AMOXOR, 2,  Forza::zopOpc::Z_HAC_16_BASE_XOR},
-    { RevCPU::RevFlag::F_AMOAND, 2,  Forza::zopOpc::Z_HAC_16_BASE_AND},
-    {  RevCPU::RevFlag::F_AMOOR, 2,   Forza::zopOpc::Z_HAC_16_BASE_OR},
-    {RevCPU::RevFlag::F_AMOSWAP, 2, Forza::zopOpc::Z_HAC_16_BASE_SWAP},
-    { RevCPU::RevFlag::F_AMOMIN, 2, Forza::zopOpc::Z_HAC_16_BASE_SMIN},
-    { RevCPU::RevFlag::F_AMOMAX, 2, Forza::zopOpc::Z_HAC_16_BASE_SMAX},
-    {RevCPU::RevFlag::F_AMOMINU, 2,  Forza::zopOpc::Z_HAC_16_BASE_MIN},
-    {RevCPU::RevFlag::F_AMOMAXU, 2,  Forza::zopOpc::Z_HAC_16_BASE_MAX},
-    { RevCPU::RevFlag::F_AMOADD, 4,  Forza::zopOpc::Z_HAC_32_BASE_ADD},
-    { RevCPU::RevFlag::F_AMOXOR, 4,  Forza::zopOpc::Z_HAC_32_BASE_XOR},
-    { RevCPU::RevFlag::F_AMOAND, 4,  Forza::zopOpc::Z_HAC_32_BASE_AND},
-    {  RevCPU::RevFlag::F_AMOOR, 4,   Forza::zopOpc::Z_HAC_32_BASE_OR},
-    {RevCPU::RevFlag::F_AMOSWAP, 4, Forza::zopOpc::Z_HAC_32_BASE_SWAP},
-    { RevCPU::RevFlag::F_AMOMIN, 4, Forza::zopOpc::Z_HAC_32_BASE_SMIN},
-    { RevCPU::RevFlag::F_AMOMAX, 4, Forza::zopOpc::Z_HAC_32_BASE_SMAX},
-    {RevCPU::RevFlag::F_AMOMINU, 4,  Forza::zopOpc::Z_HAC_32_BASE_MIN},
-    {RevCPU::RevFlag::F_AMOMAXU, 4,  Forza::zopOpc::Z_HAC_32_BASE_MAX},
-    { RevCPU::RevFlag::F_AMOADD, 8,  Forza::zopOpc::Z_HAC_64_BASE_ADD},
-    { RevCPU::RevFlag::F_AMOXOR, 8,  Forza::zopOpc::Z_HAC_64_BASE_XOR},
-    { RevCPU::RevFlag::F_AMOAND, 8,  Forza::zopOpc::Z_HAC_64_BASE_AND},
-    {  RevCPU::RevFlag::F_AMOOR, 8,   Forza::zopOpc::Z_HAC_64_BASE_OR},
-    {RevCPU::RevFlag::F_AMOSWAP, 8, Forza::zopOpc::Z_HAC_64_BASE_SWAP},
-    { RevCPU::RevFlag::F_AMOMIN, 8, Forza::zopOpc::Z_HAC_64_BASE_SMIN},
-    { RevCPU::RevFlag::F_AMOMAX, 8, Forza::zopOpc::Z_HAC_64_BASE_SMAX},
-    {RevCPU::RevFlag::F_AMOMINU, 8,  Forza::zopOpc::Z_HAC_64_BASE_MIN},
-    {RevCPU::RevFlag::F_AMOMAXU, 8,  Forza::zopOpc::Z_HAC_64_BASE_MAX},
+  if( ( flags & (uint32_t) ( RevCPU::RevFlag::F_AMOADD ) ) ) {
+    output->verbose(
+      CALL_INFO,
+      4,
+      0,
+      "Decoding flags: "
+      "flags=%" PRIu32 ", len=%" PRIuPTR "\n",
+      flags,
+      Len
+    );
+  }
+
+  // Note: This table is effectively populated in reverse order
+  // The values at the  bottom of the table correspond to the U-style atomics
+  // that have no return value (on an ACK).  They are matched last as the second
+  // array value `RevCPU::RevFlag::F_NONE`
+  static const std::tuple<std::array<RevCPU::RevFlag, 2>, size_t, Forza::zopOpc> table[] = {
+    { { RevCPU::RevFlag::F_AMOADD, RevCPU::RevFlag::F_FORZANN }, 1,      Forza::zopOpc::Z_HAC_8_M_ADD},
+    { { RevCPU::RevFlag::F_AMOXOR, RevCPU::RevFlag::F_FORZANN }, 1,      Forza::zopOpc::Z_HAC_8_M_XOR},
+    { { RevCPU::RevFlag::F_AMOAND, RevCPU::RevFlag::F_FORZANN }, 1,      Forza::zopOpc::Z_HAC_8_M_AND},
+    {  { RevCPU::RevFlag::F_AMOOR, RevCPU::RevFlag::F_FORZANN }, 1,       Forza::zopOpc::Z_HAC_8_M_OR},
+    {{ RevCPU::RevFlag::F_AMOSWAP, RevCPU::RevFlag::F_FORZANN }, 1,     Forza::zopOpc::Z_HAC_8_M_SWAP},
+    { { RevCPU::RevFlag::F_AMOMIN, RevCPU::RevFlag::F_FORZANN }, 1,     Forza::zopOpc::Z_HAC_8_M_SMIN},
+    { { RevCPU::RevFlag::F_AMOMAX, RevCPU::RevFlag::F_FORZANN }, 1,     Forza::zopOpc::Z_HAC_8_M_SMAX},
+    {{ RevCPU::RevFlag::F_AMOMINU, RevCPU::RevFlag::F_FORZANN }, 1,      Forza::zopOpc::Z_HAC_8_M_MIN},
+    {{ RevCPU::RevFlag::F_AMOMAXU, RevCPU::RevFlag::F_FORZANN }, 1,      Forza::zopOpc::Z_HAC_8_M_MAX},
+    { { RevCPU::RevFlag::F_AMOADD, RevCPU::RevFlag::F_FORZANN }, 2,     Forza::zopOpc::Z_HAC_16_M_ADD},
+    { { RevCPU::RevFlag::F_AMOXOR, RevCPU::RevFlag::F_FORZANN }, 2,     Forza::zopOpc::Z_HAC_16_M_XOR},
+    { { RevCPU::RevFlag::F_AMOAND, RevCPU::RevFlag::F_FORZANN }, 2,     Forza::zopOpc::Z_HAC_16_M_AND},
+    {  { RevCPU::RevFlag::F_AMOOR, RevCPU::RevFlag::F_FORZANN }, 2,      Forza::zopOpc::Z_HAC_16_M_OR},
+    {{ RevCPU::RevFlag::F_AMOSWAP, RevCPU::RevFlag::F_FORZANN }, 2,    Forza::zopOpc::Z_HAC_16_M_SWAP},
+    { { RevCPU::RevFlag::F_AMOMIN, RevCPU::RevFlag::F_FORZANN }, 2,    Forza::zopOpc::Z_HAC_16_M_SMIN},
+    { { RevCPU::RevFlag::F_AMOMAX, RevCPU::RevFlag::F_FORZANN }, 2,    Forza::zopOpc::Z_HAC_16_M_SMAX},
+    {{ RevCPU::RevFlag::F_AMOMINU, RevCPU::RevFlag::F_FORZANN }, 2,     Forza::zopOpc::Z_HAC_16_M_MIN},
+    {{ RevCPU::RevFlag::F_AMOMAXU, RevCPU::RevFlag::F_FORZANN }, 2,     Forza::zopOpc::Z_HAC_16_M_MAX},
+    { { RevCPU::RevFlag::F_AMOADD, RevCPU::RevFlag::F_FORZANN }, 4,     Forza::zopOpc::Z_HAC_32_M_ADD},
+    { { RevCPU::RevFlag::F_AMOXOR, RevCPU::RevFlag::F_FORZANN }, 4,     Forza::zopOpc::Z_HAC_32_M_XOR},
+    { { RevCPU::RevFlag::F_AMOAND, RevCPU::RevFlag::F_FORZANN }, 4,     Forza::zopOpc::Z_HAC_32_M_AND},
+    {  { RevCPU::RevFlag::F_AMOOR, RevCPU::RevFlag::F_FORZANN }, 4,      Forza::zopOpc::Z_HAC_32_M_OR},
+    {{ RevCPU::RevFlag::F_AMOSWAP, RevCPU::RevFlag::F_FORZANN }, 4,    Forza::zopOpc::Z_HAC_32_M_SWAP},
+    { { RevCPU::RevFlag::F_AMOMIN, RevCPU::RevFlag::F_FORZANN }, 4,    Forza::zopOpc::Z_HAC_32_M_SMIN},
+    { { RevCPU::RevFlag::F_AMOMAX, RevCPU::RevFlag::F_FORZANN }, 4,    Forza::zopOpc::Z_HAC_32_M_SMAX},
+    {{ RevCPU::RevFlag::F_AMOMINU, RevCPU::RevFlag::F_FORZANN }, 4,     Forza::zopOpc::Z_HAC_32_M_MIN},
+    {{ RevCPU::RevFlag::F_AMOMAXU, RevCPU::RevFlag::F_FORZANN }, 4,     Forza::zopOpc::Z_HAC_32_M_MAX},
+    { { RevCPU::RevFlag::F_AMOADD, RevCPU::RevFlag::F_FORZANN }, 8,     Forza::zopOpc::Z_HAC_64_M_ADD},
+    { { RevCPU::RevFlag::F_AMOXOR, RevCPU::RevFlag::F_FORZANN }, 8,     Forza::zopOpc::Z_HAC_64_M_XOR},
+    { { RevCPU::RevFlag::F_AMOAND, RevCPU::RevFlag::F_FORZANN }, 8,     Forza::zopOpc::Z_HAC_64_M_AND},
+    {  { RevCPU::RevFlag::F_AMOOR, RevCPU::RevFlag::F_FORZANN }, 8,      Forza::zopOpc::Z_HAC_64_M_OR},
+    {{ RevCPU::RevFlag::F_AMOSWAP, RevCPU::RevFlag::F_FORZANN }, 8,    Forza::zopOpc::Z_HAC_64_M_SWAP},
+    { { RevCPU::RevFlag::F_AMOMIN, RevCPU::RevFlag::F_FORZANN }, 8,    Forza::zopOpc::Z_HAC_64_M_SMIN},
+    { { RevCPU::RevFlag::F_AMOMAX, RevCPU::RevFlag::F_FORZANN }, 8,    Forza::zopOpc::Z_HAC_64_M_SMAX},
+    {{ RevCPU::RevFlag::F_AMOMINU, RevCPU::RevFlag::F_FORZANN }, 8,     Forza::zopOpc::Z_HAC_64_M_MIN},
+    {{ RevCPU::RevFlag::F_AMOMAXU, RevCPU::RevFlag::F_FORZANN }, 8,     Forza::zopOpc::Z_HAC_64_M_MAX},
+
+    {    { RevCPU::RevFlag::F_AMOADD, RevCPU::RevFlag::F_NONE }, 1,   Forza::zopOpc::Z_HAC_8_BASE_ADD},
+    {    { RevCPU::RevFlag::F_AMOXOR, RevCPU::RevFlag::F_NONE }, 1,   Forza::zopOpc::Z_HAC_8_BASE_XOR},
+    {    { RevCPU::RevFlag::F_AMOAND, RevCPU::RevFlag::F_NONE }, 1,   Forza::zopOpc::Z_HAC_8_BASE_AND},
+    {     { RevCPU::RevFlag::F_AMOOR, RevCPU::RevFlag::F_NONE }, 1,    Forza::zopOpc::Z_HAC_8_BASE_OR},
+    {   { RevCPU::RevFlag::F_AMOSWAP, RevCPU::RevFlag::F_NONE }, 1,  Forza::zopOpc::Z_HAC_8_BASE_SWAP},
+    {    { RevCPU::RevFlag::F_AMOMIN, RevCPU::RevFlag::F_NONE }, 1,  Forza::zopOpc::Z_HAC_8_BASE_SMIN},
+    {    { RevCPU::RevFlag::F_AMOMAX, RevCPU::RevFlag::F_NONE }, 1,  Forza::zopOpc::Z_HAC_8_BASE_SMAX},
+    {   { RevCPU::RevFlag::F_AMOMINU, RevCPU::RevFlag::F_NONE }, 1,   Forza::zopOpc::Z_HAC_8_BASE_MIN},
+    {   { RevCPU::RevFlag::F_AMOMAXU, RevCPU::RevFlag::F_NONE }, 1,   Forza::zopOpc::Z_HAC_8_BASE_MAX},
+    {    { RevCPU::RevFlag::F_AMOADD, RevCPU::RevFlag::F_NONE }, 2,  Forza::zopOpc::Z_HAC_16_BASE_ADD},
+    {    { RevCPU::RevFlag::F_AMOXOR, RevCPU::RevFlag::F_NONE }, 2,  Forza::zopOpc::Z_HAC_16_BASE_XOR},
+    {    { RevCPU::RevFlag::F_AMOAND, RevCPU::RevFlag::F_NONE }, 2,  Forza::zopOpc::Z_HAC_16_BASE_AND},
+    {     { RevCPU::RevFlag::F_AMOOR, RevCPU::RevFlag::F_NONE }, 2,   Forza::zopOpc::Z_HAC_16_BASE_OR},
+    {   { RevCPU::RevFlag::F_AMOSWAP, RevCPU::RevFlag::F_NONE }, 2, Forza::zopOpc::Z_HAC_16_BASE_SWAP},
+    {    { RevCPU::RevFlag::F_AMOMIN, RevCPU::RevFlag::F_NONE }, 2, Forza::zopOpc::Z_HAC_16_BASE_SMIN},
+    {    { RevCPU::RevFlag::F_AMOMAX, RevCPU::RevFlag::F_NONE }, 2, Forza::zopOpc::Z_HAC_16_BASE_SMAX},
+    {   { RevCPU::RevFlag::F_AMOMINU, RevCPU::RevFlag::F_NONE }, 2,  Forza::zopOpc::Z_HAC_16_BASE_MIN},
+    {   { RevCPU::RevFlag::F_AMOMAXU, RevCPU::RevFlag::F_NONE }, 2,  Forza::zopOpc::Z_HAC_16_BASE_MAX},
+    {    { RevCPU::RevFlag::F_AMOADD, RevCPU::RevFlag::F_NONE }, 4,  Forza::zopOpc::Z_HAC_32_BASE_ADD},
+    {    { RevCPU::RevFlag::F_AMOXOR, RevCPU::RevFlag::F_NONE }, 4,  Forza::zopOpc::Z_HAC_32_BASE_XOR},
+    {    { RevCPU::RevFlag::F_AMOAND, RevCPU::RevFlag::F_NONE }, 4,  Forza::zopOpc::Z_HAC_32_BASE_AND},
+    {     { RevCPU::RevFlag::F_AMOOR, RevCPU::RevFlag::F_NONE }, 4,   Forza::zopOpc::Z_HAC_32_BASE_OR},
+    {   { RevCPU::RevFlag::F_AMOSWAP, RevCPU::RevFlag::F_NONE }, 4, Forza::zopOpc::Z_HAC_32_BASE_SWAP},
+    {    { RevCPU::RevFlag::F_AMOMIN, RevCPU::RevFlag::F_NONE }, 4, Forza::zopOpc::Z_HAC_32_BASE_SMIN},
+    {    { RevCPU::RevFlag::F_AMOMAX, RevCPU::RevFlag::F_NONE }, 4, Forza::zopOpc::Z_HAC_32_BASE_SMAX},
+    {   { RevCPU::RevFlag::F_AMOMINU, RevCPU::RevFlag::F_NONE }, 4,  Forza::zopOpc::Z_HAC_32_BASE_MIN},
+    {   { RevCPU::RevFlag::F_AMOMAXU, RevCPU::RevFlag::F_NONE }, 4,  Forza::zopOpc::Z_HAC_32_BASE_MAX},
+    {    { RevCPU::RevFlag::F_AMOADD, RevCPU::RevFlag::F_NONE }, 8,  Forza::zopOpc::Z_HAC_64_BASE_ADD},
+    {    { RevCPU::RevFlag::F_AMOXOR, RevCPU::RevFlag::F_NONE }, 8,  Forza::zopOpc::Z_HAC_64_BASE_XOR},
+    {    { RevCPU::RevFlag::F_AMOAND, RevCPU::RevFlag::F_NONE }, 8,  Forza::zopOpc::Z_HAC_64_BASE_AND},
+    {     { RevCPU::RevFlag::F_AMOOR, RevCPU::RevFlag::F_NONE }, 8,   Forza::zopOpc::Z_HAC_64_BASE_OR},
+    {   { RevCPU::RevFlag::F_AMOSWAP, RevCPU::RevFlag::F_NONE }, 8, Forza::zopOpc::Z_HAC_64_BASE_SWAP},
+    {    { RevCPU::RevFlag::F_AMOMIN, RevCPU::RevFlag::F_NONE }, 8, Forza::zopOpc::Z_HAC_64_BASE_SMIN},
+    {    { RevCPU::RevFlag::F_AMOMAX, RevCPU::RevFlag::F_NONE }, 8, Forza::zopOpc::Z_HAC_64_BASE_SMAX},
+    {   { RevCPU::RevFlag::F_AMOMINU, RevCPU::RevFlag::F_NONE }, 8,  Forza::zopOpc::Z_HAC_64_BASE_MIN},
+    {   { RevCPU::RevFlag::F_AMOMAXU, RevCPU::RevFlag::F_NONE }, 8,  Forza::zopOpc::Z_HAC_64_BASE_MAX},
   };
 
   for( auto& flag : table ) {
-    if( ( flags & (uint32_t) ( std::get<0>( flag ) ) ) && ( Len == std::get<1>( flag ) ) ) {
+    auto farray = std::get<0>( flag );
+    if( ( flags & (uint32_t) ( farray[0] ) ) && ( flags & (uint32_t) ( farray[1] ) ) && ( Len == std::get<1>( flag ) ) ) {
       return std::get<2>( flag );
       break;
     }
   }
 
-  std::cout << "Z_NULL_OPC" << std::endl;
+  output->verbose(
+    CALL_INFO,
+    4,
+    0,
+    "WARNING: Failed to convert memory request flags to HZOP opcode; "
+    "flags=%" PRIu32 ", len=%" PRIuPTR "\n",
+    flags,
+    Len
+  );
   return SST::Forza::zopOpc::Z_NULL_OPC;
 }
 

@@ -27,8 +27,8 @@ class XForza : public RevExt {
 
     RevFlag flags{ Op };
     RevFlagSet( flags, Rtn );
+    RevFlagSet( flags, RevFlag::F_SEXT64 );
 
-    flags = RevFlag{ uint32_t( flags ) | uint32_t( RevFlag::F_SEXT64 ) };
     MemReq req(
       R->RV64[Inst.rs1], Inst.rd, RevRegClass::RegGPR, F->GetHartToExecID(), MemOp::MemOpAMO, true, R->GetMarkLoadComplete()
     );
@@ -57,8 +57,8 @@ class XForza : public RevExt {
 
     RevFlag flags{ Op };
     RevFlagSet( flags, Rtn );
+    RevFlagSet( flags, RevFlag::F_SEXT64 );
 
-    flags = RevFlag{ uint32_t( flags ) | uint32_t( RevFlag::F_SEXT64 ) };
     MemReq req(
       R->RV64[Inst.rs1], Inst.rd, RevRegClass::RegGPR, F->GetHartToExecID(), MemOp::MemOpAMO, true, R->GetMarkLoadComplete()
     );

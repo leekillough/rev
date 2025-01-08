@@ -1,7 +1,7 @@
 //
 // _ZOPNet_h_
 //
-// Copyright (C) 2017-2024 Tactical Computing Laboratories, LLC
+// Copyright (C) 2017-2025 Tactical Computing Laboratories, LLC
 // All Rights Reserved
 // contact@tactcomplabs.com
 //
@@ -159,6 +159,10 @@ enum class zopOpc : uint8_t {
   // -- 'S' = S-Type (aka ON - mem unchanged, Rd gets result)
   // -- 'MS' = MS-Type (aka NO - mem gets result, Rd gets orig memory)
   // Function defined in bits [7:4] - function codes 0xB and 0xF unused
+  //
+  // TODO:
+  // - missing SUB operation
+  //
   Z_HAC_8_BASE_ADD     = 0x00,  /// zopOpc: HZOP-AC 8bit BASE AMO ADD
   Z_HAC_8_BASE_AND     = 0x10,  /// zopOpc: HZOP-AC 8bit BASE AMO AND
   Z_HAC_8_BASE_OR      = 0x20,  /// zopOpc: HZOP-AC 8bit BASE AMO OR
