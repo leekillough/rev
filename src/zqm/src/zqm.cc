@@ -102,6 +102,12 @@ ZQM::ZQM(ComponentId_t id, Params& params)
     CALL_INFO, 3, 0, "%s constructed; using 0x%" PRIx64 " bytes for actor msg memory\n", my_name.c_str(), total_msg_mem
   );
 
+  // Register stats
+  MsgsRecd = registerStatistic<uint64_t>( "MsgsReceived" );
+  AcksSent = registerStatistic<uint64_t>( "AcksSent" );
+  NacksSent = registerStatistic<uint64_t>( "NacksSent" );
+  NumRecycles = registerStatistic<uint64_t>( "NumRecycles" );
+
   // register with SST
   registerAsPrimaryComponent();
   //primaryComponentDoNotEndSim();
@@ -350,7 +356,8 @@ void ZQM::updateInMboxQueue()
         qentry.second++;
         in_mbox.mbox_queue.push( qentry );
         in_mbox.head_check_cycle_cntr = 0;
-        //output.verbose( CALL_INFO, 5, 0, "TJD: ZQM: recycle num=%" PRIu16 "; msg %s to %s, ID=%" PRIu16 "\n",
+        NumRecycles->addData( 1 );
+        //output.verbose( CALL_INFO, 5, 0, "ZQM: recycle num=%" PRIu16 "; msg %s to %s, ID=%" PRIu16 "\n",
          // qentry.second, msg->getSrcString().c_str(), msg->getDestString().c_str(), msg->getID() );
       }
     } // no else needed; just had to increment the counter
@@ -710,6 +717,7 @@ void ZQM::processMessagingMsgs()
             case zopOpc::Z_MSG_SENDP:{
                 convertLogicPEToPhysPE(event);
                 IncomingMsgQueues[event->getMbxID()].mbox_queue.push({event, 0});
+                MsgsRecd->addData( 1 );
                 break; }
             default:
                 output.fatal(CALL_INFO, -1, "%s: Received an invalid messaging packet; opcode = 0x%x, id=%u\n",
@@ -725,6 +733,11 @@ void ZQM::sendZopAck(SST::Forza::zopEvent *event, zopMsgT msg_type, zopOpc msg_o
 {
     // Note: Caller handles what happens to event
     SST::Forza::zopEvent *ack_msg = new SST::Forza::zopEvent(msg_type, msg_opc);
+
+    if ( msg_opc == zopOpc::Z_MSG_ACK )
+      AcksSent->addData( 1 );
+    else
+      NacksSent->addData( 1 );
 
     // Set src/dest info
     setMeAsZopSrc(ack_msg);

@@ -114,8 +114,12 @@ public:
     SST_ELI_DOCUMENT_PORTS()
 
     // describe the statistics
-    // TODO: Add stats
-    SST_ELI_DOCUMENT_STATISTICS()
+    SST_ELI_DOCUMENT_STATISTICS(
+      { "MsgsReceived", "Number of actor messages received", "count", 1 },
+      { "AcksSent", "Number of actor message ACKs sent", "count", 1 },
+      { "NacksSent", "Number of actor message NACKs sent", "count", 1 },
+      { "NumRecycles", "Number of actor messages recycled", "count", 1 },
+    )
 
     // describe the subcomponent slots
     SST_ELI_DOCUMENT_SUBCOMPONENT_SLOTS(
@@ -174,6 +178,12 @@ private:
     SST::Forza::zopAPI* zone_nic{};      ///< ZQM: zone zop NoC
     zopMsgID *zoneMsgID{};               ///< ZQM: manually allocated message IDs
     SST::Forza::RingNetAPI* zone_ring{}; ///< ZQM: zone csr ring network
+
+    // Stats
+    Statistic<uint64_t>* MsgsRecd;
+    Statistic<uint64_t>* AcksSent;
+    Statistic<uint64_t>* NacksSent;
+    Statistic<uint64_t>* NumRecycles;
 
     // From ZEN
     bool dma_enabled;

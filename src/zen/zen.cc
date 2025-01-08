@@ -80,6 +80,11 @@ ZEN::ZEN(ComponentId_t id, Params& params)
   // Other configuration
   seqNumsAvail = ZenSeqNumMgrDepth;
 
+  // Register Stats
+  ActorMsgsRecd = registerStatistic<uint64_t>("ActorMsgsReceived");
+  AcksRecd = registerStatistic<uint64_t>("AcksReceived");
+  NacksRecd = registerStatistic<uint64_t>("NacksReceived");
+
   // complete SST registration
   registerAsPrimaryComponent();
   //primaryComponentDoNotEndSim();
@@ -234,6 +239,12 @@ void ZEN::handleRingEqCtrl( SST::Forza::ringEvent *ev )
 
   auto &regs = PerHartCSRs[ev->getSrcZap()][ev->getHart()];
   regs.msg[0] = ev->getDatum();
+  uint64_t msg_clr = ( ev->getDatum() >> ZENEQC_SHIFT_MSGCLR ) & ZENEQC_MASK_MSGCLR;
+  if ( msg_clr ) {
+    output.fatal(CALL_INFO, -2, "[ZEN] %s no support for msg clear yet; zap=%u, hart=%u, datum=%" PRIu64 "\n",
+                 getName().c_str(), ev->getSrcZap(), ev->getHart(), ev->getDatum() );
+  }
+  ActorMsgsRecd->addData( 1 );
   uint64_t dest_mbox = ( ev->getDatum() >> ZENEQC_SHIFT_DESTMBOX ) & ZENEQC_MASK_DESTMBOX;
   if ( regs.mbox_cntrs[dest_mbox] == UINT8_MAX )
     output.fatal(CALL_INFO, -2, "[ZEN] %s no support for saturated mbox counter yet; zap=%u, hart=%u, mbox=%" PRIu64 "\n",
@@ -356,7 +367,7 @@ void ZEN::handleMsgResp(zopEvent *ack)
   if ( ack->getOpc() == zopOpc::Z_MSG_NACK ) {
     // Have to use the msg_id to generate a read address; wait on data return and then resend the msg zop
     // Does not rewrite memory
-
+    NacksRecd->addData( 1 );
     // Nominally, this would be a LDMA request with a single payload word of 8 (as a request of 8 words); however, the RZA doesn't
     // support that operation. Thus, no payload for now and we just do a single load
     auto zop = new SST::Forza::zopEvent();
@@ -382,6 +393,7 @@ void ZEN::handleMsgResp(zopEvent *ack)
   }
 
   // Reduce the mailbox counter
+  AcksRecd->addData( 1 );
   auto &regs = PerHartCSRs[ack->getDestZCID()][ack->getDestHart()];
   auto &cntr = regs.mbox_cntrs[ack->getMbxID()];
   output.verbose(CALL_INFO, 9, 0, "ZEN[%s]; ACK received; MboxId=%u, Orig Counter=%u; packet %s to %s\n",
