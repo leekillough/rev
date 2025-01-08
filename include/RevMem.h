@@ -1,7 +1,7 @@
 //
 // _RevMem_h_
 //
-// Copyright (C) 2017-2024 Tactical Computing Laboratories, LLC
+// Copyright (C) 2017-2025 Tactical Computing Laboratories, LLC
 // All Rights Reserved
 // contact@tactcomplabs.com
 //
@@ -434,10 +434,10 @@ public:
 
 private:
   /// FORZA: convert a standard RISC-V AMO opcode to a ZOP opcode
-  Forza::zopOpc flagToZOP( uint32_t flags, size_t Len );
+  Forza::zopOpc flagToZOP( RevFlag flags, size_t Len );
 
   /// FORZA: convert a standard RISC-V memory request to a ZOP opcode
-  Forza::zopOpc memToZOP( uint32_t flags, size_t Len, bool Write );
+  Forza::zopOpc memToZOP( RevFlag flags, size_t Len, bool Write );
 
   /// FORZA: send an AMO request
   bool ZOP_AMOMem( uint32_t Hart, uint64_t Addr, size_t Len, void* Data, void* Target, const MemReq& req, RevFlag flags );
