@@ -21,9 +21,11 @@ class XForza : public RevExt {
   // ------------------------------------------------------------
   // Remote Atomics
   // ------------------------------------------------------------
-  template<typename XLEN, RevFlag Op, RevFlag Rtn>
+  template<typename TYPE, RevFlag Op, RevFlag Rtn>
   static bool forzaamo_rem( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) {
-    static_assert( std::is_unsigned_v<XLEN>, "XLEN must be unsigned integral type" );
+    printf( "Here\n" );
+
+    static_assert( std::is_unsigned_v<TYPE>, "TYPE must be unsigned integral type" );
 
     RevFlag flags{ Op };
     RevFlagSet( flags, Rtn );
@@ -36,8 +38,8 @@ class XForza : public RevExt {
     M->AMOVal(
       F->GetHartToExecID(),
       R->RV64[Inst.rs1],
-      reinterpret_cast<std::make_signed_t<XLEN>*>( &R->RV64[Inst.rs2] ),
-      reinterpret_cast<std::make_signed_t<XLEN>*>( &R->RV64[Inst.rd] ),
+      reinterpret_cast<std::make_signed_t<TYPE>*>( &R->RV64[Inst.rs2] ),
+      reinterpret_cast<std::make_signed_t<TYPE>*>( &R->RV64[Inst.rd] ),
       req,
       flags
     );
@@ -51,9 +53,9 @@ class XForza : public RevExt {
   // ------------------------------------------------------------
   // Migrating Atomics
   // ------------------------------------------------------------
-  template<typename XLEN, RevFlag Op, RevFlag Rtn>
+  template<typename TYPE, RevFlag Op, RevFlag Rtn>
   static bool forzaamo_migr( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) {
-    static_assert( std::is_unsigned_v<XLEN>, "XLEN must be unsigned integral type" );
+    static_assert( std::is_unsigned_v<TYPE>, "TYPE must be unsigned integral type" );
 
     RevFlag flags{ Op };
     RevFlagSet( flags, Rtn );
@@ -66,8 +68,8 @@ class XForza : public RevExt {
     M->AMOVal(
       F->GetHartToExecID(),
       R->RV64[Inst.rs1],
-      reinterpret_cast<std::make_signed_t<XLEN>*>( &R->RV64[Inst.rs2] ),
-      reinterpret_cast<std::make_signed_t<XLEN>*>( &R->RV64[Inst.rd] ),
+      reinterpret_cast<std::make_signed_t<TYPE>*>( &R->RV64[Inst.rs2] ),
+      reinterpret_cast<std::make_signed_t<TYPE>*>( &R->RV64[Inst.rd] ),
       req,
       flags
     );
