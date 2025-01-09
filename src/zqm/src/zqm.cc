@@ -254,8 +254,8 @@ void ZQM::handleRingDq( SST::Forza::ringEvent* ev ) {
   //output.verbose( CALL_INFO, 7, 0, "[ZQM] %s; handling a dequeue message; msg_ptr=0x%" PRIx64 "\n", getName().c_str(), ret_data );
 
   // If this was a read request, don't do anything else
-  // If this is a RMW request, update the buffer state
-  if( ev->getOp() == ringMsgT::R_RMW ) {
+  // If this is an update request, update the buffer state
+  if( ev->getOp() == ringMsgT::R_UPDATE ) {
     ret_data                           = 0;
     mbox.buff_state[mbox.cur_rd_entry] = msgBuffState::IDLE;
     //output.verbose( CALL_INFO, 5, 0, "ZQM Deque[%u][%u].mbox[%u].buff[%u]\n",
