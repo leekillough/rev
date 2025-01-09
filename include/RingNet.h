@@ -1,7 +1,7 @@
 //
 // _ZOPNet_h_
 //
-// Copyright (C) 2017-2024 Tactical Computing Laboratories, LLC
+// Copyright (C) 2017-2025 Tactical Computing Laboratories, LLC
 // All Rights Reserved
 // contact@tactcomplabs.com
 //
@@ -132,8 +132,7 @@ inline constexpr uint64_t ZQMMBOXREG_MASK_AID        = 0x0F;
 enum class ringMsgT : uint8_t {
   R_RETDATA = 0b00,  /// Forza RETURN DATA
   R_READ    = 0b01,  /// Forza READ
-  R_RMW     = 0b10,  /// Forza RMW
-  R_UPDATE  = 0b11,  /// Forza UPDATE
+  R_UPDATE  = 0b10,  /// Forza UPDATE
 };
 
 // --------------------------------------------
