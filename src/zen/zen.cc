@@ -328,7 +328,7 @@ void ZEN::execMsgPipe2() {
     } else if (!NackRdReqQueue.empty() ) {
       zop = NackRdReqQueue.front();
       NackRdReqQueue.pop();
-      dest_comp = zopCompID::Z_RZA1;
+      dest_comp = zopCompID::Z_MSGRZA;
     } else {
       output.fatal( CALL_INFO, -1, "Invalid code...\n" );
     }
@@ -337,7 +337,7 @@ void ZEN::execMsgPipe2() {
     if (!NackRdReqQueue.empty()) {
       zop = NackRdReqQueue.front();
       NackRdReqQueue.pop();
-      dest_comp = zopCompID::Z_RZA1;
+      dest_comp = zopCompID::Z_MSGRZA;
       pipe2_alternate = true;
     } else if ( MsgPipeline[2] != nullptr ) {
       zop = MsgPipeline[2];
@@ -446,7 +446,7 @@ void ZEN::sendMsgToMemory( zopEvent* out_msg )
   output.verbose(CALL_INFO, 5, 0, "[ZEN] %s: Send StoreDMA from ZoneId=%u with %s to %s to RZA1 msg_id=%" PRIu16 ", Addr=0x%" PRIx64 "\n",
                  getName().c_str(), ZoneId, rzaMsg->getSrcString().c_str(), rzaMsg->getDestString().c_str(),
                  out_msg->getID(), wr_addr );
-  zNic->send(rzaMsg, zopCompID::Z_RZA1);
+  zNic->send(rzaMsg, zopCompID::Z_MSGRZA);
   MsgDataMap.insert( std::pair<uint32_t, std::vector<uint64_t>>( out_msg->getID(), out_msg->getPayload() ) );
 }
 
@@ -760,7 +760,7 @@ void ZEN::processIncomingRZAMsgs() {
   RzaRespQueue.pop();
 
   // Ensure this is an rza1 response
-  if ( resp->getSrcZCID() != RevCPU::safe_static_cast<uint8_t>( zopCompID::Z_RZA1 ) ) {
+  if ( resp->getSrcZCID() != RevCPU::safe_static_cast<uint8_t>( zopCompID::Z_MSGRZA ) ) {
     output.fatal( CALL_INFO, -1, "ZEN[%s]: Received RZA Response from not RZA1 %s to %s\n", getName().c_str(),
                    resp->getSrcString().c_str(), resp->getDestString().c_str() );
   }

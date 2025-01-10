@@ -211,7 +211,7 @@ class ZEN : public SST::Component{
     void setLocalRzaAsZopDest(SST::Forza::zopEvent *ev)
     {
       ev->setDestHart(Z_MZOP_PIPE_HART);
-      ev->setDestZCID(SST::Forza::zopCompID::Z_RZA1);
+      ev->setDestZCID(SST::Forza::zopCompID::Z_MSGRZA);
       ev->setDestPCID(ZoneId);
       ev->setDestPrec(PrecinctId);
     }

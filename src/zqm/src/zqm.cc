@@ -605,7 +605,7 @@ void ZQM::sendMsgToMemory( SST::Forza::zopEvent* ev, uint64_t wr_addr, uint8_t w
   output.verbose(CALL_INFO, 9, 0, "[ZQM] %s: Send StoreDMA from ZoneId=%u with %s to %s to RZA1 msg_id=%" PRIu16 ", payload length=%" PRIu32 ", Addr=0x%" PRIx64 "\n",
                  getName().c_str(), ZoneId, rzaMsg->getSrcString().c_str(), rzaMsg->getDestString().c_str(),
                  msg_id, (uint32_t)ev->getPayload().size(), wr_addr );
-  zone_nic->send(rzaMsg, zopCompID::Z_RZA1);
+  zone_nic->send(rzaMsg, zopCompID::Z_MSGRZA);
 }
 
 void ZQM::processRzaMsgs() {
@@ -619,7 +619,7 @@ void ZQM::processRzaMsgs() {
 
   output.verbose( CALL_INFO, 5, 0, "[ZQM] %s: Received RZA Ack from %s\n", getName().c_str(), resp->getSrcString().c_str() );
 
-  if( resp->getSrcZCID() != RevCPU::safe_static_cast<uint8_t>( zopCompID::Z_RZA1 ) ) {
+  if( resp->getSrcZCID() != RevCPU::safe_static_cast<uint8_t>( zopCompID::Z_MSGRZA ) ) {
     output.fatal( CALL_INFO, -1, "[ZQM] RZA response not from RZA1\n" );
   }
 
