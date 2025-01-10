@@ -32,6 +32,7 @@ namespace SST::Forza {
 
 inline constexpr uint8_t  NUM_MBOXES                 = 8;
 inline constexpr uint64_t ACTOR_MSG_LENGTH           = 8;
+inline constexpr uint64_t SPN_PZOP_MSG_LENGTH        = 5;
 
 // CSR registers used by the ZEN
 inline constexpr uint64_t R_ZENSTAT                  = 0x802;
@@ -39,6 +40,7 @@ inline constexpr uint64_t R_ZENSTAT                  = 0x802;
 inline constexpr uint64_t R_ZENEQC                   = 0x840;
 inline constexpr uint64_t R_ZENEQD                   = 0x841;
 inline constexpr uint64_t R_ZENEQS                   = 0x842;  // for spawn
+inline constexpr uint64_t R_ZENEQP                   = 0x843;  // for pzops
 inline constexpr uint64_t R_ZENOMC                   = 0xcc3;
 // spawning
 
