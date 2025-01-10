@@ -856,6 +856,15 @@ SST::Forza::zopOpc RevMem::flagToZOP( RevFlag flags, size_t Len ) {
   // The values at the  bottom of the table correspond to the U-style atomics
   // that have no return value (on an ACK).  They are matched last as the second
   // array value `RevFlag::F_NONE`
+  //
+  // -- Encoding Styles: Z_HAC_width_type_OP
+  // -- widths of 8, 16, 32, 64 (bits [1:0])
+  // -- For the types below, bits [3:2]
+  // -- 'B' = BASE-Type (aka U - update; update mem, return ack)
+  // -- 'M' = M-Type (aka NN - both Rd and mem get result)
+  // -- 'S' = S-Type (aka ON - mem unchanged, Rd gets result)
+  // -- 'MS' = MS-Type (aka NO - mem gets result, Rd gets orig memory)
+  // Function defined in bits [7:4] - function codes 0xB and 0xF unused
   static constexpr std::tuple<RevFlag, RevFlag, size_t, Forza::zopOpc> table[] = {
     // clang-format off
     { RevFlag::F_AMOADD,  RevFlag::F_FORZANN, 1, Forza::zopOpc::Z_HAC_8_M_ADD      },
@@ -894,6 +903,80 @@ SST::Forza::zopOpc RevMem::flagToZOP( RevFlag flags, size_t Len ) {
     { RevFlag::F_AMOMAX,  RevFlag::F_FORZANN, 8, Forza::zopOpc::Z_HAC_64_M_SMAX    },
     { RevFlag::F_AMOMINU, RevFlag::F_FORZANN, 8, Forza::zopOpc::Z_HAC_64_M_MIN     },
     { RevFlag::F_AMOMAXU, RevFlag::F_FORZANN, 8, Forza::zopOpc::Z_HAC_64_M_MAX     },
+
+    { RevFlag::F_AMOADD,  RevFlag::F_FORZAON, 1, Forza::zopOpc::Z_HAC_8_S_ADD      },
+    { RevFlag::F_AMOXOR,  RevFlag::F_FORZAON, 1, Forza::zopOpc::Z_HAC_8_S_XOR      },
+    { RevFlag::F_AMOAND,  RevFlag::F_FORZAON, 1, Forza::zopOpc::Z_HAC_8_S_AND      },
+    { RevFlag::F_AMOOR,   RevFlag::F_FORZAON, 1, Forza::zopOpc::Z_HAC_8_S_OR       },
+    { RevFlag::F_AMOSWAP, RevFlag::F_FORZAON, 1, Forza::zopOpc::Z_HAC_8_S_SWAP     },
+    { RevFlag::F_AMOMIN,  RevFlag::F_FORZAON, 1, Forza::zopOpc::Z_HAC_8_S_SMIN     },
+    { RevFlag::F_AMOMAX,  RevFlag::F_FORZAON, 1, Forza::zopOpc::Z_HAC_8_S_SMAX     },
+    { RevFlag::F_AMOMINU, RevFlag::F_FORZAON, 1, Forza::zopOpc::Z_HAC_8_S_MIN      },
+    { RevFlag::F_AMOMAXU, RevFlag::F_FORZAON, 1, Forza::zopOpc::Z_HAC_8_S_MAX      },
+    { RevFlag::F_AMOADD,  RevFlag::F_FORZAON, 2, Forza::zopOpc::Z_HAC_16_S_ADD     },
+    { RevFlag::F_AMOXOR,  RevFlag::F_FORZAON, 2, Forza::zopOpc::Z_HAC_16_S_XOR     },
+    { RevFlag::F_AMOAND,  RevFlag::F_FORZAON, 2, Forza::zopOpc::Z_HAC_16_S_AND     },
+    { RevFlag::F_AMOOR,   RevFlag::F_FORZAON, 2, Forza::zopOpc::Z_HAC_16_S_OR      },
+    { RevFlag::F_AMOSWAP, RevFlag::F_FORZAON, 2, Forza::zopOpc::Z_HAC_16_S_SWAP    },
+    { RevFlag::F_AMOMIN,  RevFlag::F_FORZAON, 2, Forza::zopOpc::Z_HAC_16_S_SMIN    },
+    { RevFlag::F_AMOMAX,  RevFlag::F_FORZAON, 2, Forza::zopOpc::Z_HAC_16_S_SMAX    },
+    { RevFlag::F_AMOMINU, RevFlag::F_FORZAON, 2, Forza::zopOpc::Z_HAC_16_S_MIN     },
+    { RevFlag::F_AMOMAXU, RevFlag::F_FORZAON, 2, Forza::zopOpc::Z_HAC_16_S_MAX     },
+    { RevFlag::F_AMOADD,  RevFlag::F_FORZAON, 4, Forza::zopOpc::Z_HAC_32_S_ADD     },
+    { RevFlag::F_AMOXOR,  RevFlag::F_FORZAON, 4, Forza::zopOpc::Z_HAC_32_S_XOR     },
+    { RevFlag::F_AMOAND,  RevFlag::F_FORZAON, 4, Forza::zopOpc::Z_HAC_32_S_AND     },
+    { RevFlag::F_AMOOR,   RevFlag::F_FORZAON, 4, Forza::zopOpc::Z_HAC_32_S_OR      },
+    { RevFlag::F_AMOSWAP, RevFlag::F_FORZAON, 4, Forza::zopOpc::Z_HAC_32_S_SWAP    },
+    { RevFlag::F_AMOMIN,  RevFlag::F_FORZAON, 4, Forza::zopOpc::Z_HAC_32_S_SMIN    },
+    { RevFlag::F_AMOMAX,  RevFlag::F_FORZAON, 4, Forza::zopOpc::Z_HAC_32_S_SMAX    },
+    { RevFlag::F_AMOMINU, RevFlag::F_FORZAON, 4, Forza::zopOpc::Z_HAC_32_S_MIN     },
+    { RevFlag::F_AMOMAXU, RevFlag::F_FORZAON, 4, Forza::zopOpc::Z_HAC_32_S_MAX     },
+    { RevFlag::F_AMOADD,  RevFlag::F_FORZAON, 8, Forza::zopOpc::Z_HAC_64_S_ADD     },
+    { RevFlag::F_AMOXOR,  RevFlag::F_FORZAON, 8, Forza::zopOpc::Z_HAC_64_S_XOR     },
+    { RevFlag::F_AMOAND,  RevFlag::F_FORZAON, 8, Forza::zopOpc::Z_HAC_64_S_AND     },
+    { RevFlag::F_AMOOR,   RevFlag::F_FORZAON, 8, Forza::zopOpc::Z_HAC_64_S_OR      },
+    { RevFlag::F_AMOSWAP, RevFlag::F_FORZAON, 8, Forza::zopOpc::Z_HAC_64_S_SWAP    },
+    { RevFlag::F_AMOMIN,  RevFlag::F_FORZAON, 8, Forza::zopOpc::Z_HAC_64_S_SMIN    },
+    { RevFlag::F_AMOMAX,  RevFlag::F_FORZAON, 8, Forza::zopOpc::Z_HAC_64_S_SMAX    },
+    { RevFlag::F_AMOMINU, RevFlag::F_FORZAON, 8, Forza::zopOpc::Z_HAC_64_S_MIN     },
+    { RevFlag::F_AMOMAXU, RevFlag::F_FORZAON, 8, Forza::zopOpc::Z_HAC_64_S_MAX     },
+
+    { RevFlag::F_AMOADD,  RevFlag::F_FORZANO, 1, Forza::zopOpc::Z_HAC_8_MS_ADD     },
+    { RevFlag::F_AMOXOR,  RevFlag::F_FORZANO, 1, Forza::zopOpc::Z_HAC_8_MS_XOR     },
+    { RevFlag::F_AMOAND,  RevFlag::F_FORZANO, 1, Forza::zopOpc::Z_HAC_8_MS_AND     },
+    { RevFlag::F_AMOOR,   RevFlag::F_FORZANO, 1, Forza::zopOpc::Z_HAC_8_MS_OR      },
+    { RevFlag::F_AMOSWAP, RevFlag::F_FORZANO, 1, Forza::zopOpc::Z_HAC_8_MS_SWAP    },
+    { RevFlag::F_AMOMIN,  RevFlag::F_FORZANO, 1, Forza::zopOpc::Z_HAC_8_MS_SMIN    },
+    { RevFlag::F_AMOMAX,  RevFlag::F_FORZANO, 1, Forza::zopOpc::Z_HAC_8_MS_SMAX    },
+    { RevFlag::F_AMOMINU, RevFlag::F_FORZANO, 1, Forza::zopOpc::Z_HAC_8_MS_MIN     },
+    { RevFlag::F_AMOMAXU, RevFlag::F_FORZANO, 1, Forza::zopOpc::Z_HAC_8_MS_MAX     },
+    { RevFlag::F_AMOADD,  RevFlag::F_FORZANO, 2, Forza::zopOpc::Z_HAC_16_MS_ADD    },
+    { RevFlag::F_AMOXOR,  RevFlag::F_FORZANO, 2, Forza::zopOpc::Z_HAC_16_MS_XOR    },
+    { RevFlag::F_AMOAND,  RevFlag::F_FORZANO, 2, Forza::zopOpc::Z_HAC_16_MS_AND    },
+    { RevFlag::F_AMOOR,   RevFlag::F_FORZANO, 2, Forza::zopOpc::Z_HAC_16_MS_OR     },
+    { RevFlag::F_AMOSWAP, RevFlag::F_FORZANO, 2, Forza::zopOpc::Z_HAC_16_MS_SWAP   },
+    { RevFlag::F_AMOMIN,  RevFlag::F_FORZANO, 2, Forza::zopOpc::Z_HAC_16_MS_SMIN   },
+    { RevFlag::F_AMOMAX,  RevFlag::F_FORZANO, 2, Forza::zopOpc::Z_HAC_16_MS_SMAX   },
+    { RevFlag::F_AMOMINU, RevFlag::F_FORZANO, 2, Forza::zopOpc::Z_HAC_16_MS_MIN    },
+    { RevFlag::F_AMOMAXU, RevFlag::F_FORZANO, 2, Forza::zopOpc::Z_HAC_16_MS_MAX    },
+    { RevFlag::F_AMOADD,  RevFlag::F_FORZANO, 4, Forza::zopOpc::Z_HAC_32_MS_ADD    },
+    { RevFlag::F_AMOXOR,  RevFlag::F_FORZANO, 4, Forza::zopOpc::Z_HAC_32_MS_XOR    },
+    { RevFlag::F_AMOAND,  RevFlag::F_FORZANO, 4, Forza::zopOpc::Z_HAC_32_MS_AND    },
+    { RevFlag::F_AMOOR,   RevFlag::F_FORZANO, 4, Forza::zopOpc::Z_HAC_32_MS_OR     },
+    { RevFlag::F_AMOSWAP, RevFlag::F_FORZANO, 4, Forza::zopOpc::Z_HAC_32_MS_SWAP   },
+    { RevFlag::F_AMOMIN,  RevFlag::F_FORZANO, 4, Forza::zopOpc::Z_HAC_32_MS_SMIN   },
+    { RevFlag::F_AMOMAX,  RevFlag::F_FORZANO, 4, Forza::zopOpc::Z_HAC_32_MS_SMAX   },
+    { RevFlag::F_AMOMINU, RevFlag::F_FORZANO, 4, Forza::zopOpc::Z_HAC_32_MS_MIN    },
+    { RevFlag::F_AMOMAXU, RevFlag::F_FORZANO, 4, Forza::zopOpc::Z_HAC_32_MS_MAX    },
+    { RevFlag::F_AMOADD,  RevFlag::F_FORZANO, 8, Forza::zopOpc::Z_HAC_64_MS_ADD    },
+    { RevFlag::F_AMOXOR,  RevFlag::F_FORZANO, 8, Forza::zopOpc::Z_HAC_64_MS_XOR    },
+    { RevFlag::F_AMOAND,  RevFlag::F_FORZANO, 8, Forza::zopOpc::Z_HAC_64_MS_AND    },
+    { RevFlag::F_AMOOR,   RevFlag::F_FORZANO, 8, Forza::zopOpc::Z_HAC_64_MS_OR     },
+    { RevFlag::F_AMOSWAP, RevFlag::F_FORZANO, 8, Forza::zopOpc::Z_HAC_64_MS_SWAP   },
+    { RevFlag::F_AMOMIN,  RevFlag::F_FORZANO, 8, Forza::zopOpc::Z_HAC_64_MS_SMIN   },
+    { RevFlag::F_AMOMAX,  RevFlag::F_FORZANO, 8, Forza::zopOpc::Z_HAC_64_MS_SMAX   },
+    { RevFlag::F_AMOMINU, RevFlag::F_FORZANO, 8, Forza::zopOpc::Z_HAC_64_MS_MIN    },
+    { RevFlag::F_AMOMAXU, RevFlag::F_FORZANO, 8, Forza::zopOpc::Z_HAC_64_MS_MAX    },
 
     { RevFlag::F_AMOADD,  RevFlag::F_NONE,    1, Forza::zopOpc::Z_HAC_8_BASE_ADD   },
     { RevFlag::F_AMOXOR,  RevFlag::F_NONE,    1, Forza::zopOpc::Z_HAC_8_BASE_XOR   },

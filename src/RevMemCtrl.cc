@@ -159,13 +159,15 @@ void RevBasicMemCtrl::registerStats() {
          "AMOXorPending",   "AMOAndBytes",         "AMOAndPending",      "AMOOrBytes",       "AMOOrPending",
          "AMOMinBytes",     "AMOMinPending",       "AMOMaxBytes",        "AMOMaxPending",    "AMOMinuBytes",
          "AMOMinuPending",  "AMOMaxuBytes",        "AMOMaxuPending",     "AMOSwapBytes",     "AMOSwapPending",
+         "AMOSubBytes",     "AMOSubPending",       "AMOThrsBytes",       "AMOThrsPending",   "AMOFAddBytes",
+         "AMOFaddPending",  "AMOFSubBytes",        "AMOFSubPending",     "AMOFSubrBytes",    "AMOFSubrPending",
        } ) {
     stats.push_back( registerStatistic<uint64_t>( stat ) );
   }
 }
 
 void RevBasicMemCtrl::recordStat( RevBasicMemCtrl::MemCtrlStats Stat, uint64_t Data ) {
-  if( Stat > RevBasicMemCtrl::MemCtrlStats::AMOSwapPending ) {
+  if( Stat > RevBasicMemCtrl::MemCtrlStats::AMOFSubrPending ) {
     // do nothing
     return;
   }
@@ -237,15 +239,20 @@ bool RevBasicMemCtrl::sendAMORequest(
 
   // now we record the stat for the particular AMO
   static constexpr std::pair<RevFlag, RevBasicMemCtrl::MemCtrlStats> table[] = {
-    { RevFlag::F_AMOADD,  RevBasicMemCtrl::MemCtrlStats::AMOAddPending},
-    { RevFlag::F_AMOXOR,  RevBasicMemCtrl::MemCtrlStats::AMOXorPending},
-    { RevFlag::F_AMOAND,  RevBasicMemCtrl::MemCtrlStats::AMOAndPending},
-    {  RevFlag::F_AMOOR,   RevBasicMemCtrl::MemCtrlStats::AMOOrPending},
-    { RevFlag::F_AMOMIN,  RevBasicMemCtrl::MemCtrlStats::AMOMinPending},
-    { RevFlag::F_AMOMAX,  RevBasicMemCtrl::MemCtrlStats::AMOMaxPending},
-    { RevFlag::F_AMOMIN, RevBasicMemCtrl::MemCtrlStats::AMOMinuPending},
-    {RevFlag::F_AMOMAXU, RevBasicMemCtrl::MemCtrlStats::AMOMaxuPending},
-    {RevFlag::F_AMOSWAP, RevBasicMemCtrl::MemCtrlStats::AMOSwapPending},
+    {    RevFlag::F_AMOADD,   RevBasicMemCtrl::MemCtrlStats::AMOAddPending},
+    {    RevFlag::F_AMOXOR,   RevBasicMemCtrl::MemCtrlStats::AMOXorPending},
+    {    RevFlag::F_AMOAND,   RevBasicMemCtrl::MemCtrlStats::AMOAndPending},
+    {     RevFlag::F_AMOOR,    RevBasicMemCtrl::MemCtrlStats::AMOOrPending},
+    {    RevFlag::F_AMOMIN,   RevBasicMemCtrl::MemCtrlStats::AMOMinPending},
+    {    RevFlag::F_AMOMAX,   RevBasicMemCtrl::MemCtrlStats::AMOMaxPending},
+    {    RevFlag::F_AMOMIN,  RevBasicMemCtrl::MemCtrlStats::AMOMinuPending},
+    {   RevFlag::F_AMOMAXU,  RevBasicMemCtrl::MemCtrlStats::AMOMaxuPending},
+    {   RevFlag::F_AMOSWAP,  RevBasicMemCtrl::MemCtrlStats::AMOSwapPending},
+    {  RevFlag::F_FORZASUB,   RevBasicMemCtrl::MemCtrlStats::AMOSubPending},
+    { RevFlag::F_FORZATHRS,  RevBasicMemCtrl::MemCtrlStats::AMOThrsPending},
+    { RevFlag::F_FORZAFADD,  RevBasicMemCtrl::MemCtrlStats::AMOFAddPending},
+    { RevFlag::F_FORZAFSUB,  RevBasicMemCtrl::MemCtrlStats::AMOFSubPending},
+    {RevFlag::F_FORZAFSUBR, RevBasicMemCtrl::MemCtrlStats::AMOFSubrPending},
   };
 
   RevFlag amo{ RevFlagAtomic( flags ) };
@@ -1235,7 +1242,21 @@ void RevBasicMemCtrl::performAMO( std::tuple<uint32_t, unsigned char*, void*, Re
     tempT.push_back( TmpBuf8[i] );
   }
 
-  if( Tmp->getSize() == 4 ) {
+  if( Tmp->getSize() == 1 ) {
+    // 8-bit (B) AMOs
+    uint8_t TmpBuf = 0;
+    for( size_t i = 0; i < buffer.size(); i++ ) {
+      TmpBuf |= uint8_t{ buffer[i] } << i * 8;
+    }
+    ApplyAMO( flags, Target, TmpBuf );
+  } else if( Tmp->getSize() == 2 ) {
+    // 16-bit (H) AMOs
+    uint16_t TmpBuf = 0;
+    for( size_t i = 0; i < buffer.size(); i++ ) {
+      TmpBuf |= uint16_t{ buffer[i] } << i * 8;
+    }
+    ApplyAMO( flags, Target, TmpBuf );
+  } else if( Tmp->getSize() == 4 ) {
     // 32-bit (W) AMOs
     uint32_t TmpBuf = 0;
     for( size_t i = 0; i < buffer.size(); i++ ) {

@@ -23,8 +23,6 @@ class XForza : public RevExt {
   // ------------------------------------------------------------
   template<typename TYPE, RevFlag Op, RevFlag Rtn>
   static bool forzaamo_rem( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) {
-    printf( "Here\n" );
-
     static_assert( std::is_unsigned_v<TYPE>, "TYPE must be unsigned integral type" );
 
     RevFlag flags{ Op };

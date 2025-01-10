@@ -416,6 +416,18 @@ public:
     {"AMOMaxuPending",      "Counts the number of AMOMaxu operations pending",   "count", 1},
     {"AMOSwapBytes",        "Counts the number of bytes in AMOSwap transactions","bytes", 1},
     {"AMOSwapPending",      "Counts the number of AMOSwap operations pending",   "count", 1},
+
+    {"AMOSubBytes",         "Counts the number of bytes in AMOSub transactions", "count", 1},
+    {"AMOSubPending",       "Counts the number of AMOSub operations pending",    "count", 1},
+    {"AMOThrsBytes",        "Counts the number of bytes in AMOThrs transactions","count", 1},
+    {"AMOThrsPending",      "Counts the number of AMOThrs operations pending",   "count", 1},
+
+    {"AMOFAddBytes",        "Counts the number of bytes in AMOFAdd transactions","count", 1},
+    {"AMOFaddPending",      "Counts the number of AMOFAdd operations pending",   "count", 1},
+    {"AMOFSubBytes",        "Counts the number of bytes in AMOFSub transactions","count", 1},
+    {"AMOFSubPending",      "Counts the number of AMOFSub operations pending",   "count", 1},
+    {"AMOFSubrBytes",       "Counts the number of bytes in AMOFSubr transactions","count", 1},
+    {"AMOFSubrPending",     "Counts the number of AMOFSubr operations pending",   "count", 1},
     )
 
   // clang-format on
@@ -461,6 +473,16 @@ public:
     AMOMaxuPending      = 37,
     AMOSwapBytes        = 38,
     AMOSwapPending      = 39,
+    AMOSubBytes         = 40,
+    AMOSubPending       = 41,
+    AMOThrsBytes        = 42,
+    AMOThrsPending      = 43,
+    AMOFAddBytes        = 44,
+    AMOFAddPending      = 45,
+    AMOFSubBytes        = 46,
+    AMOFSubPending      = 47,
+    AMOFSubrBytes       = 48,
+    AMOFSubrPending     = 49,
   };
 
   /// RevBasicMemCtrl: constructor
@@ -727,20 +749,50 @@ void ApplyAMO( RevFlag flags, void* Target, T value ) {
 
   // Table mapping atomic operations to executable code
   // clang-format off
-  static const std::pair<RevFlag, std::function<void()>> table[] = {
-    { RevFlag::F_AMOADD,  [&]{ *TmpTarget += TmpBuf; } },
-    { RevFlag::F_AMOXOR,  [&]{ *TmpTarget ^= TmpBuf; } },
-    { RevFlag::F_AMOAND,  [&]{ *TmpTarget &= TmpBuf; } },
-    { RevFlag::F_AMOOR,   [&]{ *TmpTarget |= TmpBuf; } },
-    { RevFlag::F_AMOSWAP, [&]{ *TmpTarget  = TmpBuf; } },
-    { RevFlag::F_AMOMIN,  [&]{ *TmpTarget  = std::min(*TmpTarget,  TmpBuf);  } },
-    { RevFlag::F_AMOMAX,  [&]{ *TmpTarget  = std::max(*TmpTarget,  TmpBuf);  } },
-    { RevFlag::F_AMOMINU, [&]{ *TmpTargetU = std::min(*TmpTargetU, TmpBufU); } },
-    { RevFlag::F_AMOMAXU, [&]{ *TmpTargetU = std::max(*TmpTargetU, TmpBufU); } },
+  static const std::tuple<RevFlag, RevFlag, std::function<void()>> table[] = {
+    { RevFlag::F_AMOADD,  RevFlag::F_FORZANN, [&]{ *TmpTarget += TmpBuf; } },
+    { RevFlag::F_AMOXOR,  RevFlag::F_FORZANN, [&]{ *TmpTarget ^= TmpBuf; } },
+    { RevFlag::F_AMOAND,  RevFlag::F_FORZANN, [&]{ *TmpTarget &= TmpBuf; } },
+    { RevFlag::F_AMOOR,   RevFlag::F_FORZANN, [&]{ *TmpTarget |= TmpBuf; } },
+    { RevFlag::F_AMOSWAP, RevFlag::F_FORZANN, [&]{ *TmpTarget  = TmpBuf; } },
+    { RevFlag::F_AMOMIN,  RevFlag::F_FORZANN, [&]{ *TmpTarget  = std::min(*TmpTarget,  TmpBuf);  } },
+    { RevFlag::F_AMOMAX,  RevFlag::F_FORZANN, [&]{ *TmpTarget  = std::max(*TmpTarget,  TmpBuf);  } },
+    { RevFlag::F_AMOMINU, RevFlag::F_FORZANN, [&]{ *TmpTargetU = std::min(*TmpTargetU, TmpBufU); } },
+    { RevFlag::F_AMOMAXU, RevFlag::F_FORZANN, [&]{ *TmpTargetU = std::max(*TmpTargetU, TmpBufU); } },
+
+    { RevFlag::F_AMOADD,  RevFlag::F_FORZAON, [&]{ *TmpTarget += TmpBuf; } },
+    { RevFlag::F_AMOXOR,  RevFlag::F_FORZAON, [&]{ *TmpTarget ^= TmpBuf; } },
+    { RevFlag::F_AMOAND,  RevFlag::F_FORZAON, [&]{ *TmpTarget &= TmpBuf; } },
+    { RevFlag::F_AMOOR,   RevFlag::F_FORZAON, [&]{ *TmpTarget |= TmpBuf; } },
+    { RevFlag::F_AMOSWAP, RevFlag::F_FORZAON, [&]{ *TmpTarget  = TmpBuf; } },
+    { RevFlag::F_AMOMIN,  RevFlag::F_FORZAON, [&]{ *TmpTarget  = std::min(*TmpTarget,  TmpBuf);  } },
+    { RevFlag::F_AMOMAX,  RevFlag::F_FORZAON, [&]{ *TmpTarget  = std::max(*TmpTarget,  TmpBuf);  } },
+    { RevFlag::F_AMOMINU, RevFlag::F_FORZAON, [&]{ *TmpTargetU = std::min(*TmpTargetU, TmpBufU); } },
+    { RevFlag::F_AMOMAXU, RevFlag::F_FORZAON, [&]{ *TmpTargetU = std::max(*TmpTargetU, TmpBufU); } },
+
+    { RevFlag::F_AMOADD,  RevFlag::F_FORZANO, [&]{ *TmpTarget += TmpBuf; } },
+    { RevFlag::F_AMOXOR,  RevFlag::F_FORZANO, [&]{ *TmpTarget ^= TmpBuf; } },
+    { RevFlag::F_AMOAND,  RevFlag::F_FORZANO, [&]{ *TmpTarget &= TmpBuf; } },
+    { RevFlag::F_AMOOR,   RevFlag::F_FORZANO, [&]{ *TmpTarget |= TmpBuf; } },
+    { RevFlag::F_AMOSWAP, RevFlag::F_FORZANO, [&]{ *TmpTarget  = TmpBuf; } },
+    { RevFlag::F_AMOMIN,  RevFlag::F_FORZANO, [&]{ *TmpTarget  = std::min(*TmpTarget,  TmpBuf);  } },
+    { RevFlag::F_AMOMAX,  RevFlag::F_FORZANO, [&]{ *TmpTarget  = std::max(*TmpTarget,  TmpBuf);  } },
+    { RevFlag::F_AMOMINU, RevFlag::F_FORZANO, [&]{ *TmpTargetU = std::min(*TmpTargetU, TmpBufU); } },
+    { RevFlag::F_AMOMAXU, RevFlag::F_FORZANO, [&]{ *TmpTargetU = std::max(*TmpTargetU, TmpBufU); } },
+
+    { RevFlag::F_AMOADD,  RevFlag::F_NONE, [&]{ *TmpTarget += TmpBuf; } },
+    { RevFlag::F_AMOXOR,  RevFlag::F_NONE, [&]{ *TmpTarget ^= TmpBuf; } },
+    { RevFlag::F_AMOAND,  RevFlag::F_NONE, [&]{ *TmpTarget &= TmpBuf; } },
+    { RevFlag::F_AMOOR,   RevFlag::F_NONE, [&]{ *TmpTarget |= TmpBuf; } },
+    { RevFlag::F_AMOSWAP, RevFlag::F_NONE, [&]{ *TmpTarget  = TmpBuf; } },
+    { RevFlag::F_AMOMIN,  RevFlag::F_NONE, [&]{ *TmpTarget  = std::min(*TmpTarget,  TmpBuf);  } },
+    { RevFlag::F_AMOMAX,  RevFlag::F_NONE, [&]{ *TmpTarget  = std::max(*TmpTarget,  TmpBuf);  } },
+    { RevFlag::F_AMOMINU, RevFlag::F_NONE, [&]{ *TmpTargetU = std::min(*TmpTargetU, TmpBufU); } },
+    { RevFlag::F_AMOMAXU, RevFlag::F_NONE, [&]{ *TmpTargetU = std::max(*TmpTargetU, TmpBufU); } },
   };
   // clang-format on
-  for( const auto& [amo, op] : table ) {
-    if( RevFlagAtomic( flags ) == amo ) {
+  for( const auto& [amo, rtn, op] : table ) {
+    if( ( RevFlagAtomic( flags ) == amo ) && ( RevFlagReturn( flags ) == rtn ) ) {
       op();
       break;
     }
