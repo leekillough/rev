@@ -527,7 +527,7 @@ bool zopNIC::msgNotify( int vn ) {
 
   // if this is an RZA device, marshall it through to the ZIQ
   // if this is a ZEN/ZQM/ZIP, forward it in the incoming queue
-  if( Type == zopCompID::Z_RZA || Type == zopCompID::Z_RZA1 || Type == zopCompID::Z_ZEN || Type == zopCompID::Z_ZQM ||
+  if( Type == zopCompID::Z_RZA || Type == zopCompID::Z_MSGRZA || Type == zopCompID::Z_ZEN || Type == zopCompID::Z_ZQM ||
       Type == zopCompID::Z_PREC_ZIP ) {
     ( *msgHandler )( ev );
     return true;
@@ -710,7 +710,7 @@ bool zopNIC::clockTick( SST::Cycle_t cycle ) {
     if( thisCycle < ReqPerCycle ) {
       zopEvent* ev = static_cast<zopEvent*>( ( *it )->inspectPayload() );
       Hart         = (uint32_t) ( ev->getSrcHart() );
-      if( Type == zopCompID::Z_RZA || Type == zopCompID::Z_RZA1 || Type == zopCompID::Z_ZEN || Type == zopCompID::Z_ZQM ) {
+      if( Type == zopCompID::Z_RZA || Type == zopCompID::Z_MSGRZA || Type == zopCompID::Z_ZEN || Type == zopCompID::Z_ZQM ) {
         // I am an RZA... I don't need to reserve any message IDs
         // ZEN ACKs and NACKs do not use message IDs, ZEN ZOPs to the RZA internally
         // handle message IDs.

@@ -1,7 +1,7 @@
 //
 // _ZOPNet_h_
 //
-// Copyright (C) 2017-2024 Tactical Computing Laboratories, LLC
+// Copyright (C) 2017-2025 Tactical Computing Laboratories, LLC
 // All Rights Reserved
 // contact@tactcomplabs.com
 //
@@ -453,7 +453,7 @@ enum class zopCompID : uint8_t {
   Z_ZAP2     = 0b00000010,  /// zopCompID: ZAP2
   Z_ZAP3     = 0b00000011,  /// zopCompID: ZAP3
   Z_RZA      = 0b00001000,  /// zopCompID: RZA
-  Z_RZA1     = 0b00001001,  /// zopCompID: RZA1 - for ZEN and ZQM messaging (run queue to be added still)
+  Z_MSGRZA   = 0b00001001,  /// zopCompID: RZA1 - for ZEN and ZQM messaging (run queue to be added still)
   Z_ZQM      = 0b00001010,  /// zopCompID: ZQM // RTL value is 9
   Z_ZEN      = 0b00001100,  /// zopCompID: ZEN // RTL value is 8
   Z_PREC_ZIP = 0b00001110,  /// zopCompID: PRECINCT ZIP - update doc?
@@ -853,7 +853,7 @@ public:
     case zopCompID::Z_ZAP2: return "ZAP2";
     case zopCompID::Z_ZAP3: return "ZAP3";
     case zopCompID::Z_RZA: return "RZA";
-    case zopCompID::Z_RZA1: return "MSGRZA";
+    case zopCompID::Z_MSGRZA: return "MSGRZA";
     case zopCompID::Z_ZEN: return "ZEN";
     case zopCompID::Z_ZQM: return "ZQM";
     case zopCompID::Z_PREC_ZIP: return "PREC_ZIP";
@@ -1075,7 +1075,7 @@ public:
     case zopCompID::Z_ZAP2: return "ZAP2";
     case zopCompID::Z_ZAP3: return "ZAP3";
     case zopCompID::Z_RZA: return "RZA";
-    case zopCompID::Z_RZA1: return "MSGRZA";
+    case zopCompID::Z_MSGRZA: return "MSGRZA";
     case zopCompID::Z_ZEN: return "ZEN";
     case zopCompID::Z_ZQM: return "ZQM";
     case zopCompID::Z_PREC_ZIP: return "PREC_ZIP";

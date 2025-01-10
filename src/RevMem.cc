@@ -1,7 +1,7 @@
 //
 // _RevMem_cc_
 //
-// Copyright (C) 2017-2024 Tactical Computing Laboratories, LLC
+// Copyright (C) 2017-2025 Tactical Computing Laboratories, LLC
 // All Rights Reserved
 // contact@tactcomplabs.com
 //
@@ -1009,7 +1009,7 @@ bool RevMem::ZOP_READMem( uint32_t Hart, uint64_t Addr, size_t Len, void* Target
   zev->setDestHart( Forza::Z_MZOP_PIPE_HART );
   Forza::zopCompID end_dest = ( Forza::zopCompID::Z_RZA );
   if( memSeg == 0x0F )  // In hardware, this would get set to ring level 3 as well
-    end_dest = ( Forza::zopCompID::Z_RZA1 );
+    end_dest = ( Forza::zopCompID::Z_MSGRZA );
   zev->setDestZCID( (uint8_t) end_dest );
   zev->setDestPCID( (uint8_t) ( zNic->getPCID( zNic->getZoneID() ) ) );
   zev->setDestPrec( (uint8_t) ( zNic->getPrecinctID() ) );
