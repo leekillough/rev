@@ -1,7 +1,7 @@
 //
 // _ZOPNET_cc_
 //
-// Copyright (C) 2017-2024 Tactical Computing Laboratories, LLC
+// Copyright (C) 2017-2025 Tactical Computing Laboratories, LLC
 // All Rights Reserved
 // contact@tactcomplabs.com
 //
@@ -171,7 +171,8 @@ void zopNIC::init( uint32_t phase ) {
   if( iFace->isNetworkInitialized() ) {
     if( !initBroadcastSent ) {
       initBroadcastSent = true;
-      zopEvent* ev = new zopEvent( iFace->getEndpointID(), getEndpointType(), uint32_t( getPCID( getZoneID() ) ), getPrecinctID() );
+      zopEvent* ev =
+        new zopEvent( uint32_t( iFace->getEndpointID() ), getEndpointType(), uint32_t( getPCID( getZoneID() ) ), getPrecinctID() );
       SST::Interfaces::SimpleNetwork::Request* req = new SST::Interfaces::SimpleNetwork::Request();
       req->dest                                    = SST::Interfaces::SimpleNetwork::INIT_BROADCAST_ADDR;
       req->src                                     = iFace->getEndpointID();
@@ -267,7 +268,7 @@ bool zopNIC::isBarrierComplete( uint32_t Hart ) {
   return false;
 }
 
-void zopNIC::send_zone_barrier( uint32_t Hart, uint32_t endpoints ) {
+void zopNIC::send_zone_barrier( uint16_t Hart, uint32_t endpoints ) {
   output.verbose( CALL_INFO, 9, 0, "Injecting zone barrier with sense=%u\n", barrierSense[Hart] );
   // setup the barrier
   barrierEndpoints[barrierSense[Hart]][Hart] = endpoints;
@@ -373,7 +374,7 @@ void zopNIC::send( zopEvent* ev, zopCompID dest, zopPrecID zone, uint32_t prec )
     );
   }
 #endif
-  auto realDest = 0;
+  int64_t realDest = 0;
   if( ( (uint32_t) zone == Zone ) && ( prec == Precinct ) ) {
     if( ev->getDestZCID() <= (uint8_t) SST::Forza::zopCompID::Z_ZAP3 && ev->getType() == SST::Forza::zopMsgT::Z_MSG ) {
       if( ev->getOpc() == SST::Forza::zopOpc::Z_MSG_SENDP )
@@ -399,10 +400,9 @@ void zopNIC::send( zopEvent* ev, zopCompID dest, zopPrecID zone, uint32_t prec )
   }
 
   bool fnd_dest = false;
-  for( auto i : hostMap ) {
-    auto t = i.second;
+  for( const auto& [dest, t] : hostMap ) {
     if( ( std::get<_HM_ENDP_T>( t ) == TmpDest ) && ( std::get<_HM_ZID>( t ) == zone ) && ( std::get<_HM_PID>( t ) == prec ) ) {
-      realDest = i.first;
+      realDest = dest;
       fnd_dest = true;
     }
   }
@@ -709,7 +709,7 @@ bool zopNIC::clockTick( SST::Cycle_t cycle ) {
         // handle message IDs.
         auto P = ev->getPacket();
         ev->encodeEvent();
-        if( iFace->spaceToSend( 0, P.size() * 64 ) ) {
+        if( iFace->spaceToSend( 0, int( P.size() * 64 ) ) ) {
           // we have space to send
           recordStat( getStatFromPacket( ev ), 1 );
           recordStat( zopStats::BytesSent, P.size() * 64 );
@@ -735,7 +735,7 @@ bool zopNIC::clockTick( SST::Cycle_t cycle ) {
 
         // we have a free message Id for this hart
         auto P = ev->getPacket();
-        if( iFace->spaceToSend( 0, P.size() * 64 ) ) {
+        if( iFace->spaceToSend( 0, int( P.size() * 64 ) ) ) {
           // we have space to send
           // bypass this process if we're sending a zone barrier
           // zone barriers require no msg id and/or response
