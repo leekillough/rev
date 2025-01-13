@@ -5,6 +5,8 @@
 #ifndef _ZIP_H_
 #define _ZIP_H_
 
+#pragma GCC diagnostic ignored "-Wconversion"
+
 #include "SST.h"
 #include "zip_events.h"
 #include "zip_memctrl.h"
