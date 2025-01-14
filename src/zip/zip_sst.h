@@ -15,6 +15,10 @@
 #pragma GCC diagnostic ignored "-Wsign-conversion"
 #pragma GCC diagnostic ignored "-Wconversion"
 
+#if defined( __GNUC__ ) && !defined( __clang__ )
+#pragma GCC diagnostic ignored "-Wsuggest-final-methods"
+#pragma GCC diagnostic ignored "-Wsuggest-final-types"
+#endif
 
 #include <sst/core/sst_config.h>
 #include <sst/core/component.h>
@@ -27,6 +31,8 @@
 #include <sst/core/subcomponent.h>
 #include <sst/core/timeConverter.h>
 #include <sst/core/model/element_python.h>
+
+//#pragma GCC diagnostic pop
 
 #endif
 
