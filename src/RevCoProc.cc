@@ -1,7 +1,7 @@
 //
 // _RevCoProc_cc_
 //
-// Copyright (C) 2017-2024 Tactical Computing Laboratories, LLC
+// Copyright (C) 2017-2025 Tactical Computing Laboratories, LLC
 // All Rights Reserved
 // contact@tactcomplabs.com
 //
@@ -273,7 +273,7 @@ bool RZALSCoProc::handleMZOP( Forza::zopEvent* zev, bool& flag ) {
 
   // this is the actual number of data flits
   // these variables are only used for the DMA store operations
-  uint32_t RealFlitLen = (uint32_t) ( zev->getLength() - Forza::Z_NUM_HEADER_FLITS );
+  uint32_t RealFlitLen = (uint32_t) ( zev->getLength() );
   uint8_t* Buf         = nullptr;
   uint32_t i, j, cur = 0;
 
