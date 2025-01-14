@@ -105,15 +105,13 @@ class ZEN : public SST::Component{
     SST_ELI_DOCUMENT_PORTS()
 
     // describe the statistics
-    /* actor msgs sent
-     * acks
-     * nacks
-     */
     SST_ELI_DOCUMENT_STATISTICS(
+#if 0
       { "ActorMsgsReceived", "Number of actor msgs sent from this zone", "count", 1 },
       { "AcksReceived", "ACKs received", "count", 1 },
       { "NacksReceived", "NACKs received", "count", 1 },
-    )
+#endif
+)
 
     // describe the subcomponent slots
     SST_ELI_DOCUMENT_SUBCOMPONENT_SLOTS(
@@ -266,9 +264,9 @@ class ZEN : public SST::Component{
     // ----- END SST PARAMETERS
 
     // ----- SST Stats
-    Statistic<uint64_t>* ActorMsgsRecd;
-    Statistic<uint64_t>* AcksRecd;
-    Statistic<uint64_t>* NacksRecd;
+  //Statistic<uint64_t>* ActorMsgsRecd{};
+  //Statistic<uint64_t>* AcksRecd{};
+  //Statistic<uint64_t>* NacksRecd{};
 
     // Internal data structures
     std::vector<std::vector<ZenPerHartRegs>> PerHartCSRs;

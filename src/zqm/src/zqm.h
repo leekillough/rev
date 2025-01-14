@@ -115,10 +115,12 @@ public:
 
     // describe the statistics
     SST_ELI_DOCUMENT_STATISTICS(
+#if 0				
       { "MsgsReceived", "Number of actor messages received", "count", 1 },
       { "AcksSent", "Number of actor message ACKs sent", "count", 1 },
       { "NacksSent", "Number of actor message NACKs sent", "count", 1 },
       { "NumRecycles", "Number of actor messages recycled", "count", 1 },
+#endif
     )
 
     // describe the subcomponent slots
@@ -180,11 +182,13 @@ private:
     SST::Forza::RingNetAPI* zone_ring{}; ///< ZQM: zone csr ring network
 
     // Stats
+#if 0
     Statistic<uint64_t>* MsgsRecd;
     Statistic<uint64_t>* AcksSent;
     Statistic<uint64_t>* NacksSent;
     Statistic<uint64_t>* NumRecycles;
-
+#endif
+  
     // From ZEN
     bool dma_enabled;
 
