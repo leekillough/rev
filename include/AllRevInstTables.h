@@ -28,9 +28,6 @@
 #include "insns/RV64I.h"
 #include "insns/RV64M.h"
 #include "insns/RV64P.h"
-#ifdef REVVEC
-#include "insns/RVVec.h"
-#endif
 #include "insns/XForza.h"
 #include "insns/Zaamo.h"
 #include "insns/Zalrsc.h"

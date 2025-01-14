@@ -1,7 +1,7 @@
 //
 // _RevInstHelpers_h_
 //
-// Copyright (C) 2017-2024 Tactical Computing Laboratories, LLC
+// Copyright (C) 2017-2025 Tactical Computing Laboratories, LLC
 // All Rights Reserved
 // contact@tactcomplabs.com
 //
@@ -169,8 +169,7 @@ bool load( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) 
       F->GetHartToExecID(),
       MemOp::MemOpREAD,
       true,
-      R->GetMarkLoadComplete()
-    };
+      R->GetMarkLoadComplete() };
     R->LSQueue->insert( req.LSQHashPair() );
     M->ReadVal(
       F->GetHartToExecID(),
@@ -190,8 +189,7 @@ bool load( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) 
       F->GetHartToExecID(),
       MemOp::MemOpREAD,
       true,
-      R->GetMarkLoadComplete()
-    };
+      R->GetMarkLoadComplete() };
     R->LSQueue->insert( req.LSQHashPair() );
     M->ReadVal(
       F->GetHartToExecID(),
@@ -273,8 +271,7 @@ bool fload( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst )
       F->GetHartToExecID(),
       MemOp::MemOpREAD,
       true,
-      R->GetMarkLoadComplete()
-    };
+      R->GetMarkLoadComplete() };
     R->LSQueue->insert( req.LSQHashPair() );
     M->ReadVal(
       F->GetHartToExecID(),
@@ -292,8 +289,7 @@ bool fload( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst )
       F->GetHartToExecID(),
       MemOp::MemOpREAD,
       true,
-      R->GetMarkLoadComplete()
-    };
+      R->GetMarkLoadComplete() };
     R->LSQueue->insert( req.LSQHashPair() );
     M->ReadVal(
       F->GetHartToExecID(), rs1 + uint64_t( Inst.ImmSignExt( 12 ) ), &R->SPF[Inst.rd], std::move( req ), RevFlag::F_NONE
@@ -519,7 +515,7 @@ inline auto negate( T x ) {
 // RISC-V requires INVALID exception when x * y is INVALID even when z = qNaN
 template<typename T>
 inline auto revFMA( T x, T y, T z ) {
-  if( ( !y && std::isinf( x ) ) || ( !x && std::isinf( y ) ) ) {
+  if( ( y == 0 && std::isinf( x ) ) || ( x == 0 && std::isinf( y ) ) ) {
     feraiseexcept( FE_INVALID );
   }
   return std::fma( x, y, z );
