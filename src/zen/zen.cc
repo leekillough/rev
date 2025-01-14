@@ -897,7 +897,6 @@ void ZEN::prepSendRZAStore() {
 
 bool ZEN::clock(Cycle_t cycle){
   // new arch related
-  output.flush();
   ExecMsgPipeline();
   ExecSpawns();
 
