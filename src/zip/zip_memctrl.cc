@@ -58,7 +58,7 @@ void ZIPBasicMemCtrl::init(unsigned int phase){
   if( phase == 1 ){
     LineSize = memIface->getLineSize();
     output.verbose(CALL_INFO, 5, 0,
-                   "Detected cache line size of %u\n", LineSize);
+                   "Detected cache line size of %" PRIu64 "\n", LineSize);
   }
 }
 

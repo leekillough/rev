@@ -379,7 +379,7 @@ void ZQM::updateMailboxes()
 
 void ZQM::handleIncomingZOP(SST::Event *event)
 {
-    SST::Forza::zopEvent* ev = dynamic_cast<SST::Forza::zopEvent*>(event);
+    SST::Forza::zopEvent* ev = static_cast<SST::Forza::zopEvent*>(event);
     ev->decodeEvent();
     output.verbose(CALL_INFO, 1, 0, "%s Received ZOP: %s to %s with id=%u\n",
                    my_name.c_str(),

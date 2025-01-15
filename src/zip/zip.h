@@ -5,8 +5,7 @@
 #ifndef _ZIP_H_
 #define _ZIP_H_
 
-#include "SST.h"
-#include "zip_events.h"
+#include "zip_sst.h"
 #include "zip_memctrl.h"
 #include "zip_nic.h"
 #include <string>

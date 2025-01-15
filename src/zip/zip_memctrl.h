@@ -177,7 +177,7 @@ namespace SST::Forza{
   // ------------------------------------------------------------
   // ZIPBasicMemCtrl Inherited Subcomponent Class
   // ------------------------------------------------------------
-  class ZIPBasicMemCtrl : public ZIPMemCtrl{
+  class ZIPBasicMemCtrl final : public ZIPMemCtrl{
   public:
     SST_ELI_REGISTER_SUBCOMPONENT(
       ZIPBasicMemCtrl,
@@ -314,7 +314,7 @@ namespace SST::Forza{
     // Private data
     StandardMem* memIface;                    ///< StandardMem memory interfaces
     ZIPStdMemHandlers *stdMemHandlers;        ///< StandardMem interface handlers
-    unsigned LineSize;                        ///< Cache line size
+    uint64_t LineSize;                        ///< Cache line size
     unsigned NumRead;                         ///< maximum number of outstanding reads
     unsigned NumWrite;                        ///< maximum number of outstanding writes
     unsigned OpsPerCycle;                     ///< number of ops per cycle to dispatch
