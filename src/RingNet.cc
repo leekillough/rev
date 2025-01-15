@@ -1,7 +1,7 @@
 //
 // _RingNet_cc_
 //
-// Copyright (C) 2017-2024 Tactical Computing Laboratories, LLC
+// Copyright (C) 2017-2025 Tactical Computing Laboratories, LLC
 // All Rights Reserved
 // contact@tactcomplabs.com
 //
@@ -116,7 +116,7 @@ void RingNetNIC::send( ringEvent* event, int64_t destination ) {
 }
 
 uint32_t RingNetNIC::getNumDestinations() {
-  return endPoints.size();
+  return uint32_t( endPoints.size() );
 }
 
 SST::Interfaces::SimpleNetwork::nid_t RingNetNIC::getAddress() {

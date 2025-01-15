@@ -1,7 +1,7 @@
 //
 // _ZOPNet_h_
 //
-// Copyright (C) 2017-2024 Tactical Computing Laboratories, LLC
+// Copyright (C) 2017-2025 Tactical Computing Laboratories, LLC
 // All Rights Reserved
 // contact@tactcomplabs.com
 //
@@ -787,7 +787,7 @@ public:
 
   /// zopEvent: encode this event and set the appropriate internal packet structures
   void encodeEvent() {
-    Length = Packet.size() - Z_NUM_HEADER_FLITS;
+    Length = uint8_t( Packet.size() - Z_NUM_HEADER_FLITS );
     Packet[Z_FLIT_DEST] |= ( (uint64_t) ( DestHart & Z_MASK_HARTID ) << Z_SHIFT_HARTID );
     Packet[Z_FLIT_DEST] |= ( (uint64_t) ( DestZCID & Z_MASK_ZCID ) << Z_SHIFT_ZCID );
     Packet[Z_FLIT_DEST] |= ( (uint64_t) ( DestPCID & Z_MASK_PCID ) << Z_SHIFT_PCID );
@@ -975,7 +975,7 @@ public:
   virtual void send( zopEvent* ev, zopCompID dest, zopPrecID zone, uint32_t precinct ) = 0;
 
   /// zopAPI : send a zone barrier request
-  virtual void send_zone_barrier( uint32_t hart, uint32_t endpoints )                  = 0;
+  virtual void send_zone_barrier( uint16_t hart, uint32_t endpoints )                  = 0;
 
   /// zopAPI: query the nic to see if the barrier is complete
   virtual bool isBarrierComplete( uint32_t Hart )                                      = 0;
@@ -1160,7 +1160,7 @@ public:
   void send( zopEvent* ev, zopCompID dest, zopPrecID zone, uint32_t precinct ) override;
 
   /// zopNIC: send a zone barrier request
-  void send_zone_barrier( uint32_t hart, uint32_t endpoints ) override;
+  void send_zone_barrier( uint16_t hart, uint32_t endpoints ) override;
 
   /// zopNIC: query the nic to see if the barrier is complete
   bool isBarrierComplete( uint32_t Hart ) override;
