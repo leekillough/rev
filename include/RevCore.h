@@ -1,7 +1,7 @@
 //
 // _RevCore_h_
 //
-// Copyright (C) 2017-2024 Tactical Computing Laboratories, LLC
+// Copyright (C) 2017-2025 Tactical Computing Laboratories, LLC
 // All Rights Reserved
 // contact@tactcomplabs.com
 //
@@ -185,7 +185,7 @@ public:
 
   ///< RevCore: retrieve the HART ID that contains the target ThreadID
   uint32_t GetHartFromThreadID( uint32_t ThreadID ) {
-    for( size_t i = 0; i < numHarts; i++ ) {
+    for( uint32_t i = 0; i < numHarts; i++ ) {
       if( Harts[i]->GetAssignedThreadID() == ThreadID ) {
         return i;
       }
@@ -309,30 +309,30 @@ public:
   uint64_t GetCycles() const { return cycles; }
 
   ///< RevCore: Register a custom getter for a particular CSR register
-  void SetCSRGetter( uint16_t csr, std::function<uint64_t( uint16_t )> handler ) {
+  void SetCSRGetter( uint32_t csr, std::function<uint64_t( uint32_t )> handler ) {
     handler ? (void) Getter.insert_or_assign( csr, std::move( handler ) ) : (void) Getter.erase( csr );
   }
 
   ///< RevCore: Register a custom setter for a particular CSR register
-  void SetCSRSetter( uint16_t csr, std::function<bool( uint16_t, uint64_t )> handler ) {
+  void SetCSRSetter( uint32_t csr, std::function<bool( uint32_t, uint64_t )> handler ) {
     handler ? (void) Setter.insert_or_assign( csr, std::move( handler ) ) : (void) Setter.erase( csr );
   }
 
   ///< RevCore: Get the custom getter for a particular CSR register
-  auto GetCSRGetter( uint16_t csr ) const {
+  auto GetCSRGetter( uint32_t csr ) const {
     auto it = Getter.find( csr );
-    return it != Getter.end() ? it->second : std::function<uint64_t( uint16_t )>{};
+    return it != Getter.end() ? it->second : std::function<uint64_t( uint32_t )>{};
   }
 
   ///< RevCore: Get the custom setter for a particular CSR register
-  auto GetCSRSetter( uint16_t csr ) const {
+  auto GetCSRSetter( uint32_t csr ) const {
     auto it = Setter.find( csr );
-    return it != Setter.end() ? it->second : std::function<bool( uint16_t, uint64_t )>{};
+    return it != Setter.end() ? it->second : std::function<bool( uint32_t, uint64_t )>{};
   }
 
 private:
-  std::unordered_map<uint16_t, std::function<uint64_t( uint16_t )>>       Getter{};
-  std::unordered_map<uint16_t, std::function<bool( uint16_t, uint64_t )>> Setter{};
+  std::unordered_map<uint32_t, std::function<uint64_t( uint32_t )>>       Getter{};
+  std::unordered_map<uint32_t, std::function<bool( uint32_t, uint64_t )>> Setter{};
 
   bool           Halted      = false;  ///< RevCore: determines if the core is halted
   bool           Stalled     = false;  ///< RevCore: determines if the core is stalled on instruction fetch
@@ -895,7 +895,7 @@ private:
   }
 
   /// RevCore: Check LS queue for outstanding load - ignore x0
-  static bool LSQCheck( uint32_t HartID, const RevRegFile* regFile, uint16_t reg, RevRegClass regClass ) {
+  static bool LSQCheck( uint32_t HartID, const RevRegFile* regFile, uint32_t reg, RevRegClass regClass ) {
     if( reg == 0 && regClass == RevRegClass::RegGPR ) {
       return false;  // GPR x0 is not considered
     } else {
@@ -904,7 +904,7 @@ private:
   }
 
   /// RevCore: Check scoreboard for a source register dependency
-  static bool ScoreboardCheck( const RevRegFile* regFile, uint16_t reg, RevRegClass regClass ) {
+  static bool ScoreboardCheck( const RevRegFile* regFile, uint32_t reg, RevRegClass regClass ) {
     switch( regClass ) {
     case RevRegClass::RegGPR: return reg != 0 && regFile->RV_Scoreboard[reg];
     case RevRegClass::RegFLOAT: return regFile->FP_Scoreboard[reg];
