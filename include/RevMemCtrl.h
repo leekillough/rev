@@ -749,37 +749,77 @@ void ApplyAMO( RevFlag flags, void* Target, T value ) {
 
   // Table mapping atomic operations to executable code
   // clang-format off
+  static const std::pair<RevCPU::RevFlag, std::function<void()>> table[] = {
+    { RevFlag::F_AMOADD,  [&]{ *TmpTarget += TmpBuf; } },
+    { RevFlag::F_AMOXOR,  [&]{ *TmpTarget ^= TmpBuf; } },
+    { RevFlag::F_AMOAND,  [&]{ *TmpTarget &= TmpBuf; } },
+    { RevFlag::F_AMOOR,   [&]{ *TmpTarget |= TmpBuf; } },
+    { RevFlag::F_AMOSWAP, [&]{ *TmpTarget  = TmpBuf; } },
+    { RevFlag::F_AMOMIN,  [&]{ *TmpTarget  = std::min(*TmpTarget,  TmpBuf);  } },
+    { RevFlag::F_AMOMAX,  [&]{ *TmpTarget  = std::max(*TmpTarget,  TmpBuf);  } },
+    { RevFlag::F_AMOMINU, [&]{ *TmpTargetU = std::min(*TmpTargetU, TmpBufU); } },
+    { RevFlag::F_AMOMAXU, [&]{ *TmpTargetU = std::max(*TmpTargetU, TmpBufU); } },
+  };
+  // clang-format on
+  RevFlag amo{ RevFlagAtomic( flags ) };
+  for( const auto& [flag, op] : table ) {
+    if( amo == flag ) {
+      op();
+      break;
+    }
+  }
+}
+
+///< Apply Atomic Memory Operation
+/// The operation described by "flags" is applied to memory "Target" with value "value"
+/// The operation writes the Rd return with the value of "Rtn"
+template<typename T>
+void ApplyForzaAMO( RevFlag flags, void* Target, void* Rtn, T value ) {
+  // Target and value cast to signed and uint32_t versions
+  auto* TmpTarget  = static_cast<std::make_signed_t<T>*>( Target );
+  auto* TmpTargetU = static_cast<std::make_unsigned_t<T>*>( Target );
+  auto  TmpBuf     = static_cast<std::make_signed_t<T>>( value );
+  auto  TmpBufU    = static_cast<std::make_unsigned_t<T>>( value );
+  auto* TmpRtn     = static_cast<std::make_signed_t<T>*>( Rtn );
+  auto* TmpRtnU    = static_cast<std::make_unsigned_t<T>*>( Rtn );
+
+  // Table mapping atomic operations to executable code
+  // clang-format off
   static const std::tuple<RevFlag, RevFlag, std::function<void()>> table[] = {
-    { RevFlag::F_AMOADD,  RevFlag::F_FORZANN, [&]{ *TmpTarget += TmpBuf; } },
-    { RevFlag::F_AMOXOR,  RevFlag::F_FORZANN, [&]{ *TmpTarget ^= TmpBuf; } },
-    { RevFlag::F_AMOAND,  RevFlag::F_FORZANN, [&]{ *TmpTarget &= TmpBuf; } },
-    { RevFlag::F_AMOOR,   RevFlag::F_FORZANN, [&]{ *TmpTarget |= TmpBuf; } },
-    { RevFlag::F_AMOSWAP, RevFlag::F_FORZANN, [&]{ *TmpTarget  = TmpBuf; } },
-    { RevFlag::F_AMOMIN,  RevFlag::F_FORZANN, [&]{ *TmpTarget  = std::min(*TmpTarget,  TmpBuf);  } },
-    { RevFlag::F_AMOMAX,  RevFlag::F_FORZANN, [&]{ *TmpTarget  = std::max(*TmpTarget,  TmpBuf);  } },
-    { RevFlag::F_AMOMINU, RevFlag::F_FORZANN, [&]{ *TmpTargetU = std::min(*TmpTargetU, TmpBufU); } },
-    { RevFlag::F_AMOMAXU, RevFlag::F_FORZANN, [&]{ *TmpTargetU = std::max(*TmpTargetU, TmpBufU); } },
+    // 'M' = M-Type (aka NN - both Rd and mem get result)
+    { RevFlag::F_AMOADD,  RevFlag::F_FORZANN, [&]{ *TmpTarget += TmpBuf; *TmpRtn = *TmpTarget; } },
+    { RevFlag::F_AMOXOR,  RevFlag::F_FORZANN, [&]{ *TmpTarget ^= TmpBuf; *TmpRtn = *TmpTarget; } },
+    { RevFlag::F_AMOAND,  RevFlag::F_FORZANN, [&]{ *TmpTarget &= TmpBuf; *TmpRtn = *TmpTarget; } },
+    { RevFlag::F_AMOOR,   RevFlag::F_FORZANN, [&]{ *TmpTarget |= TmpBuf; *TmpRtn = *TmpTarget; } },
+    { RevFlag::F_AMOSWAP, RevFlag::F_FORZANN, [&]{ *TmpTarget  = TmpBuf; *TmpRtn = *TmpTarget; } },
+    { RevFlag::F_AMOMIN,  RevFlag::F_FORZANN, [&]{ *TmpTarget  = std::min(*TmpTarget,  TmpBuf); *TmpRtn = *TmpTarget;  } },
+    { RevFlag::F_AMOMAX,  RevFlag::F_FORZANN, [&]{ *TmpTarget  = std::max(*TmpTarget,  TmpBuf); *TmpRtn = *TmpTarget;  } },
+    { RevFlag::F_AMOMINU, RevFlag::F_FORZANN, [&]{ *TmpTargetU = std::min(*TmpTargetU, TmpBufU); *TmpRtn = *TmpTarget;  } },
+    { RevFlag::F_AMOMAXU, RevFlag::F_FORZANN, [&]{ *TmpTargetU = std::max(*TmpTargetU, TmpBufU); *TmpRtn = *TmpTarget; } },
 
-    { RevFlag::F_AMOADD,  RevFlag::F_FORZAON, [&]{ *TmpTarget += TmpBuf; } },
-    { RevFlag::F_AMOXOR,  RevFlag::F_FORZAON, [&]{ *TmpTarget ^= TmpBuf; } },
-    { RevFlag::F_AMOAND,  RevFlag::F_FORZAON, [&]{ *TmpTarget &= TmpBuf; } },
-    { RevFlag::F_AMOOR,   RevFlag::F_FORZAON, [&]{ *TmpTarget |= TmpBuf; } },
-    { RevFlag::F_AMOSWAP, RevFlag::F_FORZAON, [&]{ *TmpTarget  = TmpBuf; } },
-    { RevFlag::F_AMOMIN,  RevFlag::F_FORZAON, [&]{ *TmpTarget  = std::min(*TmpTarget,  TmpBuf);  } },
-    { RevFlag::F_AMOMAX,  RevFlag::F_FORZAON, [&]{ *TmpTarget  = std::max(*TmpTarget,  TmpBuf);  } },
-    { RevFlag::F_AMOMINU, RevFlag::F_FORZAON, [&]{ *TmpTargetU = std::min(*TmpTargetU, TmpBufU); } },
-    { RevFlag::F_AMOMAXU, RevFlag::F_FORZAON, [&]{ *TmpTargetU = std::max(*TmpTargetU, TmpBufU); } },
+    // 'S' = S-Type (aka ON - mem unchanged, Rd gets result)
+    { RevFlag::F_AMOADD,  RevFlag::F_FORZAON, [&]{ *TmpRtn = *TmpTarget; *TmpRtn += TmpBuf; } },
+    { RevFlag::F_AMOXOR,  RevFlag::F_FORZAON, [&]{ *TmpRtn = *TmpTarget; *TmpRtn ^= TmpBuf; } },
+    { RevFlag::F_AMOAND,  RevFlag::F_FORZAON, [&]{ *TmpRtn = *TmpTarget; *TmpRtn &= TmpBuf; } },
+    { RevFlag::F_AMOOR,   RevFlag::F_FORZAON, [&]{ *TmpRtn = *TmpTarget; *TmpRtn |= TmpBuf; } },
+    { RevFlag::F_AMOSWAP, RevFlag::F_FORZAON, [&]{ *TmpRtn = *TmpTarget; *TmpRtn = TmpBuf; } },
+    { RevFlag::F_AMOMIN,  RevFlag::F_FORZAON, [&]{ *TmpRtn = *TmpTarget; *TmpRtn = std::min(*TmpTarget,  TmpBuf);  } },
+    { RevFlag::F_AMOMAX,  RevFlag::F_FORZAON, [&]{ *TmpRtn = *TmpTarget; *TmpRtn = std::max(*TmpTarget,  TmpBuf);  } },
+    { RevFlag::F_AMOMINU, RevFlag::F_FORZAON, [&]{ *TmpRtnU = *TmpTargetU; *TmpRtnU = std::min(*TmpTargetU, TmpBufU); } },
+    { RevFlag::F_AMOMAXU, RevFlag::F_FORZAON, [&]{ *TmpRtnU = *TmpTargetU; *TmpRtnU= std::max(*TmpTargetU, TmpBufU); } },
 
-    { RevFlag::F_AMOADD,  RevFlag::F_FORZANO, [&]{ *TmpTarget += TmpBuf; } },
-    { RevFlag::F_AMOXOR,  RevFlag::F_FORZANO, [&]{ *TmpTarget ^= TmpBuf; } },
-    { RevFlag::F_AMOAND,  RevFlag::F_FORZANO, [&]{ *TmpTarget &= TmpBuf; } },
-    { RevFlag::F_AMOOR,   RevFlag::F_FORZANO, [&]{ *TmpTarget |= TmpBuf; } },
-    { RevFlag::F_AMOSWAP, RevFlag::F_FORZANO, [&]{ *TmpTarget  = TmpBuf; } },
-    { RevFlag::F_AMOMIN,  RevFlag::F_FORZANO, [&]{ *TmpTarget  = std::min(*TmpTarget,  TmpBuf);  } },
-    { RevFlag::F_AMOMAX,  RevFlag::F_FORZANO, [&]{ *TmpTarget  = std::max(*TmpTarget,  TmpBuf);  } },
-    { RevFlag::F_AMOMINU, RevFlag::F_FORZANO, [&]{ *TmpTargetU = std::min(*TmpTargetU, TmpBufU); } },
-    { RevFlag::F_AMOMAXU, RevFlag::F_FORZANO, [&]{ *TmpTargetU = std::max(*TmpTargetU, TmpBufU); } },
+    // 'MS' = MS-Type (aka NO - mem gets result, Rd gets orig memory)
+    { RevFlag::F_AMOADD,  RevFlag::F_FORZANO, [&]{ *TmpRtn = *TmpTarget; *TmpTarget += TmpBuf; } },
+    { RevFlag::F_AMOXOR,  RevFlag::F_FORZANO, [&]{ *TmpRtn = *TmpTarget; *TmpTarget ^= TmpBuf; } },
+    { RevFlag::F_AMOAND,  RevFlag::F_FORZANO, [&]{ *TmpRtn = *TmpTarget; *TmpTarget &= TmpBuf; } },
+    { RevFlag::F_AMOOR,   RevFlag::F_FORZANO, [&]{ *TmpRtn = *TmpTarget; *TmpTarget |= TmpBuf; } },
+    { RevFlag::F_AMOSWAP, RevFlag::F_FORZANO, [&]{ *TmpRtn = *TmpTarget; *TmpTarget  = TmpBuf; } },
+    { RevFlag::F_AMOMIN,  RevFlag::F_FORZANO, [&]{ *TmpRtn = *TmpTarget; *TmpTarget  = std::min(*TmpTarget,  TmpBuf);  } },
+    { RevFlag::F_AMOMAX,  RevFlag::F_FORZANO, [&]{ *TmpRtn = *TmpTarget; *TmpTarget  = std::max(*TmpTarget,  TmpBuf);  } },
+    { RevFlag::F_AMOMINU, RevFlag::F_FORZANO, [&]{ *TmpRtnU = *TmpTargetU; *TmpTargetU = std::min(*TmpTargetU, TmpBufU); } },
+    { RevFlag::F_AMOMAXU, RevFlag::F_FORZANO, [&]{ *TmpRtnU = *TmpTargetU; *TmpTargetU = std::max(*TmpTargetU, TmpBufU); } },
 
+    // 'B' = BASE-Type (aka U - update; update mem, return ack)
     { RevFlag::F_AMOADD,  RevFlag::F_NONE, [&]{ *TmpTarget += TmpBuf; } },
     { RevFlag::F_AMOXOR,  RevFlag::F_NONE, [&]{ *TmpTarget ^= TmpBuf; } },
     { RevFlag::F_AMOAND,  RevFlag::F_NONE, [&]{ *TmpTarget &= TmpBuf; } },

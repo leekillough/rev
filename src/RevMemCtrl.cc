@@ -1237,42 +1237,74 @@ void RevBasicMemCtrl::performAMO( std::tuple<uint32_t, unsigned char*, void*, Re
   std::vector<uint8_t> tempT;
 
   tempT.clear();
-  uint8_t* TmpBuf8 = static_cast<uint8_t*>( Target );
+  uint8_t* TmpBuf8 = static_cast<uint8_t*>( Target );  // save a char pointer to the register target
   for( size_t i = 0; i < Tmp->getSize(); i++ ) {
-    tempT.push_back( TmpBuf8[i] );
+    tempT.push_back( TmpBuf8[i] );  // copy the old value to tempT
   }
 
   if( Tmp->getSize() == 1 ) {
     // 8-bit (B) AMOs
     uint8_t TmpBuf = 0;
+    uint8_t Rtn    = 0;
     for( size_t i = 0; i < buffer.size(); i++ ) {
       TmpBuf |= uint8_t{ buffer[i] } << i * 8;
     }
-    ApplyAMO( flags, Target, TmpBuf );
+    ApplyForzaAMO( flags, Target, (void*) ( &Rtn ), TmpBuf );
+    // clear the temp buffer & write the Rtn value
+    tempT.clear();
+    tempT.push_back( Rtn );
   } else if( Tmp->getSize() == 2 ) {
     // 16-bit (H) AMOs
     uint16_t TmpBuf = 0;
+    uint16_t Rtn    = 0;
     for( size_t i = 0; i < buffer.size(); i++ ) {
       TmpBuf |= uint16_t{ buffer[i] } << i * 8;
     }
-    ApplyAMO( flags, Target, TmpBuf );
+    ApplyForzaAMO( flags, Target, (void*) ( &Rtn ), TmpBuf );
+    // clear the temp buffer & write the Rtn value
+    tempT.clear();
+    tempT.push_back( Rtn );
+    tempT.push_back( (uint8_t) ( ( Rtn & 0xFF00 ) >> 8 ) );
   } else if( Tmp->getSize() == 4 ) {
     // 32-bit (W) AMOs
     uint32_t TmpBuf = 0;
+    uint32_t Rtn    = 0;
     for( size_t i = 0; i < buffer.size(); i++ ) {
       TmpBuf |= uint32_t{ buffer[i] } << i * 8;
     }
-    ApplyAMO( flags, Target, TmpBuf );
+    ApplyForzaAMO( flags, Target, (void*) ( &Rtn ), TmpBuf );
+    // clear the temp buffer & write the Rtn value
+#if 0
+    tempT.clear();
+    tempT.push_back( Rtn );
+    tempT.push_back( (uint8_t)((Rtn & 0xFF00)>>8) );
+    tempT.push_back( (uint8_t)((Rtn & 0xFF0000)>>16) );
+    tempT.push_back( (uint8_t)((Rtn & 0xFF000000)>>24) );
+#endif
   } else {
     // 64-bit (D) AMOs
     uint64_t TmpBuf = 0;
+    uint64_t Rtn    = 0;
     for( size_t i = 0; i < buffer.size(); i++ ) {
       TmpBuf |= uint64_t{ buffer[i] } << i * 8;
     }
-    ApplyAMO( flags, Target, TmpBuf );
+    ApplyForzaAMO( flags, Target, (void*) ( &Rtn ), TmpBuf );
+    // clear the temp buffer & write the Rtn value
+#if 0
+    tempT.clear();
+    tempT.push_back( Rtn );
+    tempT.push_back( (uint8_t)((Rtn & 0xFF00)>>8) );
+    tempT.push_back( (uint8_t)((Rtn & 0xFF0000)>>16) );
+    tempT.push_back( (uint8_t)((Rtn & 0xFF000000)>>24) );
+    tempT.push_back( (uint8_t)((Rtn & 0xFF00000000)>>32) );
+    tempT.push_back( (uint8_t)((Rtn & 0xFF0000000000)>>40) );
+    tempT.push_back( (uint8_t)((Rtn & 0xFF000000000000)>>48) );
+    tempT.push_back( (uint8_t)((Rtn & 0xFF00000000000000)>>56) );
+#endif
   }
 
   // copy the target data over to the buffer and build the memory request
+  // this will write the value to memory
   buffer.clear();
   for( size_t i = 0; i < Tmp->getSize(); i++ ) {
     buffer.push_back( TmpBuf8[i] );
