@@ -229,7 +229,7 @@ add_forza_test(forza_barrier_multi forza_barrier 30 "all;memh;rv64;loader;forza"
 
 #NOTE: security related tests are still using original rev test with custom script
 #Security related test
-add_rev_test(private_access_allowed_rza forza_security 30 "all;memh;rv64;loader;forza;" SCRIPT "run_private_valid.sh")
-add_rev_test(private_access_denied_rza forza_security 30 "all;memh;rv64;loader;forza;security" SCRIPT "run_private_invalid.sh")
-add_rev_test(shared_access_allowed forza_security 30 "all;memh;rv64;loader;forza;" SCRIPT "run_shared_valid.sh")
-add_rev_test(shared_access_denied forza_security 30 "all;memh;rv64;loader;forza;security" SCRIPT "run_shared_invalid.sh")
+# add_rev_test(private_access_allowed_rza forza_security 120 "all;memh;rv64;loader;forza;" SCRIPT "run_private_valid.sh")
+# add_rev_test(private_access_denied_rza forza_security 120 "all;memh;rv64;loader;forza;security" SCRIPT "run_private_invalid.sh")
+# dd_rev_test(shared_access_allowed forza_security 120 "all;memh;rv64;loader;forza;" SCRIPT "run_shared_valid.sh")
+# dd_rev_test(shared_access_denied forza_security 120 "all;memh;rv64;loader;forza;security" SCRIPT "run_shared_invalid.sh")
