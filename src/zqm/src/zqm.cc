@@ -2,89 +2,13 @@
 // _zqm_cc_
 //
 
-#include <sst/core/sst_config.h>
 #include "zqm.h"
 #include "ZOPNET.h"
-
-/**
- * NOTE: There are numerous places where the code uses extra variables, etc.
- * I don't care.  My goal is to make this easy to follow and ensure the spec matches since
- * it's being developed alongside the code.
- */
+#include <RevMem.h>
 
 using namespace SST::Forza;
 
-#if 0
-// Comes from RevMem::ZOP_ThreadMigrate in forzarev/src/RevMem.cc
-// Want to keep an even number of words "just because"
-static const uint64_t ThreadLengthDblWords = 68;
-static const uint64_t ThreadLengthBytes = (ThreadLengthDblWords * 8);
-
-uint64_t ZqmMailboxMetadata::getRzaWriteAddr(uint8_t size)
-{
-  uint64_t wr_ptr = mem_wr_ptr; // address to write
-  uint64_t next_ptr = wr_ptr + (size * sizeof(uint64_t));
-  if (next_ptr > mem_tail) //shouldn't happen
-    return (uint64_t)-1;
-  else if (next_ptr == mem_tail)
-    next_ptr = mem_head;
-  
-  mem_wr_ptr = next_ptr; // update write ptr
-  return wr_ptr;
-}
-
-// This is called AFTER we've written memory
-uint64_t ZqmMailboxMetadata::getSpTailAddr(uint8_t size)
-{
-  uint64_t wr_ptr = mem_cur_tail; //current tail; we wrote to this address
-  uint64_t next_ptr = wr_ptr + (size * sizeof(uint64_t));
-  if (next_ptr > mem_tail) //shouldn't happen
-    return (uint64_t)-1;
-  else if (next_ptr == mem_tail)
-    next_ptr = mem_head;
-  
-  mem_cur_tail = next_ptr; // update to past where we've written
-  return mem_cur_tail;
-}
-#endif
-
-#if 0
-uint64_t ZqmAidStateTableRow::getMemAddr(bool do_read, bool update_ptr)
-{
-    uint64_t addr_ptr = (do_read) ? mem_read_ptr : mem_write_ptr;
-    if (!update_ptr)
-        return addr_ptr;
-
-    // Below here, we do an update
-    // First, determine the updated ptr
-    uint64_t next_ptr = addr_ptr + ThreadLengthBytes;
-    if (next_ptr >= mem_buffer_high)
-        next_ptr = mem_buffer_low;
-
-    if (do_read){
-        if (mem_read_ptr == mem_write_ptr) { // nothing to read
-            return 0;
-        } else { // can read; update rd_ptr
-            mem_read_ptr = next_ptr;
-            return addr_ptr;
-        }
-    } else {
-        if (next_ptr == mem_read_ptr) { // no room to write
-            return 0;
-        } else {
-            mem_write_ptr = next_ptr; // can write; update wr_ptr
-            return addr_ptr;
-        }
-    }
-}
-
-bool ZqmAidStateTableRow::validateMemBuffSize() {
-    uint64_t diff = (mem_buffer_high + 1) - (mem_buffer_low);
-    if ( (diff % ThreadLengthBytes) == 0)
-        return true;
-    return false;
-}
-#endif
+static constexpr uint16_t ZAP_TO_HART_SHIFT = 9;
 
 ZQM::ZQM(ComponentId_t id, Params& params)
         : Component(id)
@@ -94,58 +18,101 @@ ZQM::ZQM(ComponentId_t id, Params& params)
     output.init("ZQM[" + getName() + ":@p:@t]: ",
                 Verbosity, 0, SST::Output::STDOUT);
 
-    // read the remaining parameters
-    clockFreq = params.find<std::string>("clockFreq", "1GHz");
+  // read the remaining parameters
+  clockFreq = params.find<std::string>( "clockFreq", "1GHz" );
 
-    // register the clock handler
-    registerClock(clockFreq, new Clock::Handler<ZQM>(this, &ZQM::clock));
-    output.verbose(CALL_INFO, 7, 0, "ZQM[%s] Registering clock with frequency=%s\n",
-                   getName().c_str(), clockFreq.c_str());
+  // register the clock handler
+  registerClock( clockFreq, new Clock::Handler<ZQM>( this, &ZQM::clock ) );
+  output.verbose( CALL_INFO, 7, 0, "ZQM[%s] Registering clock with frequency=%s\n", getName().c_str(), clockFreq.c_str() );
 
-    // The parameter finds below are using the same names as RevCPU.h
-    numCores = params.find<unsigned>("numCores", 1);
-    numHarts = params.find<uint16_t>("numHarts", 4);
-    PrecinctId = params.find<unsigned>("precinctId", 0);
-    ZoneId = params.find<unsigned>("zoneId", 0);
-    process_per_cycle = params.find<unsigned>("processPerCycle", 10);
+  // The parameter finds below are using the same names as RevCPU.h
+  numCores              = params.find<unsigned>( "numCores", 1 );
+  numHarts              = params.find<uint16_t>( "numHarts", 1 );
+  PrecinctId            = params.find<unsigned>( "precinctId", 0 );
+  ZoneId                = params.find<unsigned>( "zoneId", 0 );
+  processPerCycle       = params.find<unsigned>( "processPerCycle", 10 );
+  msgQueueDepth         = params.find<uint32_t>( "msgQueueDepth", 512 );
+  memStartAddr          = params.find<uint64_t>( "memStartAddr", 0x100000UL );
+#if 1 // "Typical" values
+  msgsPerMbox           = params.find<uint32_t>( "msgsPerMbox", 2 );
+  cyclesPerRecycle      = params.find<uint32_t>( "cyclesPerRecycle", 1024 );
+  recyclesToNack        = params.find<uint32_t>( "recyclesToNack", 64 );
+#else // "Force nack" values
+  msgsPerMbox           = params.find<uint32_t>( "msgsPerMbox", 1 );
+  cyclesPerRecycle      = params.find<uint32_t>( "cyclesPerRecycle", 10 );
+  recyclesToNack        = params.find<uint32_t>( "recyclesToNack", 1 );
+#endif
 
-    // setup the zone network
-    bool zone_nic_enabled = true; // temporary use while developing ring code
-    if (zone_nic_enabled){
-        zone_nic = loadUserSubComponent<SST::Forza::zopAPI>( "zone_nic" );
-        zone_nic->setMsgHandler(new Event::Handler<ZQM>(this, &ZQM::handleIncomingZOP));
-        zone_nic->setEndpointType(zopCompID::Z_ZQM);
-        zone_nic->setNumHarts(numHarts);
-        zone_nic->setPrecinctID(PrecinctId);
-        zone_nic->setZoneID(ZoneId);
+  // Validate parameters
+  if ( ( memStartAddr % 0x400 ) != 0 ) {
+    output.fatal( CALL_INFO, -1, "ZQM: memStartAddr is not aligned to 0x400!\n" );
+  }
+
+  // set up the zone network
+  zone_nic              = loadUserSubComponent<SST::Forza::zopAPI>( "zone_nic" );
+  zone_nic->setMsgHandler( new Event::Handler<ZQM>( this, &ZQM::handleIncomingZOP ) );
+  zone_nic->setEndpointType( zopCompID::Z_ZQM );
+  zone_nic->setNumHarts( numHarts );
+  zone_nic->setPrecinctID( PrecinctId );
+  zone_nic->setZoneID( ZoneId );
+
+  zone_ring = loadUserSubComponent<SST::Forza::RingNetAPI>( "ring_nic" );
+  if( zone_ring ) {
+    output.verbose( CALL_INFO, 4, 0, "ZQM[%s] create zone ring\n", getName().c_str() );
+    zone_ring->setMsgHandler( new Event::Handler<ZQM>( this, &ZQM::handleRingMsg ) );
+    zone_ring->setEndpointType( zopCompID::Z_ZQM );
+  } else {
+    output.fatal( CALL_INFO, -1, "ZQM requires a zone ring network\n" );
+  }
+  dma_enabled = true;
+
+  my_name     = "Precinct[" + std::to_string( PrecinctId ) + "].Zone[" + std::to_string( ZoneId ) + "].ZQM";
+  output.verbose( CALL_INFO, 1, 0, "%s constructed\n", my_name.c_str() );
+
+  zoneMsgID = new zopMsgID();
+  if( zoneMsgID->getNumFree() != Z_MAX_MSG_IDS ) {
+    output.fatal( CALL_INFO, -1, "Insufficient message IDs allocated in constructor\n" );
+  }
+
+  // Resize the IncomingMessage vector
+  IncomingMsgQueues.resize( NUM_MBOXES );
+
+  // Resize the CSR regs
+  PerHartCSRs.resize( numCores );
+  for( auto& i : PerHartCSRs ) {
+    i.resize( numHarts );
+  }
+
+  // Init message buffer addresses
+  uint64_t base_addr_increment = NUM_MBOXES * msgsPerMbox * ACTOR_MSG_BYTES;
+  uint64_t base_addr = memStartAddr;
+  for (auto &i : PerHartCSRs) {
+    for (auto &j : i) {
+      j.msgs_per_mbox = msgsPerMbox;
+      j.mem_base_addr = base_addr;
+      base_addr += base_addr_increment;
+      for (auto &k : j.mbox_buff_state) {
+        k.buff_state.resize( msgsPerMbox );
+      }
     }
+  }
 
-    zone_ring = loadUserSubComponent<SST::Forza::RingNetAPI>( "ring_nic" );
-    if (zone_ring) {
-        output.verbose( CALL_INFO, 4, 0, "ZQM[%s] create zone ring\n", getName().c_str() );
-        zone_ring->setMsgHandler( new Event::Handler<ZQM>(this, &ZQM::handleRingMsg) );
-        zone_ring->setEndpointType(zopCompID::Z_ZQM);
-    }
-    dma_enabled = true;
+  uint64_t total_msg_mem = numCores * numHarts * base_addr_increment;
+  output.verbose(
+    CALL_INFO, 3, 0, "%s constructed; using 0x%" PRIx64 " bytes for actor msg memory\n", my_name.c_str(), total_msg_mem
+  );
 
-    my_name = "Precinct[" + std::to_string(PrecinctId) + "].Zone[" + std::to_string(ZoneId) + "].ZQM";
-    output.verbose(CALL_INFO, 1, 0, "%s constructed\n", my_name.c_str());
-
-    zoneMsgID = new zopMsgID();
-    if( zoneMsgID->getNumFree() != Z_MAX_MSG_IDS ){
-        output.fatal(CALL_INFO, -1,
-                    "Insufficient message IDs allocated in constructor\n");
-    }
-
-    // Resize the CSR regs
-    PerHartCSRs.resize( numCores );
-    for ( auto &i : PerHartCSRs ){
-        i.resize( numHarts );
-    }
-
-    // register with SST
-    registerAsPrimaryComponent();
-    //primaryComponentDoNotEndSim();
+  // Register stats
+#if 0
+  MsgsRecd = registerStatistic<uint64_t>( "MsgsReceived" );
+  AcksSent = registerStatistic<uint64_t>( "AcksSent" );
+  NacksSent = registerStatistic<uint64_t>( "NacksSent" );
+  NumRecycles = registerStatistic<uint64_t>( "NumRecycles" );
+#endif
+  
+  // register with SST
+  registerAsPrimaryComponent();
+  //primaryComponentDoNotEndSim();
 }
 
 ZQM::~ZQM()
@@ -193,7 +160,6 @@ void ZQM::handleRingMsg( SST::Event *event )
   }
 
   output.verbose(CALL_INFO, 5, 0, "[ZQM] %s handling ring message; CSR=0x%" PRIx16 "; op=%" PRIu8 "\n", getName().c_str(), ev->getCSR(), (uint8_t)ev->getOp());
-  output.flush();
   if ( ev->getCSR() == R_ZQMSTAT ){
     handleRingStatus(ev);    
   } else if ( ev->getCSR() == R_ZQMMBOXREG ){
@@ -211,7 +177,18 @@ void ZQM::handleRingStatus( SST::Forza::ringEvent *ev )
   if ( ev->getOp() != SST::Forza::ringMsgT::R_READ )
     output.fatal(CALL_INFO, -1, "[ZQM] %s unexpected optype message; OpType=%" PRIu8 "\n", getName().c_str(), static_cast<uint8_t>(ev->getOp()));
 
-  auto status = PerHartCSRs[ev->getSrcZap()][ev->getHart()].status;
+  // Recompute status
+  uint64_t status = 0;
+  auto &csr_buff_state = PerHartCSRs[ev->getSrcZap()][ev->getHart()].mbox_buff_state;
+  for ( uint8_t i = 0; i < NUM_MBOXES; i++ ) {
+    for ( auto &state : csr_buff_state.at(i).buff_state ) {
+      if ( state == msgBuffState::READY ) {
+        status |= ( 1UL << i );
+        break;
+      }
+    }
+  }
+
   output.verbose(CALL_INFO, 7, 0, "[ZQM] %s handle ZQMSTAT message; return status=0x%" PRIx64 "\n", getName().c_str(), status);
   sendRingResponse(ev, status);
 }
@@ -222,7 +199,7 @@ void ZQM::handleRingMboxReg( SST::Forza::ringEvent *ev )
     // Writing 0 clears a mapping - ignore for now
     auto x = ev->getDatum();
     if ( x == 0 ){
-        output.verbose(CALL_INFO, 5, 0, "[ERROR] [ZQM] %s; mailbox unregister not handled\n", getName().c_str() );
+        output.verbose(CALL_INFO, 5, 0, "[WARNING] [ZQM] %s; mailbox unregister not handled\n", getName().c_str() );
         delete ev;
         return;
     }
@@ -235,7 +212,6 @@ void ZQM::handleRingMboxReg( SST::Forza::ringEvent *ev )
     uint16_t logic_pe = ( x >> ZQMMBOXREG_SHIFT_LOGICALPE ) & ZQMMBOXREG_MASK_LOGICALPE;
     uint8_t mbx_bitmap = ( x >> ZQMMBOXREG_SHIFT_MBXSUSED ) & ZQMMBOXREG_MASK_MBXSUSED;
     output.verbose(CALL_INFO, 7, 0, "[ZQM] %s; handling a mailbox registration message; datum = 0x%" PRIx64 "\n", getName().c_str(), x );
-    output.flush();
 
     std::pair<uint8_t, uint16_t> p1(aid, logic_pe);
     auto iter = LogicalToPhysicalMap.find( p1 );
@@ -257,53 +233,43 @@ void ZQM::handleRingMboxReg( SST::Forza::ringEvent *ev )
     //output.flush();
 }
 
-void ZQM::handleRingDq( SST::Forza::ringEvent *ev )
-{
-    output.verbose(CALL_INFO, 7, 0, "[ZQM] %s; handling a dequeue message\n", getName().c_str() );
-    // Maybe use a ZEN like reading scheme for now to get something implemented
-    // That would at least let us work on developing s/w
-    auto &regs = PerHartCSRs[ev->getSrcZap()][ev->getHart()];
-    auto &mbox = regs.mbox_buffs[( ev->getCSR() & R_MASK_ZQMDQMBOX )];
+void ZQM::handleRingDq( SST::Forza::ringEvent* ev ) {
+  output.verbose( CALL_INFO, 7, 0, "[ZQM] %s; handling a dequeue message\n", getName().c_str() );
+  auto& regs = PerHartCSRs[ev->getSrcZap()][ev->getHart()];
+  auto& mbox = regs.mbox_buff_state[( ev->getCSR() & R_MASK_ZQMDQMBOX )];
 
-    if ( mbox.buff_state != msgBuffState::READY )
-        output.fatal(CALL_INFO, -1, "[ZQM] %s; messager buffer for [Zap:Hart:Mbox]=[%u:%u:%u] not ready \n", 
-                    getName().c_str(), ev->getSrcZap(), ev->getHart(), (ev->getCSR() & R_MASK_ZQMDQMBOX) );
+  if( mbox.getCurRdState() != msgBuffState::READY )
+    output.fatal(
+      CALL_INFO,
+      -1,
+      "[ZQM] %s; message buffer for [Zap:Hart:Mbox]=[%u:%u:%u] not ready \n",
+      getName().c_str(),
+      ev->getSrcZap(),
+      ev->getHart(),
+      ( ev->getCSR() & R_MASK_ZQMDQMBOX )
+    );
 
-    // Get the data word to return
-    auto ret_data = mbox.msg[mbox.msg_cur_word];
-    output.verbose(CALL_INFO, 7, 0, "[ZQM] %s; handling a dequeue message; msg_cur_word=%u\n", getName().c_str(), mbox.msg_cur_word );
+  // Get the pointer for the current read buffer; HW uses ring level 3, segment 0xF for physical addressing to the
+  // ZQM memory
+  auto ret_data = regs.getMsgBuffAddr( ev->getCSR() & R_MASK_ZQMDQMBOX, mbox.cur_rd_entry );
+  ret_data |= ( ( 0x0fUL & Z_SEG_MASK ) << Z_SEG_SHIFT );
+  //output.verbose( CALL_INFO, 7, 0, "[ZQM] %s; handling a dequeue message; msg_ptr=0x%" PRIx64 "\n", getName().c_str(), ret_data );
 
-    // Use data field to do the proper read/write/update
-    if ( ev->getDatum() == 0 ){
-        if (mbox.msg_cur_word == 7){ //sent last word; get next msg
-            mbox.buff_state = msgBuffState::IDLE;
-            // Update status -- clear out the mailbox ready bit in the status
-            uint64_t mbox_id = ( ev->getCSR() & R_MASK_ZQMDQMBOX );
-            uint64_t mask = 1UL << mbox_id;
-            uint64_t inv_mask = ~mask;
-            regs.status &= inv_mask;
-            output.verbose(CALL_INFO, 9, 0, "[ZQM] %s; handling a dequeue message; set state to IDLE\n", getName().c_str() );
-        } else
-            mbox.msg_cur_word++;
-    } else if ( ev->getDatum() == 1 ) {
-        mbox.buff_state = msgBuffState::IDLE;
-        // Update status -- clear out the mailbox ready bit in the status
-        uint64_t mbox_id = ( ev->getCSR() & R_MASK_ZQMDQMBOX );
-        uint64_t mask = 1UL << mbox_id; // sets the ready bit
-        uint64_t inv_mask = ~mask; // invert the mask
-        regs.status &= inv_mask;
-        output.verbose(CALL_INFO, 9, 0, "[ZQM] %s; handling a dequeue message; datum=1; set state to IDLE\n", getName().c_str() );
-    } else {
-        output.fatal(CALL_INFO, -2, "[ZQM] %s; deque msg with unexpected data = %" PRIu64 "\n", getName().c_str(), ev->getDatum() );
-    }
+  // If this was a read request, don't do anything else
+  // If this is an update request, update the buffer state
+  if( ev->getOp() == ringMsgT::R_UPDATE ) {
+    ret_data                           = 0;
+    mbox.buff_state[mbox.cur_rd_entry] = msgBuffState::IDLE;
+    //output.verbose( CALL_INFO, 5, 0, "ZQM Deque[%u][%u].mbox[%u].buff[%u]\n",
+    //  ev->getSrcZap(), ev->getHart(), ( ev->getCSR() & R_MASK_ZQMDQMBOX ), mbox.cur_rd_entry );
+    mbox.updateRdEntry();
+  }
 
-    sendRingResponse( ev, ret_data );
+  sendRingResponse( ev, ret_data );
 }
 
 void ZQM::sendRingResponse( SST::Forza::ringEvent *ev, uint64_t data )
 {
-    //output.fatal(CALL_INFO, -1, "[ZQM] %s function not yet implemented\n", getName().c_str());
-#if 1
     auto resp = new ringEvent(zopCompID::Z_ZQM, ev->getHart(), ev->getSrcComp(), ringMsgT::R_RETDATA, ev->getCSR(), data );
     int64_t next_dest = zone_ring->getNextAddress();
     output.verbose(
@@ -315,81 +281,105 @@ void ZQM::sendRingResponse( SST::Forza::ringEvent *ev, uint64_t data )
       (uint8_t) resp->getOp()
     );
     zone_ring->send( resp, next_dest );
-#endif
 }
 
-void ZQM::updateMailboxes()
+void ZQM::selectInMboxQueue()
 {
-    // Note (tdysart, 27-aug-24) - I expect a part of this code will disappear once we are putting the 
-    // zops into memory rather than just as objects here in the zqm
+  if ( num_incoming_msg_queues_ready == 0 )
+    return;
 
-    if ( IncomingMsgQueue.empty() )
-        return;
-
-    auto msg = IncomingMsgQueue.front();
-    IncomingMsgQueue.pop();
-    auto dest_aid = msg->getAppID();
-    auto dest_mbox = msg->getMbxID();
-
-    // To match the zen encoding, the dest_logical_pe is an 11b field; bottom 9b are dest_hart in msg
-    // upper 2b are lower 2b of dest_zcid in msg
-    auto dest_pe = msg->getDestHart();
-    uint8_t pe_top = ( (uint8_t)msg->getDestZCID() & 0x3 ) << 9;
-    dest_pe |= pe_top;
-
-    std::pair<uint8_t, uint16_t> logic_dest(dest_aid, dest_pe);
-    auto iter = LogicalToPhysicalMap.find(logic_dest);
-    if ( iter == LogicalToPhysicalMap.end() )
-        output.fatal(CALL_INFO, -1, "[ZQM] %s incoming msg zop - no mapping found. aid=%u, logical_pe=%u\n", 
-                     getName().c_str(), dest_aid, dest_pe );
-    output.verbose(CALL_INFO, 9, 0, "[ZQM] %s incoming msg zop - mapping found. aid=%u, logical_pe=%u, mbox=%u, zap=%u, hart=%u\n", 
-                   getName().c_str(), dest_aid, dest_pe, dest_mbox, iter->second.first, iter->second.second );
-
-    auto &mbox = PerHartCSRs[iter->second.first][iter->second.second].mbox_buffs[dest_mbox];
-    if ( mbox.buff_state == msgBuffState::IDLE ){
-        // fill the msg buffer, set to ready
-        mbox.setMsg(msg->getPayload());
-        mbox.msg_cur_word = 0;
-        mbox.buff_state = msgBuffState::READY;
-        // send the ack zop
-        sendZopAck(msg, zopMsgT::Z_MSG, zopOpc::Z_MSG_ACK);
-        // delete the zop
-        delete msg;
-        //output.verbose( CALL_INFO, 9, 0, "Msg Buf sz=%zu\n", mbox.msg.size() );
-        //for ( auto i : mbox.msg )
-        //    output.verbose(CALL_INFO, 9, 0, "ZQM Msg = 0x%" PRIx64 "\n", i);
-        //output.flush();
-        // Update status
-        PerHartCSRs[iter->second.first][iter->second.second].status |= (1UL << dest_mbox);
-    } else {
-        // rather than leave the msg at the front of the queue (where it's blocking), we recycle
-        // it to the end of the queue
-        IncomingMsgQueue.push(msg);
+  uint8_t winning_mbox = UINT8_MAX;
+  for (uint8_t i = 0; i < NUM_MBOXES; i++) {
+    if (IncomingMsgQueues[process_incoming_msg_queue].head_ready) {
+      winning_mbox = process_incoming_msg_queue;
+      updateProcessIncomingMsgQueue();
+      break;
     }
+    updateProcessIncomingMsgQueue();
+  }
+
+  if (winning_mbox == UINT8_MAX) {
+    output.fatal( CALL_INFO, -1, "Did not find a ready mailbox\n" );
+  }
+
+  // Get the msg, update the MboxInQueue
+  auto &in_mbox = IncomingMsgQueues[winning_mbox];
+  auto msg = in_mbox.mbox_queue.front().first;
+  in_mbox.mbox_queue.pop();
+  in_mbox.head_ready = false;
+  in_mbox.head_check_cycle_cntr = 0;
+  // Per hart csr stuff
+  if (msg->getMbxID() != winning_mbox) {
+    output.fatal( CALL_INFO, -1, "ZQM: mboxId=%" PRIu8 "; does not match winner=%" PRIu8 "\n",
+      msg->getMbxID(), winning_mbox );
+  }
+  auto  dest_mbox = msg->getMbxID(); // this should match winning_mbox - should probably check
+  auto& mbox      = PerHartCSRs[msg->getDestZCID()][msg->getDestHart()].mbox_buff_state[dest_mbox];
+  auto wr_addr = PerHartCSRs[msg->getDestZCID()][msg->getDestHart()].getMsgBuffAddr( dest_mbox, mbox.cur_wr_entry );
+
+  //output.verbose(CALL_INFO, 5, 0, "Winner: [Z:H:MB:Buf]=[%u:%u:%u:%u]\n", msg->getDestZCID(), msg->getDestHart(), dest_mbox, mbox.cur_wr_entry );
+
+  sendMsgToMemory( msg, wr_addr, mbox.cur_wr_entry );
+  sendZopAck(msg, zopMsgT::Z_MSG, zopOpc::Z_MSG_ACK);
+  num_incoming_msg_queues_ready--;
+  delete msg;
+
+  // Update CSR state
+  mbox.setCurWrState( msgBuffState::FILLING );
+  mbox.updateWrEntry();
 }
 
-/** Handles incoming ZOP events; set as handler in ZQM::setup()
- *  Valid messages into here should be the following:
- * - Messaging with ZQM Setup Opcode - KILL
- * - RZA Response - Yes
- * - Thread Migration - May need to expand since this handles the run queue
- *
- * * @param event
-*/
+void ZQM::updateInMboxQueue()
+{
+  auto& in_mbox = IncomingMsgQueues[cur_incoming_msg_queue];
+  updateCurIncomingMsgQueue();
+
+  if( in_mbox.mbox_queue.empty() || in_mbox.head_ready )
+    return;
+
+  auto qentry = in_mbox.mbox_queue.front();
+  auto msg        = qentry.first;
+  auto dest_mbox = msg->getMbxID();
+  auto& mbox      = PerHartCSRs[msg->getDestZCID()][msg->getDestHart()].mbox_buff_state[dest_mbox];
+  if (mbox.getCurWrState() == msgBuffState::IDLE) {
+    in_mbox.head_ready = true;
+    num_incoming_msg_queues_ready++;
+  } else {
+    in_mbox.head_check_cycle_cntr++;
+    if (in_mbox.head_check_cycle_cntr == cyclesPerRecycle) {
+
+      in_mbox.mbox_queue.pop();
+      if (in_mbox.mbox_queue.front().second == recyclesToNack) {
+        // NACK goes to where it came from; MUST have msg_id so the sender ZEN can retry
+        sendZopAck( msg, zopMsgT::Z_MSG, zopOpc::Z_MSG_NACK );
+        delete msg;
+      } else {
+        // Recycle this message
+        qentry.second++;
+        in_mbox.mbox_queue.push( qentry );
+        in_mbox.head_check_cycle_cntr = 0;
+        //NumRecycles->addData( 1 );
+        //output.verbose( CALL_INFO, 5, 0, "ZQM: recycle num=%" PRIu16 "; msg %s to %s, ID=%" PRIu16 "\n",
+         // qentry.second, msg->getSrcString().c_str(), msg->getDestString().c_str(), msg->getID() );
+      }
+    } // no else needed; just had to increment the counter
+  }
+}
 
 void ZQM::handleIncomingZOP(SST::Event *event)
 {
     SST::Forza::zopEvent* ev = static_cast<SST::Forza::zopEvent*>(event);
     ev->decodeEvent();
-    output.verbose(CALL_INFO, 1, 0, "%s Received ZOP: %s to %s with id=%u\n",
+#if 0
+    output.verbose(CALL_INFO, 7, 0, "%s Received ZOP: %s to %s with id=%u\n",
                    my_name.c_str(),
                    ev->getSrcString().c_str(), 
                    ev->getDestString().c_str(),
                    ev->getID());
-
+    output.flush();
+#endif
     if (ev->getType() == SST::Forza::zopMsgT::Z_RESP) {
-        output.fatal(CALL_INFO, -2, "ZQM [%s]: Received rza response - not currently handling\n", getName().c_str());
-        //rza_responses.push_back(ev);
+        rza_response_q.push(ev);
     } else if (ev->getType() == SST::Forza::zopMsgT::Z_MSG) {
         msg_zop_q.push(ev);
     } else if (ev->getType() == SST::Forza::zopMsgT::Z_TMIG){
@@ -399,7 +389,6 @@ void ZQM::handleIncomingZOP(SST::Event *event)
         output.fatal(CALL_INFO, -2, "ZQM [%s]: Received invalid ZOP; id=%u\n", 
                      getName().c_str(),
                      ev->getID());
-        return;
     }
 }
 
@@ -591,65 +580,94 @@ void ZQM::sendSdmaToRza(ZqmMailboxMetadata *mbox_info, SST::Forza::zopEvent *ev,
 }
 #endif
 
-#if 0
-void ZQM::processRzaMsgs() {
-    /* Assumes that the Zop.Type field has already been checked via handleIncomingZop */
-    for (auto &resp: rza_responses) {
-        uint16_t inc_msg_id = resp->getID();
-        if (resp->getSrcZCID() <= (uint8_t)SST::Forza::zopCompID::Z_ZAP7){
-            handleScratchpadAck(inc_msg_id);
-        } else {
-            /*
-            output.fatal(CALL_INFO, -1, "RZA Resp %s to %s; ID=%u\n", 
-                resp->getSrcString().c_str(),
-                resp->getDestString().c_str(),
-                inc_msg_id);
-            */
-            // Let's make sure the response was expected first....
-            auto iter = rza_ret_wait_map.find(resp->getID());
-            if (iter == rza_ret_wait_map.end()){
-                output.fatal(CALL_INFO, 1, "%s: Received RZA response with an invalid ID; id=%u\n",
-                            my_name.c_str(), (uint32_t) resp->getID());
-            }
+void ZQM::sendMsgToMemory( SST::Forza::zopEvent* ev, uint64_t wr_addr, uint8_t wr_entry )
+{
+  auto msg_id = zoneMsgID->getMsgId();
+  if ( msg_id == Z_MAX_MSG_IDS ) {
+    output.fatal( CALL_INFO, -1, "[ZQM] Invalid message id\n" );
+    // Note, if this starts to show up, we can move this to before we call this function and
+    // just skip trying to send if we can't get a msg id
+  }
 
-            // Should have 4 valid types
-            switch (resp->getOpc()) {
-                case zopOpc::Z_RESP_LR: { // valid data (should be a load dma response)
-                    //output.verbose(CALL_INFO, 1, 0, "%s: Found msgId=%u (load response) in outstanding_rza_reqs map\n",
-                    //            my_name.c_str(), (uint32_t) resp->getID());
-                    //processRzaThreadDataReturn(resp);
-                    output.fatal(CALL_INFO, -2, "unexpected load data return\n");
-                    break;
-                }
-                case zopOpc::Z_RESP_LEXCP: // load exception
-                    output.output("[ERROR] %s: Received a RZA load exception\n", my_name.c_str());
-                    // TODO: Make fatal?
-                    break;
-                case zopOpc::Z_RESP_SACK: { // store ack (should be a store dma ack)
-                    output.verbose(CALL_INFO, 9, 0, "[ZQM] Found msgId=%u (store ack) in rza_ret_wait_map map\n",
-                                inc_msg_id);
-                    auto *ev = iter->second->msg;
-                    // Push zop so we can update the scratchpad
-                    update_scratchpad_q.push(ev);
-                    delete iter->second;
-                    rza_ret_wait_map.erase(iter);
-                    break;
-                }
-                case zopOpc::Z_RESP_SEXCP: // store exception
-                    output.output("[ERROR] %s: Received a RZA store exception\n", my_name.c_str());
-                    // TODO: Make fatal?
-                    break;
-                default:
-                    output.fatal(CALL_INFO, 1, "%s: Received an invalid RZA response type; opcode=%u\n",
-                                my_name.c_str(), (uint32_t) resp->getOpc());
-            }
-        }
-        zoneMsgID->clearMsgId(inc_msg_id);
-        delete resp;
-    }
-    rza_responses.clear();
+  auto *rzaMsg = new SST::Forza::zopEvent();
+  // Set packet header info
+  rzaMsg->setType(SST::Forza::zopMsgT::Z_MZOP);
+  rzaMsg->setOpc(SST::Forza::zopOpc::Z_MZOP_SDMA);
+  // Need to set DestHart to be a combo of physical hart and zap
+  uint16_t dest_hart = ( static_cast<uint16_t>( ev->getDestZCID() ) << ZAP_TO_HART_SHIFT ) + ev->getDestHart();
+  rzaMsg->setFullSrc( dest_hart, zopCompID::Z_ZQM, rzaMsg->getPCID( ZoneId ), PrecinctId );
+  setLocalRzaAsZopDest(rzaMsg);
+  rzaMsg->setID(msg_id);
+  rzaMsg->setAppID(ev->getAppID());
+  rzaMsg->setResZero( wr_entry );
+  rzaMsg->setAddr( wr_addr );
+  rzaMsg->setPayload(ev->getPayload());
+  rzaMsg->setMboxID( ev->getMbxID() );
+  rzaMsg->encodeEvent();
+  output.verbose(CALL_INFO, 9, 0, "[ZQM] %s: Send StoreDMA from ZoneId=%u with %s to %s to RZA1 msg_id=%" PRIu16 ", payload length=%" PRIu32 ", Addr=0x%" PRIx64 "\n",
+                 getName().c_str(), ZoneId, rzaMsg->getSrcString().c_str(), rzaMsg->getDestString().c_str(),
+                 msg_id, (uint32_t)ev->getPayload().size(), wr_addr );
+  zone_nic->send(rzaMsg, zopCompID::Z_MSGRZA);
 }
+
+void ZQM::processRzaMsgs() {
+
+  if ( rza_response_q.empty() )
+    return;
+
+  // Process a single one per clock tick
+  auto resp = rza_response_q.front();
+  rza_response_q.pop();
+
+  output.verbose( CALL_INFO, 5, 0, "[ZQM] %s: Received RZA Ack from %s\n", getName().c_str(), resp->getSrcString().c_str() );
+
+  if( resp->getSrcZCID() != RevCPU::safe_static_cast<uint8_t>( zopCompID::Z_MSGRZA ) ) {
+    output.fatal( CALL_INFO, -1, "[ZQM] RZA response not from RZA1\n" );
+  }
+
+  switch( resp->getOpc() ) {
+  case SST::Forza::zopOpc::Z_RESP_SACK: {
+    auto  dest_mbox = resp->getMbxID();
+    uint16_t dest_hart = resp->getDestHart() & 0x1FF;
+    uint16_t dest_zap = ( resp->getDestHart() >> ZAP_TO_HART_SHIFT ) & 0x3;
+    auto& mbox      = PerHartCSRs[dest_zap][dest_hart].mbox_buff_state[dest_mbox];
+    //output.verbose(CALL_INFO, 5, 0, "WinnerResp: [Z:H:MB:Buf]=[%u:%u:%u:%u]\n", dest_zap, dest_hart, dest_mbox, resp->getResZero() );
+    if( mbox.buff_state.at( resp->getResZero() ) != msgBuffState::FILLING ) {
+      output.fatal( CALL_INFO, -1, "[ZQM] Buffer state not FILLING\n" );
+    }
+    mbox.buff_state.at( resp->getResZero() ) = msgBuffState::READY;
+    break;
+  }
+  default:
+    output.fatal(
+      CALL_INFO, 1, "%s: Received an invalid RZA response type; opcode=%u\n", my_name.c_str(), (uint32_t) resp->getOpc()
+    );
+  }
+
+  zoneMsgID->clearMsgId( resp->getID() );
+  delete resp;
+
+  // Keep the stuff below until either a) used/replaced or b) determined as not needed and safe to delete
+#if 0
+    switch( resp->getOpc() ) {
+    case zopOpc::Z_RESP_LR: {  // valid data (should be a load dma response)
+      //output.verbose(CALL_INFO, 1, 0, "%s: Found msgId=%u (load response) in outstanding_rza_reqs map\n",
+      //            my_name.c_str(), (uint32_t) resp->getID());
+      //processRzaThreadDataReturn(resp);
+      output.fatal( CALL_INFO, -2, "unexpected load data return\n" );
+      break;
+    }
+    case zopOpc::Z_RESP_LEXCP:  // load exception
+      output.output( "[ERROR] %s: Received a RZA load exception\n", my_name.c_str() );
+      // TODO: Make fatal?
+      break;
+    case zopOpc::Z_RESP_SEXCP:  // store exception
+      output.output( "[ERROR] %s: Received a RZA store exception\n", my_name.c_str() );
+      // TODO: Make fatal?
+      break;
+    }
 #endif
+}
 
 // TODO: This needs further testing with actual data.
 #if 0
@@ -671,20 +689,38 @@ void ZQM::processRzaThreadDataReturn(SST::Forza::zopEvent *ev)
 }
 #endif
 
+void ZQM::convertLogicPEToPhysPE( zopEvent* msg ) {
+  auto dest_aid = msg->getAppID();
+  auto logical_pe = msg->getDestHart();
+
+  std::pair logic_dest(dest_aid, logical_pe);
+  auto iter = LogicalToPhysicalMap.find(logic_dest);
+  if ( iter == LogicalToPhysicalMap.end() )
+    output.fatal(CALL_INFO, -1, "[ZQM] %s incoming msg zop - no mapping found. aid=%" PRIu8 ", logical_pe=%" PRIu16 "\n",
+                 getName().c_str(), dest_aid, logical_pe );
+
+  output.verbose(CALL_INFO, 9, 0, "[ZQM] %s incoming msg zop - mapping found. aid=%" PRIu8 ", logical_pe=%" PRIu16 ", zap=%" PRIu8 ", hart=%" PRIu16 "\n",
+                 getName().c_str(), dest_aid, logical_pe, iter->second.first, iter->second.second );
+
+  // Update the zop to be the physical zap and hart
+  msg->setDestZCID(iter->second.first);
+  msg->setDestHart(iter->second.second);
+}
+
 void ZQM::processMessagingMsgs()
 {
     if (msg_zop_q.empty())
         return;
 
-    for ( unsigned i = 0; i < process_per_cycle; i++ ) {
+    for ( unsigned i = 0; i < processPerCycle; i++ ) {
         auto *event = msg_zop_q.front();
         output.verbose(CALL_INFO, 9, 0, "%s: Processing messaging packet id=%u for ZQM\n", my_name.c_str(), event->getID() );
         switch(event->getOpc()){
             case zopOpc::Z_MSG_SENDP:{
-                IncomingMsgQueue.push(event);
-                break;}
-                // TODO: Add ZQM Free AID (or equivalent)
-                // TODO: Add ZQM Set HART (needed for initial program thread)
+                convertLogicPEToPhysPE(event);
+                IncomingMsgQueues[event->getMbxID()].mbox_queue.push({event, 0});
+                //MsgsRecd->addData( 1 );
+                break; }
             default:
                 output.fatal(CALL_INFO, -1, "%s: Received an invalid messaging packet; opcode = 0x%x, id=%u\n",
                              my_name.c_str(), (uint32_t) event->getOpc(), (uint32_t)event->getID());
@@ -695,42 +731,28 @@ void ZQM::processMessagingMsgs()
     }
 }
 
-#if 0
-void ZQM::sendACK(SST::Forza::zopEvent *ev, bool to_zone_noc)
-{
-    SST::Forza::zopEvent *ack = new SST::Forza::zopEvent();
-    ack->setType(SST::Forza::zopMsgT::Z_MSG);
-    ack->setOpc(SST::Forza::zopOpc::Z_MSG_ACK);
-    setMeAsZopSrc(ack);
-    setDestFromSrcInfo(ack, ev);
-    ack->setID(ev->getID());
-    ack->encodeEvent();
-    //auto iface = (to_zone_noc) ? zone_nic : m_prec_iface;
-    auto iface = zone_nic;
-    iface->send(ack, (zopCompID)ack->getDestZCID(), (zopPrecID)ack->getDestPCID(), (uint16_t)ack->getDestPrec());
-    output.verbose(CALL_INFO, 9, 0, "[ZQM] %s sending ACK with msg_id=%" PRIu16 " to %s\n",
-                    getName().c_str(), ev->getID(), ack->getDestString().c_str());
-}
-#endif
-
 void ZQM::sendZopAck(SST::Forza::zopEvent *event, zopMsgT msg_type, zopOpc msg_opc)
 {
     // Note: Caller handles what happens to event
-    // Create zop
     SST::Forza::zopEvent *ack_msg = new SST::Forza::zopEvent(msg_type, msg_opc);
-
+#if 0
+    if ( msg_opc == zopOpc::Z_MSG_ACK )
+      AcksSent->addData( 1 );
+    else
+      NacksSent->addData( 1 );
+#endif
+    
     // Set src/dest info
-    event->decodeEvent();
     setMeAsZopSrc(ack_msg);
     setDestFromSrcInfo(ack_msg, event);
     ack_msg->setID(event->getID());
     ack_msg->setAppID(event->getAppID());
     ack_msg->setMboxID(event->getMbxID());
-    ack_msg->setID(event->getID());
+    ack_msg->encodeEvent();
 
     zone_nic->send(ack_msg, static_cast<zopCompID>(ack_msg->getDestZCID()));
     std::string str = ack_msg->msgTToStr(msg_type);
-    output.verbose(CALL_INFO, 9, 0, "ZQM [%s] sending ack %s:%u with msg_id=%" PRIu16 " from %s to %s\n",
+    output.verbose(CALL_INFO, 9, 0, "ZQM [%s] sending (N)ACK %s:%u with msg_id=%" PRIu16 " from %s to %s\n",
                     getName().c_str(), str.c_str(), (uint8_t)msg_opc, event->getID(), ack_msg->getSrcString().c_str(), 
                     ack_msg->getDestString().c_str());
 }
@@ -740,7 +762,7 @@ void ZQM::processTMigMsgs()
     if ( tmig_zop_q.empty() )
         return;
 
-    for ( unsigned i = 0; i < process_per_cycle; i++ ) {
+    for ( unsigned i = 0; i < processPerCycle; i++ ) {
         auto *event = tmig_zop_q.front();
         tmig_zop_q.pop();
         output.verbose(CALL_INFO, 7, 0, "ZQM [%s]: Processing tmig packet id=%u for ZQM\n", getName().c_str(), event->getID() );
@@ -779,13 +801,12 @@ void ZQM::sendThreadToZap()
 
 bool ZQM::clock(Cycle_t cycle)
 {
-    // Ring related
-    updateMailboxes();
+    selectInMboxQueue();
+    updateInMboxQueue();
 
     sendThreadToZap();
     //processIncomingThreadsMsgs();
-    //notifyHARTScratchpad();
-    //processRzaMsgs();
+    processRzaMsgs();
     processMessagingMsgs();
     processTMigMsgs();
 
