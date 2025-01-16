@@ -1,7 +1,7 @@
 //
 // _RevCoProc_cc_
 //
-// Copyright (C) 2017-2024 Tactical Computing Laboratories, LLC
+// Copyright (C) 2017-2025 Tactical Computing Laboratories, LLC
 // All Rights Reserved
 // contact@tactcomplabs.com
 //
@@ -43,7 +43,8 @@ bool RevCoProc::sendSuccessResp( Forza::zopAPI* zNic, Forza::zopEvent* zev, uint
   rsp_zev->setType( SST::Forza::zopMsgT::Z_RESP );
   rsp_zev->setID( zev->getID() );
   rsp_zev->setOpc( SST::Forza::zopOpc::Z_RESP_SACK );
-  rsp_zev->setAppID( 0 );
+  rsp_zev->setAppID( zev->getAppID() );
+  rsp_zev->setResZero( zev->getResZero() );
   rsp_zev->setDestHart( zev->getSrcHart() );
   rsp_zev->setDestZCID( zev->getSrcZCID() );
   rsp_zev->setDestPCID( zev->getSrcPCID() );
@@ -52,8 +53,14 @@ bool RevCoProc::sendSuccessResp( Forza::zopAPI* zNic, Forza::zopEvent* zev, uint
   rsp_zev->setSrcZCID( (uint8_t) ( zNic->getEndpointType() ) );
   rsp_zev->setSrcPCID( (uint8_t) ( zNic->getPCID( zNic->getZoneID() ) ) );
   rsp_zev->setSrcPrec( (uint8_t) ( zNic->getPrecinctID() ) );
+  rsp_zev->setResZero( zev->getResZero() );
+  rsp_zev->setMboxID( zev->getMbxID() );
 
   // no payload
+  //if (zev->getOpc() == SST::Forza::zopOpc::Z_MZOP_SDMA) {
+  //output->verbose(CALL_INFO, 5, 0, "Received SDMA from %s to %s\n", zev->getSrcString().c_str(), zev->getDestString().c_str() );
+  //output->verbose(CALL_INFO, 5, 0, "Sending RESP_SACK from %s to %s\n", rsp_zev->getSrcString().c_str(), rsp_zev->getDestString().c_str() );
+  //}
 
   // inject the packet
   zNic->send( rsp_zev, ( SST::Forza::zopCompID )( zev->getSrcZCID() ) );
@@ -93,6 +100,7 @@ bool RevCoProc::sendSuccessResp( Forza::zopAPI* zNic, Forza::zopEvent* zev, uint
   std::vector<uint64_t> payload;
   payload.push_back( Data );  // load response data
   rsp_zev->setPayload( payload );
+  rsp_zev->encodeEvent();
 
   // inject the packet
   zNic->send( rsp_zev, ( SST::Forza::zopCompID )( zev->getSrcZCID() ) );
@@ -265,7 +273,7 @@ bool RZALSCoProc::handleMZOP( Forza::zopEvent* zev, bool& flag ) {
 
   // this is the actual number of data flits
   // these variables are only used for the DMA store operations
-  uint32_t RealFlitLen = (uint32_t) ( zev->getLength() - Forza::Z_NUM_HEADER_FLITS );
+  uint32_t RealFlitLen = (uint32_t) ( zev->getLength() );
   uint8_t* Buf         = nullptr;
   uint32_t i, j, cur = 0;
 
@@ -286,7 +294,8 @@ bool RZALSCoProc::handleMZOP( Forza::zopEvent* zev, bool& flag ) {
 
   // used only for load operations
   MemReq req{
-    Addr, (uint16_t) ( Rs2 ), RevRegClass::RegGPR, Forza::Z_MZOP_PIPE_HART, MemOp::MemOpREAD, true, MarkLoadCompleteFunc };
+    Addr, (uint16_t) ( Rs2 ), RevRegClass::RegGPR, Forza::Z_MZOP_PIPE_HART, MemOp::MemOpREAD, true, MarkLoadCompleteFunc
+  };
 
   // set the address
   Alloc.SetX( Rs1, Addr );

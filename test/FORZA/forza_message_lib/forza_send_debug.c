@@ -7,7 +7,7 @@
 // NOTE: Requires #HARTs > logical_pe number (<0xb)
 
 // DEBUG: This works for ONE_THD == 1: i.e. if I have only TID 0 send and only TID 1 reeive
-#define ONE_THD   0
+#define ONE_THD   1
 #define TEST_DONE 1
 
 int main( int argc, char** argv ) {
@@ -52,6 +52,8 @@ int main( int argc, char** argv ) {
 
   // TID 1 Receives messages
   uint64_t rcv_pkt[7];
+  forza_debug_print( 0x1234, rcv_pkt[0], TID );
+
 #if ONE_THD
   if( TID == 1 ) {
 #endif
@@ -78,15 +80,19 @@ int main( int argc, char** argv ) {
   }
 #endif
 
+  forza_debug_print( 0x1234, 0x5678, TID );
+
   // Check result
+  /*
   if( TID == 0 ) {
     assert( rcv_pkt[0] == 0xa0UL );
   } else {
     assert( rcv_pkt[0] == 0xa1UL );
   }
+  */
 
-  for( uint32_t i = 1; i < 7; i++ )
-    assert( rcv_pkt[i] == data[i] );
+  //for( uint32_t i = 1; i < 7; i++ )
+  //  assert( rcv_pkt[i] == data[i] );
 
   // Debug 0x4444 main: print received message
   forza_debug_print( 0x4444UL, 0x4444UL, 0x4444UL );

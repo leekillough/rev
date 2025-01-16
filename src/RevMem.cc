@@ -196,7 +196,7 @@ void RevMem::AddToTLB( uint64_t vAddr, uint64_t physAddr ) {
     // Insert the vAddr and physAddr into the TLB and LRU list
     LRUQueue.push_front( vAddr );
     TLB.insert( {
-      vAddr, {physAddr, LRUQueue.begin()}
+      vAddr, { physAddr, LRUQueue.begin() }
     } );
   }
 }
@@ -1000,28 +1000,38 @@ bool RevMem::ZOP_READMem( uint32_t Hart, uint64_t Addr, size_t Len, void* Target
   // create a new event
   SST::Forza::zopEvent* zev = new SST::Forza::zopEvent();
 
+  uint64_t memSeg           = ( Addr >> Z_SEG_SHIFT ) & Z_SEG_MASK;
   // set all the fields : FIXME
   zev->setType( SST::Forza::zopMsgT::Z_MZOP );
   zev->setID( uint16_t( Hart ) );  // -- we set this to the Hart temporarily.  The zNic will set the actual message ID
   zev->setOpc( memToZOP( uint32_t( flags ), Len, false ) );
   zev->setAppID( 0 );
   zev->setDestHart( Forza::Z_MZOP_PIPE_HART );
-  zev->setDestZCID( (uint8_t) ( SST::Forza::zopCompID::Z_RZA ) );
+  Forza::zopCompID end_dest = ( Forza::zopCompID::Z_RZA );
+  if( memSeg == 0x0F )  // In hardware, this would get set to ring level 3 as well
+    end_dest = ( Forza::zopCompID::Z_MSGRZA );
+  zev->setDestZCID( (uint8_t) end_dest );
   zev->setDestPCID( (uint8_t) ( zNic->getPCID( zNic->getZoneID() ) ) );
   zev->setDestPrec( (uint8_t) ( zNic->getPrecinctID() ) );
   zev->setSrcHart( uint16_t( Hart ) );
   zev->setSrcZCID( (uint8_t) ( zNic->getEndpointType() ) );
   zev->setSrcPCID( (uint8_t) ( zNic->getPCID( zNic->getZoneID() ) ) );
   zev->setSrcPrec( (uint8_t) ( zNic->getPrecinctID() ) );
-  zev->setAddr( Addr );
+  zev->setAddr( ( Addr & Z_ADDR_MASK ) );
 
   zev->setMemReq( req );
   zev->setTarget( static_cast<uint64_t*>( Target ) );
 
   // no payload
+  /*
+  if ( memSeg == 0x0F ) {
+    output->verbose(CALL_INFO, 5, 0, "Send MZOP packet %s to %s; Addr=0x%" PRIx64 "\n",
+      zev->getSrcString().c_str(), zev->getDestString().c_str(), (Addr & Z_ADDR_MASK) );
+  }
+  */
 
   // inject the new packet
-  zNic->send( zev, SST::Forza::zopCompID::Z_RZA );
+  zNic->send( zev, end_dest );
 
   return true;
 }

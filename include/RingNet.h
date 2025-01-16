@@ -1,7 +1,7 @@
 //
 // _ZOPNet_h_
 //
-// Copyright (C) 2017-2024 Tactical Computing Laboratories, LLC
+// Copyright (C) 2017-2025 Tactical Computing Laboratories, LLC
 // All Rights Reserved
 // contact@tactcomplabs.com
 //
@@ -30,7 +30,7 @@ namespace SST::Forza {
 // Preprocessor defs
 // --------------------------------------------
 
-inline constexpr uint64_t NUM_MBOXES                 = 8;
+inline constexpr uint8_t  NUM_MBOXES                 = 8;
 inline constexpr uint64_t ACTOR_MSG_LENGTH           = 8;
 
 // CSR registers used by the ZEN
@@ -101,6 +101,8 @@ inline constexpr uint64_t ZENEQC_MASK_RETRYNUM       = 0x01fff;
 inline constexpr uint64_t ZENEQC_MASK_MSGCLR         = 0x1;
 
 inline constexpr uint64_t ZENSTAT_SHIFT_SPNBUSY      = 32;
+inline constexpr uint64_t ZENSTAT_SHIFT_SEQNUMAVAIL  = 17;
+inline constexpr uint64_t ZENSTAT_MASK_SEQNUMAVAIL   = 0x03fffUL;  //14 bit field
 
 /**
  * Assumed format when updating the ZQM MBOXREG CSR:
@@ -130,8 +132,7 @@ inline constexpr uint64_t ZQMMBOXREG_MASK_AID        = 0x0F;
 enum class ringMsgT : uint8_t {
   R_RETDATA = 0b00,  /// Forza RETURN DATA
   R_READ    = 0b01,  /// Forza READ
-  R_RMW     = 0b10,  /// Forza RMW
-  R_UPDATE  = 0b11,  /// Forza UPDATE
+  R_UPDATE  = 0b10,  /// Forza UPDATE
 };
 
 // --------------------------------------------
@@ -238,12 +239,12 @@ public:
   // ringEvent: event serializer
   void serialize_order( SST::Core::Serialization::serializer& ser ) override {
     Event::serialize_order( ser );
-    ser& SrcComp;
-    ser& Hart;
-    ser& DestComp;
-    ser& Type;
-    ser& CSR;
-    ser& Datum;
+    ser & SrcComp;
+    ser & Hart;
+    ser & DestComp;
+    ser & Type;
+    ser & CSR;
+    ser & Datum;
   }
 
   // ringEvent: implements the nic serialization

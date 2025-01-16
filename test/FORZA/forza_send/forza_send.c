@@ -2,6 +2,11 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
+
+/**
+* NOTE: THIS EXAMPLE CODE IS INTENDED AS A TWO-ZAP, SINGLE ZONE EXAMPLE
+*/
 
 #define assert( x )               \
   do                              \
@@ -12,8 +17,6 @@
 
 int main( int argc, char** argv ) {
   uint64_t TID = forza_get_my_zap();
-  //if (TID != 0)
-  //  return 0;
 
   if( forza_get_my_zone() != 0 )
     return 0;
@@ -31,7 +34,7 @@ int main( int argc, char** argv ) {
     logical_pe = 0x93UL;
 #endif
 
-  forza_debug_print( logical_pe, TID, abba /*0xcafe*/ );
+  forza_debug_print( logical_pe, TID, abba );
   // forza_zqm_setup( logical_pe, n_mailboxes );
   forza_zqm_setup( logical_pe, 6 );
 
@@ -52,13 +55,16 @@ int main( int argc, char** argv ) {
     forza_debug_print( 0xabcd, cntrs, 0xcdef );
   }
 
-  uint64_t msg_array[9] = { 0 };
-  abba                  = forza_read_zqm_status();
+  uint64_t  msg_array[9] = { 0x0123456789 };
+  uint64_t* msg_ptr;
+  abba = forza_read_zqm_status();
   if( TID == 1 ) {
     while( abba == 0 )
       abba = forza_read_zqm_status();
-    for( unsigned i = 0; i < 8; i++ )
-      msg_array[i] = forza_receive_word( 1 );  // dest_mbox above == 1
+    msg_ptr = (uint64_t*) forza_receive_word( 1, false );
+    memcpy( msg_array, msg_ptr, 6 * sizeof( uint64_t ) );
+    abba    = forza_read_zqm_status();
+    msg_ptr = (uint64_t*) forza_receive_word( 1, true );
   }
   forza_debug_print( logical_pe, 0xcafe, abba );
   for( unsigned i = 0; i < 9; i = i + 3 )

@@ -59,8 +59,8 @@ public:
   /// nicEvent: event serializer
   void serialize_order( SST::Core::Serialization::serializer& ser ) final {
     Event::serialize_order( ser );
-    ser& SrcName;
-    ser& Data;
+    ser & SrcName;
+    ser & Data;
   }
 
   /// nicEvent: implements the NIC serialization

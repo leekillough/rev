@@ -47,7 +47,8 @@ EcallStatus RevCore::EcallLoadAndParseString( uint64_t straddr, std::function<vo
         HartToExecID,
         MemOp::MemOpREAD,
         true,
-        [=]( const MemReq& req ) { this->MarkLoadComplete( req ); } };
+        [=]( const MemReq& req ) { this->MarkLoadComplete( req ); }
+      };
       LSQueue->insert( req.LSQHashPair() );
       mem->ReadVal( HartToExecID, straddr + EcallState.string.size(), EcallState.buf.data(), req, RevFlag::F_NONE );
       EcallState.bytesRead = 1;
@@ -3918,12 +3919,10 @@ EcallStatus RevCore::ECALL_forza_send_word() {
       static_cast<uint8_t>( ring_ev->getOp() )
     );
     zoneRing->send( ring_ev, next_dest );
-    output->verbose( CALL_INFO, 5, 0, "SENDING RING MESSAGE, next addr = %" PRIu64 "\n", next_dest );
   } else {
     output->verbose( CALL_INFO, 5, 0, "[ERROR] NO RING NETWORK\n" );
     delete ring_ev;
   }
-
   return EcallStatus::SUCCESS;
 
 #if 0
@@ -4124,18 +4123,17 @@ EcallStatus RevCore::ECALL_forza_receive_word() {
     HartToExecID
   );
   output->flush();
-  uint64_t mbox_id               = (uint64_t) RegFile->GetX<uint64_t>( RevReg::a0 );
-  // TODO: ensure mbox_id 0 <= mbox_id <= 7
-  uint64_t reg_id                = Forza::R_ZQMDQ_0 + mbox_id;
+  uint64_t mbox_id     = (uint64_t) RegFile->GetX<uint64_t>( RevReg::a0 );
+  // Assuming s/w above this is checking that the mbox_id is valid
+  bool     release_msg = (bool) RegFile->GetX<bool>( RevReg::a1 );
+  uint64_t reg_id      = Forza::R_ZQMDQ_0 + mbox_id;
 
-  SST::Forza::ringEvent* ring_ev = new SST::Forza::ringEvent(
-    zNic->getEndpointType(),
-    uint16_t( HartToExecID ),
-    SST::Forza::zopCompID::Z_ZQM,
-    SST::Forza::ringMsgT::R_READ,
-    uint16_t( reg_id ),
-    0
-  );
+  Forza::ringMsgT rt   = Forza::ringMsgT::R_READ;
+  if( release_msg )
+    rt = Forza::ringMsgT::R_UPDATE;
+
+  SST::Forza::ringEvent* ring_ev =
+    new SST::Forza::ringEvent( zNic->getEndpointType(), HartToExecID, SST::Forza::zopCompID::Z_ZQM, rt, reg_id, 0 );
 
   if( zoneRing ) {
     int64_t next_dest = zoneRing->getNextAddress();
@@ -4154,7 +4152,8 @@ EcallStatus RevCore::ECALL_forza_receive_word() {
     delete ring_ev;
   }
 
-  DependencySet( HartToExecID, RevReg::a0, RevRegClass::RegGPR );
+  if( !release_msg )
+    DependencySet( HartToExecID, RevReg::a0, RevRegClass::RegGPR );
   return EcallStatus::SUCCESS;
 }
 
@@ -4408,6 +4407,7 @@ EcallStatus RevCore::ECALL_forza_debug_print() {
   uint64_t b = RegFile->GetX<uint64_t>( RevReg::a1 );
   uint64_t c = RegFile->GetX<uint64_t>( RevReg::a2 );
 
+  output->flush();
   output->verbose(
     CALL_INFO,
     2,
@@ -4422,6 +4422,7 @@ EcallStatus RevCore::ECALL_forza_debug_print() {
     b,
     c
   );
+  output->flush();
   return EcallStatus::SUCCESS;
 }
 

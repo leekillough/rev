@@ -8,6 +8,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
 
 #define assert( x )               \
   do                              \
@@ -19,6 +20,25 @@
 #define DEBUG         0
 #define NMBOX         8UL  // HW restricts the number of mailboxes to 8
 #define ZQM_COMPONENT 0UL
+
+static uint64_t ACTOR_MSG_MBXID_SHIFT    = 33;
+static uint64_t ACTOR_MSG_DESTPREC_SHIFT = 20;
+static uint64_t ACTOR_MSG_DESTZONE_SHIFT = 16;
+
+/**
+*  Actor message control word format:
+* Message Clear [63]    (1b; only used by ZEN, reserved when the msg is sent)
+* RESERVED [62:61]
+* Retry Sequence Number [60:48] (13b) (Provided by ZEN)
+* Message Opcode [47:40]   (8b; filled by RTL)
+* Message AID [39:36] (4b; filled by RTL)
+* RESERVED [35]
+* Destination Mailbox [34:32]  (3b)
+* Destination Precinct [31:19] (13b)
+* Destination Zone[18:15]   (4b)
+* Destination Zone Component [14:11]   (4b; always ZQM and filled by HW)
+* Destination Logical PE [10:0] (11b)
+*/
 
 /**
  * @brief Message op types
@@ -238,9 +258,9 @@ uint32_t forza_send( uint64_t mb_id, void* pkt, uint64_t precinct, uint64_t zone
     forza_send_word( data[i], false );
 
   // Create the control word
-  uint64_t ctrl_word = mb_id << 33;
-  ctrl_word |= precinct << 20;
-  ctrl_word |= zone << 16;
+  uint64_t ctrl_word = mb_id << ACTOR_MSG_MBXID_SHIFT;
+  ctrl_word |= precinct << ACTOR_MSG_DESTPREC_SHIFT;
+  ctrl_word |= zone << ACTOR_MSG_DESTZONE_SHIFT;
   //ctrl_word |= ZQM_COMPONENT << 12;
   ctrl_word |= logical_pe;
   forza_send_word( ctrl_word, true );
@@ -428,7 +448,7 @@ uint32_t forza_message_receive( uint64_t mb_id, uint64_t* pkt, size_t pkt_size )
 #if DEBUG
   char msg[55] = "\ndebug: forza_message_receive: full zqmstat\n";
   rev_write( STDOUT_FILENO, msg, sizeof( msg ) );
-  forza_debug_print( zqmstat, 0UL, 0UL );
+  forza_debug_print( zqmstat, 0UL, 0x89abUL );
 #endif
 
   // Check Error
@@ -450,12 +470,12 @@ uint32_t forza_message_receive( uint64_t mb_id, uint64_t* pkt, size_t pkt_size )
   }
 
   // Read control word and check op
-  uint64_t ctrl_word = forza_receive_word( mb_id );
-  uint64_t msg_op    = ( ctrl_word & MSG_OP_MASK ) >> 40;
+  uint64_t* msgmem_ptr = (uint64_t*) forza_receive_word( mb_id, false );
+  uint64_t  ctrl_word  = *msgmem_ptr;
+  uint64_t  msg_op     = ( ctrl_word & MSG_OP_MASK ) >> 40;
   if( msg_op == DIRECT_OP ) {
     // Read all 7 data words for now (ignore packet size)
-    for( uint32_t i = 0; i < 7; i++ )
-      pkt[i] = forza_receive_word( mb_id );
+    memcpy( pkt, ( msgmem_ptr + 1 ), 7 * sizeof( uint64_t ) );
 
 // Debug 0x3333 receive: msg_op and ZQM status
 #if DEBUG
@@ -465,6 +485,8 @@ uint32_t forza_message_receive( uint64_t mb_id, uint64_t* pkt, size_t pkt_size )
     }
     //forza_debug_print( 0x3333, msg_op, zqmstat );
 #endif
+    // Advance the message pointer
+    forza_receive_word( mb_id, true );
     return SUCCESS;
   } else if( msg_op == INDIRECT_OP ) {
     // Debug 0x3333 receive: msg_op and ZQM status
@@ -475,17 +497,14 @@ uint32_t forza_message_receive( uint64_t mb_id, uint64_t* pkt, size_t pkt_size )
     forza_debug_print( 0x3333, msg_op, zqmstat );
     assert( 0 );  // INDIRECT msg op not yet supported
   } else if( msg_op == DONE_OP ) {
-#if 1  // Unused for now, but may want it later for message counts
-    // Read all 7 data words and dump them
-    uint64_t tmp;
-    for( uint32_t i = 0; i < 7; i++ )
-      tmp = forza_receive_word( mb_id );
-#endif
 #if DEBUG
     char msg[40] = "\ndebug: forza_message_receive: DONE_OP\n";
     rev_write( STDOUT_FILENO, msg, sizeof( msg ) );
     //forza_debug_print( 0x3333, msg_op, zqmstat );
 #endif
+    forza_debug_print( 0x3456, msg_op, zqmstat );
+    // Advance the message pointer
+    forza_receive_word( mb_id, true );
     return DONE_MSG;
   } else {
     {

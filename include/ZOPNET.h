@@ -49,6 +49,7 @@ inline constexpr uint64_t Z_SHIFT_OPC        = 32;
 inline constexpr uint64_t Z_SHIFT_MBXID      = 40;
 inline constexpr uint64_t Z_SHIFT_SEQNUM     = 43;
 inline constexpr uint64_t Z_SHIFT_FLITLEN    = 47;
+inline constexpr uint64_t Z_SHIFT_RESZERO    = 51;  // Use for the wr_buffer id in the ZQM - simulation artifact
 inline constexpr uint64_t Z_SHIFT_TYPE       = 59;
 // Rest of flit 1
 inline constexpr uint64_t Z_SHIFT_APPID      = 32;
@@ -58,15 +59,16 @@ inline constexpr uint64_t Z_SHIFT_MSGID      = 38;
 inline constexpr uint64_t Z_SHIFT_ADDR       = 0;
 
 // Src/Dest masks
-inline constexpr uint64_t Z_MASK_HARTID      = 0b11111111111;
+inline constexpr uint64_t Z_MASK_HARTID      = 0b11111111111;  //0x7ff
 inline constexpr uint64_t Z_MASK_ZCID        = 0b1111;
 inline constexpr uint64_t Z_MASK_PCID        = 0b1111;
-inline constexpr uint64_t Z_MASK_PRECINCT    = 0b1111111111111;
+inline constexpr uint64_t Z_MASK_PRECINCT    = 0b1111111111111;  //0x1fff
 // Rest of flit 0
 inline constexpr uint64_t Z_MASK_OPC         = 0b11111111;
 inline constexpr uint64_t Z_MASK_MBXID       = 0b111;
 inline constexpr uint64_t Z_MASK_SEQNUM      = 0b1111;
 inline constexpr uint64_t Z_MASK_FLITLEN     = 0b1111;
+inline constexpr uint64_t Z_MASK_RESZERO     = 0b11111111;  // 0xff
 inline constexpr uint64_t Z_MASK_TYPE        = 0b11111;
 // Rest of flit 1
 inline constexpr uint64_t Z_MASK_APPID       = 0b1111;
@@ -90,6 +92,7 @@ inline constexpr uint64_t Z_FLIT_ADDR        = 2;
 inline constexpr uint64_t Z_FLIT_DATA        = 3;
 inline constexpr uint64_t Z_FLIT_DATA_RESP   = 3;
 inline constexpr uint64_t Z_FLIT_SENSE       = 3;
+inline constexpr uint64_t Z_FLIT_RESZERO     = 0;
 
 inline constexpr uint64_t Z_MZOP_PIPE_HART   = 0;
 inline constexpr uint64_t Z_HZOP_PIPE_HART   = 1;
@@ -140,7 +143,7 @@ enum class zopOpc : uint8_t {
   Z_MZOP_SSB           = 0b00001100,  /// zopOpc: MZOP Store signed byte
   Z_MZOP_SSH           = 0b00001101,  /// zopOpc: MZOP Store signed half
   Z_MZOP_SSW           = 0b00001110,  /// zopOpc: MZOP Store signed word
-  Z_MZOP_SDMA          = 0b00001111,  /// zopOpc: MSOP Store DMA
+  Z_MZOP_SDMA          = 0b00001111,  /// zopOpc: MZOP Store DMA
 
   // Next three are not currently implemented
   //Z_MZOP_MCOPY_RD     = 0b11100111,  /// zopOpc: MZOP MCOPY Read
@@ -398,7 +401,6 @@ enum class zopOpc : uint8_t {
 
   // -- MESSAGING --
   Z_MSG_SENDP          = 0b00000000,  /// zopOpc: MESSAGING Send with payload
-  //Z_MSG_SENDAS        = 0b00000001,  /// zopOpc: MESSAGING Send with address and size -- Unused; Delete?
   Z_MSG_ACK            = 0b11110000,  /// zopOpc: MESSAGING Send Ack
   Z_MSG_NACK           = 0b11110001,  /// zopOpc: MESSAGING Send Nack
   Z_MSG_EXCP           = 0b11110010,  /// zopOpc: MESSAGING Send exception
@@ -451,7 +453,7 @@ enum class zopCompID : uint8_t {
   Z_ZAP2     = 0b00000010,  /// zopCompID: ZAP2
   Z_ZAP3     = 0b00000011,  /// zopCompID: ZAP3
   Z_RZA      = 0b00001000,  /// zopCompID: RZA
-  // TODO: Eventually add multiple RZAs
+  Z_MSGRZA   = 0b00001001,  /// zopCompID: RZA1 - for ZEN and ZQM messaging (run queue to be added still)
   Z_ZQM      = 0b00001010,  /// zopCompID: ZQM // RTL value is 9
   Z_ZEN      = 0b00001100,  /// zopCompID: ZEN // RTL value is 8
   Z_PREC_ZIP = 0b00001110,  /// zopCompID: PRECINCT ZIP - update doc?
@@ -617,6 +619,9 @@ public:
   /// zopEvent: set the destination hart
   void setDestHart( uint16_t H ) { DestHart = H; }
 
+  /// zopEvent: set the reserved field in flit 0
+  void setResZero( uint8_t RZ ) { ResZero = RZ; }
+
   /// zopEvent: set the destination ZCID
   template<typename T>
   void setDestZCID( T Z ) {
@@ -670,14 +675,14 @@ public:
   void setFullSrc( uint16_t Hart, zopCompID zoneComp, zopPrecID precComp, uint16_t Prec ) {
     SrcHart = Hart;
     SrcZCID = RevCPU::safe_static_cast<uint8_t>( zoneComp );
-    SrcPrec = RevCPU::safe_static_cast<uint8_t>( precComp );
+    SrcPCID = RevCPU::safe_static_cast<uint8_t>( precComp );
     SrcPrec = Prec;
   }
 
   void setFullDest( uint16_t Hart, zopCompID zoneComp, zopPrecID precComp, uint16_t Prec ) {
     DestHart = Hart;
     DestZCID = RevCPU::safe_static_cast<uint8_t>( zoneComp );
-    DestPrec = RevCPU::safe_static_cast<uint8_t>( precComp );
+    DestPCID = RevCPU::safe_static_cast<uint8_t>( precComp );
     DestPrec = Prec;
   }
 
@@ -720,8 +725,8 @@ public:
   /// zopEvent: get the packet type
   zopMsgT getType() { return Type; }
 
-  /// zopEvent: get the payload length - does NOT include the two header words
-  uint8_t getLength() { return Length; }
+  /// zopEvent: get the payload length
+  uint8_t getLength() { return Packet.size() - Z_NUM_HEADER_FLITS; }
 
   /// zopEvent: get which flit this is in the transaction
   uint8_t getSeqNum() { return SeqNum; }
@@ -743,6 +748,9 @@ public:
 
   /// zopEvent: get the dest address
   uint64_t getAddr() { return Addr; }
+
+  /// zopEvent: get the reserved field from flit 0
+  uint8_t getResZero() { return ResZero; }
 
   /// zopEvent: determine whether the fence has been encountered
   bool getFence() { return FenceEncountered; }
@@ -776,6 +784,7 @@ public:
     Type     = (zopMsgT) ( ( Packet[Z_FLIT_TYPE] >> Z_SHIFT_TYPE ) & Z_MASK_TYPE );
     AppID    = (uint8_t) ( ( Packet[Z_FLIT_APPID] >> Z_SHIFT_APPID ) & Z_MASK_APPID );
     RingLvl  = (uint8_t) ( ( Packet[Z_FLIT_RINGLVL] >> Z_SHIFT_RINGLVL ) & Z_MASK_RINGLVL );
+    ResZero  = (uint8_t) ( ( Packet[Z_FLIT_RESZERO] >> Z_SHIFT_RESZERO ) & Z_MASK_RESZERO );
 
     SrcHart  = (uint16_t) ( ( Packet[Z_FLIT_SRC] >> Z_SHIFT_HARTID ) & Z_MASK_HARTID );
     SrcZCID  = (uint8_t) ( ( Packet[Z_FLIT_SRC] >> Z_SHIFT_ZCID ) & Z_MASK_ZCID );
@@ -787,6 +796,9 @@ public:
 
   /// zopEvent: encode this event and set the appropriate internal packet structures
   void encodeEvent() {
+    for( uint8_t i = 0; i < Z_NUM_HEADER_FLITS; i++ ) {
+      Packet[i] = 0;  // ensure any "old" data is cleared out
+    }
     Length = uint8_t( Packet.size() - Z_NUM_HEADER_FLITS );
     Packet[Z_FLIT_DEST] |= ( (uint64_t) ( DestHart & Z_MASK_HARTID ) << Z_SHIFT_HARTID );
     Packet[Z_FLIT_DEST] |= ( (uint64_t) ( DestZCID & Z_MASK_ZCID ) << Z_SHIFT_ZCID );
@@ -801,6 +813,7 @@ public:
     Packet[Z_FLIT_TYPE] |= ( ( RevCPU::safe_static_cast<uint64_t>( Type ) & Z_MASK_TYPE ) << Z_SHIFT_TYPE );
     Packet[Z_FLIT_APPID] |= ( (uint64_t) ( AppID & Z_MASK_APPID ) << Z_SHIFT_APPID );
     Packet[Z_FLIT_RINGLVL] |= ( (uint64_t) ( RingLvl & Z_MASK_RINGLVL ) << Z_SHIFT_RINGLVL );
+    Packet[Z_FLIT_RESZERO] |= ( (uint64_t) ( ResZero & Z_MASK_RESZERO ) << Z_SHIFT_RESZERO );
 
     Packet[Z_FLIT_SRC] |= ( (uint64_t) ( SrcHart & Z_MASK_HARTID ) << Z_SHIFT_HARTID );
     Packet[Z_FLIT_SRC] |= ( (uint64_t) ( SrcZCID & Z_MASK_ZCID ) << Z_SHIFT_ZCID );
@@ -812,7 +825,8 @@ public:
 
   std::string getSrcString() {
     std::stringstream opc_ss;
-    opc_ss << "0x" << std::hex << RevCPU::safe_static_cast<uint8_t>( Opc );
+    // Note - casting Opc to a uint8_t makes the string output ugly on my mac (tdysart-22nov2024)
+    opc_ss << "0x" << std::hex << RevCPU::safe_static_cast<uint16_t>( Opc );
     std::string str = "Src[hart:zcid:pcid:type:opc]=[";
     str += std::to_string( SrcHart ) + ":";
     str += ZCIDToStr( SrcZCID ) + ":";
@@ -839,6 +853,7 @@ public:
     case zopCompID::Z_ZAP2: return "ZAP2";
     case zopCompID::Z_ZAP3: return "ZAP3";
     case zopCompID::Z_RZA: return "RZA";
+    case zopCompID::Z_MSGRZA: return "MSGRZA";
     case zopCompID::Z_ZEN: return "ZEN";
     case zopCompID::Z_ZQM: return "ZQM";
     case zopCompID::Z_PREC_ZIP: return "PREC_ZIP";
@@ -918,6 +933,7 @@ private:
   uint16_t SrcPrec{};              ///< zopEvent: src Precinct
 
   zopMsgT  Type{ zopMsgT::Z_INVALID };  ///< zopEvent: message type
+  uint8_t  ResZero{};                   ///< zopEvent: reserved field in flit 0
   uint8_t  Length{};                    ///< zopEvent: packet length (in flits)
   uint8_t  SeqNum{};                    ///< zopEvent: sequence ID (flit number)
   uint16_t ID{};                        ///< zopEvent: message ID
@@ -938,7 +954,7 @@ public:
   void serialize_order( SST::Core::Serialization::serializer& ser ) override {
     // we only serialize the raw packet
     Event::serialize_order( ser );
-    ser& Packet;
+    ser & Packet;
   }
 
   // zopEvent: implements the nic serialization
@@ -1059,6 +1075,7 @@ public:
     case zopCompID::Z_ZAP2: return "ZAP2";
     case zopCompID::Z_ZAP3: return "ZAP3";
     case zopCompID::Z_RZA: return "RZA";
+    case zopCompID::Z_MSGRZA: return "MSGRZA";
     case zopCompID::Z_ZEN: return "ZEN";
     case zopCompID::Z_ZQM: return "ZQM";
     case zopCompID::Z_PREC_ZIP: return "PREC_ZIP";
@@ -1280,7 +1297,7 @@ private:
     outstanding;  ///< zopNIC: tracks outstanding requests
 
   std::vector<Statistic<uint64_t>*> stats;  ///< zopNIC: statistics vector
-};                                          // zopNIC
+};  // zopNIC
 
 }  // namespace SST::Forza
 

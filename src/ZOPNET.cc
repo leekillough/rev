@@ -121,20 +121,21 @@ zopNIC::zopStats zopNIC::getStatFromPacket( zopEvent* ev ) {
     output.fatal( CALL_INFO, -1, "Error: recording stat for a null packet\n" );
   }
 
-  zopMsgT Type = ev->getType();
-  switch( Type ) {
-  case zopMsgT::Z_MZOP: return zopStats::MZOPSent; break;
-  case zopMsgT::Z_HZOPAC: return zopStats::HZOPACSent; break;
-  //case zopMsgT::Z_HZOPV: return zopStats::HZOPVSent; break;
-  //case zopMsgT::Z_RZOP: return zopStats::RZOPSent; break;
-  case zopMsgT::Z_MSG: return zopStats::MSGSent; break;
-  case zopMsgT::Z_TMIG: return zopStats::TMIGSent; break;
-  //case zopMsgT::Z_TMGT: return zopStats::TMGTSent; break;
-  //case zopMsgT::Z_SYSC: return zopStats::SYSCSent; break;
-  case zopMsgT::Z_RESP: return zopStats::RESPSent; break;
-  case zopMsgT::Z_FENCE: return zopStats::FENCESent; break;
-  case zopMsgT::Z_EXCP: return zopStats::EXCPSent; break;
-  default: output.fatal( CALL_INFO, -1, "Error: unknown packet type=%" PRIu8 "\n", static_cast<uint8_t>( Type ) ); break;
+  switch( ev->getType() ) {
+  case zopMsgT::Z_MZOP: return zopStats::MZOPSent;
+  case zopMsgT::Z_HZOPAC: return zopStats::HZOPACSent;
+  //case zopMsgT::Z_HZOPV: return zopStats::HZOPVSent;
+  //case zopMsgT::Z_RZOP: return zopStats::RZOPSent;
+  case zopMsgT::Z_MSG: return zopStats::MSGSent;
+  case zopMsgT::Z_TMIG: return zopStats::TMIGSent;
+  //case zopMsgT::Z_TMGT: return zopStats::TMGTSent;
+  //case zopMsgT::Z_SYSC: return zopStats::SYSCSent;
+  case zopMsgT::Z_RESP: return zopStats::RESPSent;
+  case zopMsgT::Z_FENCE: return zopStats::FENCESent;
+  case zopMsgT::Z_EXCP: return zopStats::EXCPSent;
+  default:
+    output.fatal( CALL_INFO, -1, "Error: unknown packet type=%" PRIu8 "\n", RevCPU::safe_static_cast<uint8_t>( ev->getType() ) );
+    break;
   }
 
   // we should never reach this point
@@ -276,7 +277,8 @@ void zopNIC::send_zone_barrier( uint16_t Hart, uint32_t endpoints ) {
   // walk the zone network destinations and send a packet to every ZAP
   for( auto i : hostMap ) {
     auto t = i.second;
-    if( ( (uint8_t) ( std::get<_HM_ENDP_T>( t ) ) < (uint8_t) ( SST::Forza::zopCompID::Z_RZA ) ) && ( (uint32_t) ( std::get<_HM_ZID>( t ) ) == Zone ) && ( std::get<_HM_PID>( t ) == Precinct ) ) {
+    if( ( (uint8_t) ( std::get<_HM_ENDP_T>( t ) ) < (uint8_t) ( SST::Forza::zopCompID::Z_RZA ) ) &&
+        ( (uint32_t) ( std::get<_HM_ZID>( t ) ) == Zone ) && ( std::get<_HM_PID>( t ) == Precinct ) ) {
       // found a candidate target
       auto realDest = i.first;
 
@@ -311,10 +313,10 @@ void zopNIC::send_zone_barrier( uint16_t Hart, uint32_t endpoints ) {
     }
   }
 
-  // signal my local barrier
-  for( uint32_t i = 0; i < numHarts; i++ ) {
-    zoneBarrier[barrierSense[Hart]][i]++;
-  }
+  // signal my local barrier; don't do this - we send to ourself, count on receive
+  //for( unsigned i = 0; i < numHarts; i++ ) {
+  //  zoneBarrier[barrierSense[Hart]][i]++;
+  //}
 }
 
 void zopNIC::send( zopEvent* ev, zopCompID dest ) {
@@ -493,10 +495,11 @@ bool zopNIC::msgNotify( int vn ) {
     CALL_INFO,
     9,
     0,
-    "%s:%s received zop message of type %s, ID=%" PRIu16 "\n",
+    "%s:%s received zop message %s to %s, ID=%" PRIu16 "\n",
     getName().c_str(),
     endPToStr( getEndpointType() ).c_str(),
-    msgTToStr( ev->getType() ).c_str(),
+    ev->getSrcString().c_str(),
+    ev->getDestString().c_str(),
     ev->getID()
   );
 
@@ -512,7 +515,8 @@ bool zopNIC::msgNotify( int vn ) {
   // if the local device is a ZAP, handle the broadcast
   // otherwise, ignore the packet
   if( ( ev->getType() == Forza::zopMsgT::Z_MSG ) && ( ev->getOpc() == Forza::zopOpc::Z_MSG_ZBAR ) ) {
-    if( Type == Forza::zopCompID::Z_ZAP0 || Type == Forza::zopCompID::Z_ZAP1 || Type == Forza::zopCompID::Z_ZAP2 || Type == Forza::zopCompID::Z_ZAP3 ) {
+    if( Type == Forza::zopCompID::Z_ZAP0 || Type == Forza::zopCompID::Z_ZAP1 || Type == Forza::zopCompID::Z_ZAP2 ||
+        Type == Forza::zopCompID::Z_ZAP3 ) {
       return handleBarrier( ev );
     } else {
       // not a ZAP device, ignore the packet
@@ -523,7 +527,8 @@ bool zopNIC::msgNotify( int vn ) {
 
   // if this is an RZA device, marshall it through to the ZIQ
   // if this is a ZEN/ZQM/ZIP, forward it in the incoming queue
-  if( Type == Forza::zopCompID::Z_RZA || Type == Forza::zopCompID::Z_ZEN || Type == Forza::zopCompID::Z_ZQM || Type == Forza::zopCompID::Z_PREC_ZIP ) {
+  if( Type == zopCompID::Z_RZA || Type == zopCompID::Z_MSGRZA || Type == zopCompID::Z_ZEN || Type == zopCompID::Z_ZQM ||
+      Type == zopCompID::Z_PREC_ZIP ) {
     ( *msgHandler )( ev );
     return true;
   }
@@ -532,7 +537,9 @@ bool zopNIC::msgNotify( int vn ) {
 
   // if this is a ZAP device and a thread migration or mzop (scratchpad req, methinks - tjd, 6-sept-24),
   // send it to the RevCPU handler
-  if( ( Type == Forza::zopCompID::Z_ZAP0 || Type == Forza::zopCompID::Z_ZAP1 || Type == Forza::zopCompID::Z_ZAP2 || Type == Forza::zopCompID::Z_ZAP3 ) && ( ev->getType() == Forza::zopMsgT::Z_TMIG || ev->getType() == Forza::zopMsgT::Z_MZOP ) ) {
+  if( ( Type == Forza::zopCompID::Z_ZAP0 || Type == Forza::zopCompID::Z_ZAP1 || Type == Forza::zopCompID::Z_ZAP2 ||
+        Type == Forza::zopCompID::Z_ZAP3 ) &&
+      ( ev->getType() == Forza::zopMsgT::Z_TMIG || ev->getType() == Forza::zopMsgT::Z_MZOP ) ) {
     ( *msgHandler )( ev );
     return true;
   }
@@ -703,7 +710,7 @@ bool zopNIC::clockTick( SST::Cycle_t cycle ) {
     if( thisCycle < ReqPerCycle ) {
       zopEvent* ev = static_cast<zopEvent*>( ( *it )->inspectPayload() );
       Hart         = (uint32_t) ( ev->getSrcHart() );
-      if( Type == SST::Forza::zopCompID::Z_RZA || Type == SST::Forza::zopCompID::Z_ZEN || Type == SST::Forza::zopCompID::Z_ZQM ) {
+      if( Type == zopCompID::Z_RZA || Type == zopCompID::Z_MSGRZA || Type == zopCompID::Z_ZEN || Type == zopCompID::Z_ZQM ) {
         // I am an RZA... I don't need to reserve any message IDs
         // ZEN ACKs and NACKs do not use message IDs, ZEN ZOPs to the RZA internally
         // handle message IDs.
@@ -717,7 +724,6 @@ bool zopNIC::clockTick( SST::Cycle_t cycle ) {
           iFace->send( ( *it ), 0 );
           it    = sendQ.erase( it );
           erase = true;
-          output.verbose( CALL_INFO, 9, 0, "ZOPNET: Sending message to Type=%s\n", endPToStr( Type ).c_str() );
         }
       } else if( ev->getType() == SST::Forza::zopMsgT::Z_FENCE ) {
         // handle the fence operation

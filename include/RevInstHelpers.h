@@ -169,7 +169,8 @@ bool load( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) 
       F->GetHartToExecID(),
       MemOp::MemOpREAD,
       true,
-      R->GetMarkLoadComplete() };
+      R->GetMarkLoadComplete()
+    };
     R->LSQueue->insert( req.LSQHashPair() );
     M->ReadVal(
       F->GetHartToExecID(),
@@ -189,7 +190,8 @@ bool load( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) 
       F->GetHartToExecID(),
       MemOp::MemOpREAD,
       true,
-      R->GetMarkLoadComplete() };
+      R->GetMarkLoadComplete()
+    };
     R->LSQueue->insert( req.LSQHashPair() );
     M->ReadVal(
       F->GetHartToExecID(),
@@ -271,7 +273,8 @@ bool fload( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst )
       F->GetHartToExecID(),
       MemOp::MemOpREAD,
       true,
-      R->GetMarkLoadComplete() };
+      R->GetMarkLoadComplete()
+    };
     R->LSQueue->insert( req.LSQHashPair() );
     M->ReadVal(
       F->GetHartToExecID(),
@@ -289,7 +292,8 @@ bool fload( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst )
       F->GetHartToExecID(),
       MemOp::MemOpREAD,
       true,
-      R->GetMarkLoadComplete() };
+      R->GetMarkLoadComplete()
+    };
     R->LSQueue->insert( req.LSQHashPair() );
     M->ReadVal(
       F->GetHartToExecID(), rs1 + uint64_t( Inst.ImmSignExt( 12 ) ), &R->SPF[Inst.rd], std::move( req ), RevFlag::F_NONE

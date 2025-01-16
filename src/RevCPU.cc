@@ -50,12 +50,14 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params ) : SST::Compon
     primaryComponentDoNotEndSim();
   }
 
+  bool enableMsgRza = params.find<bool>( "enableMsgRZA", 0 );
+
   // std::string ClockFreq = params.find<std::string>("clock", "1Ghz");
   // printf("given Txt files : %s\n",txtFile.c_str());
   // Derive the simulation parameters
   // We must always derive the number of cores before initializing the options
-  numCores = params.find<uint32_t>( "numCores", "1" );
-  numHarts = params.find<uint32_t>( "numHarts", "1" );
+  numCores          = params.find<uint32_t>( "numCores", "1" );
+  numHarts          = params.find<uint32_t>( "numHarts", "1" );
 
   // Make sure someone isn't trying to have more than _MAX_HARTS_ harts per core
   if( numHarts > _MAX_HARTS_ ) {
@@ -193,8 +195,14 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params ) : SST::Compon
           "instance is an RZA\n"
         );
       }
-      zNic->setEndpointType( Forza::zopCompID::Z_RZA );
-      output.verbose( CALL_INFO, 4, 0, "[FORZA] device=%s initialized as RZA device\n", getName().c_str() );
+      if( !enableMsgRza ) {
+        zNic->setEndpointType( Forza::zopCompID::Z_RZA );
+        output.verbose( CALL_INFO, 4, 0, "[FORZA] device=%s initialized as RZA device\n", getName().c_str() );
+      } else {
+        output.verbose( CALL_INFO, 4, 0, "[FORZA] device=%s initialized as MSGRZA device\n", getName().c_str() );
+        zNic->setEndpointType( Forza::zopCompID::Z_MSGRZA );
+      }
+
       // ensure the memory controller knows that it is an RZA device
       Mem->setRZA();
     } else {
@@ -879,7 +887,8 @@ void RevCPU::handleZOPMZOP( Forza::zopEvent* zev ) {
     rsp_zev->setType( SST::Forza::zopMsgT::Z_RESP );
     rsp_zev->setID( zev->getID() );
     rsp_zev->setOpc( SST::Forza::zopOpc::Z_RESP_SACK );
-    rsp_zev->setAppID( 0 );
+    rsp_zev->setAppID( zev->getAppID() );
+    rsp_zev->setResZero( zev->getResZero() );
     rsp_zev->setDestHart( zev->getSrcHart() );
     rsp_zev->setDestZCID( zev->getSrcZCID() );
     rsp_zev->setDestPCID( zev->getSrcPCID() );

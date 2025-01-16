@@ -562,7 +562,7 @@ class FORZA:
                   "link_bw": self.linkBW,
                   "xbar_bw": self.xbarBW,
                   "flit_size": self.nocFlitSize,
-                  "num_ports": self.zapsPerZone+3,
+                  "num_ports": self.zapsPerZone+4,
                   "id": 0
                 })
                 # -- create the zone ring router
@@ -627,12 +627,12 @@ class FORZA:
                 # -- create the ZEN
                 zen = sst.Component("zen_"+str(i)+"_"+str(j), "forzazen.ZEN")
                 zen.addParams({
-                  "verbose": 7,  # self.verbose,
+                  "verbose": self.verbose,
                   "clockFreq": self.clock,
                   "precinctId": i,
                   "zoneId": j,
                   "numHarts": self.hartsPerZap,
-                  "numZap": self.zapsPerZone,
+                  "numZaps": self.zapsPerZone,
                   "numZones": self.zones,
                   "numPrecincts": self.precincts,
                   "enableDMA": 0,
@@ -775,6 +775,89 @@ class FORZA:
                 rza_link = sst.Link("rza_link_"+str(i)+"_"+str(j))
                 rza_link.connect((rza_iface, "rtr_port", "1us"),
                                  (zone_router, "port"+str(self.zapsPerZone+2), "1us"))
+                # -- create the Messaging RZA
+                rzaMsg = sst.Component("rzaMsg_"+str(i)+"_"+str(j), "revcpu.RevCPU")
+                if self.memSizeChange:
+                    memSizeRza = self.memSize + 1024*1024*200*self.zapsPerZone
+                else:
+                    memSizeRza = self.memSize
+                rzaMsg.addParams({
+                    "verbose": self.verbose,
+                    "numCores": 2,
+                    "clock": self.clock,
+                    "memSize": memSizeRza,
+                    "machine": "[CORES:RV64G]",
+                    "program": self.program,
+                    "args": self.progArgs,
+                    "enableZoneNIC": 1,
+                    "enableRZA": 1,
+                    "enableMsgRZA": 1,
+                    "precinctId": i,
+                    "zoneId": j,
+                    "enableMemH": 1,
+                    "splash": 0
+                })
+                rzaMsg_lspipe = rzaMsg.setSubComponent("rza_ls", "revcpu.RZALSCoProc")
+                rzaMsg_lspipe.addParams({
+                    "clock": self.clock,
+                    "verbose": self.verbose
+                })
+                rzaMsg_amopipe = rzaMsg.setSubComponent("rza_amo", "revcpu.RZAAMOCoProc")
+                rzaMsg_amopipe.addParams({
+                    "clock": self.clock,
+                    "verbose": self.verbose
+                })
+                rzaMsg_lsq = rzaMsg.setSubComponent("memory", "revcpu.RevBasicMemCtrl")
+                rzaMsg_lsq.addParams({
+                    "verbose": self.verbose,
+                    "clock": self.clock,
+                    "max_loads": 16,
+                    "max_stores": 16,
+                    "max_flush": 16,
+                    "max_llsc": 16,
+                    "max_readlock": 16,
+                    "max_writeunlock": 16,
+                    "max_custom": 16,
+                    "ops_per_cycle": 16
+                })
+                rzaMsg_lsq_iface = rzaMsg_lsq.setSubComponent("memIface", "memHierarchy.standardInterface")
+                rzaMsg_lsq_iface.addParams({
+                    "verbose": self.verbose
+                })
+                memctrlMsg = sst.Component("memoryMsg_"+str(i)+"_"+str(j), "memHierarchy.MemController")
+                memctrlMsg.addParams({
+                    "debug": 0,
+                    "debug_level": 0,
+                    "clock": self.clock,
+                    "verbose": self.verbose,
+                    "addr_range_start": 0,
+                    "addr_range_end": memSizeRza,
+                    "backing": "malloc"
+                })
+                backing_memoryMsg = memctrlMsg.setSubComponent("backend", "memHierarchy.simpleMem")
+                backing_memoryMsg.addParams({
+                    "access_time": self.memAccessTime,
+                    "mem_size": str(memSizeRza)+"B"
+                })
+                rzaMsg_mem_link = sst.Link("rzaMsg_mem_link_"+str(i)+"_"+str(j))
+                rzaMsg_mem_link.connect((rzaMsg_lsq_iface, "port", "50ps"), (memctrlMsg, "direct_link", "50ps"))
+                rzaMsg_nic = rzaMsg.setSubComponent("zone_nic", "forza.zopNIC")
+                rzaMsg_iface = rzaMsg_nic.setSubComponent("iface", "merlin.linkcontrol")
+                rzaMsg_nic.addParams({
+                    "verbose": self.verbose,
+                    "clock": self.clock,
+                    "req_per_cycle": self.reqPerCycle,
+                    "numZones": self.zones,
+                    "numPrecincts": self.precincts
+                })
+                rzaMsg_iface.addParams({
+                    "input_buf_size": self.inputBufSize,
+                    "output_buf_size": self.outputBufSize,
+                    "link_bw": self.linkBW,
+                })
+                rzaMsg_link = sst.Link("rzaMsg_link_"+str(i)+"_"+str(j))
+                rzaMsg_link.connect((rzaMsg_iface, "rtr_port", "1us"),
+                                    (zone_router, "port"+str(self.zapsPerZone+3), "1us"))
                 # -- create the ZAPS
                 for k in range(self.zapsPerZone):
                     zap = sst.Component("zap_"+str(i)+"_"+str(j)+"_"+str(k), "revcpu.RevCPU")
