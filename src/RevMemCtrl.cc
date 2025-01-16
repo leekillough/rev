@@ -83,12 +83,6 @@ RevMemOp::RevMemOp(
   }
 }
 
-void RevMemOp::setTempT( std::vector<uint8_t> T ) {
-  for( auto i : T ) {
-    tempT.push_back( i );
-  }
-}
-
 // ---------------------------------------------------------------
 // RevMemCtrl
 // ---------------------------------------------------------------
@@ -230,8 +224,7 @@ bool RevBasicMemCtrl::sendAMORequest(
   // response comes back, we will catch the response, perform
   // the MODIFY (using the operation in flags), then dispatch
   // a WRITE operation.
-  auto tmp = std::make_tuple( Hart, buffer, target, flags, Op, false );
-  AMOTable.insert( { Addr, tmp } );
+  AMOTable.emplace( Addr, std::make_tuple( Hart, buffer, target, flags, Op, false ) );
 
   // We have the request created and recorded in the AMOTable
   // Push it onto the request queue
@@ -1158,14 +1151,15 @@ void RevBasicMemCtrl::handleReadResp( StandardMem::ReadResp* ev ) {
     std::cout << "Address of the target register = 0x" << std::hex << (uint64_t*) ( op->getTarget() ) << std::dec << std::endl;
 #endif
 
-    auto range = AMOTable.equal_range( op->getAddr() );
     bool isAMO = false;
-    for( auto i = range.first; i != range.second; ++i ) {
-      auto Entry = i->second;
+    for( auto [i, end] = AMOTable.equal_range( op->getAddr() ); i != end; ++i ) {
+      const auto& [hart, buffer, target, flags, memop, in] = i->second;
+
       // determine if we have an atomic request associated
       // with this read operation
-      if( std::get<AMOTABLE_MEMOP>( Entry ) == op ) {
+      if( memop == op ) {
         isAMO = true;
+        break;
       }
     }
 
@@ -1225,134 +1219,97 @@ void RevBasicMemCtrl::handleReadResp( StandardMem::ReadResp* ev ) {
   num_read--;
 }
 
-void RevBasicMemCtrl::performAMO( std::tuple<uint32_t, unsigned char*, void*, RevFlag, RevMemOp*, bool> Entry ) {
-  RevMemOp* Tmp = std::get<AMOTABLE_MEMOP>( Entry );
+void RevBasicMemCtrl::performAMO( RevMemOp* Tmp ) {
+  static_assert( std::is_same_v<unsigned char, uint8_t> );
+
   if( Tmp == nullptr ) {
     output->fatal( CALL_INFO, -1, "Error : AMOTable entry is null\n" );
   }
-  void* Target                = Tmp->getTarget();
 
-  RevFlag              flags  = Tmp->getFlags();
-  std::vector<uint8_t> buffer = Tmp->getBuf();
-  std::vector<uint8_t> tempT;
+  RevFlag  flags = Tmp->getFlags();
+  uint32_t size  = Tmp->getSize();
 
-  tempT.clear();
-  uint8_t* TmpBuf8 = static_cast<uint8_t*>( Target );  // save a char pointer to the register target
-  for( size_t i = 0; i < Tmp->getSize(); i++ ) {
-    tempT.push_back( TmpBuf8[i] );  // copy the old value to tempT
-  }
+  union {
+    uint8_t  u8;
+    uint16_t u16;
+    uint32_t u32;
+    uint64_t u64;
+    float    f;
+    double   d;
+  } Target, Src, Rtn;
 
-  if( Tmp->getSize() == 1 ) {
-    // 8-bit (B) AMOs
-    uint8_t TmpBuf = 0;
-    uint8_t Rtn    = 0;
-    for( size_t i = 0; i < buffer.size(); i++ ) {
-      TmpBuf |= uint8_t{ buffer[i] } << i * 8;
+  // Copy the contents of the original target
+  memcpy( &Target, Tmp->getTarget(), size );
+
+  // Copy the source value
+  memcpy( &Src, &Tmp->getBuf()[0], size );
+
+  // Perform the atomic operation
+  if( RevFlagAtomicFloat( flags ) != RevFlag::F_NONE ) {
+    switch( size ) {
+    case 4: ApplyForzaAMO( flags, &Target, &Rtn, Src.f ); break;
+    case 8: ApplyForzaAMO( flags, &Target, &Rtn, Src.d ); break;
     }
-    ApplyForzaAMO( flags, Target, (void*) ( &Rtn ), TmpBuf );
-    // clear the temp buffer & write the Rtn value
-    tempT.clear();
-    tempT.push_back( Rtn );
-  } else if( Tmp->getSize() == 2 ) {
-    // 16-bit (H) AMOs
-    uint16_t TmpBuf = 0;
-    uint16_t Rtn    = 0;
-    for( size_t i = 0; i < buffer.size(); i++ ) {
-      TmpBuf |= uint16_t{ buffer[i] } << i * 8;
-    }
-    ApplyForzaAMO( flags, Target, (void*) ( &Rtn ), TmpBuf );
-    // clear the temp buffer & write the Rtn value
-    tempT.clear();
-    tempT.push_back( Rtn );
-    tempT.push_back( (uint8_t) ( ( Rtn & 0xFF00 ) >> 8 ) );
-  } else if( Tmp->getSize() == 4 ) {
-    // 32-bit (W) AMOs
-    uint32_t TmpBuf = 0;
-    uint32_t Rtn    = 0;
-    for( size_t i = 0; i < buffer.size(); i++ ) {
-      TmpBuf |= uint32_t{ buffer[i] } << i * 8;
-    }
-    ApplyForzaAMO( flags, Target, (void*) ( &Rtn ), TmpBuf );
-    // clear the temp buffer & write the Rtn value
-#if 0
-    tempT.clear();
-    tempT.push_back( Rtn );
-    tempT.push_back( (uint8_t)((Rtn & 0xFF00)>>8) );
-    tempT.push_back( (uint8_t)((Rtn & 0xFF0000)>>16) );
-    tempT.push_back( (uint8_t)((Rtn & 0xFF000000)>>24) );
-#endif
   } else {
-    // 64-bit (D) AMOs
-    uint64_t TmpBuf = 0;
-    uint64_t Rtn    = 0;
-    for( size_t i = 0; i < buffer.size(); i++ ) {
-      TmpBuf |= uint64_t{ buffer[i] } << i * 8;
+    switch( size ) {
+    case 1: ApplyForzaAMO( flags, &Target, &Rtn, Src.u8 ); break;
+    case 2: ApplyForzaAMO( flags, &Target, &Rtn, Src.u16 ); break;
+    case 4: ApplyForzaAMO( flags, &Target, &Rtn, Src.u32 ); break;
+    case 8: ApplyForzaAMO( flags, &Target, &Rtn, Src.u64 ); break;
     }
-    ApplyForzaAMO( flags, Target, (void*) ( &Rtn ), TmpBuf );
-    // clear the temp buffer & write the Rtn value
-#if 0
-    tempT.clear();
-    tempT.push_back( Rtn );
-    tempT.push_back( (uint8_t)((Rtn & 0xFF00)>>8) );
-    tempT.push_back( (uint8_t)((Rtn & 0xFF0000)>>16) );
-    tempT.push_back( (uint8_t)((Rtn & 0xFF000000)>>24) );
-    tempT.push_back( (uint8_t)((Rtn & 0xFF00000000)>>32) );
-    tempT.push_back( (uint8_t)((Rtn & 0xFF0000000000)>>40) );
-    tempT.push_back( (uint8_t)((Rtn & 0xFF000000000000)>>48) );
-    tempT.push_back( (uint8_t)((Rtn & 0xFF00000000000000)>>56) );
-#endif
   }
 
   // copy the target data over to the buffer and build the memory request
   // this will write the value to memory
-  buffer.clear();
-  for( size_t i = 0; i < Tmp->getSize(); i++ ) {
-    buffer.push_back( TmpBuf8[i] );
-  }
+  std::vector<uint8_t> buffer;
+  for( uint32_t i = 0; i < size; ++i )
+    buffer.push_back( reinterpret_cast<uint8_t*>( &Target )[i] );
 
   RevMemOp* Op =
-    new RevMemOp( Tmp->getHart(), Tmp->getAddr(), Tmp->getPhysAddr(), Tmp->getSize(), buffer, MemOp::MemOpWRITE, Tmp->getFlags() );
-  Op->setTempT( tempT );
-  for( uint32_t i = 0; i < Op->getSize(); i++ ) {
-    TmpBuf8[i] = tempT[i];
-  }
+    new RevMemOp( Tmp->getHart(), Tmp->getAddr(), Tmp->getPhysAddr(), size, std::move( buffer ), MemOp::MemOpWRITE, flags );
+
+  // Copy the return result to tempT
+  std::vector<uint8_t> tempT;
+  for( uint32_t i = 0; i < size; ++i )
+    tempT.push_back( reinterpret_cast<uint8_t*>( &Rtn )[i] );
+  Op->setTempT( std::move( tempT ) );
 
   // Retrieve the memory request object, but DO NOT mark the load
   // as complete.  The actual write response from the read-modify-write
   // process will mark the load as complete.  At this point, copy the
   // MemReq object to the new request
-  const MemReq& r = Tmp->getMemReq();
-  Op->setMemReq( r );
+  Op->setMemReq( Tmp->getMemReq() );
 
   // insert a new entry into the AMO Table
-  auto NewEntry = std::make_tuple(
-    Op->getHart(),
-    nullptr,  // this can be null here since we don't need to modify the response
-    Op->getTarget(),
-    Op->getFlags(),
-    Op,
-    true
+  AMOTable.emplace(
+    Op->getAddr(),
+    std::make_tuple(
+      Op->getHart(),
+      nullptr,  // this can be null here since we don't need to modify the response
+      Op->getTarget(),
+      Op->getFlags(),
+      Op,
+      true
+    )
   );
-  AMOTable.insert( { Op->getAddr(), NewEntry } );
   rqstQ.push_back( Op );
 }
 
 void RevBasicMemCtrl::handleAMO( RevMemOp* op ) {
-  auto range = AMOTable.equal_range( op->getAddr() );
-  for( auto i = range.first; i != range.second; ++i ) {
-    auto Entry = i->second;
+  for( auto [i, end] = AMOTable.equal_range( op->getAddr() ); i != end; ++i ) {
+    const auto& [hart, buffer, target, flags, memop, in] = i->second;
     // perform the arithmetic operation and generate a WRITE request
-    if( std::get<AMOTABLE_MEMOP>( Entry ) == op ) {
-      performAMO( Entry );
+    if( memop == op ) {
       AMOTable.erase( i );  // erase the current entry so we can add a new one
-      return;
+      return performAMO( op );
     }
   }
 }
 
 void RevBasicMemCtrl::handleWriteResp( StandardMem::WriteResp* ev ) {
-  if( std::find( requests.begin(), requests.end(), ev->getID() ) != requests.end() ) {
-    requests.erase( std::find( requests.begin(), requests.end(), ev->getID() ) );
+  auto it = std::find( requests.begin(), requests.end(), ev->getID() );
+  if( it != requests.end() ) {
+    requests.erase( it );
     RevMemOp* op = outstanding[ev->getID()];
     if( !op )
       output->fatal( CALL_INFO, -1, "RevMemOp is null in handleWriteResp\n" );
@@ -1363,12 +1320,10 @@ void RevBasicMemCtrl::handleWriteResp( StandardMem::WriteResp* ev ) {
     // walk the AMOTable and clear any matching AMO ops
     // note that we must match on both the target address and the RevMemOp pointer
     bool isAMO = false;
-    auto range = AMOTable.equal_range( op->getAddr() );
-    for( auto i = range.first; i != range.second; ) {
-      auto Entry = i->second;
-      // if the request matches the target,
-      // then delete it
-      if( std::get<AMOTABLE_MEMOP>( Entry ) == op ) {
+    for( auto [i, end] = AMOTable.equal_range( op->getAddr() ); i != end; ) {
+      const auto& [hart, buffer, target, flags, memop, in] = i->second;
+      // if the request matches the target, then delete it
+      if( memop == op ) {
         AMOTable.erase( i++ );
         isAMO = true;
       } else {
@@ -1394,19 +1349,18 @@ void RevBasicMemCtrl::handleWriteResp( StandardMem::WriteResp* ev ) {
     }
 
     // no split request exists; handle as normal
-    // this was a write request for an AMO, clear the hazard
+    // if this was a write request for an AMO, clear the hazard
     const MemReq& r = op->getMemReq();
     if( isAMO ) {
-      // write the target
-      std::vector<uint8_t> tempT = op->getTempT();
       r.MarkLoadComplete();
     }
     delete op;
     outstanding.erase( ev->getID() );
     delete ev;
   } else {
-    output->fatal( CALL_INFO, -1, "Error : found unknown WriteResp\n" );
+    output->fatal( CALL_INFO, -1, "Error : found unknown ReadResp\n" );
   }
+
   num_write--;
 }
 

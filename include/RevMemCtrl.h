@@ -41,39 +41,43 @@ using namespace SST::Interfaces;
 // Extended StandardMem::Request::Flag enums
 // ----------------------------------------
 enum class RevFlag : uint32_t {
-  F_NONE         = 0,        /// no special operation
-  F_NONCACHEABLE = 1u << 1,  /// non cacheable
+  F_NONE               = 0,        /// no special operation
+  F_NONCACHEABLE       = 1u << 1,  /// non cacheable
 
-  F_BOXNAN       = 1u << 16,  /// NaN-box the 32-bit float
-  F_SEXT32       = 1u << 17,  /// sign extend the 32bit result
-  F_SEXT64       = 1u << 18,  /// sign extend the 64bit result
-  F_ZEXT32       = 1u << 19,  /// zero extend the 32bit result
-  F_ZEXT64       = 1u << 20,  /// zero extend the 64bit result
-  F_RESP         = F_BOXNAN | F_SEXT32 | F_SEXT64 | F_ZEXT32 | F_ZEXT64,
+  F_BOXNAN             = 1u << 16,  /// NaN-box the 32-bit float
+  F_SEXT32             = 1u << 17,  /// sign extend the 32bit result
+  F_SEXT64             = 1u << 18,  /// sign extend the 64bit result
+  F_ZEXT32             = 1u << 19,  /// zero extend the 32bit result
+  F_ZEXT64             = 1u << 20,  /// zero extend the 64bit result
+  F_RESP               = F_BOXNAN | F_SEXT32 | F_SEXT64 | F_ZEXT32 | F_ZEXT64,
 
-  F_AQ           = 1u << 21,  /// AMO AQ Flag
-  F_RL           = 1u << 22,  /// AMO RL Flag
+  F_AQ                 = 1u << 21,  /// AMO AQ Flag
+  F_RL                 = 1u << 22,  /// AMO RL Flag
 
-  F_AMOADD       = 1u << 23,   /// AMO Add
-  F_AMOXOR       = 2u << 23,   /// AMO Xor
-  F_AMOAND       = 3u << 23,   /// AMO And
-  F_AMOOR        = 4u << 23,   /// AMO Or
-  F_AMOMIN       = 5u << 23,   /// AMO Min
-  F_AMOMAX       = 6u << 23,   /// AMO Max
-  F_AMOMINU      = 7u << 23,   /// AMO Minu
-  F_AMOMAXU      = 8u << 23,   /// AMO Maxu
-  F_AMOSWAP      = 9u << 23,   /// AMO Swap
-  F_FORZASUB     = 10u << 23,  /// XForza: AMO SUB
-  F_FORZATHRS    = 11u << 23,  /// XForza: AMO THRS
-  F_FORZAFADD    = 12u << 23,  /// XForza: AMO FADD
-  F_FORZAFSUB    = 13u << 23,  /// XForza: AMO FSUB
-  F_FORZAFSUBR   = 14u << 23,  /// XForza: AMO FSUBR
-  F_ATOMIC       = F_AMOADD | F_AMOXOR | F_AMOAND | F_AMOOR | F_AMOMIN | F_AMOMAX | F_AMOMINU | F_AMOMAXU | F_AMOSWAP,
+  F_AMOADD             = 1u << 23,   /// AMO Add
+  F_AMOXOR             = 2u << 23,   /// AMO Xor
+  F_AMOAND             = 3u << 23,   /// AMO And
+  F_AMOOR              = 4u << 23,   /// AMO Or
+  F_AMOMIN             = 5u << 23,   /// AMO Min
+  F_AMOMAX             = 6u << 23,   /// AMO Max
+  F_AMOMINU            = 7u << 23,   /// AMO Minu
+  F_AMOMAXU            = 8u << 23,   /// AMO Maxu
+  F_AMOSWAP            = 9u << 23,   /// AMO Swap
+  F_FORZASUB           = 10u << 23,  /// XForza: AMO SUB
+  F_FORZATHRS          = 11u << 23,  /// XForza: AMO THRS
 
-  F_FORZANN      = 1u << 27,  /// XForza: AMO RETURN NN
-  F_FORZAON      = 2u << 27,  /// XForza: AMO RETURN ON
-  F_FORZANO      = 3u << 27,  /// XForza: AMO RETURN NO
-  F_RETURN       = F_FORZANN | F_FORZAON | F_FORZANO,
+  F_FORZAFADD          = 1u << 27,  /// XForza: AMO FADD
+  F_FORZAFSUB          = 2u << 27,  /// XForza: AMO FSUB
+  F_FORZAFSUBR         = 3u << 27,  /// XForza: AMO FSUBR
+  F_FORZA_ATOMIC_FLOAT = F_FORZAFADD | F_FORZAFSUB | F_FORZAFSUBR,
+
+  F_ATOMIC = F_AMOADD | F_AMOXOR | F_AMOAND | F_AMOOR | F_AMOMIN | F_AMOMAX | F_AMOMINU | F_AMOMAXU | F_AMOSWAP | F_FORZASUB |
+             F_FORZATHRS | F_FORZA_ATOMIC_FLOAT,
+
+  F_FORZANN = 1u << 29,  /// XForza: AMO RETURN NN
+  F_FORZAON = 2u << 29,  /// XForza: AMO RETURN ON
+  F_FORZANO = 3u << 29,  /// XForza: AMO RETURN NO
+  F_RETURN  = F_FORZANN | F_FORZAON | F_FORZANO,
 };
 
 // Ensure RevFlag is same underlying type as StandardMem::Request::flags_t
@@ -92,6 +96,11 @@ constexpr void RevFlagSet( RevFlag& flag, RevFlag set ) {
 /// RevFlag: determine if the request is an AMO, and if so, return the operation; otherwise return 0
 constexpr RevFlag RevFlagAtomic( RevFlag flag ) {
   return RevFlag{ safe_static_cast<uint32_t>( flag ) & safe_static_cast<uint32_t>( RevFlag::F_ATOMIC ) };
+}
+
+/// RevFlag: determine if the request is a float AMO, and if so, return the operation; otherwise return 0
+constexpr RevFlag RevFlagAtomicFloat( RevFlag flag ) {
+  return RevFlag{ safe_static_cast<uint32_t>( flag ) & safe_static_cast<uint32_t>( RevFlag::F_FORZA_ATOMIC_FLOAT ) };
 }
 
 /// RevFlag: determine the return flags
@@ -162,10 +171,10 @@ public:
   uint32_t getSize() const { return Size; }
 
   /// RevMemOp: retrieve the memory buffer
-  std::vector<uint8_t> getBuf() const { return membuf; }
+  const std::vector<uint8_t>& getBuf() const { return membuf; }
 
   /// RevMemOp: retrieve the temporary target buffer
-  std::vector<uint8_t> getTempT() const { return tempT; }
+  const std::vector<uint8_t>& getTempT() const { return tempT; }
 
   /// RevMemOp: retrieve the memory operation flags
   RevFlag getFlags() const { return flags; }
@@ -189,7 +198,7 @@ public:
   void setMemReq( const MemReq& req ) { procReq = req; }
 
   /// RevMemOp: set the temporary target buffer
-  void setTempT( std::vector<uint8_t> T );
+  void setTempT( std::vector<uint8_t> T ) { tempT = std::move( T ); }
 
   /// RevMemOp: retrieve the invalidate flag
   bool getInv() const { return Inv; }
@@ -694,7 +703,7 @@ private:
   uint32_t getNumSplitRqsts( RevMemOp* op );
 
   /// RevBasicMemCtrl: perform the MODIFY portion of the AMO (READ+MODIFY+WRITE)
-  void performAMO( std::tuple<uint32_t, unsigned char*, void*, RevFlag, RevMemOp*, bool> Entry );
+  void performAMO( RevMemOp* op );
 
   // -- private data members
   StandardMem*       memIface{};         ///< StandardMem memory interface
@@ -719,19 +728,12 @@ private:
   uint64_t num_custom{};       ///< number of outstanding custom requests
   uint64_t num_fence{};        ///< number of oustanding fence requests
 
-  std::vector<StandardMem::Request::id_t>         requests{};     ///< outstanding StandardMem requests
-  std::vector<RevMemOp*>                          rqstQ{};        ///< queued memory requests
-  std::map<StandardMem::Request::id_t, RevMemOp*> outstanding{};  ///< map of outstanding requests
-
-#define AMOTABLE_HART   0
-#define AMOTABLE_BUFFER 1
-#define AMOTABLE_TARGET 2
-#define AMOTABLE_FLAGS  3
-#define AMOTABLE_MEMOP  4
-#define AMOTABLE_IN     5
+  std::vector<StandardMem::Request::id_t>                   requests{};     ///< outstanding StandardMem requests
+  std::vector<RevMemOp*>                                    rqstQ{};        ///< queued memory requests
+  std::unordered_map<StandardMem::Request::id_t, RevMemOp*> outstanding{};  ///< map of outstanding requests
 
   /// RevBasicMemCtrl: map of amo operations to memory addresses
-  std::multimap<uint64_t, std::tuple<uint32_t, unsigned char*, void*, RevFlag, RevMemOp*, bool>> AMOTable{};
+  std::unordered_multimap<uint64_t, std::tuple<uint32_t, unsigned char*, void*, RevFlag, RevMemOp*, bool>> AMOTable{};
 
   std::vector<Statistic<uint64_t>*> stats{};  ///< statistics vector
 
@@ -740,7 +742,7 @@ private:
 ///< Apply Atomic Memory Operation
 /// The operation described by "flags" is applied to memory "Target" with value "value"
 template<typename T>
-void ApplyAMO( RevFlag flags, void* Target, T value ) {
+std::enable_if_t<!std::is_floating_point_v<T>> ApplyAMO( RevFlag flags, void* Target, T value ) {
   // Target and value cast to signed and uint32_t versions
   auto* TmpTarget  = static_cast<std::make_signed_t<T>*>( Target );
   auto* TmpTargetU = static_cast<std::make_unsigned_t<T>*>( Target );
@@ -750,15 +752,39 @@ void ApplyAMO( RevFlag flags, void* Target, T value ) {
   // Table mapping atomic operations to executable code
   // clang-format off
   static const std::pair<RevCPU::RevFlag, std::function<void()>> table[] = {
-    { RevFlag::F_AMOADD,  [&]{ *TmpTarget += TmpBuf; } },
-    { RevFlag::F_AMOXOR,  [&]{ *TmpTarget ^= TmpBuf; } },
-    { RevFlag::F_AMOAND,  [&]{ *TmpTarget &= TmpBuf; } },
-    { RevFlag::F_AMOOR,   [&]{ *TmpTarget |= TmpBuf; } },
-    { RevFlag::F_AMOSWAP, [&]{ *TmpTarget  = TmpBuf; } },
-    { RevFlag::F_AMOMIN,  [&]{ *TmpTarget  = std::min(*TmpTarget,  TmpBuf);  } },
-    { RevFlag::F_AMOMAX,  [&]{ *TmpTarget  = std::max(*TmpTarget,  TmpBuf);  } },
-    { RevFlag::F_AMOMINU, [&]{ *TmpTargetU = std::min(*TmpTargetU, TmpBufU); } },
-    { RevFlag::F_AMOMAXU, [&]{ *TmpTargetU = std::max(*TmpTargetU, TmpBufU); } },
+    { RevFlag::F_AMOADD,    [&]{ *TmpTarget += TmpBuf; } },
+    { RevFlag::F_AMOXOR,    [&]{ *TmpTarget ^= TmpBuf; } },
+    { RevFlag::F_AMOAND,    [&]{ *TmpTarget &= TmpBuf; } },
+    { RevFlag::F_AMOOR,     [&]{ *TmpTarget |= TmpBuf; } },
+    { RevFlag::F_AMOSWAP,   [&]{ *TmpTarget  = TmpBuf; } },
+    { RevFlag::F_AMOMIN,    [&]{ *TmpTarget  = std::min( *TmpTarget,  TmpBuf );  } },
+    { RevFlag::F_AMOMAX,    [&]{ *TmpTarget  = std::max( *TmpTarget,  TmpBuf );  } },
+    { RevFlag::F_AMOMINU,   [&]{ *TmpTargetU = std::min( *TmpTargetU, TmpBufU ); } },
+    { RevFlag::F_AMOMAXU,   [&]{ *TmpTargetU = std::max( *TmpTargetU, TmpBufU ); } },
+    { RevFlag::F_FORZASUB,  [&]{ *TmpTarget -= TmpBuf; } },
+    { RevFlag::F_FORZATHRS, [&]{ *TmpTargetU = *TmpTargetU <= TmpBufU; /* TODO: Not sure of threshold definition */ } },
+  };
+  // clang-format on
+  RevFlag amo{ RevFlagAtomic( flags ) };
+  for( const auto& [flag, op] : table ) {
+    if( amo == flag ) {
+      op();
+      break;
+    }
+  }
+}
+
+/// Forza floating-point atomics
+template<typename T>
+std::enable_if_t<std::is_floating_point_v<T>> ApplyAMO( RevFlag flags, void* Target, T value ) {
+  auto* TmpTarget = static_cast<T*>( Target );
+  auto  TmpBuf    = value;
+
+  // clang-format off
+  static const std::pair<RevCPU::RevFlag, std::function<void()>> table[] = {
+    { RevFlag::F_FORZAFADD,  [&]{ *TmpTarget += TmpBuf; } },
+    { RevFlag::F_FORZAFSUB,  [&]{ *TmpTarget -= TmpBuf; } },
+    { RevFlag::F_FORZAFSUBR, [&]{ *TmpTarget  = TmpBuf - *TmpTarget; } },
   };
   // clang-format on
   RevFlag amo{ RevFlagAtomic( flags ) };
@@ -775,68 +801,18 @@ void ApplyAMO( RevFlag flags, void* Target, T value ) {
 /// The operation writes the Rd return with the value of "Rtn"
 template<typename T>
 void ApplyForzaAMO( RevFlag flags, void* Target, void* Rtn, T value ) {
-  // Target and value cast to signed and uint32_t versions
-  auto* TmpTarget  = static_cast<std::make_signed_t<T>*>( Target );
-  auto* TmpTargetU = static_cast<std::make_unsigned_t<T>*>( Target );
-  auto  TmpBuf     = static_cast<std::make_signed_t<T>>( value );
-  auto  TmpBufU    = static_cast<std::make_unsigned_t<T>>( value );
-  auto* TmpRtn     = static_cast<std::make_signed_t<T>*>( Rtn );
-  auto* TmpRtnU    = static_cast<std::make_unsigned_t<T>*>( Rtn );
 
-  // Table mapping atomic operations to executable code
-  // clang-format off
-  static const std::tuple<RevFlag, RevFlag, std::function<void()>> table[] = {
-    // 'M' = M-Type (aka NN - both Rd and mem get result)
-    { RevFlag::F_AMOADD,  RevFlag::F_FORZANN, [&]{ *TmpTarget += TmpBuf; *TmpRtn = *TmpTarget; } },
-    { RevFlag::F_AMOXOR,  RevFlag::F_FORZANN, [&]{ *TmpTarget ^= TmpBuf; *TmpRtn = *TmpTarget; } },
-    { RevFlag::F_AMOAND,  RevFlag::F_FORZANN, [&]{ *TmpTarget &= TmpBuf; *TmpRtn = *TmpTarget; } },
-    { RevFlag::F_AMOOR,   RevFlag::F_FORZANN, [&]{ *TmpTarget |= TmpBuf; *TmpRtn = *TmpTarget; } },
-    { RevFlag::F_AMOSWAP, RevFlag::F_FORZANN, [&]{ *TmpTarget  = TmpBuf; *TmpRtn = *TmpTarget; } },
-    { RevFlag::F_AMOMIN,  RevFlag::F_FORZANN, [&]{ *TmpTarget  = std::min(*TmpTarget,  TmpBuf); *TmpRtn = *TmpTarget;  } },
-    { RevFlag::F_AMOMAX,  RevFlag::F_FORZANN, [&]{ *TmpTarget  = std::max(*TmpTarget,  TmpBuf); *TmpRtn = *TmpTarget;  } },
-    { RevFlag::F_AMOMINU, RevFlag::F_FORZANN, [&]{ *TmpTargetU = std::min(*TmpTargetU, TmpBufU); *TmpRtn = *TmpTarget;  } },
-    { RevFlag::F_AMOMAXU, RevFlag::F_FORZANN, [&]{ *TmpTargetU = std::max(*TmpTargetU, TmpBufU); *TmpRtn = *TmpTarget; } },
+  if( RevFlagReturn( flags ) != RevFlag::F_NONE )
+    memcpy( Rtn, Target, sizeof( T ) );  // 'MS' = MS-Type (aka NO - mem gets result, Rd gets orig memory)
 
-    // 'S' = S-Type (aka ON - mem unchanged, Rd gets result)
-    { RevFlag::F_AMOADD,  RevFlag::F_FORZAON, [&]{ *TmpRtn = *TmpTarget; *TmpRtn += TmpBuf; } },
-    { RevFlag::F_AMOXOR,  RevFlag::F_FORZAON, [&]{ *TmpRtn = *TmpTarget; *TmpRtn ^= TmpBuf; } },
-    { RevFlag::F_AMOAND,  RevFlag::F_FORZAON, [&]{ *TmpRtn = *TmpTarget; *TmpRtn &= TmpBuf; } },
-    { RevFlag::F_AMOOR,   RevFlag::F_FORZAON, [&]{ *TmpRtn = *TmpTarget; *TmpRtn |= TmpBuf; } },
-    { RevFlag::F_AMOSWAP, RevFlag::F_FORZAON, [&]{ *TmpRtn = *TmpTarget; *TmpRtn = TmpBuf; } },
-    { RevFlag::F_AMOMIN,  RevFlag::F_FORZAON, [&]{ *TmpRtn = *TmpTarget; *TmpRtn = std::min(*TmpTarget,  TmpBuf);  } },
-    { RevFlag::F_AMOMAX,  RevFlag::F_FORZAON, [&]{ *TmpRtn = *TmpTarget; *TmpRtn = std::max(*TmpTarget,  TmpBuf);  } },
-    { RevFlag::F_AMOMINU, RevFlag::F_FORZAON, [&]{ *TmpRtnU = *TmpTargetU; *TmpRtnU = std::min(*TmpTargetU, TmpBufU); } },
-    { RevFlag::F_AMOMAXU, RevFlag::F_FORZAON, [&]{ *TmpRtnU = *TmpTargetU; *TmpRtnU= std::max(*TmpTargetU, TmpBufU); } },
+  if( RevFlagReturn( flags ) == RevFlag::F_FORZAON )
+    Target = Rtn;  // 'S' = S-Type (aka ON - mem unchanged, Rd gets result)
 
-    // 'MS' = MS-Type (aka NO - mem gets result, Rd gets orig memory)
-    { RevFlag::F_AMOADD,  RevFlag::F_FORZANO, [&]{ *TmpRtn = *TmpTarget; *TmpTarget += TmpBuf; } },
-    { RevFlag::F_AMOXOR,  RevFlag::F_FORZANO, [&]{ *TmpRtn = *TmpTarget; *TmpTarget ^= TmpBuf; } },
-    { RevFlag::F_AMOAND,  RevFlag::F_FORZANO, [&]{ *TmpRtn = *TmpTarget; *TmpTarget &= TmpBuf; } },
-    { RevFlag::F_AMOOR,   RevFlag::F_FORZANO, [&]{ *TmpRtn = *TmpTarget; *TmpTarget |= TmpBuf; } },
-    { RevFlag::F_AMOSWAP, RevFlag::F_FORZANO, [&]{ *TmpRtn = *TmpTarget; *TmpTarget  = TmpBuf; } },
-    { RevFlag::F_AMOMIN,  RevFlag::F_FORZANO, [&]{ *TmpRtn = *TmpTarget; *TmpTarget  = std::min(*TmpTarget,  TmpBuf);  } },
-    { RevFlag::F_AMOMAX,  RevFlag::F_FORZANO, [&]{ *TmpRtn = *TmpTarget; *TmpTarget  = std::max(*TmpTarget,  TmpBuf);  } },
-    { RevFlag::F_AMOMINU, RevFlag::F_FORZANO, [&]{ *TmpRtnU = *TmpTargetU; *TmpTargetU = std::min(*TmpTargetU, TmpBufU); } },
-    { RevFlag::F_AMOMAXU, RevFlag::F_FORZANO, [&]{ *TmpRtnU = *TmpTargetU; *TmpTargetU = std::max(*TmpTargetU, TmpBufU); } },
+  // Perform the atomic operation on Target
+  ApplyAMO( flags, Target, value );
 
-    // 'B' = BASE-Type (aka U - update; update mem, return ack)
-    { RevFlag::F_AMOADD,  RevFlag::F_NONE, [&]{ *TmpTarget += TmpBuf; } },
-    { RevFlag::F_AMOXOR,  RevFlag::F_NONE, [&]{ *TmpTarget ^= TmpBuf; } },
-    { RevFlag::F_AMOAND,  RevFlag::F_NONE, [&]{ *TmpTarget &= TmpBuf; } },
-    { RevFlag::F_AMOOR,   RevFlag::F_NONE, [&]{ *TmpTarget |= TmpBuf; } },
-    { RevFlag::F_AMOSWAP, RevFlag::F_NONE, [&]{ *TmpTarget  = TmpBuf; } },
-    { RevFlag::F_AMOMIN,  RevFlag::F_NONE, [&]{ *TmpTarget  = std::min(*TmpTarget,  TmpBuf);  } },
-    { RevFlag::F_AMOMAX,  RevFlag::F_NONE, [&]{ *TmpTarget  = std::max(*TmpTarget,  TmpBuf);  } },
-    { RevFlag::F_AMOMINU, RevFlag::F_NONE, [&]{ *TmpTargetU = std::min(*TmpTargetU, TmpBufU); } },
-    { RevFlag::F_AMOMAXU, RevFlag::F_NONE, [&]{ *TmpTargetU = std::max(*TmpTargetU, TmpBufU); } },
-  };
-  // clang-format on
-  for( const auto& [amo, rtn, op] : table ) {
-    if( ( RevFlagAtomic( flags ) == amo ) && ( RevFlagReturn( flags ) == rtn ) ) {
-      op();
-      break;
-    }
-  }
+  if( RevFlagReturn( flags ) == RevFlag::F_FORZANN )
+    memcpy( Rtn, Target, sizeof( T ) );  // 'M' = M-Type (aka NN - both Rd and mem get result)
 }
 
 }  // namespace SST::RevCPU
