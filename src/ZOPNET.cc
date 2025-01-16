@@ -494,10 +494,11 @@ bool zopNIC::msgNotify( int vn ) {
     CALL_INFO,
     9,
     0,
-    "%s:%s received zop message of type %s, ID=%" PRIu16 "\n",
+    "%s:%s received zop message %s to %s, ID=%" PRIu16 "\n",
     getName().c_str(),
     endPToStr( getEndpointType() ).c_str(),
-    msgTToStr( ev->getType() ).c_str(),
+    ev->getSrcString().c_str(),
+    ev->getDestString().c_str(),
     ev->getID()
   );
 
@@ -524,7 +525,7 @@ bool zopNIC::msgNotify( int vn ) {
 
   // if this is an RZA device, marshall it through to the ZIQ
   // if this is a ZEN/ZQM/ZIP, forward it in the incoming queue
-  if( Type == zopCompID::Z_RZA || Type == zopCompID::Z_RZA1 || Type == zopCompID::Z_ZEN || Type == zopCompID::Z_ZQM || Type == zopCompID::Z_PREC_ZIP ) {
+  if( Type == zopCompID::Z_RZA || Type == zopCompID::Z_MSGRZA || Type == zopCompID::Z_ZEN || Type == zopCompID::Z_ZQM || Type == zopCompID::Z_PREC_ZIP ) {
     ( *msgHandler )( ev );
     return true;
   }
@@ -704,7 +705,7 @@ bool zopNIC::clockTick( SST::Cycle_t cycle ) {
     if( thisCycle < ReqPerCycle ) {
       zopEvent* ev = static_cast<zopEvent*>( ( *it )->inspectPayload() );
       Hart         = (uint32_t) ( ev->getSrcHart() );
-      if( Type == zopCompID::Z_RZA || Type == zopCompID::Z_RZA1 || Type == zopCompID::Z_ZEN || Type == zopCompID::Z_ZQM ) {
+      if( Type == zopCompID::Z_RZA || Type == zopCompID::Z_MSGRZA || Type == zopCompID::Z_ZEN || Type == zopCompID::Z_ZQM ) {
         // I am an RZA... I don't need to reserve any message IDs
         // ZEN ACKs and NACKs do not use message IDs, ZEN ZOPs to the RZA internally
         // handle message IDs.

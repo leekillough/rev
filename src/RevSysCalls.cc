@@ -4129,7 +4129,7 @@ EcallStatus RevCore::ECALL_forza_receive_word() {
 
   Forza::ringMsgT rt   = Forza::ringMsgT::R_READ;
   if( release_msg )
-    rt = Forza::ringMsgT::R_RMW;
+    rt = Forza::ringMsgT::R_UPDATE;
 
   SST::Forza::ringEvent* ring_ev = new SST::Forza::ringEvent(
     zNic->getEndpointType(), uint16_t( HartToExecID ), SST::Forza::zopCompID::Z_ZQM, rt, uint16_t( reg_id ), 0
@@ -4152,7 +4152,8 @@ EcallStatus RevCore::ECALL_forza_receive_word() {
     delete ring_ev;
   }
 
-  DependencySet( HartToExecID, RevReg::a0, RevRegClass::RegGPR );
+  if( !release_msg )
+    DependencySet( HartToExecID, RevReg::a0, RevRegClass::RegGPR );
   return EcallStatus::SUCCESS;
 }
 

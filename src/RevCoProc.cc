@@ -273,7 +273,7 @@ bool RZALSCoProc::handleMZOP( Forza::zopEvent* zev, bool& flag ) {
 
   // this is the actual number of data flits
   // these variables are only used for the DMA store operations
-  uint32_t RealFlitLen = (uint32_t) ( zev->getLength() - Forza::Z_NUM_HEADER_FLITS );
+  uint32_t RealFlitLen = (uint32_t) ( zev->getLength() );
   uint8_t* Buf         = nullptr;
   uint32_t i, j, cur = 0;
 
@@ -294,8 +294,7 @@ bool RZALSCoProc::handleMZOP( Forza::zopEvent* zev, bool& flag ) {
 
   // used only for load operations
   MemReq req{
-    Addr, (uint16_t) ( Rs2 ), RevRegClass::RegGPR, Forza::Z_MZOP_PIPE_HART, MemOp::MemOpREAD, true, MarkLoadCompleteFunc
-  };
+    Addr, (uint16_t) ( Rs2 ), RevRegClass::RegGPR, Forza::Z_MZOP_PIPE_HART, MemOp::MemOpREAD, true, MarkLoadCompleteFunc };
 
   // set the address
   Alloc.SetX( Rs1, Addr );
