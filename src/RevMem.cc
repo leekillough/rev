@@ -57,7 +57,7 @@ void RevMem::HandleMemFault( uint32_t width ) {
   uint64_t rval    = RevRand( 0, ( uint32_t{ 1 } << width ) - 1 );
 
   // find an address to fault
-  uint32_t  NBytes = RevRand( 0, memSize - 8 );
+  uint64_t  NBytes = RevRand( 0, memSize - 8 );
   uint64_t* Addr   = (uint64_t*) ( &physMem[0] + NBytes );
 
   // write the fault (read-modify-write)
@@ -102,7 +102,7 @@ void RevMem::LR( uint32_t hart, uint64_t addr, size_t len, void* target, const M
   unsigned char* BaseMem  = &physMem[physAddr];
 
   if( ctrl ) {
-    ctrl->sendREADLOCKRequest( hart, addr, reinterpret_cast<uint64_t>( BaseMem ), len, target, req, flags );
+    ctrl->sendREADLOCKRequest( hart, addr, uint64_t( BaseMem ), uint32_t( len ), target, req, flags );
   } else {
     memcpy( target, BaseMem, len );
     RevHandleFlagResp( target, len, flags );
@@ -127,7 +127,7 @@ bool RevMem::InvalidateLRReservations( uint32_t hart, uint64_t addr, size_t len 
   return ret;
 }
 
-bool RevMem::SC( uint32_t hart, uint64_t addr, size_t len, void* data, RevFlag flags ) {
+bool RevMem::SC( uint32_t hart, uint64_t addr, uint32_t len, void* data, RevFlag flags ) {
   // Find the reservation for this hart (there can only be one active reservation per hart)
   auto it = LRSC.find( hart );
   if( it != LRSC.end() ) {
@@ -196,7 +196,7 @@ void RevMem::AddToTLB( uint64_t vAddr, uint64_t physAddr ) {
     // Insert the vAddr and physAddr into the TLB and LRU list
     LRUQueue.push_front( vAddr );
     TLB.insert( {
-      vAddr, { physAddr, LRUQueue.begin() }
+      vAddr, {physAddr, LRUQueue.begin()}
     } );
   }
 }
@@ -282,7 +282,7 @@ bool RevMem::isValidVirtAddr( const uint64_t vAddr ) {
 }
 
 uint64_t RevMem::AddMemSegAt( const uint64_t& BaseAddr, const uint64_t& SegSize ) {
-  MemSegs.emplace_back( std::make_shared<MemSegment>( BaseAddr, SegSize ) );
+  MemSegs.emplace_back( new MemSegment( BaseAddr, SegSize ) );
   return BaseAddr;
 }
 
@@ -348,7 +348,7 @@ uint64_t RevMem::AddRoundedMemSeg( uint64_t BaseAddr, const uint64_t& SegSize, s
   if( !Added ) {
     // BaseAddr & RoundedTopAddr not a part of a segment
     // Add rounded segment
-    MemSegs.emplace_back( std::make_shared<MemSegment>( BaseAddr, RoundedSegSize ) );
+    MemSegs.emplace_back( new MemSegment( BaseAddr, RoundedSegSize ) );
   }
 
   return BaseAddr;
@@ -357,7 +357,7 @@ uint64_t RevMem::AddRoundedMemSeg( uint64_t BaseAddr, const uint64_t& SegSize, s
 std::shared_ptr<MemSegment> RevMem::AddThreadMem() {
   // Calculate the BaseAddr of the segment
   uint64_t BaseAddr = NextThreadMemAddr - ThreadMemSize;
-  ThreadMemSegs.emplace_back( std::make_shared<MemSegment>( BaseAddr, ThreadMemSize ) );
+  ThreadMemSegs.emplace_back( new MemSegment( BaseAddr, ThreadMemSize ) );
   // Page boundary between
   NextThreadMemAddr = BaseAddr - pageSize - 1;
   return ThreadMemSegs.back();
@@ -386,7 +386,7 @@ uint64_t RevMem::AllocMem( const uint64_t& SegSize ) {
     if( oldFreeSegSize > SegSize ) {
       // New data will start where the free segment started
       NewSegBaseAddr = FreeSeg->getBaseAddr();
-      MemSegs.emplace_back( std::make_shared<MemSegment>( NewSegBaseAddr, SegSize ) );
+      MemSegs.emplace_back( new MemSegment( NewSegBaseAddr, SegSize ) );
       FreeSeg->setBaseAddr( FreeSeg->getBaseAddr() + SegSize );
       FreeSeg->setSize( oldFreeSegSize - SegSize );
       return NewSegBaseAddr;
@@ -396,7 +396,7 @@ uint64_t RevMem::AllocMem( const uint64_t& SegSize ) {
     else if( oldFreeSegSize == SegSize ) {
       // New data will start where the free segment started
       NewSegBaseAddr = FreeSeg->getBaseAddr();
-      MemSegs.emplace_back( std::make_shared<MemSegment>( NewSegBaseAddr, SegSize ) );
+      MemSegs.emplace_back( new MemSegment( NewSegBaseAddr, SegSize ) );
       FreeMemSegs.erase( FreeMemSegs.begin() + ptrdiff_t( i ) );
       return NewSegBaseAddr;
     }
@@ -410,7 +410,7 @@ uint64_t RevMem::AllocMem( const uint64_t& SegSize ) {
   if( !NewSegBaseAddr ) {
     NewSegBaseAddr = heapend;
   }
-  MemSegs.emplace_back( std::make_shared<MemSegment>( NewSegBaseAddr, SegSize ) );
+  MemSegs.emplace_back( new MemSegment( NewSegBaseAddr, SegSize ) );
 
   ExpandHeap( SegSize );
 
@@ -444,7 +444,7 @@ uint64_t RevMem::AllocMemAt( const uint64_t& BaseAddr, const uint64_t& SegSize )
         // Create New FreeSeg that fills the upper part of the old FreeSeg
         uint64_t NewFreeSegBaseAddr = BaseAddr + SegSize;
         size_t   NewFreeSegSize     = OldFreeSegTop - NewFreeSegBaseAddr;
-        FreeMemSegs.emplace_back( std::make_shared<MemSegment>( NewFreeSegBaseAddr, NewFreeSegSize ) );
+        FreeMemSegs.emplace_back( new MemSegment( NewFreeSegBaseAddr, NewFreeSegSize ) );
       }
 
       // If were allocating at the beginning of a FreeSeg (That doesn't take up the whole segment)
@@ -492,7 +492,7 @@ uint64_t RevMem::AllocMemAt( const uint64_t& BaseAddr, const uint64_t& SegSize )
         continue;
       }
     }
-    MemSegs.emplace_back( std::make_shared<MemSegment>( BaseAddr, SegSize ) );
+    MemSegs.emplace_back( new MemSegment( BaseAddr, SegSize ) );
   }
 
   return ret;
@@ -508,7 +508,7 @@ bool RevMem::FenceMem( uint32_t Hart ) {
   return true;  // base RevMem support does nothing here
 }
 
-bool RevMem::AMOMem( uint32_t Hart, uint64_t Addr, size_t Len, void* Data, void* Target, const MemReq& req, RevFlag flags ) {
+bool RevMem::AMOMem( uint32_t Hart, uint64_t Addr, uint32_t Len, void* Data, void* Target, const MemReq& req, RevFlag flags ) {
 #ifdef _REV_DEBUG_
   std::cout << "AMO of " << Len << " Bytes Starting at 0x" << std::hex << Addr << std::dec << std::endl;
 #endif
@@ -519,7 +519,7 @@ bool RevMem::AMOMem( uint32_t Hart, uint64_t Addr, size_t Len, void* Data, void*
     uint64_t       physAddr = CalcPhysAddr( pageNum, Addr );
     unsigned char* BaseMem  = &physMem[physAddr];
 
-    ctrl->sendAMORequest( Hart, Addr, (uint64_t) ( BaseMem ), Len, static_cast<unsigned char*>( Data ), Target, req, flags );
+    ctrl->sendAMORequest( Hart, Addr, uint64_t( BaseMem ), Len, static_cast<unsigned char*>( Data ), Target, req, flags );
   } else if( zNic && !isRZA ) {
     // send a ZOP request to the RZA
     ZOP_AMOMem( Hart, Addr, Len, Data, Target, req, flags );
@@ -561,7 +561,7 @@ bool RevMem::AMOMem( uint32_t Hart, uint64_t Addr, size_t Len, void* Data, void*
   return true;
 }
 
-bool RevMem::WriteMem( uint32_t Hart, uint64_t Addr, size_t Len, const void* Data, RevFlag flags ) {
+bool RevMem::WriteMem( uint32_t Hart, uint64_t Addr, uint32_t Len, const void* Data, RevFlag flags ) {
 #ifdef _REV_DEBUG_
   std::cout << "Writing " << Len << " Bytes Starting at 0x" << std::hex << Addr << std::dec << std::endl;
 #endif
@@ -616,7 +616,7 @@ std::tuple<uint64_t, uint64_t, uint64_t> RevMem::AdjPageAddr( uint64_t Addr, uin
   return { remainder, physAddr, adjPhysAddr };
 }
 
-bool RevMem::ReadMem( uint32_t Hart, uint64_t Addr, size_t Len, void* Target, const MemReq& req, RevFlag flags ) {
+bool RevMem::ReadMem( uint32_t Hart, uint64_t Addr, uint32_t Len, void* Target, const MemReq& req, RevFlag flags ) {
 #ifdef _REV_DEBUG_
   std::cout << "NEW READMEM: Reading " << Len << " Bytes Starting at 0x" << std::hex << Addr << std::dec << std::endl;
 #endif
@@ -783,7 +783,7 @@ uint64_t RevMem::DeallocMem( uint64_t BaseAddr, uint64_t Size ) {
       // allocated data and is `Size` bytes long
       // - Before: |--------------------|--- AllocedSeg ---|
       // - After:  |---- NewFreeSeg ----|--- AllocedSeg ---|
-      FreeMemSegs.emplace_back( std::make_shared<MemSegment>( BaseAddr, Size ) );
+      FreeMemSegs.emplace_back( new MemSegment( BaseAddr, Size ) );
     }
   }
 
@@ -801,7 +801,7 @@ void RevMem::InitHeap( const uint64_t& EndOfStaticData ) {
     );
   } else {
     // Mark heap as free
-    FreeMemSegs.emplace_back( std::make_shared<MemSegment>( EndOfStaticData + 1, maxHeapSize ) );
+    FreeMemSegs.emplace_back( new MemSegment( EndOfStaticData + 1, maxHeapSize ) );
 
     heapend    = EndOfStaticData + 1;
     heapstart  = EndOfStaticData + 1;
@@ -866,7 +866,7 @@ SST::Forza::zopOpc RevMem::flagToZOP( RevFlag flags, size_t Len ) {
   // -- 'MS' = MS-Type (aka NO - mem gets result, Rd gets orig memory)
   // Function defined in bits [7:4] - function codes 0xB and 0xF unused
   static constexpr std::tuple<RevFlag, RevFlag, size_t, Forza::zopOpc> table[] = {
-    // clang-format off
+  // clang-format off
     { RevFlag::F_AMOADD,  RevFlag::F_FORZANN, 1, Forza::zopOpc::Z_HAC_8_M_ADD      },
     { RevFlag::F_AMOXOR,  RevFlag::F_FORZANN, 1, Forza::zopOpc::Z_HAC_8_M_XOR      },
     { RevFlag::F_AMOAND,  RevFlag::F_FORZANN, 1, Forza::zopOpc::Z_HAC_8_M_AND      },
@@ -1014,7 +1014,7 @@ SST::Forza::zopOpc RevMem::flagToZOP( RevFlag flags, size_t Len ) {
     { RevFlag::F_AMOMAX,  RevFlag::F_NONE,    8, Forza::zopOpc::Z_HAC_64_BASE_SMAX },
     { RevFlag::F_AMOMINU, RevFlag::F_NONE,    8, Forza::zopOpc::Z_HAC_64_BASE_MIN  },
     { RevFlag::F_AMOMAXU, RevFlag::F_NONE,    8, Forza::zopOpc::Z_HAC_64_BASE_MAX  },
-    // clang-format on
+  // clang-format on
   };
 
   for( const auto& [amo, ret, len, opc] : table ) {
@@ -1037,7 +1037,7 @@ SST::Forza::zopOpc RevMem::flagToZOP( RevFlag flags, size_t Len ) {
 SST::Forza::zopOpc RevMem::memToZOP( RevFlag flags, size_t Len, bool Write ) {
 
   static constexpr std::tuple<RevFlag, size_t, bool, Forza::zopOpc> table[] = {
-    // clang-format off
+  // clang-format off
     {   RevFlag::F_NONE, 1, false,  SST::Forza::zopOpc::Z_MZOP_LB },
     {   RevFlag::F_NONE, 2, false,  SST::Forza::zopOpc::Z_MZOP_LH },
     {   RevFlag::F_NONE, 4, false,  SST::Forza::zopOpc::Z_MZOP_LW },
@@ -1065,7 +1065,7 @@ SST::Forza::zopOpc RevMem::memToZOP( RevFlag flags, size_t Len, bool Write ) {
     { RevFlag::F_SEXT64, 1,  true, SST::Forza::zopOpc::Z_MZOP_SSB },
     { RevFlag::F_SEXT64, 2,  true, SST::Forza::zopOpc::Z_MZOP_SSH },
     { RevFlag::F_SEXT64, 4,  true, SST::Forza::zopOpc::Z_MZOP_SSW },
-    // clang-format on
+  // clang-format on
   };
 
   for( const auto& [resp, len, write, opc] : table ) {
@@ -1097,14 +1097,14 @@ bool RevMem::ZOP_AMOMem( uint32_t Hart, uint64_t Addr, size_t Len, void* Data, v
 
   // set all the fields
   zev->setType( SST::Forza::zopMsgT::Z_HZOPAC );
-  zev->setID( Hart );  // -- we set this to the Hart temporarily.  The zNic will set the actual message ID
+  zev->setID( uint16_t( Hart ) );  // -- we set this to the Hart temporarily.  The zNic will set the actual message ID
   zev->setOpc( flagToZOP( flags, Len ) );
   zev->setAppID( 0 );
   zev->setDestHart( Forza::Z_HZOP_PIPE_HART );
   zev->setDestZCID( (uint8_t) ( SST::Forza::zopCompID::Z_RZA ) );
   zev->setDestPCID( (uint8_t) ( zNic->getPCID( zNic->getZoneID() ) ) );
   zev->setDestPrec( (uint8_t) ( zNic->getPrecinctID() ) );
-  zev->setSrcHart( Hart );
+  zev->setSrcHart( uint16_t( Hart ) );
   zev->setSrcZCID( (uint8_t) ( zNic->getEndpointType() ) );
   zev->setSrcPCID( (uint8_t) ( zNic->getPCID( zNic->getZoneID() ) ) );
   zev->setSrcPrec( (uint8_t) ( zNic->getPrecinctID() ) );
@@ -1136,17 +1136,17 @@ bool RevMem::ZOP_READMem( uint32_t Hart, uint64_t Addr, size_t Len, void* Target
   uint64_t memSeg           = ( Addr >> Z_SEG_SHIFT ) & Z_SEG_MASK;
   // set all the fields : FIXME
   zev->setType( SST::Forza::zopMsgT::Z_MZOP );
-  zev->setID( Hart );  // -- we set this to the Hart temporarily.  The zNic will set the actual message ID
+  zev->setID( uint16_t( Hart ) );  // -- we set this to the Hart temporarily.  The zNic will set the actual message ID
   zev->setOpc( memToZOP( flags, Len, false ) );
   zev->setAppID( 0 );
   zev->setDestHart( Forza::Z_MZOP_PIPE_HART );
   Forza::zopCompID end_dest = ( Forza::zopCompID::Z_RZA );
   if( memSeg == 0x0F )  // In hardware, this would get set to ring level 3 as well
-    end_dest = ( Forza::zopCompID::Z_RZA1 );
+    end_dest = Forza::zopCompID::Z_RZA1;
   zev->setDestZCID( (uint8_t) end_dest );
   zev->setDestPCID( (uint8_t) ( zNic->getPCID( zNic->getZoneID() ) ) );
   zev->setDestPrec( (uint8_t) ( zNic->getPrecinctID() ) );
-  zev->setSrcHart( Hart );
+  zev->setSrcHart( uint16_t( Hart ) );
   zev->setSrcZCID( (uint8_t) ( zNic->getEndpointType() ) );
   zev->setSrcPCID( (uint8_t) ( zNic->getPCID( zNic->getZoneID() ) ) );
   zev->setSrcPrec( (uint8_t) ( zNic->getPrecinctID() ) );
@@ -1297,14 +1297,14 @@ bool RevMem::__ZOP_WRITEMemBase(
 
   // set all the fields : FIXME
   zev->setType( SST::Forza::zopMsgT::Z_MZOP );
-  zev->setID( Hart );  // -- we set this to the Hart temporarily.  The zNic will set the actual message ID
+  zev->setID( uint16_t( Hart ) );  // -- we set this to the Hart temporarily.  The zNic will set the actual message ID
   zev->setOpc( opc );
   zev->setAppID( 0 );
   zev->setDestHart( Forza::Z_MZOP_PIPE_HART );
   zev->setDestZCID( (uint8_t) ( SST::Forza::zopCompID::Z_RZA ) );
   zev->setDestPCID( (uint8_t) ( zNic->getPCID( zNic->getZoneID() ) ) );
   zev->setDestPrec( (uint8_t) ( zNic->getPrecinctID() ) );
-  zev->setSrcHart( Hart );
+  zev->setSrcHart( uint16_t( Hart ) );
   zev->setSrcZCID( (uint8_t) ( zNic->getEndpointType() ) );
   zev->setSrcPCID( (uint8_t) ( zNic->getPCID( zNic->getZoneID() ) ) );
   zev->setSrcPrec( (uint8_t) ( zNic->getPrecinctID() ) );
@@ -1375,14 +1375,14 @@ bool RevMem::__ZOP_FENCEHart( uint32_t Hart ) {
 
   // set all the fields : FIXME
   zev->setType( SST::Forza::zopMsgT::Z_FENCE );
-  zev->setID( Hart );  // -- we set this to the Hart temporarily.  The zNic will set the actual message ID
+  zev->setID( uint16_t( Hart ) );  // -- we set this to the Hart temporarily.  The zNic will set the actual message ID
   zev->setOpc( SST::Forza::zopOpc::Z_FENCE_HART );
   zev->setAppID( 0 );
   zev->setDestHart( Forza::Z_MZOP_PIPE_HART );
   zev->setDestZCID( (uint8_t) ( SST::Forza::zopCompID::Z_RZA ) );
   zev->setDestPCID( (uint8_t) ( zNic->getPCID( zNic->getZoneID() ) ) );
   zev->setDestPrec( (uint8_t) ( zNic->getPrecinctID() ) );
-  zev->setSrcHart( Hart );
+  zev->setSrcHart( uint16_t( Hart ) );
   zev->setSrcZCID( (uint8_t) ( zNic->getEndpointType() ) );
   zev->setSrcPCID( (uint8_t) ( zNic->getPCID( zNic->getZoneID() ) ) );
   zev->setSrcPrec( (uint8_t) ( zNic->getPrecinctID() ) );
@@ -1428,13 +1428,13 @@ bool RevMem::ZOP_ThreadMigrate( uint32_t Hart, std::vector<uint64_t> Payload, ui
 
   // set all the fields
   zev->setType( SST::Forza::zopMsgT::Z_TMIG );
-  zev->setID( Hart );
+  zev->setID( uint16_t( Hart ) );
   zev->setOpc( SST::Forza::zopOpc::Z_TMIG_INTREGS );  // FIXME - depends on payload length
   zev->setAppID( 0 );
   zev->setDestZCID( (uint8_t) ( SST::Forza::zopCompID::Z_ZQM ) );
   zev->setDestPCID( (uint8_t) ( zNic->getPCID( Zone ) ) );  //FIXME
   zev->setDestPrec( (uint8_t) ( Precinct ) );               //FIXME
-  zev->setSrcHart( Hart );
+  zev->setSrcHart( uint16_t( Hart ) );
   zev->setSrcZCID( (uint8_t) ( zNic->getEndpointType() ) );
   zev->setSrcPCID( (uint8_t) ( zNic->getPCID( zNic->getZoneID() ) ) );
   zev->setSrcPrec( (uint8_t) ( zNic->getPrecinctID() ) );

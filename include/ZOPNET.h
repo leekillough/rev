@@ -803,7 +803,8 @@ public:
     for( uint8_t i = 0; i < Z_NUM_HEADER_FLITS; i++ ) {
       Packet[i] = 0;  // ensure any "old" data is cleared out
     }
-    Length = Packet.size() - Z_NUM_HEADER_FLITS;
+    Length = uint8_t( Packet.size() - Z_NUM_HEADER_FLITS );
+
     Packet[Z_FLIT_DEST] |= ( (uint64_t) ( DestHart & Z_MASK_HARTID ) << Z_SHIFT_HARTID );
     Packet[Z_FLIT_DEST] |= ( (uint64_t) ( DestZCID & Z_MASK_ZCID ) << Z_SHIFT_ZCID );
     Packet[Z_FLIT_DEST] |= ( (uint64_t) ( DestPCID & Z_MASK_PCID ) << Z_SHIFT_PCID );
@@ -958,7 +959,7 @@ public:
   void serialize_order( SST::Core::Serialization::serializer& ser ) override {
     // we only serialize the raw packet
     Event::serialize_order( ser );
-    ser & Packet;
+    ser& Packet;
   }
 
   // zopEvent: implements the nic serialization
@@ -995,7 +996,7 @@ public:
   virtual void send( zopEvent* ev, zopCompID dest, zopPrecID zone, uint32_t precinct ) = 0;
 
   /// zopAPI : send a zone barrier request
-  virtual void send_zone_barrier( uint32_t hart, uint32_t endpoints )                  = 0;
+  virtual void send_zone_barrier( uint16_t hart, uint32_t endpoints )                  = 0;
 
   /// zopAPI: query the nic to see if the barrier is complete
   virtual bool isBarrierComplete( uint32_t Hart )                                      = 0;
@@ -1181,7 +1182,7 @@ public:
   void send( zopEvent* ev, zopCompID dest, zopPrecID zone, uint32_t precinct ) override;
 
   /// zopNIC: send a zone barrier request
-  void send_zone_barrier( uint32_t hart, uint32_t endpoints ) override;
+  void send_zone_barrier( uint16_t hart, uint32_t endpoints ) override;
 
   /// zopNIC: query the nic to see if the barrier is complete
   bool isBarrierComplete( uint32_t Hart ) override;
@@ -1301,7 +1302,7 @@ private:
     outstanding;  ///< zopNIC: tracks outstanding requests
 
   std::vector<Statistic<uint64_t>*> stats;  ///< zopNIC: statistics vector
-};  // zopNIC
+};                                          // zopNIC
 
 }  // namespace SST::Forza
 

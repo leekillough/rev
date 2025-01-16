@@ -47,8 +47,7 @@ EcallStatus RevCore::EcallLoadAndParseString( uint64_t straddr, std::function<vo
         HartToExecID,
         MemOp::MemOpREAD,
         true,
-        [=]( const MemReq& req ) { this->MarkLoadComplete( req ); }
-      };
+        [=]( const MemReq& req ) { this->MarkLoadComplete( req ); } };
       LSQueue->insert( req.LSQHashPair() );
       mem->ReadVal( HartToExecID, straddr + EcallState.string.size(), EcallState.buf.data(), req, RevFlag::F_NONE );
       EcallState.bytesRead = 1;
@@ -252,7 +251,7 @@ EcallStatus RevCore::ECALL_getcwd() {
   auto BufAddr = RegFile->GetX<uint64_t>( RevReg::a0 );
   auto size    = RegFile->GetX<uint64_t>( RevReg::a1 );
   auto CWD     = std::filesystem::current_path();
-  mem->WriteMem( HartToExecID, BufAddr, size, CWD.c_str() );
+  mem->WriteMem( HartToExecID, BufAddr, uint32_t( size ), CWD.c_str() );
 
   // Returns null-terminated string in buf
   // (no need to set x10 since it's already got BufAddr)
@@ -729,10 +728,10 @@ EcallStatus RevCore::ECALL_read() {
   std::vector<char> TmpBuf( BufSize );
 
   // Do the read on the host
-  int rc = read( fd, &TmpBuf[0], BufSize );
+  auto rc = read( fd, &TmpBuf[0], BufSize );
 
   // Write that data to the buffer inside of Rev
-  mem->WriteMem( HartToExecID, BufAddr, BufSize, &TmpBuf[0] );
+  mem->WriteMem( HartToExecID, BufAddr, uint32_t( BufSize ), &TmpBuf[0] );
 
   RegFile->SetX( RevReg::a0, rc );
   return EcallStatus::SUCCESS;
@@ -758,7 +757,7 @@ EcallStatus RevCore::ECALL_write() {
 
   auto nleft = nbytes - EcallState.string.size();
   if( nleft == 0 && LSQueue->count( lsq_hash ) == 0 ) {
-    int rc = write( fd, EcallState.string.data(), EcallState.string.size() );
+    auto rc = write( fd, EcallState.string.data(), EcallState.string.size() );
     RegFile->SetX( RevReg::a0, rc );
     DependencyClear( HartToExecID, RevReg::a0, RevRegClass::RegGPR );
     return EcallStatus::SUCCESS;
@@ -1052,7 +1051,7 @@ EcallStatus RevCore::ECALL_exit() {
     HartToExecID,
     status
   );
-  exit( status );
+  exit( int( status ) );
   // return EcallStatus::SUCCESS;
 }
 
@@ -3190,11 +3189,11 @@ EcallStatus RevCore::ECALL_pthread_create() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: pthread_create called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
-  uint64_t tidAddr              = RegFile->GetX<uint64_t>( RevReg::a0 );
+  uint64_t tidAddr     = RegFile->GetX<uint64_t>( RevReg::a0 );
   //uint64_t AttrPtr     = RegFile->GetX<uint64_t>(RevReg::a1);
-  uint64_t          NewThreadPC = RegFile->GetX<uint64_t>( RevReg::a2 );
-  uint64_t          ArgPtr      = RegFile->GetX<uint64_t>( RevReg::a3 );
-  unsigned long int NewTID      = GetNewThreadID();
+  uint64_t NewThreadPC = RegFile->GetX<uint64_t>( RevReg::a2 );
+  uint64_t ArgPtr      = RegFile->GetX<uint64_t>( RevReg::a3 );
+  uint32_t NewTID      = GetNewThreadID();
   CreateThread( NewTID, NewThreadPC, reinterpret_cast<void*>( ArgPtr ) );
 
   mem->WriteMem( HartToExecID, tidAddr, sizeof( NewTID ), &NewTID, RevFlag::F_NONE );
@@ -3214,7 +3213,7 @@ EcallStatus RevCore::ECALL_pthread_join() {
     // Set current thread to blocked
     std::unique_ptr<RevThread> BlockedThread = PopThreadFromHart( HartToExecID );
     BlockedThread->SetState( ThreadState::BLOCKED );
-    BlockedThread->SetWaitingToJoinTID( RegFile->GetX<uint64_t>( RevReg::a0 ) );
+    BlockedThread->SetWaitingToJoinTID( RegFile->GetX<uint32_t>( RevReg::a0 ) );
 
     // Signal to RevCPU this thread is has changed state
     AddThreadsThatChangedState( std::move( BlockedThread ) );
@@ -3794,7 +3793,12 @@ EcallStatus RevCore::ECALL_forza_read_zen_status() {
   );
 
   SST::Forza::ringEvent* ring_ev = new SST::Forza::ringEvent(
-    zNic->getEndpointType(), HartToExecID, SST::Forza::zopCompID::Z_ZEN, SST::Forza::ringMsgT::R_READ, Forza::R_ZENSTAT, 0xdefafUL
+    zNic->getEndpointType(),
+    uint16_t( HartToExecID ),
+    SST::Forza::zopCompID::Z_ZEN,
+    SST::Forza::ringMsgT::R_READ,
+    Forza::R_ZENSTAT,
+    0xdefafUL
   );
 
   if( zoneRing ) {
@@ -3830,7 +3834,12 @@ EcallStatus RevCore::ECALL_forza_read_zqm_status() {
   );
 
   SST::Forza::ringEvent* ring_ev = new SST::Forza::ringEvent(
-    zNic->getEndpointType(), HartToExecID, SST::Forza::zopCompID::Z_ZQM, SST::Forza::ringMsgT::R_READ, Forza::R_ZQMSTAT, 0xdefafUL
+    zNic->getEndpointType(),
+    uint16_t( HartToExecID ),
+    SST::Forza::zopCompID::Z_ZQM,
+    SST::Forza::ringMsgT::R_READ,
+    Forza::R_ZQMSTAT,
+    0xdefafUL
   );
 
   if( zoneRing ) {
@@ -3894,7 +3903,7 @@ EcallStatus RevCore::ECALL_forza_send_word() {
   uint16_t dest_reg              = ( is_ctrl_wd ) ? Forza::R_ZENEQC : Forza::R_ZENEQD;
 
   SST::Forza::ringEvent* ring_ev = new SST::Forza::ringEvent(
-    zNic->getEndpointType(), HartToExecID, SST::Forza::zopCompID::Z_ZEN, SST::Forza::ringMsgT::R_UPDATE, dest_reg, data
+    zNic->getEndpointType(), uint16_t( HartToExecID ), SST::Forza::zopCompID::Z_ZEN, SST::Forza::ringMsgT::R_UPDATE, dest_reg, data
   );
 
   if( zoneRing ) {
@@ -4122,8 +4131,9 @@ EcallStatus RevCore::ECALL_forza_receive_word() {
   if( release_msg )
     rt = Forza::ringMsgT::R_RMW;
 
-  SST::Forza::ringEvent* ring_ev =
-    new SST::Forza::ringEvent( zNic->getEndpointType(), HartToExecID, SST::Forza::zopCompID::Z_ZQM, rt, reg_id, 0 );
+  SST::Forza::ringEvent* ring_ev = new SST::Forza::ringEvent(
+    zNic->getEndpointType(), uint16_t( HartToExecID ), SST::Forza::zopCompID::Z_ZQM, rt, uint16_t( reg_id ), 0
+  );
 
   if( zoneRing ) {
     int64_t next_dest = zoneRing->getNextAddress();
@@ -4158,7 +4168,12 @@ EcallStatus RevCore::ECALL_forza_zen_get_cntrs() {
   );
 
   SST::Forza::ringEvent* ring_ev = new SST::Forza::ringEvent(
-    zNic->getEndpointType(), HartToExecID, SST::Forza::zopCompID::Z_ZEN, SST::Forza::ringMsgT::R_READ, Forza::R_ZENOMC, 0xdefafUL
+    zNic->getEndpointType(),
+    uint16_t( HartToExecID ),
+    SST::Forza::zopCompID::Z_ZEN,
+    SST::Forza::ringMsgT::R_READ,
+    Forza::R_ZENOMC,
+    0xdefafUL
   );
 
   if( zoneRing ) {
@@ -4225,7 +4240,12 @@ EcallStatus RevCore::ECALL_forza_zqm_setup() {
   );
 
   SST::Forza::ringEvent* ring_ev = new SST::Forza::ringEvent(
-    zNic->getEndpointType(), HartToExecID, SST::Forza::zopCompID::Z_ZQM, SST::Forza::ringMsgT::R_UPDATE, Forza::R_ZQMMBOXREG, outreg
+    zNic->getEndpointType(),
+    uint16_t( HartToExecID ),
+    SST::Forza::zopCompID::Z_ZQM,
+    SST::Forza::ringMsgT::R_UPDATE,
+    Forza::R_ZQMMBOXREG,
+    outreg
   );
 
   if( zoneRing ) {
@@ -4358,7 +4378,7 @@ EcallStatus RevCore::ECALL_forza_get_my_precinct() {
 EcallStatus RevCore::ECALL_forza_zone_barrier() {
   unsigned num_harts = (unsigned) RegFile->GetX<uint32_t>( RevReg::a0 );
   if( !zNic->hasBarrier( HartToExecID ) ) {
-    zNic->send_zone_barrier( HartToExecID, num_harts );
+    zNic->send_zone_barrier( uint16_t( HartToExecID ), num_harts );
     output->verbose(
       CALL_INFO,
       2,
@@ -4448,7 +4468,7 @@ EcallStatus RevCore::ECALL_forza_remote_update() {
   zev->setDestZCID( (uint8_t) ( SST::Forza::zopCompID::Z_RZA ) );
   zev->setDestPCID( (uint8_t) ( dest_zone ) );
   zev->setDestPrec( (uint8_t) ( dest_prec ) );
-  zev->setSrcHart( HartToExecID );
+  zev->setSrcHart( uint16_t( HartToExecID ) );
   zev->setSrcZCID( (uint8_t) ( zNic->getEndpointType() ) );
   zev->setSrcPCID( (uint8_t) ( zNic->getPCID( zNic->getZoneID() ) ) );
   zev->setSrcPrec( (uint8_t) ( zNic->getPrecinctID() ) );

@@ -1,7 +1,7 @@
 //
 // _ZOPNET_cc_
 //
-// Copyright (C) 2017-2024 Tactical Computing Laboratories, LLC
+// Copyright (C) 2017-2025 Tactical Computing Laboratories, LLC
 // All Rights Reserved
 // contact@tactcomplabs.com
 //
@@ -172,7 +172,8 @@ void zopNIC::init( uint32_t phase ) {
   if( iFace->isNetworkInitialized() ) {
     if( !initBroadcastSent ) {
       initBroadcastSent = true;
-      zopEvent* ev = new zopEvent( iFace->getEndpointID(), getEndpointType(), uint32_t( getPCID( getZoneID() ) ), getPrecinctID() );
+      zopEvent* ev =
+        new zopEvent( uint32_t( iFace->getEndpointID() ), getEndpointType(), uint32_t( getPCID( getZoneID() ) ), getPrecinctID() );
       SST::Interfaces::SimpleNetwork::Request* req = new SST::Interfaces::SimpleNetwork::Request();
       req->dest                                    = SST::Interfaces::SimpleNetwork::INIT_BROADCAST_ADDR;
       req->src                                     = iFace->getEndpointID();
@@ -268,7 +269,7 @@ bool zopNIC::isBarrierComplete( uint32_t Hart ) {
   return false;
 }
 
-void zopNIC::send_zone_barrier( uint32_t Hart, uint32_t endpoints ) {
+void zopNIC::send_zone_barrier( uint16_t Hart, uint32_t endpoints ) {
   output.verbose( CALL_INFO, 9, 0, "Injecting zone barrier with sense=%u\n", barrierSense[Hart] );
   // setup the barrier
   barrierEndpoints[barrierSense[Hart]][Hart] = endpoints;
@@ -276,8 +277,7 @@ void zopNIC::send_zone_barrier( uint32_t Hart, uint32_t endpoints ) {
   // walk the zone network destinations and send a packet to every ZAP
   for( auto i : hostMap ) {
     auto t = i.second;
-    if( ( (uint8_t) ( std::get<_HM_ENDP_T>( t ) ) < (uint8_t) ( SST::Forza::zopCompID::Z_RZA ) ) &&
-        ( (uint32_t) ( std::get<_HM_ZID>( t ) ) == Zone ) && ( std::get<_HM_PID>( t ) == Precinct ) ) {
+    if( ( (uint8_t) ( std::get<_HM_ENDP_T>( t ) ) < (uint8_t) ( SST::Forza::zopCompID::Z_RZA ) ) && ( (uint32_t) ( std::get<_HM_ZID>( t ) ) == Zone ) && ( std::get<_HM_PID>( t ) == Precinct ) ) {
       // found a candidate target
       auto realDest = i.first;
 
@@ -375,7 +375,7 @@ void zopNIC::send( zopEvent* ev, zopCompID dest, zopPrecID zone, uint32_t prec )
     );
   }
 #endif
-  auto realDest = 0;
+  int64_t realDest = 0;
   if( ( (uint32_t) zone == Zone ) && ( prec == Precinct ) ) {
     if( ev->getDestZCID() <= (uint8_t) SST::Forza::zopCompID::Z_ZAP3 && ev->getType() == SST::Forza::zopMsgT::Z_MSG ) {
       if( ev->getOpc() == SST::Forza::zopOpc::Z_MSG_SENDP )
@@ -401,10 +401,9 @@ void zopNIC::send( zopEvent* ev, zopCompID dest, zopPrecID zone, uint32_t prec )
   }
 
   bool fnd_dest = false;
-  for( auto i : hostMap ) {
-    auto t = i.second;
+  for( const auto& [dest, t] : hostMap ) {
     if( ( std::get<_HM_ENDP_T>( t ) == TmpDest ) && ( std::get<_HM_ZID>( t ) == zone ) && ( std::get<_HM_PID>( t ) == prec ) ) {
-      realDest = i.first;
+      realDest = dest;
       fnd_dest = true;
     }
   }
@@ -514,8 +513,7 @@ bool zopNIC::msgNotify( int vn ) {
   // if the local device is a ZAP, handle the broadcast
   // otherwise, ignore the packet
   if( ( ev->getType() == Forza::zopMsgT::Z_MSG ) && ( ev->getOpc() == Forza::zopOpc::Z_MSG_ZBAR ) ) {
-    if( Type == Forza::zopCompID::Z_ZAP0 || Type == Forza::zopCompID::Z_ZAP1 || Type == Forza::zopCompID::Z_ZAP2 ||
-        Type == Forza::zopCompID::Z_ZAP3 ) {
+    if( Type == Forza::zopCompID::Z_ZAP0 || Type == Forza::zopCompID::Z_ZAP1 || Type == Forza::zopCompID::Z_ZAP2 || Type == Forza::zopCompID::Z_ZAP3 ) {
       return handleBarrier( ev );
     } else {
       // not a ZAP device, ignore the packet
@@ -526,8 +524,7 @@ bool zopNIC::msgNotify( int vn ) {
 
   // if this is an RZA device, marshall it through to the ZIQ
   // if this is a ZEN/ZQM/ZIP, forward it in the incoming queue
-  if( Type == zopCompID::Z_RZA || Type == zopCompID::Z_RZA1 || Type == zopCompID::Z_ZEN || Type == zopCompID::Z_ZQM ||
-      Type == zopCompID::Z_PREC_ZIP ) {
+  if( Type == zopCompID::Z_RZA || Type == zopCompID::Z_RZA1 || Type == zopCompID::Z_ZEN || Type == zopCompID::Z_ZQM || Type == zopCompID::Z_PREC_ZIP ) {
     ( *msgHandler )( ev );
     return true;
   }
@@ -536,9 +533,7 @@ bool zopNIC::msgNotify( int vn ) {
 
   // if this is a ZAP device and a thread migration or mzop (scratchpad req, methinks - tjd, 6-sept-24),
   // send it to the RevCPU handler
-  if( ( Type == Forza::zopCompID::Z_ZAP0 || Type == Forza::zopCompID::Z_ZAP1 || Type == Forza::zopCompID::Z_ZAP2 ||
-        Type == Forza::zopCompID::Z_ZAP3 ) &&
-      ( ev->getType() == Forza::zopMsgT::Z_TMIG || ev->getType() == Forza::zopMsgT::Z_MZOP ) ) {
+  if( ( Type == Forza::zopCompID::Z_ZAP0 || Type == Forza::zopCompID::Z_ZAP1 || Type == Forza::zopCompID::Z_ZAP2 || Type == Forza::zopCompID::Z_ZAP3 ) && ( ev->getType() == Forza::zopMsgT::Z_TMIG || ev->getType() == Forza::zopMsgT::Z_MZOP ) ) {
     ( *msgHandler )( ev );
     return true;
   }
@@ -715,7 +710,7 @@ bool zopNIC::clockTick( SST::Cycle_t cycle ) {
         // handle message IDs.
         auto P = ev->getPacket();
         ev->encodeEvent();
-        if( iFace->spaceToSend( 0, P.size() * 64 ) ) {
+        if( iFace->spaceToSend( 0, int( P.size() * 64 ) ) ) {
           // we have space to send
           recordStat( getStatFromPacket( ev ), 1 );
           recordStat( zopStats::BytesSent, P.size() * 64 );
@@ -740,7 +735,7 @@ bool zopNIC::clockTick( SST::Cycle_t cycle ) {
 
         // we have a free message Id for this hart
         auto P = ev->getPacket();
-        if( iFace->spaceToSend( 0, P.size() * 64 ) ) {
+        if( iFace->spaceToSend( 0, int( P.size() * 64 ) ) ) {
           // we have space to send
           // bypass this process if we're sending a zone barrier
           // zone barriers require no msg id and/or response
