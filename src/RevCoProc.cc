@@ -175,11 +175,8 @@ RZALSCoProc::RZALSCoProc( ComponentId_t id, Params& params, RevCore* parent )
 }
 
 RZALSCoProc::~RZALSCoProc() {
-  for( auto it = LoadQ.begin(); it != LoadQ.end(); ++it ) {
-    auto z = std::get<LOADQ_ZEV>( *it );
-    delete z;
-  }
-  LoadQ.clear();
+  for( auto& [zev, rs2] : LoadQ )
+    delete zev;
 }
 
 void RZALSCoProc::registerStats() {
@@ -231,8 +228,7 @@ void RZALSCoProc::CheckLSQueue() {
   // packet with the appropriate data
 
   for( auto it = LoadQ.begin(); it != LoadQ.end(); ++it ) {
-    auto zev = it->first;
-    auto rs2 = it->second;
+    auto& [zev, rs2] = *it;
 
     if( Alloc.getState( rs2 ) == _H_DIRTY ) {
       // load to register has occurred, time to build a response
@@ -274,7 +270,6 @@ bool RZALSCoProc::handleMZOP( Forza::zopEvent* zev, bool& flag ) {
   // this is the actual number of data flits
   // these variables are only used for the DMA store operations
   uint32_t RealFlitLen = (uint32_t) ( zev->getLength() );
-  uint8_t* Buf         = nullptr;
   uint32_t i, j, cur = 0;
 
   if( !Alloc.getRegs( Rs1, Rs2 ) ) {
@@ -305,7 +300,7 @@ bool RZALSCoProc::handleMZOP( Forza::zopEvent* zev, bool& flag ) {
     Alloc.SetX( Rs2, 0 );
     Mem->ReadVal( Forza::Z_MZOP_PIPE_HART, Addr, reinterpret_cast<uint8_t*>( Alloc.getRegAddr( Rs2 ) ), req, RevFlag::F_NONE );
     zev->setMemReq( req );
-    LoadQ.push_back( std::make_pair( zev, Rs2 ) );
+    LoadQ.emplace_back( zev, Rs2 );
     flag = false;
     recordStat( MZOP_LB, 1 );
     break;
@@ -313,7 +308,7 @@ bool RZALSCoProc::handleMZOP( Forza::zopEvent* zev, bool& flag ) {
     Alloc.SetX( Rs2, 0 );
     Mem->ReadVal( Forza::Z_MZOP_PIPE_HART, Addr, reinterpret_cast<uint16_t*>( Alloc.getRegAddr( Rs2 ) ), req, RevFlag::F_NONE );
     zev->setMemReq( req );
-    LoadQ.push_back( std::make_pair( zev, Rs2 ) );
+    LoadQ.emplace_back( zev, Rs2 );
     flag = false;
     recordStat( MZOP_LH, 1 );
     break;
@@ -321,7 +316,7 @@ bool RZALSCoProc::handleMZOP( Forza::zopEvent* zev, bool& flag ) {
     Alloc.SetX( Rs2, 0 );
     Mem->ReadVal( Forza::Z_MZOP_PIPE_HART, Addr, reinterpret_cast<uint32_t*>( Alloc.getRegAddr( Rs2 ) ), req, RevFlag::F_NONE );
     zev->setMemReq( req );
-    LoadQ.push_back( std::make_pair( zev, Rs2 ) );
+    LoadQ.emplace_back( zev, Rs2 );
     flag = false;
     recordStat( MZOP_LW, 1 );
     break;
@@ -329,7 +324,7 @@ bool RZALSCoProc::handleMZOP( Forza::zopEvent* zev, bool& flag ) {
     Alloc.SetX( Rs2, 0 );
     Mem->ReadVal( Forza::Z_MZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs2 ), req, RevFlag::F_NONE );
     zev->setMemReq( req );
-    LoadQ.push_back( std::make_pair( zev, Rs2 ) );
+    LoadQ.emplace_back( zev, Rs2 );
     flag = false;
     recordStat( MZOP_LD, 1 );
     break;
@@ -338,7 +333,7 @@ bool RZALSCoProc::handleMZOP( Forza::zopEvent* zev, bool& flag ) {
     Alloc.SetX( Rs2, 0 );
     Mem->ReadVal( Forza::Z_MZOP_PIPE_HART, Addr, reinterpret_cast<int8_t*>( Alloc.getRegAddr( Rs2 ) ), req, RevFlag::F_SEXT64 );
     zev->setMemReq( req );
-    LoadQ.push_back( std::make_pair( zev, Rs2 ) );
+    LoadQ.emplace_back( zev, Rs2 );
     flag = false;
     recordStat( MZOP_LSB, 1 );
     break;
@@ -346,7 +341,7 @@ bool RZALSCoProc::handleMZOP( Forza::zopEvent* zev, bool& flag ) {
     Alloc.SetX( Rs2, 0 );
     Mem->ReadVal( Forza::Z_MZOP_PIPE_HART, Addr, reinterpret_cast<int16_t*>( Alloc.getRegAddr( Rs2 ) ), req, RevFlag::F_SEXT64 );
     zev->setMemReq( req );
-    LoadQ.push_back( std::make_pair( zev, Rs2 ) );
+    LoadQ.emplace_back( zev, Rs2 );
     flag = false;
     recordStat( MZOP_LSH, 1 );
     break;
@@ -354,7 +349,7 @@ bool RZALSCoProc::handleMZOP( Forza::zopEvent* zev, bool& flag ) {
     Alloc.SetX( Rs2, 0 );
     Mem->ReadVal( Forza::Z_MZOP_PIPE_HART, Addr, reinterpret_cast<int32_t*>( Alloc.getRegAddr( Rs2 ) ), req, RevFlag::F_SEXT64 );
     zev->setMemReq( req );
-    LoadQ.push_back( std::make_pair( zev, Rs2 ) );
+    LoadQ.emplace_back( zev, Rs2 );
     flag = false;
     recordStat( MZOP_LSW, 1 );
     break;
@@ -460,9 +455,9 @@ bool RZALSCoProc::handleMZOP( Forza::zopEvent* zev, bool& flag ) {
     break;
 
   // dma stores
-  case Forza::zopOpc::Z_MZOP_SDMA:
+  case Forza::zopOpc::Z_MZOP_SDMA: {
     // build a bulk write
-    Buf = new uint8_t[RealFlitLen * 8];
+    auto Buf = std::make_unique<uint8_t[]>( RealFlitLen * 8 );
 
     for( i = 0; i < RealFlitLen; i++ ) {
       Data = 0;
@@ -484,11 +479,10 @@ bool RZALSCoProc::handleMZOP( Forza::zopEvent* zev, bool& flag ) {
     }
 
     // write buffer
-    Mem->WriteMem( Forza::Z_MZOP_PIPE_HART, Addr, RealFlitLen * 8, Buf );
-    delete[] Buf;
+    Mem->WriteMem( Forza::Z_MZOP_PIPE_HART, Addr, RealFlitLen * 8, Buf.get() );
     flag = true;
     recordStat( MZOP_SDMA, 1 );
-    break;
+  } break;
   default:
     // not an MZOP
     output->verbose(
@@ -540,11 +534,8 @@ RZAAMOCoProc::RZAAMOCoProc( ComponentId_t id, Params& params, RevCore* parent )
 }
 
 RZAAMOCoProc::~RZAAMOCoProc() {
-  for( auto it = AMOQ.begin(); it != AMOQ.end(); ++it ) {
-    auto z = std::get<AMOQ_ZEV>( *it );
-    delete z;
-  }
-  AMOQ.clear();
+  for( auto& [zev, rs1, rs2] : AMOQ )
+    delete zev;
 }
 
 void RZAAMOCoProc::registerStats() {
@@ -1811,7 +1802,7 @@ bool RZAAMOCoProc::handleHZOP( Forza::zopEvent* zev, bool& flag ) {
   }
 
   // add the request to the AMOQ
-  AMOQ.push_back( std::make_tuple( zev, Rs1, Rs2 ) );
+  AMOQ.emplace_back( zev, Rs1, Rs2 );
 
   return true;
 }
@@ -1835,9 +1826,7 @@ void RZAAMOCoProc::CheckLSQueue() {
   // packet with the appropriate data
 
   for( auto it = AMOQ.begin(); it != AMOQ.end(); ++it ) {
-    auto zev = std::get<AMOQ_ZEV>( *it );
-    auto rs1 = std::get<AMOQ_RS1>( *it );
-    auto rs2 = std::get<AMOQ_RS2>( *it );
+    auto& [zev, rs1, rs2] = *it;
 
     if( Alloc.getState( rs2 ) == _H_DIRTY ) {
       // load to register has occurred, time to build a response

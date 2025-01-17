@@ -1280,18 +1280,9 @@ private:
   std::vector<std::pair<zopEvent*, zopCompID>>          preInitQ;  ///< zopNIC: holds buffered requests before the network boots
   std::vector<SST::Interfaces::SimpleNetwork::Request*> sendQ;     ///< zopNIC: buffered send queue
 
-#define _HM_ENDP_T 0
-#define _HM_ZID    1
-#define _HM_PID    2
   std::map<SST::Interfaces::SimpleNetwork::nid_t, std::tuple<zopCompID, zopPrecID, uint32_t>>
     hostMap;  ///< zopNIC: network ID to endpoint type mapping
 
-#define _ZNIC_OUT_HART   0
-#define _ZNIC_OUT_ID     1
-#define _ZNIC_OUT_READ   2
-#define _ZNIC_OUT_TARGET 3
-#define _ZNIC_OUT_OPC    4
-#define _ZNIC_OUT_REQ    5
   std::vector<std::tuple<
     uint16_t,
     uint8_t,

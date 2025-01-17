@@ -1572,9 +1572,9 @@ void RevMem::updatePhysHistorytoOutput() {
   //PhysAddr,Private/Shared, True/False,appID
   outputfile << "PhysAddr,Type,Valid,AppID\n";
 
-  for( const auto& element : OutputPhysAddrHist ) {
-    outputfile << element.first << "," << std::get<0>( element.second ) << ","
-               << ( std::get<1>( element.second ) ? "True" : "False" ) << "," << std::get<2>( element.second ) << "\n";
+  for( auto& [first, second] : OutputPhysAddrHist ) {
+    auto& [type, valid, appIDs] = second;
+    outputfile << first << "," << type << "," << ( valid ? "True" : "False" ) << "," << appIDs << "\n";
   }
 
   outputfile.close();
