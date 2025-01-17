@@ -1071,48 +1071,39 @@ bool RevBasicMemCtrl::processNextRqst(
   return true;
 }
 
-/// RevFlag: Perform an integer conversion
-template<typename SRC, typename DEST>
-static inline void convert( void* target ) {
-  SRC src;
-  memcpy( &src, target, sizeof( src ) );
-  DEST dest{ src };
-  memcpy( target, &dest, sizeof( dest ) );
-}
-
 /// RevFlag: Handle flag response
-void RevHandleFlagResp( void* target, size_t size, RevFlag flags ) {
+void RevBasicMemCtrl::RevHandleFlagResp( void* target, size_t size, RevFlag flags ) {
   if( RevFlagHas( flags, RevFlag::F_BOXNAN ) && size < sizeof( double ) ) {
     BoxNaN( static_cast<double*>( target ), static_cast<float*>( target ) );
   } else {
     switch( size ) {
     case 1:
       if( RevFlagHas( flags, RevFlag::F_SEXT32 ) ) {
-        convert<int8_t, int32_t>( target );
+        RevConvertInt<int8_t, int32_t>( target );
       } else if( RevFlagHas( flags, RevFlag::F_ZEXT32 ) ) {
-        convert<uint8_t, uint32_t>( target );
+        RevConvertInt<uint8_t, uint32_t>( target );
       } else if( RevFlagHas( flags, RevFlag::F_SEXT64 ) ) {
-        convert<int8_t, int64_t>( target );
+        RevConvertInt<int8_t, int64_t>( target );
       } else if( RevFlagHas( flags, RevFlag::F_ZEXT64 ) ) {
-        convert<uint8_t, uint64_t>( target );
+        RevConvertInt<uint8_t, uint64_t>( target );
       }
       break;
     case 2:
       if( RevFlagHas( flags, RevFlag::F_SEXT32 ) ) {
-        convert<int16_t, int32_t>( target );
+        RevConvertInt<int16_t, int32_t>( target );
       } else if( RevFlagHas( flags, RevFlag::F_ZEXT32 ) ) {
-        convert<uint16_t, uint32_t>( target );
+        RevConvertInt<uint16_t, uint32_t>( target );
       } else if( RevFlagHas( flags, RevFlag::F_SEXT64 ) ) {
-        convert<int16_t, int64_t>( target );
+        RevConvertInt<int16_t, int64_t>( target );
       } else if( RevFlagHas( flags, RevFlag::F_ZEXT64 ) ) {
-        convert<uint16_t, uint64_t>( target );
+        RevConvertInt<uint16_t, uint64_t>( target );
       }
       break;
     case 4:
       if( RevFlagHas( flags, RevFlag::F_SEXT64 ) ) {
-        convert<int32_t, int64_t>( target );
+        RevConvertInt<int32_t, int64_t>( target );
       } else if( RevFlagHas( flags, RevFlag::F_ZEXT64 ) ) {
-        convert<uint32_t, uint64_t>( target );
+        RevConvertInt<uint32_t, uint64_t>( target );
       }
     }
   }
@@ -1158,14 +1149,7 @@ void RevBasicMemCtrl::handleReadResp( StandardMem::ReadResp* ev ) {
     // determine if we have a split request
     if( op->getSplitRqst() > 1 ) {
       // split request exists, determine how to handle it
-
-      uint8_t* target    = static_cast<uint8_t*>( op->getTarget() );
-      uint32_t startByte = (uint32_t) ( ev->pAddr - op->getAddr() );
-      target += uint8_t( startByte );
-      for( uint32_t i = 0; i < (uint32_t) ( ev->size ); i++ ) {
-        *target = ev->data[i];
-        target++;
-      }
+      memcpy( static_cast<uint8_t*>( op->getTarget() ) + ev->pAddr - op->getAddr(), &ev->data[0], ev->size );
 
       if( getNumSplitRqsts( op ) == 1 ) {
         // this was the last request to service, delete the op
@@ -1186,11 +1170,8 @@ void RevBasicMemCtrl::handleReadResp( StandardMem::ReadResp* ev ) {
     }
 
     // no split request exists; handle as normal
-    uint8_t* target = (uint8_t*) ( op->getTarget() );
-    for( uint32_t i = 0; i < op->getSize(); i++ ) {
-      *target = ev->data[i];
-      target++;
-    }
+    memcpy( op->getTarget(), &ev->data[0], op->getSize() );
+
     // determine if we need to sign/zero extend
     handleFlagResp( op );
     if( isAMO ) {
@@ -1238,6 +1219,7 @@ void RevBasicMemCtrl::performAMO( RevMemOp* Tmp ) {
 
   // Perform the atomic operation
   if( RevFlagAtomicFloat( flags ) != RevFlag::F_NONE ) {
+
     switch( size ) {
     case 4: ApplyForzaAMO( flags, &Target, &Rtn, Src.f ); break;
     case 8: ApplyForzaAMO( flags, &Target, &Rtn, Src.d ); break;
