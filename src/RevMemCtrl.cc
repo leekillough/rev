@@ -1191,55 +1191,129 @@ void RevBasicMemCtrl::handleReadResp( StandardMem::ReadResp* ev ) {
   num_read--;
 }
 
-void RevBasicMemCtrl::performAMO( RevMemOp* Tmp ) {
-  static_assert( std::is_same_v<unsigned char, uint8_t> );
+///< Apply Atomic Memory Operation
+/// The operation described by "flags" is applied to memory "Target" with value "value"
+template<typename T>
+static std::enable_if_t<!std::is_floating_point_v<T>> ApplyAMO( RevFlag flags, void* Target, T value ) {
+  // Target and value cast to signed and uint32_t versions
+  auto* TmpTarget  = static_cast<std::make_signed_t<T>*>( Target );
+  auto* TmpTargetU = static_cast<std::make_unsigned_t<T>*>( Target );
+  auto  TmpBuf     = static_cast<std::make_signed_t<T>>( value );
+  auto  TmpBufU    = static_cast<std::make_unsigned_t<T>>( value );
 
-  if( Tmp == nullptr ) {
-    output->fatal( CALL_INFO, -1, "Error : AMOTable entry is null\n" );
+  // Table mapping atomic operations to executable code
+  // clang-format off
+  static const std::pair<RevCPU::RevFlag, std::function<void()>> table[] = {
+    { RevFlag::F_AMOADD,    [&]{ *TmpTarget += TmpBuf; } },
+    { RevFlag::F_AMOXOR,    [&]{ *TmpTarget ^= TmpBuf; } },
+    { RevFlag::F_AMOAND,    [&]{ *TmpTarget &= TmpBuf; } },
+    { RevFlag::F_AMOOR,     [&]{ *TmpTarget |= TmpBuf; } },
+    { RevFlag::F_AMOSWAP,   [&]{ *TmpTarget  = TmpBuf; } },
+    { RevFlag::F_AMOMIN,    [&]{ *TmpTarget  = std::min( *TmpTarget,  TmpBuf );  } },
+    { RevFlag::F_AMOMAX,    [&]{ *TmpTarget  = std::max( *TmpTarget,  TmpBuf );  } },
+    { RevFlag::F_AMOMINU,   [&]{ *TmpTargetU = std::min( *TmpTargetU, TmpBufU ); } },
+    { RevFlag::F_AMOMAXU,   [&]{ *TmpTargetU = std::max( *TmpTargetU, TmpBufU ); } },
+    { RevFlag::F_FORZASUB,  [&]{ *TmpTarget -= TmpBuf; } },
+    { RevFlag::F_FORZATHRS, [&]{ *TmpTargetU = *TmpTargetU >= TmpBufU; } },
+  };
+  // clang-format on
+  RevFlag amo{ RevFlagAtomic( flags ) };
+  for( const auto& [flag, op] : table ) {
+    if( amo == flag ) {
+      op();
+      break;
+    }
   }
+}
 
-  RevFlag  flags  = Tmp->getFlags();
-  uint32_t size   = Tmp->getSize();
-  uint8_t* target = reinterpret_cast<uint8_t*>( Tmp->getTarget() );
+/// Forza floating-point atomics
+template<typename T>
+static std::enable_if_t<std::is_floating_point_v<T>> ApplyAMO( RevFlag flags, void* Target, T value ) {
+  auto* TmpTarget = static_cast<T*>( Target );
+  auto  TmpBuf    = value;
 
-  union {
-    uint8_t  u8;
-    uint16_t u16;
-    uint32_t u32;
-    uint64_t u64;
-    float    f;
-    double   d;
-  } Src, Rtn;
+  // clang-format off
+  static const std::pair<RevCPU::RevFlag, std::function<void()>> table[] = {
+    { RevFlag::F_FORZAFADD,  [&]{ *TmpTarget += TmpBuf; } },
+    { RevFlag::F_FORZAFSUB,  [&]{ *TmpTarget -= TmpBuf; } },
+    { RevFlag::F_FORZAFSUBR, [&]{ *TmpTarget  = TmpBuf - *TmpTarget; } },
+  };
+  // clang-format on
+
+  RevFlag amo{ RevFlagAtomicFloat( flags ) };
+  for( const auto& [flag, op] : table ) {
+    if( amo == flag ) {
+      op();
+      break;
+    }
+  }
+}
+
+///< Apply Atomic Memory Operation
+/// The operation described by "flags" is applied to memory "Target" with value "value"
+/// The operation writes the Rd return with the value of "Rtn"
+template<typename T>
+static void ApplyForzaAMO( RevFlag flags, void* Target, void* Rtn, T value ) {
+  if( RevFlagReturn( flags ) == RevFlag::F_FORZAON )
+    Target = Rtn;  // 'S' = S-Type (aka ON - mem unchanged, Rd gets result)
+
+  // Perform the atomic operation on Target
+  ApplyAMO( flags, Target, value );
+
+  if( RevFlagReturn( flags ) == RevFlag::F_FORZANN )
+    memcpy( Rtn, Target, sizeof( T ) );  // 'M' = M-Type (aka NN - both Rd and mem get result)
+}
+
+AMOData RevBasicMemCtrl::performAMO( RevFlag flags, uint32_t size, void* target, const void* data ) {
+  AMOData src, rtn, newMem;
 
   // Copy the rs2 source register value
-  memcpy( &Src, &Tmp->getBuf()[0], size );
+  memcpy( &src, data, size );
 
-  // Copy the original value into Rtn
-  memcpy( &Rtn, target, size );
+  // Copy the original memory value into New memory
+  memcpy( &newMem, target, size );
+
+  // Copy the original memory value into Rtn register
+  memcpy( &rtn, target, size );
 
   // Perform the atomic operation
   if( RevFlagAtomicFloat( flags ) != RevFlag::F_NONE ) {
     switch( size ) {
-    case 4: ApplyForzaAMO( flags, target, &Rtn, Src.f ); break;
-    case 8: ApplyForzaAMO( flags, target, &Rtn, Src.d ); break;
+    case 4: ApplyForzaAMO( flags, &newMem, &rtn, src.f ); break;
+    case 8: ApplyForzaAMO( flags, &newMem, &rtn, src.d ); break;
     }
   } else {
     switch( size ) {
-    case 1: ApplyForzaAMO( flags, target, &Rtn, Src.u8 ); break;
-    case 2: ApplyForzaAMO( flags, target, &Rtn, Src.u16 ); break;
-    case 4: ApplyForzaAMO( flags, target, &Rtn, Src.u32 ); break;
-    case 8: ApplyForzaAMO( flags, target, &Rtn, Src.u64 ); break;
+    case 1: ApplyForzaAMO( flags, &newMem, &rtn, src.u8 ); break;
+    case 2: ApplyForzaAMO( flags, &newMem, &rtn, src.u16 ); break;
+    case 4: ApplyForzaAMO( flags, &newMem, &rtn, src.u32 ); break;
+    case 8: ApplyForzaAMO( flags, &newMem, &rtn, src.u64 ); break;
     }
   }
+
+  // Copy the return value to the destination register
+  memcpy( target, &rtn, size );
+
+  // Return the new value to be written to memory
+  return newMem;
+}
+
+void RevBasicMemCtrl::performAMOMemH( RevMemOp* Tmp ) {
+  if( Tmp == nullptr ) {
+    output->fatal( CALL_INFO, -1, "Error : AMOTable entry is null\n" );
+  }
+
+  RevFlag  flags = Tmp->getFlags();
+  uint32_t size  = Tmp->getSize();
+
+  // Perform the AMO operation on the already-loaded data
+  auto newMem    = performAMO( flags, size, Tmp->getTarget(), &Tmp->getBuf()[0] );
 
   // copy the modified target data over to the buffer and build the memory request
   // this will write the value to memory
   std::vector<uint8_t> buffer;
   for( uint32_t i = 0; i < size; ++i )
-    buffer.push_back( target[i] );
-
-  // Copy the return value to the destination register
-  memcpy( target, &Rtn, size );
+    buffer.push_back( newMem.uc[i] );
 
   RevMemOp* Op =
     new RevMemOp( Tmp->getHart(), Tmp->getAddr(), Tmp->getPhysAddr(), size, std::move( buffer ), MemOp::MemOpWRITE, flags );
@@ -1271,7 +1345,7 @@ void RevBasicMemCtrl::handleAMO( RevMemOp* op ) {
     // perform the arithmetic operation and generate a WRITE request
     if( memop == op ) {
       AMOTable.erase( i );  // erase the current entry so we can add a new one
-      return performAMO( op );
+      return performAMOMemH( op );
     }
   }
 }
