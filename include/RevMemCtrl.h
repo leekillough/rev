@@ -90,9 +90,6 @@ public:
   /// RevMemOp: retrieve the memory buffer
   const std::vector<uint8_t>& getBuf() const { return membuf; }
 
-  /// RevMemOp: retrieve the temporary target buffer
-  const std::vector<uint8_t>& getTempT() const { return tempT; }
-
   /// RevMemOp: retrieve the memory operation flags
   RevFlag getFlags() const { return flags; }
 
@@ -113,9 +110,6 @@ public:
 
   /// RevMemOp: set the originating memory request
   void setMemReq( const MemReq& req ) { procReq = req; }
-
-  /// RevMemOp: set the temporary target buffer
-  void setTempT( std::vector<uint8_t> T ) { tempT = std::move( T ); }
 
   /// RevMemOp: retrieve the invalidate flag
   bool getInv() const { return Inv; }
@@ -142,7 +136,6 @@ private:
   uint32_t             CustomOpc{};  ///< RevMemOp: custom memory opcode
   uint32_t             SplitRqst{};  ///< RevMemOp: number of split cache line requests
   std::vector<uint8_t> membuf{};     ///< RevMemOp: buffer
-  std::vector<uint8_t> tempT{};      ///< RevMemOp: temporary target buffer for R-M-W ops
   RevFlag              flags{};      ///< RevMemOp: request flags
   void*                target{};     ///< RevMemOp: target register pointer
   MemReq               procReq{};    ///< RevMemOp: original request from RevCore
@@ -728,9 +721,7 @@ std::enable_if_t<std::is_floating_point_v<T>> ApplyAMO( RevFlag flags, void* Tar
 /// The operation writes the Rd return with the value of "Rtn"
 template<typename T>
 void ApplyForzaAMO( RevFlag flags, void* Target, void* Rtn, T value ) {
-
-  if( RevFlagReturn( flags ) != RevFlag::F_NONE )
-    memcpy( Rtn, Target, sizeof( T ) );  // 'MS' = MS-Type (aka NO - mem gets result, Rd gets orig memory)
+  memcpy( Rtn, Target, sizeof( T ) );  // 'MS' = MS-Type (aka NO - mem gets result, Rd gets orig memory)
 
   if( RevFlagReturn( flags ) == RevFlag::F_FORZAON )
     Target = Rtn;  // 'S' = S-Type (aka ON - mem unchanged, Rd gets result)
