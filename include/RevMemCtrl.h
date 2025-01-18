@@ -721,8 +721,6 @@ std::enable_if_t<std::is_floating_point_v<T>> ApplyAMO( RevFlag flags, void* Tar
 /// The operation writes the Rd return with the value of "Rtn"
 template<typename T>
 void ApplyForzaAMO( RevFlag flags, void* Target, void* Rtn, T value ) {
-  memcpy( Rtn, Target, sizeof( T ) );  // 'MS' = MS-Type (aka NO - mem gets result, Rd gets orig memory)
-
   if( RevFlagReturn( flags ) == RevFlag::F_FORZAON )
     Target = Rtn;  // 'S' = S-Type (aka ON - mem unchanged, Rd gets result)
 

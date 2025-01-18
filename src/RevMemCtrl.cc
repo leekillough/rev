@@ -1214,6 +1214,9 @@ void RevBasicMemCtrl::performAMO( RevMemOp* Tmp ) {
   // Copy the rs2 source register value
   memcpy( &Src, &Tmp->getBuf()[0], size );
 
+  // Copy the original value into Rtn
+  memcpy( &Rtn, target, size );
+
   // Perform the atomic operation
   if( RevFlagAtomicFloat( flags ) != RevFlag::F_NONE ) {
     switch( size ) {
