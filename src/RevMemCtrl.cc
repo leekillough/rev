@@ -65,7 +65,7 @@ RevMemOp::RevMemOp(
   uint32_t Hart, uint64_t Addr, uint64_t PAddr, uint32_t Size, std::vector<uint8_t> buffer, MemOp Op, RevFlag flags
 )
   : Hart( Hart ), Addr( Addr ), PAddr( PAddr ), Size( Size ), Inv( false ), Op( Op ), CustomOpc( 0 ), SplitRqst( 1 ),
-    membuf( buffer ), flags( flags ), target( nullptr ), procReq() {}
+    membuf( std::move( buffer ) ), flags( flags ), target( nullptr ), procReq() {}
 
 RevMemOp::RevMemOp(
   uint32_t Hart, uint64_t Addr, uint64_t PAddr, uint32_t Size, void* target, uint32_t CustomOpc, MemOp Op, RevFlag flags
@@ -80,12 +80,6 @@ RevMemOp::RevMemOp(
     flags( flags ), target( nullptr ), procReq() {
   for( uint32_t i = 0; i < Size; i++ ) {
     membuf.push_back( (uint8_t) ( buffer[i] ) );
-  }
-}
-
-void RevMemOp::setTempT( std::vector<uint8_t> T ) {
-  for( auto i : T ) {
-    tempT.push_back( i );
   }
 }
 
@@ -230,8 +224,7 @@ bool RevBasicMemCtrl::sendAMORequest(
   // response comes back, we will catch the response, perform
   // the MODIFY (using the operation in flags), then dispatch
   // a WRITE operation.
-  auto tmp = std::make_tuple( Hart, buffer, target, flags, Op, false );
-  AMOTable.insert( { Addr, tmp } );
+  AMOTable.emplace( Addr, std::make_tuple( Hart, buffer, target, flags, Op, false ) );
 
   // We have the request created and recorded in the AMOTable
   // Push it onto the request queue
@@ -350,9 +343,9 @@ void RevBasicMemCtrl::init( uint32_t phase ) {
 
   // query the caching infrastructure
   if( phase == 1 ) {
-    lineSize = memIface->getLineSize();
+    lineSize = uint32_t( memIface->getLineSize() );
     if( lineSize > 0 ) {
-      output->verbose( CALL_INFO, 5, 0, "Detected cache layers; default line size=%" PRIu64 "\n", lineSize );
+      output->verbose( CALL_INFO, 5, 0, "Detected cache layers; default line size=%" PRIu32 "\n", lineSize );
       hasCache = true;
     } else {
       output->verbose( CALL_INFO, 5, 0, "No cache detected; disabling caching\n" );
@@ -449,7 +442,7 @@ uint32_t RevBasicMemCtrl::getBaseCacheLineSize( uint64_t Addr, uint32_t Size ) {
   bool     done          = false;
   uint64_t BaseCacheAddr = Addr;
   while( !done ) {
-    if( ( BaseCacheAddr % (uint64_t) ( lineSize ) ) == 0 ) {
+    if( BaseCacheAddr % lineSize == 0 ) {
       done = true;
     } else {
       BaseCacheAddr -= 1;
@@ -469,11 +462,11 @@ uint32_t RevBasicMemCtrl::getBaseCacheLineSize( uint64_t Addr, uint32_t Size ) {
     } else {
       return lineSize;
     }
-  } else if( ( Addr + (uint64_t) ( Size ) ) <= ( BaseCacheAddr + (uint64_t) ( lineSize ) ) ) {
+  } else if( Addr + Size <= BaseCacheAddr + lineSize ) {
     // we stay within a single cache line
     return Size;
   } else {
-    return ( ( BaseCacheAddr + lineSize ) - Addr );
+    return uint32_t( BaseCacheAddr + lineSize - Addr );
   }
 }
 
@@ -590,7 +583,7 @@ bool RevBasicMemCtrl::buildCacheMemRqst( RevMemOp* op, bool& Success ) {
 #ifdef _REV_DEBUG_
   std::cout << "base cache line request size = " << BaseCacheLineSize << std::endl;
 #endif
-  uint32_t curByte = 0;
+  uint64_t curByte = 0;
 
   switch( op->getOp() ) {
   case MemOp::MemOpREAD:
@@ -625,11 +618,7 @@ bool RevBasicMemCtrl::buildCacheMemRqst( RevMemOp* op, bool& Success ) {
     break;
   case MemOp::MemOpFLUSH:
     rqst = new Interfaces::StandardMem::FlushAddr(
-      op->getAddr(),
-      (uint64_t) ( BaseCacheLineSize ),
-      op->getInv(),
-      (uint64_t) ( BaseCacheLineSize ),
-      (StandardMem::Request::flags_t) TmpFlags
+      op->getAddr(), BaseCacheLineSize, op->getInv(), BaseCacheLineSize, (StandardMem::Request::flags_t) TmpFlags
     );
     requests.push_back( rqst->getID() );
     outstanding[rqst->getID()] = op;
@@ -704,14 +693,14 @@ bool RevBasicMemCtrl::buildCacheMemRqst( RevMemOp* op, bool& Success ) {
   newBuf.clear();
   uint64_t newBase   = op->getAddr() + BaseCacheLineSize;
   uint64_t bytesLeft = (uint64_t) ( op->getSize() ) - BaseCacheLineSize;
-  uint64_t newSize   = 0;
+  uint32_t newSize   = 0;
 
   for( uint32_t i = 1; i < NumLines; i++ ) {
     // setup the adjusted size of the request
     if( bytesLeft < lineSize ) {
-      newSize = bytesLeft;
+      newSize = uint32_t( bytesLeft );
     } else {
-      newSize = lineSize;
+      newSize = uint32_t( lineSize );
     }
 
     // clear the adjusted buffer
@@ -727,7 +716,7 @@ bool RevBasicMemCtrl::buildCacheMemRqst( RevMemOp* op, bool& Success ) {
       num_read++;
       break;
     case MemOp::MemOpWRITE:
-      for( uint32_t j = curByte; j < ( curByte + newSize ); j++ ) {
+      for( auto j = curByte; j < curByte + newSize; j++ ) {
         newBuf.push_back( tmpBuf[j] );
       }
       curByte += newSize;
@@ -756,7 +745,7 @@ bool RevBasicMemCtrl::buildCacheMemRqst( RevMemOp* op, bool& Success ) {
       num_readlock++;
       break;
     case MemOp::MemOpWRITEUNLOCK:
-      for( uint32_t j = curByte; j < ( curByte + newSize ); j++ ) {
+      for( auto j = curByte; j < curByte + newSize; j++ ) {
         newBuf.push_back( tmpBuf[j] );
       }
       curByte += newSize;
@@ -776,7 +765,7 @@ bool RevBasicMemCtrl::buildCacheMemRqst( RevMemOp* op, bool& Success ) {
       num_llsc++;
       break;
     case MemOp::MemOpSTORECOND:
-      for( uint32_t j = curByte; j < ( curByte + newSize ); j++ ) {
+      for( auto j = curByte; j < curByte + newSize; j++ ) {
         newBuf.push_back( tmpBuf[j] );
       }
       curByte += newSize;
@@ -837,11 +826,7 @@ bool RevBasicMemCtrl::buildRawMemRqst( RevMemOp* op, RevFlag TmpFlags ) {
     break;
   case MemOp::MemOpFLUSH:
     rqst = new Interfaces::StandardMem::FlushAddr(
-      op->getAddr(),
-      (uint64_t) ( op->getSize() ),
-      op->getInv(),
-      (uint64_t) ( op->getSize() ),
-      (StandardMem::Request::flags_t) TmpFlags
+      op->getAddr(), op->getSize(), op->getInv(), op->getSize(), (StandardMem::Request::flags_t) TmpFlags
     );
     requests.push_back( rqst->getID() );
     outstanding[rqst->getID()] = op;
@@ -918,7 +903,7 @@ bool RevBasicMemCtrl::buildStandardMemRqst( RevMemOp* op, bool& Success ) {
     std::cout << "WARNING: lineSize == 0!" << std::endl;
   else if( op->getAddr() % lineSize )
     std::cout << "WARNING: address is not cache aligned!" << std::endl;
-  if( !op->isCacheable() )
+  if( !isCacheable( op->getFlags() ) )
     std::cout << "WARNING: operation is not cache-able!" << std::endl;
 #endif
 
@@ -940,20 +925,19 @@ bool RevBasicMemCtrl::buildStandardMemRqst( RevMemOp* op, bool& Success ) {
   // ALWAYS 1 and we dispatch a single memory requests per
   // RevMemOp
   // ---------------------------------------------------------
-  RevFlag TmpFlags;
-  if( ( hasCache ) && ( op->isCacheable() ) ) {
-    // cache is enabled and we want to cache the request
-    return buildCacheMemRqst( op, Success );
-  } else if( ( hasCache ) && ( !op->isCacheable() ) ) {
-    // cache is enabled but the request says not to cache the data
-    Success  = true;
-    TmpFlags = op->getStdFlags();
-    return buildRawMemRqst( op, TmpFlags );
+  if( hasCache ) {
+    if( isCacheable( op->getFlags() ) ) {
+      // cache is enabled and we want to cache the request
+      return buildCacheMemRqst( op, Success );
+    } else {
+      // cache is enabled but the request says not to cache the data
+      Success = true;
+      return buildRawMemRqst( op, op->getStdFlags() );
+    }
   } else {
     // no cache enabled
-    Success  = true;
-    TmpFlags = op->getNonCacheFlags();
-    return buildRawMemRqst( op, TmpFlags );
+    Success = true;
+    return buildRawMemRqst( op, op->getNonCacheFlags() );
   }
 }
 
@@ -1086,48 +1070,39 @@ bool RevBasicMemCtrl::processNextRqst(
   return true;
 }
 
-/// RevFlag: Perform an integer conversion
-template<typename SRC, typename DEST>
-static inline void convert( void* target ) {
-  SRC src;
-  memcpy( &src, target, sizeof( src ) );
-  DEST dest{ src };
-  memcpy( target, &dest, sizeof( dest ) );
-}
-
 /// RevFlag: Handle flag response
-void RevHandleFlagResp( void* target, size_t size, RevFlag flags ) {
+void RevBasicMemCtrl::RevHandleFlagResp( void* target, size_t size, RevFlag flags ) {
   if( RevFlagHas( flags, RevFlag::F_BOXNAN ) && size < sizeof( double ) ) {
     BoxNaN( static_cast<double*>( target ), static_cast<float*>( target ) );
   } else {
     switch( size ) {
     case 1:
       if( RevFlagHas( flags, RevFlag::F_SEXT32 ) ) {
-        convert<int8_t, int32_t>( target );
+        RevConvertInt<int8_t, int32_t>( target );
       } else if( RevFlagHas( flags, RevFlag::F_ZEXT32 ) ) {
-        convert<uint8_t, uint32_t>( target );
+        RevConvertInt<uint8_t, uint32_t>( target );
       } else if( RevFlagHas( flags, RevFlag::F_SEXT64 ) ) {
-        convert<int8_t, int64_t>( target );
+        RevConvertInt<int8_t, int64_t>( target );
       } else if( RevFlagHas( flags, RevFlag::F_ZEXT64 ) ) {
-        convert<uint8_t, uint64_t>( target );
+        RevConvertInt<uint8_t, uint64_t>( target );
       }
       break;
     case 2:
       if( RevFlagHas( flags, RevFlag::F_SEXT32 ) ) {
-        convert<int16_t, int32_t>( target );
+        RevConvertInt<int16_t, int32_t>( target );
       } else if( RevFlagHas( flags, RevFlag::F_ZEXT32 ) ) {
-        convert<uint16_t, uint32_t>( target );
+        RevConvertInt<uint16_t, uint32_t>( target );
       } else if( RevFlagHas( flags, RevFlag::F_SEXT64 ) ) {
-        convert<int16_t, int64_t>( target );
+        RevConvertInt<int16_t, int64_t>( target );
       } else if( RevFlagHas( flags, RevFlag::F_ZEXT64 ) ) {
-        convert<uint16_t, uint64_t>( target );
+        RevConvertInt<uint16_t, uint64_t>( target );
       }
       break;
     case 4:
       if( RevFlagHas( flags, RevFlag::F_SEXT64 ) ) {
-        convert<int32_t, int64_t>( target );
+        RevConvertInt<int32_t, int64_t>( target );
       } else if( RevFlagHas( flags, RevFlag::F_ZEXT64 ) ) {
-        convert<uint32_t, uint64_t>( target );
+        RevConvertInt<uint32_t, uint64_t>( target );
       }
     }
   }
@@ -1158,28 +1133,22 @@ void RevBasicMemCtrl::handleReadResp( StandardMem::ReadResp* ev ) {
     std::cout << "Address of the target register = 0x" << std::hex << (uint64_t*) ( op->getTarget() ) << std::dec << std::endl;
 #endif
 
-    auto range = AMOTable.equal_range( op->getAddr() );
     bool isAMO = false;
-    for( auto i = range.first; i != range.second; ++i ) {
-      auto Entry = i->second;
+    for( auto [i, end] = AMOTable.equal_range( op->getAddr() ); i != end; ++i ) {
+      const auto& [hart, buffer, target, flags, memop, in] = i->second;
+
       // determine if we have an atomic request associated
       // with this read operation
-      if( std::get<AMOTABLE_MEMOP>( Entry ) == op ) {
+      if( memop == op ) {
         isAMO = true;
+        break;
       }
     }
 
     // determine if we have a split request
     if( op->getSplitRqst() > 1 ) {
       // split request exists, determine how to handle it
-
-      uint8_t* target    = static_cast<uint8_t*>( op->getTarget() );
-      uint32_t startByte = (uint32_t) ( ev->pAddr - op->getAddr() );
-      target += uint8_t( startByte );
-      for( uint32_t i = 0; i < (uint32_t) ( ev->size ); i++ ) {
-        *target = ev->data[i];
-        target++;
-      }
+      memcpy( static_cast<uint8_t*>( op->getTarget() ) + ( ev->pAddr - op->getAddr() ), &ev->data[0], ev->size );
 
       if( getNumSplitRqsts( op ) == 1 ) {
         // this was the last request to service, delete the op
@@ -1200,11 +1169,8 @@ void RevBasicMemCtrl::handleReadResp( StandardMem::ReadResp* ev ) {
     }
 
     // no split request exists; handle as normal
-    uint8_t* target = (uint8_t*) ( op->getTarget() );
-    for( uint32_t i = 0; i < op->getSize(); i++ ) {
-      *target = ev->data[i];
-      target++;
-    }
+    memcpy( op->getTarget(), &ev->data[0], op->getSize() );
+
     // determine if we need to sign/zero extend
     handleFlagResp( op );
     if( isAMO ) {
@@ -1225,134 +1191,95 @@ void RevBasicMemCtrl::handleReadResp( StandardMem::ReadResp* ev ) {
   num_read--;
 }
 
-void RevBasicMemCtrl::performAMO( std::tuple<uint32_t, unsigned char*, void*, RevFlag, RevMemOp*, bool> Entry ) {
-  RevMemOp* Tmp = std::get<AMOTABLE_MEMOP>( Entry );
+void RevBasicMemCtrl::performAMO( RevMemOp* Tmp ) {
+  static_assert( std::is_same_v<unsigned char, uint8_t> );
+
   if( Tmp == nullptr ) {
     output->fatal( CALL_INFO, -1, "Error : AMOTable entry is null\n" );
   }
-  void* Target                = Tmp->getTarget();
 
-  RevFlag              flags  = Tmp->getFlags();
-  std::vector<uint8_t> buffer = Tmp->getBuf();
-  std::vector<uint8_t> tempT;
+  RevFlag  flags  = Tmp->getFlags();
+  uint32_t size   = Tmp->getSize();
+  uint8_t* target = reinterpret_cast<uint8_t*>( Tmp->getTarget() );
 
-  tempT.clear();
-  uint8_t* TmpBuf8 = static_cast<uint8_t*>( Target );  // save a char pointer to the register target
-  for( size_t i = 0; i < Tmp->getSize(); i++ ) {
-    tempT.push_back( TmpBuf8[i] );  // copy the old value to tempT
-  }
+  union {
+    uint8_t  u8;
+    uint16_t u16;
+    uint32_t u32;
+    uint64_t u64;
+    float    f;
+    double   d;
+  } Src, Rtn;
 
-  if( Tmp->getSize() == 1 ) {
-    // 8-bit (B) AMOs
-    uint8_t TmpBuf = 0;
-    uint8_t Rtn    = 0;
-    for( size_t i = 0; i < buffer.size(); i++ ) {
-      TmpBuf |= uint8_t{ buffer[i] } << i * 8;
+  // Copy the rs2 source register value
+  memcpy( &Src, &Tmp->getBuf()[0], size );
+
+  // Copy the original value into Rtn
+  memcpy( &Rtn, target, size );
+
+  // Perform the atomic operation
+  if( RevFlagAtomicFloat( flags ) != RevFlag::F_NONE ) {
+    switch( size ) {
+    case 4: ApplyForzaAMO( flags, target, &Rtn, Src.f ); break;
+    case 8: ApplyForzaAMO( flags, target, &Rtn, Src.d ); break;
     }
-    ApplyForzaAMO( flags, Target, (void*) ( &Rtn ), TmpBuf );
-    // clear the temp buffer & write the Rtn value
-    tempT.clear();
-    tempT.push_back( Rtn );
-  } else if( Tmp->getSize() == 2 ) {
-    // 16-bit (H) AMOs
-    uint16_t TmpBuf = 0;
-    uint16_t Rtn    = 0;
-    for( size_t i = 0; i < buffer.size(); i++ ) {
-      TmpBuf |= uint16_t{ buffer[i] } << i * 8;
-    }
-    ApplyForzaAMO( flags, Target, (void*) ( &Rtn ), TmpBuf );
-    // clear the temp buffer & write the Rtn value
-    tempT.clear();
-    tempT.push_back( Rtn );
-    tempT.push_back( (uint8_t) ( ( Rtn & 0xFF00 ) >> 8 ) );
-  } else if( Tmp->getSize() == 4 ) {
-    // 32-bit (W) AMOs
-    uint32_t TmpBuf = 0;
-    uint32_t Rtn    = 0;
-    for( size_t i = 0; i < buffer.size(); i++ ) {
-      TmpBuf |= uint32_t{ buffer[i] } << i * 8;
-    }
-    ApplyForzaAMO( flags, Target, (void*) ( &Rtn ), TmpBuf );
-    // clear the temp buffer & write the Rtn value
-#if 0
-    tempT.clear();
-    tempT.push_back( Rtn );
-    tempT.push_back( (uint8_t)((Rtn & 0xFF00)>>8) );
-    tempT.push_back( (uint8_t)((Rtn & 0xFF0000)>>16) );
-    tempT.push_back( (uint8_t)((Rtn & 0xFF000000)>>24) );
-#endif
   } else {
-    // 64-bit (D) AMOs
-    uint64_t TmpBuf = 0;
-    uint64_t Rtn    = 0;
-    for( size_t i = 0; i < buffer.size(); i++ ) {
-      TmpBuf |= uint64_t{ buffer[i] } << i * 8;
+    switch( size ) {
+    case 1: ApplyForzaAMO( flags, target, &Rtn, Src.u8 ); break;
+    case 2: ApplyForzaAMO( flags, target, &Rtn, Src.u16 ); break;
+    case 4: ApplyForzaAMO( flags, target, &Rtn, Src.u32 ); break;
+    case 8: ApplyForzaAMO( flags, target, &Rtn, Src.u64 ); break;
     }
-    ApplyForzaAMO( flags, Target, (void*) ( &Rtn ), TmpBuf );
-    // clear the temp buffer & write the Rtn value
-#if 0
-    tempT.clear();
-    tempT.push_back( Rtn );
-    tempT.push_back( (uint8_t)((Rtn & 0xFF00)>>8) );
-    tempT.push_back( (uint8_t)((Rtn & 0xFF0000)>>16) );
-    tempT.push_back( (uint8_t)((Rtn & 0xFF000000)>>24) );
-    tempT.push_back( (uint8_t)((Rtn & 0xFF00000000)>>32) );
-    tempT.push_back( (uint8_t)((Rtn & 0xFF0000000000)>>40) );
-    tempT.push_back( (uint8_t)((Rtn & 0xFF000000000000)>>48) );
-    tempT.push_back( (uint8_t)((Rtn & 0xFF00000000000000)>>56) );
-#endif
   }
 
-  // copy the target data over to the buffer and build the memory request
+  // copy the modified target data over to the buffer and build the memory request
   // this will write the value to memory
-  buffer.clear();
-  for( size_t i = 0; i < Tmp->getSize(); i++ ) {
-    buffer.push_back( TmpBuf8[i] );
-  }
+  std::vector<uint8_t> buffer;
+  for( uint32_t i = 0; i < size; ++i )
+    buffer.push_back( target[i] );
+
+  // Copy the return value to the destination register
+  memcpy( target, &Rtn, size );
 
   RevMemOp* Op =
-    new RevMemOp( Tmp->getHart(), Tmp->getAddr(), Tmp->getPhysAddr(), Tmp->getSize(), buffer, MemOp::MemOpWRITE, Tmp->getFlags() );
-  Op->setTempT( tempT );
-  for( uint32_t i = 0; i < Op->getSize(); i++ ) {
-    TmpBuf8[i] = tempT[i];
-  }
+    new RevMemOp( Tmp->getHart(), Tmp->getAddr(), Tmp->getPhysAddr(), size, std::move( buffer ), MemOp::MemOpWRITE, flags );
 
   // Retrieve the memory request object, but DO NOT mark the load
   // as complete.  The actual write response from the read-modify-write
   // process will mark the load as complete.  At this point, copy the
   // MemReq object to the new request
-  const MemReq& r = Tmp->getMemReq();
-  Op->setMemReq( r );
+  Op->setMemReq( Tmp->getMemReq() );
 
   // insert a new entry into the AMO Table
-  auto NewEntry = std::make_tuple(
-    Op->getHart(),
-    nullptr,  // this can be null here since we don't need to modify the response
-    Op->getTarget(),
-    Op->getFlags(),
-    Op,
-    true
+  AMOTable.emplace(
+    Op->getAddr(),
+    std::make_tuple(
+      Op->getHart(),
+      nullptr,  // this can be null here since we don't need to modify the response
+      Op->getTarget(),
+      Op->getFlags(),
+      Op,
+      true
+    )
   );
-  AMOTable.insert( { Op->getAddr(), NewEntry } );
   rqstQ.push_back( Op );
 }
 
 void RevBasicMemCtrl::handleAMO( RevMemOp* op ) {
-  auto range = AMOTable.equal_range( op->getAddr() );
-  for( auto i = range.first; i != range.second; ++i ) {
-    auto Entry = i->second;
+  for( auto [i, end] = AMOTable.equal_range( op->getAddr() ); i != end; ++i ) {
+    const auto& [hart, buffer, target, flags, memop, in] = i->second;
     // perform the arithmetic operation and generate a WRITE request
-    if( std::get<AMOTABLE_MEMOP>( Entry ) == op ) {
-      performAMO( Entry );
+    if( memop == op ) {
       AMOTable.erase( i );  // erase the current entry so we can add a new one
-      return;
+      return performAMO( op );
     }
   }
 }
 
 void RevBasicMemCtrl::handleWriteResp( StandardMem::WriteResp* ev ) {
-  if( std::find( requests.begin(), requests.end(), ev->getID() ) != requests.end() ) {
-    requests.erase( std::find( requests.begin(), requests.end(), ev->getID() ) );
+  auto it = std::find( requests.begin(), requests.end(), ev->getID() );
+  if( it != requests.end() ) {
+    requests.erase( it );
     RevMemOp* op = outstanding[ev->getID()];
     if( !op )
       output->fatal( CALL_INFO, -1, "RevMemOp is null in handleWriteResp\n" );
@@ -1363,12 +1290,10 @@ void RevBasicMemCtrl::handleWriteResp( StandardMem::WriteResp* ev ) {
     // walk the AMOTable and clear any matching AMO ops
     // note that we must match on both the target address and the RevMemOp pointer
     bool isAMO = false;
-    auto range = AMOTable.equal_range( op->getAddr() );
-    for( auto i = range.first; i != range.second; ) {
-      auto Entry = i->second;
-      // if the request matches the target,
-      // then delete it
-      if( std::get<AMOTABLE_MEMOP>( Entry ) == op ) {
+    for( auto [i, end] = AMOTable.equal_range( op->getAddr() ); i != end; ) {
+      const auto& [hart, buffer, target, flags, memop, in] = i->second;
+      // if the request matches the target, then delete it
+      if( memop == op ) {
         AMOTable.erase( i++ );
         isAMO = true;
       } else {
@@ -1394,19 +1319,18 @@ void RevBasicMemCtrl::handleWriteResp( StandardMem::WriteResp* ev ) {
     }
 
     // no split request exists; handle as normal
-    // this was a write request for an AMO, clear the hazard
+    // if this was a write request for an AMO, clear the hazard
     const MemReq& r = op->getMemReq();
     if( isAMO ) {
-      // write the target
-      std::vector<uint8_t> tempT = op->getTempT();
       r.MarkLoadComplete();
     }
     delete op;
     outstanding.erase( ev->getID() );
     delete ev;
   } else {
-    output->fatal( CALL_INFO, -1, "Error : found unknown WriteResp\n" );
+    output->fatal( CALL_INFO, -1, "Error : found unknown ReadResp\n" );
   }
+
   num_write--;
 }
 

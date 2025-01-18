@@ -457,7 +457,7 @@ enum class zopCompID : uint8_t {
   Z_ZAP2     = 0b00000010,  /// zopCompID: ZAP2
   Z_ZAP3     = 0b00000011,  /// zopCompID: ZAP3
   Z_RZA      = 0b00001000,  /// zopCompID: RZA
-  Z_RZA1     = 0b00001001,  /// zopCompID: RZA1 - for ZEN and ZQM messaging (run queue to be added still)
+  Z_MSGRZA   = 0b00001001,  /// zopCompID: RZA1 - for ZEN and ZQM messaging (run queue to be added still)
   Z_ZQM      = 0b00001010,  /// zopCompID: ZQM // RTL value is 9
   Z_ZEN      = 0b00001100,  /// zopCompID: ZEN // RTL value is 8
   Z_PREC_ZIP = 0b00001110,  /// zopCompID: PRECINCT ZIP - update doc?
@@ -803,7 +803,8 @@ public:
     for( uint8_t i = 0; i < Z_NUM_HEADER_FLITS; i++ ) {
       Packet[i] = 0;  // ensure any "old" data is cleared out
     }
-    Length = Packet.size() - Z_NUM_HEADER_FLITS;
+    Length = uint8_t( Packet.size() - Z_NUM_HEADER_FLITS );
+
     Packet[Z_FLIT_DEST] |= ( (uint64_t) ( DestHart & Z_MASK_HARTID ) << Z_SHIFT_HARTID );
     Packet[Z_FLIT_DEST] |= ( (uint64_t) ( DestZCID & Z_MASK_ZCID ) << Z_SHIFT_ZCID );
     Packet[Z_FLIT_DEST] |= ( (uint64_t) ( DestPCID & Z_MASK_PCID ) << Z_SHIFT_PCID );
@@ -857,7 +858,7 @@ public:
     case zopCompID::Z_ZAP2: return "ZAP2";
     case zopCompID::Z_ZAP3: return "ZAP3";
     case zopCompID::Z_RZA: return "RZA";
-    case zopCompID::Z_RZA1: return "MSGRZA";
+    case zopCompID::Z_MSGRZA: return "MSGRZA";
     case zopCompID::Z_ZEN: return "ZEN";
     case zopCompID::Z_ZQM: return "ZQM";
     case zopCompID::Z_PREC_ZIP: return "PREC_ZIP";
@@ -958,7 +959,7 @@ public:
   void serialize_order( SST::Core::Serialization::serializer& ser ) override {
     // we only serialize the raw packet
     Event::serialize_order( ser );
-    ser & Packet;
+    ser& Packet;
   }
 
   // zopEvent: implements the nic serialization
@@ -995,7 +996,7 @@ public:
   virtual void send( zopEvent* ev, zopCompID dest, zopPrecID zone, uint32_t precinct ) = 0;
 
   /// zopAPI : send a zone barrier request
-  virtual void send_zone_barrier( uint32_t hart, uint32_t endpoints )                  = 0;
+  virtual void send_zone_barrier( uint16_t hart, uint32_t endpoints )                  = 0;
 
   /// zopAPI: query the nic to see if the barrier is complete
   virtual bool isBarrierComplete( uint32_t Hart )                                      = 0;
@@ -1079,7 +1080,7 @@ public:
     case zopCompID::Z_ZAP2: return "ZAP2";
     case zopCompID::Z_ZAP3: return "ZAP3";
     case zopCompID::Z_RZA: return "RZA";
-    case zopCompID::Z_RZA1: return "MSGRZA";
+    case zopCompID::Z_MSGRZA: return "MSGRZA";
     case zopCompID::Z_ZEN: return "ZEN";
     case zopCompID::Z_ZQM: return "ZQM";
     case zopCompID::Z_PREC_ZIP: return "PREC_ZIP";
@@ -1181,7 +1182,7 @@ public:
   void send( zopEvent* ev, zopCompID dest, zopPrecID zone, uint32_t precinct ) override;
 
   /// zopNIC: send a zone barrier request
-  void send_zone_barrier( uint32_t hart, uint32_t endpoints ) override;
+  void send_zone_barrier( uint16_t hart, uint32_t endpoints ) override;
 
   /// zopNIC: query the nic to see if the barrier is complete
   bool isBarrierComplete( uint32_t Hart ) override;
@@ -1279,18 +1280,9 @@ private:
   std::vector<std::pair<zopEvent*, zopCompID>>          preInitQ;  ///< zopNIC: holds buffered requests before the network boots
   std::vector<SST::Interfaces::SimpleNetwork::Request*> sendQ;     ///< zopNIC: buffered send queue
 
-#define _HM_ENDP_T 0
-#define _HM_ZID    1
-#define _HM_PID    2
   std::map<SST::Interfaces::SimpleNetwork::nid_t, std::tuple<zopCompID, zopPrecID, uint32_t>>
     hostMap;  ///< zopNIC: network ID to endpoint type mapping
 
-#define _ZNIC_OUT_HART   0
-#define _ZNIC_OUT_ID     1
-#define _ZNIC_OUT_READ   2
-#define _ZNIC_OUT_TARGET 3
-#define _ZNIC_OUT_OPC    4
-#define _ZNIC_OUT_REQ    5
   std::vector<std::tuple<
     uint16_t,
     uint8_t,
@@ -1301,7 +1293,7 @@ private:
     outstanding;  ///< zopNIC: tracks outstanding requests
 
   std::vector<Statistic<uint64_t>*> stats;  ///< zopNIC: statistics vector
-};  // zopNIC
+};                                          // zopNIC
 
 }  // namespace SST::Forza
 

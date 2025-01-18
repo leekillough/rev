@@ -21,6 +21,25 @@
 #define NMBOX         8UL  // HW restricts the number of mailboxes to 8
 #define ZQM_COMPONENT 0UL
 
+static uint64_t ACTOR_MSG_MBXID_SHIFT    = 33;
+static uint64_t ACTOR_MSG_DESTPREC_SHIFT = 20;
+static uint64_t ACTOR_MSG_DESTZONE_SHIFT = 16;
+
+/**
+*  Actor message control word format:
+* Message Clear [63]    (1b; only used by ZEN, reserved when the msg is sent)
+* RESERVED [62:61]
+* Retry Sequence Number [60:48] (13b) (Provided by ZEN)
+* Message Opcode [47:40]   (8b; filled by RTL)
+* Message AID [39:36] (4b; filled by RTL)
+* RESERVED [35]
+* Destination Mailbox [34:32]  (3b)
+* Destination Precinct [31:19] (13b)
+* Destination Zone[18:15]   (4b)
+* Destination Zone Component [14:11]   (4b; always ZQM and filled by HW)
+* Destination Logical PE [10:0] (11b)
+*/
+
 /**
  * @brief Message op types
  */
@@ -239,9 +258,9 @@ uint32_t forza_send( uint64_t mb_id, void* pkt, uint64_t precinct, uint64_t zone
     forza_send_word( data[i], false );
 
   // Create the control word
-  uint64_t ctrl_word = mb_id << 33;
-  ctrl_word |= precinct << 20;
-  ctrl_word |= zone << 16;
+  uint64_t ctrl_word = mb_id << ACTOR_MSG_MBXID_SHIFT;
+  ctrl_word |= precinct << ACTOR_MSG_DESTPREC_SHIFT;
+  ctrl_word |= zone << ACTOR_MSG_DESTZONE_SHIFT;
   //ctrl_word |= ZQM_COMPONENT << 12;
   ctrl_word |= logical_pe;
   forza_send_word( ctrl_word, true );

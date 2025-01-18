@@ -147,7 +147,7 @@ public:
   };
 
   /// RevMem: determine if there are any outstanding requests
-  bool outstandingRqsts();
+  bool outstandingRqsts() const { return ctrl && ctrl->outstandingRqsts(); }
 
   /// RevMem: handle incoming memory event
   void handleEvent( Interfaces::StandardMem::Request* ev ) {}
@@ -171,7 +171,15 @@ public:
   uint64_t GetStackBottom() { return stacktop - _STACK_SIZE_; }
 
   /// RevMem: initiate a memory fence
-  bool FenceMem( uint32_t Hart );
+  bool FenceMem( uint32_t Hart ) {
+    if( ctrl ) {
+      return ctrl->sendFENCE( Hart );
+    } else if( zNic && !isRZA ) {
+      // generate a Fence packet
+      return __ZOP_FENCEHart( Hart );
+    }
+    return true;  // base RevMem support does nothing here
+  }
 
   /// RevMem: retrieves the cache line size.  Returns 0 if no cache is configured
   uint32_t getLineSize() { return ctrl ? ctrl->getLineSize() : 64; }
@@ -183,19 +191,23 @@ public:
   // ---- Base Memory Interfaces
   // ----------------------------------------------------
   /// RevMem: write to the target memory location with the target flags
-  bool WriteMem( uint32_t Hart, uint64_t Addr, size_t Len, const void* Data, RevFlag flags = RevFlag::F_NONE );
+  bool WriteMem( uint32_t Hart, uint64_t Addr, uint32_t Len, const void* Data, RevFlag flags = RevFlag::F_NONE );
 
   /// RevMem: read data from the target memory location
-  bool ReadMem( uint32_t Hart, uint64_t Addr, size_t Len, void* Target, const MemReq& req, RevFlag flags = RevFlag::F_NONE );
+  bool ReadMem( uint32_t Hart, uint64_t Addr, uint32_t Len, void* Target, const MemReq& req, RevFlag flags = RevFlag::F_NONE );
 
   /// RevMem: flush a cache line
-  bool FlushLine( uint32_t Hart, uint64_t Addr );
+  bool FlushLine( uint32_t Hart, uint64_t Addr ) {
+    return !ctrl || ctrl->sendFLUSHRequest( Hart, Addr, 0, getLineSize(), false, RevFlag::F_NONE );
+  }
 
   /// RevMem: invalidate a cache line
-  bool InvLine( uint32_t Hart, uint64_t Addr );
+  bool InvLine( uint32_t Hart, uint64_t Addr ) {
+    return !ctrl || ctrl->sendFLUSHRequest( Hart, Addr, 0, getLineSize(), true, RevFlag::F_NONE );
+  }
 
   /// RevMem: clean a line
-  bool CleanLine( uint32_t Hart, uint64_t Addr );
+  bool CleanLine( uint32_t Hart, uint64_t Addr ) { return !ctrl || ( ctrl->sendFENCE( Hart ) && FlushLine( Hart, Addr ) ); }
 
   // ----------------------------------------------------
   // ---- Read Memory Interfaces
@@ -210,12 +222,12 @@ public:
   void LR( uint32_t hart, uint64_t addr, size_t len, void* target, const MemReq& req, RevFlag flags );
 
   ///  RevMem: STORE CONDITIONAL memory interface
-  bool SC( uint32_t Hart, uint64_t addr, size_t len, void* data, RevFlag flags );
+  bool SC( uint32_t Hart, uint64_t addr, uint32_t len, void* data, RevFlag flags );
 
   /// RevMem: template AMO memory interface
   template<typename T>
   bool AMOVal( uint32_t Hart, uint64_t Addr, T* Data, T* Target, const MemReq& req, RevFlag flags ) {
-    return AMOMem( Hart, Addr, sizeof( T ), Data, Target, req, flags );
+    return AMOMem( Hart, Addr, uint32_t{ sizeof( T ) }, Data, Target, req, flags );
   }
 
   // ----------------------------------------------------
@@ -244,7 +256,7 @@ public:
   // ---- Atomic/Future/LRSC Interfaces
   // ----------------------------------------------------
   /// RevMem: Initiated an AMO request
-  bool AMOMem( uint32_t Hart, uint64_t Addr, size_t Len, void* Data, void* Target, const MemReq& req, RevFlag flags );
+  bool AMOMem( uint32_t Hart, uint64_t Addr, uint32_t Len, void* Data, void* Target, const MemReq& req, RevFlag flags );
 
   /// RevMem: Invalidate Matching LR reservations
   bool InvalidateLRReservations( uint32_t hart, uint64_t addr, size_t len );

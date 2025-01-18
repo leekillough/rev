@@ -1,7 +1,7 @@
 //
 // _RevPrefetcher_cc_
 //
-// Copyright (C) 2017-2024 Tactical Computing Laboratories, LLC
+// Copyright (C) 2017-2025 Tactical Computing Laboratories, LLC
 // All Rights Reserved
 // contact@tactcomplabs.com
 //
@@ -106,7 +106,7 @@ bool RevPrefetcher::FetchUpper( uint64_t Addr, bool& Fetched, uint32_t& UInst ) 
 
       // fetch the instruction
       if( Addr == ( baseAddr[i] + ( Off * 4 ) ) ) {
-        UInst   = ( iStack[i][Off] << 16 );
+        UInst   = uint32_t( iStack[i][Off] << 16 );
         Fetched = true;
         return true;
       }
@@ -142,10 +142,10 @@ bool RevPrefetcher::InstFetch( uint64_t Addr, bool& Fetched, uint32_t& Inst ) {
 
       // fetch the instruction
       if( Addr == ( baseAddr[i] + ( Off * 4 ) ) ) {
-        Inst = iStack[i][Off];
+        Inst = uint32_t( iStack[i][Off] );
       } else {
         // compressed instruction, adjust the offset
-        Inst = ( iStack[i][Off] >> 16 );
+        Inst = uint32_t( iStack[i][Off] >> 16 );
         uint32_t TmpInst;
         if( !FetchUpper( Addr + 2, Fetched, TmpInst ) )
           return false;
