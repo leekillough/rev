@@ -702,8 +702,6 @@ std::enable_if_t<std::is_floating_point_v<T>> ApplyAMO( RevFlag flags, void* Tar
     { RevFlag::F_FORZAFADD,  [&]{ *TmpTarget += TmpBuf; } },
     { RevFlag::F_FORZAFSUB,  [&]{ *TmpTarget -= TmpBuf; } },
     { RevFlag::F_FORZAFSUBR, [&]{ *TmpTarget  = TmpBuf - *TmpTarget; } },
-    { RevFlag::F_FORZAFMIN,  [&]{ *TmpTarget  = FMin{}(*TmpTarget, TmpBuf); } },
-    { RevFlag::F_FORZAFMAX,  [&]{ *TmpTarget  = FMax{}(*TmpTarget, TmpBuf); } },
   };
   // clang-format on
 
