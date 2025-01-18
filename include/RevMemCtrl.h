@@ -679,7 +679,7 @@ std::enable_if_t<!std::is_floating_point_v<T>> ApplyAMO( RevFlag flags, void* Ta
     { RevFlag::F_AMOMINU,   [&]{ *TmpTargetU = std::min( *TmpTargetU, TmpBufU ); } },
     { RevFlag::F_AMOMAXU,   [&]{ *TmpTargetU = std::max( *TmpTargetU, TmpBufU ); } },
     { RevFlag::F_FORZASUB,  [&]{ *TmpTarget -= TmpBuf; } },
-    { RevFlag::F_FORZATHRS, [&]{ *TmpTargetU = *TmpTargetU <= TmpBufU; /* TODO: Not sure of threshold definition */ } },
+    { RevFlag::F_FORZATHRS, [&]{ *TmpTargetU = *TmpTargetU >= TmpBufU; } },
   };
   // clang-format on
   RevFlag amo{ RevFlagAtomic( flags ) };
