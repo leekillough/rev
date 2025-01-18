@@ -903,7 +903,7 @@ bool RevBasicMemCtrl::buildStandardMemRqst( RevMemOp* op, bool& Success ) {
     std::cout << "WARNING: lineSize == 0!" << std::endl;
   else if( op->getAddr() % lineSize )
     std::cout << "WARNING: address is not cache aligned!" << std::endl;
-  if( !op->isCacheable() )
+  if( !isCacheable( op->getFlags() ) )
     std::cout << "WARNING: operation is not cache-able!" << std::endl;
 #endif
 
@@ -925,20 +925,19 @@ bool RevBasicMemCtrl::buildStandardMemRqst( RevMemOp* op, bool& Success ) {
   // ALWAYS 1 and we dispatch a single memory requests per
   // RevMemOp
   // ---------------------------------------------------------
-  RevFlag TmpFlags;
-  if( ( hasCache ) && ( op->isCacheable() ) ) {
-    // cache is enabled and we want to cache the request
-    return buildCacheMemRqst( op, Success );
-  } else if( ( hasCache ) && ( !op->isCacheable() ) ) {
-    // cache is enabled but the request says not to cache the data
-    Success  = true;
-    TmpFlags = op->getStdFlags();
-    return buildRawMemRqst( op, TmpFlags );
+  if( hasCache ) {
+    if( isCacheable( op->getFlags() ) ) {
+      // cache is enabled and we want to cache the request
+      return buildCacheMemRqst( op, Success );
+    } else {
+      // cache is enabled but the request says not to cache the data
+      Success = true;
+      return buildRawMemRqst( op, op->getStdFlags() );
+    }
   } else {
     // no cache enabled
-    Success  = true;
-    TmpFlags = op->getNonCacheFlags();
-    return buildRawMemRqst( op, TmpFlags );
+    Success = true;
+    return buildRawMemRqst( op, op->getNonCacheFlags() );
   }
 }
 
@@ -1203,12 +1202,13 @@ void RevBasicMemCtrl::performAMO( RevMemOp* Tmp ) {
   uint32_t size  = Tmp->getSize();
 
   union {
-    uint8_t  u8;
-    uint16_t u16;
-    uint32_t u32;
-    uint64_t u64;
-    float    f;
-    double   d;
+    uint8_t       u8;
+    uint16_t      u16;
+    uint32_t      u32;
+    uint64_t      u64;
+    float         f;
+    double        d;
+    unsigned char uc[8];
   } Target, Src, Rtn;
 
   // Copy the contents of the original target
@@ -1237,7 +1237,7 @@ void RevBasicMemCtrl::performAMO( RevMemOp* Tmp ) {
   // this will write the value to memory
   std::vector<uint8_t> buffer;
   for( uint32_t i = 0; i < size; ++i )
-    buffer.push_back( reinterpret_cast<uint8_t*>( &Target )[i] );
+    buffer.push_back( Target.uc[i] );
 
   RevMemOp* Op =
     new RevMemOp( Tmp->getHart(), Tmp->getAddr(), Tmp->getPhysAddr(), size, std::move( buffer ), MemOp::MemOpWRITE, flags );
@@ -1245,7 +1245,7 @@ void RevBasicMemCtrl::performAMO( RevMemOp* Tmp ) {
   // Copy the return result to tempT
   std::vector<uint8_t> tempT;
   for( uint32_t i = 0; i < size; ++i )
-    tempT.push_back( reinterpret_cast<uint8_t*>( &Rtn )[i] );
+    tempT.push_back( Rtn.uc[i] );
   Op->setTempT( std::move( tempT ) );
 
   // Retrieve the memory request object, but DO NOT mark the load
