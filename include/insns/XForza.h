@@ -26,8 +26,8 @@ class XForza : public RevExt {
     // -- RS2 = is copied into register X31 of the child and is expected to
     //          contain a pointer to an arbitrary block of data in memory to
     //          be imported by the Child.
-    uint64_t TPC = R->GetX<uint64_t>( Inst.rs1 );
-    uint64_t X31 = R->GetX<uint64_t>( Inst.rs2 );
+    //uint64_t TPC = R->GetX<uint64_t>( Inst.rs1 );
+    //uint64_t X31 = R->GetX<uint64_t>( Inst.rs2 );
 
     // update the cost
     R->cost += M->RandCost( F->GetMinCost(), F->GetMaxCost() );
