@@ -23,16 +23,12 @@ class Zaamo : public RevExt {
 
     RevFlag flags{ F_AMO };
 
-    if( F->IsModeEnabled( RV_XFORZA ) ) {
-      RevFlagSet( flags, RevFlag::F_AMONO );
-      RevFlagSet( flags, RevFlag::F_RL );
-    }
-
     if( Inst.aq ) {
       RevFlagSet( flags, RevFlag::F_AQ );
     }
 
-    if( Inst.rl ) {
+    RevFlagSet( flags, RevFlag::F_AMONO );
+    if( Inst.rl || F->IsModeEnabled( RV_XFORZA ) ) {
       RevFlagSet( flags, RevFlag::F_RL );
     }
 
