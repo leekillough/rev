@@ -758,7 +758,7 @@ private:
   EcallStatus ECALL_forza_zone_barrier();            // 4014, forza_zone_barrier();
   EcallStatus ECALL_forza_debug_print();             // 4015, forza_debug_print();
   EcallStatus ECALL_forza_remote_update();           // 4016, forza_debug_print();
-
+  EcallStatus ECALL_forza_spawn_word();              // 4017, forza_spawn_word();
   /// RevCore: Table of ecall codes w/ corresponding function pointer implementations
   static const std::unordered_map<uint32_t, EcallStatus ( RevCore::* )()> Ecalls;
 
