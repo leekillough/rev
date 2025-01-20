@@ -1229,7 +1229,7 @@ static std::enable_if_t<std::is_floating_point_v<T>> ApplyAMO( RevFlag flags, vo
 }
 
 ///< Apply Atomic Memory Operation
-/// The operation described by "flags" is applied to memory "Target" with value "value"
+/// The operation described by "flags" is applied to memory "newMem" with value "value"
 /// The operation writes the Rd return with the value of "Rtn"
 template<typename T>
 static void ApplyForzaAMO( RevFlag flags, void* newMem, void* Rtn, T value ) {
