@@ -4,6 +4,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+/**
+* NOTE: THIS EXAMPLE CODE IS INTENDED AS A TWO-ZAP, SINGLE ZONE EXAMPLE
+*/
+
 #define assert( x )               \
   do                              \
     if( !( x ) ) {                \
@@ -13,8 +17,6 @@
 
 int main( int argc, char** argv ) {
   uint64_t TID = forza_get_my_zap();
-  //if (TID != 0)
-  //  return 0;
 
   if( forza_get_my_zone() != 0 )
     return 0;
@@ -32,7 +34,7 @@ int main( int argc, char** argv ) {
     logical_pe = 0x93UL;
 #endif
 
-  forza_debug_print( logical_pe, TID, abba /*0xcafe*/ );
+  forza_debug_print( logical_pe, TID, abba );
   // forza_zqm_setup( logical_pe, n_mailboxes );
   forza_zqm_setup( logical_pe, 6 );
 

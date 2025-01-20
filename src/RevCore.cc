@@ -46,8 +46,8 @@ RevCore::RevCore(
   LSQueue->clear();
 
   // Create the Hart Objects
-  for( size_t i = 0; i < numHarts; i++ ) {
-    Harts.emplace_back( std::make_unique<RevHart>( i, LSQueue, [=]( const MemReq& req ) { this->MarkLoadComplete( req ); } ) );
+  for( uint32_t i = 0; i < numHarts; i++ ) {
+    Harts.emplace_back( new RevHart( i, LSQueue, [=]( const MemReq& req ) { this->MarkLoadComplete( req ); } ) );
     ValidHarts.set( i, true );
   }
 
@@ -130,8 +130,9 @@ bool RevCore::EnableExt( RevExt* Ext ) {
     InstTable.reserve( InstTable.size() + Table.size() );
     for( uint32_t i = 0; i < Table.size(); i++ ) {
       InstTable.push_back( Table[i] );
-      auto ExtObj = std::pair<uint32_t, uint32_t>( Extensions.size() - 1, i );
-      EntryToExt.insert( std::pair<uint32_t, std::pair<uint32_t, uint32_t>>( InstTable.size() - 1, ExtObj ) );
+      if( !EntryToExt.insert( std::pair( uint32_t( InstTable.size() - 1 ), std::pair( uint32_t( Extensions.size() - 1 ), i ) ) )
+             .second )
+        output->fatal( CALL_INFO, -1, "Error: EntryToExt entry already exists for index %zu\n", InstTable.size() - 1 );
     }
   };
 
@@ -253,8 +254,7 @@ std::string RevCore::ExtractMnemonic( const RevInstEntry& Entry ) {
   std::string              Tmp = Entry.mnemonic;
   std::vector<std::string> vstr;
   RevOpts::splitStr( Tmp, " ", vstr );
-
-  return vstr[0];
+  return std::move( vstr[0] );
 }
 
 bool RevCore::InitTableMapping() {
@@ -459,13 +459,13 @@ RevInst RevCore::DecodeCIInst( uint32_t Inst, uint32_t Entry ) const {
     CompInst.imm |= ( Inst & 0b1000000000000 ) >> 3;  // bit 9
     CompInst.rs1 = 2;                                 // Force rs1 to be x2 (stack pointer)
     // sign extend
-    CompInst.imm = uint64_t( CompInst.ImmSignExt( 10 ) );
+    CompInst.imm = uint32_t( CompInst.ImmSignExt( 10 ) );
   } else if( ( CompInst.opcode == 0b01 ) && ( CompInst.funct3 == 0b011 ) && ( CompInst.rd != 0 ) && ( CompInst.rd != 2 ) ) {
     // c.lui
     CompInst.imm = ( Inst & 0b1111100 ) << 10;        // [16:12]
     CompInst.imm |= ( Inst & 0b1000000000000 ) << 5;  // [17]
     // sign extend
-    CompInst.imm = uint64_t( CompInst.ImmSignExt( 18 ) );
+    CompInst.imm = uint32_t( CompInst.ImmSignExt( 18 ) );
     CompInst.imm >>= 12;  //immd value will be re-aligned on execution
   } else if( CompInst.opcode == 0b01 && CompInst.funct3 == 0b010 && CompInst.rd != 0 ) {
     // c.li
@@ -473,10 +473,10 @@ RevInst RevCore::DecodeCIInst( uint32_t Inst, uint32_t Entry ) const {
     CompInst.imm |= ( Inst & 0b1000000000000 ) >> 7;  // [5]
     CompInst.rs1 = 0;                                 // Force rs1 to be x0, expands to add rd, x0, imm
     // sign extend
-    CompInst.imm = uint64_t( CompInst.ImmSignExt( 6 ) );
+    CompInst.imm = uint32_t( CompInst.ImmSignExt( 6 ) );
   } else {
     // sign extend
-    CompInst.imm = uint64_t( CompInst.ImmSignExt( 6 ) );
+    CompInst.imm = uint32_t( CompInst.ImmSignExt( 6 ) );
   }
 
   //if c.addi, expands to addi %rd, %rd, $imm so set rs1 to rd -or-
@@ -566,7 +566,7 @@ RevInst RevCore::DecodeCIWInst( uint32_t Inst, uint32_t Entry ) const {
   tmp[6]       = imm[4];
   tmp[7]       = imm[5];
 
-  CompInst.imm = tmp.to_ulong();
+  CompInst.imm = uint32_t( tmp.to_ulong() );
 
   // Set rs1 to x2 and scale offset by 4 if this is an addi4spn
   if( 0x00 == CompInst.opcode && 0x00 == CompInst.funct3 ) {
@@ -730,7 +730,7 @@ RevInst RevCore::DecodeCBInst( uint32_t Inst, uint32_t Entry ) const {
 
   // registers
   CompInst.rd = CompInst.rs1 = BitExtract<7, 3>( Inst );
-  CompInst.offset            = BitExtract<2, 5>( Inst );
+  CompInst.offset            = uint16_t( BitExtract<2, 5>( Inst ) );
   CompInst.offset |= ( Inst & 0b1110000000000 ) >> 5;
 
   //Apply compressed offset
@@ -756,17 +756,17 @@ RevInst RevCore::DecodeCBInst( uint32_t Inst, uint32_t Entry ) const {
     tmp[7] = o[7];
   }
 
-  CompInst.offset = (uint16_t) tmp.to_ulong() << 1;  // scale to corrrect position to be consistent with other compressed ops
+  CompInst.offset = uint16_t( tmp.to_ulong() << 1 );  // scale to corrrect position to be consistent with other compressed ops
 
   if( 0b01 == CompInst.opcode && CompInst.funct3 >= 0b110 ) {
     //Set rs2 to x0 if c.beqz or c.bnez
     CompInst.rs2 = 0;
     CompInst.imm = CompInst.offset;
-    CompInst.imm = uint64_t( CompInst.ImmSignExt( 9 ) );
+    CompInst.imm = uint32_t( CompInst.ImmSignExt( 9 ) );
   } else {
     CompInst.imm = ( Inst & 0b01111100 ) >> 2;
     CompInst.imm |= ( Inst & 0b01000000000000 ) >> 7;
-    CompInst.imm = uint64_t( CompInst.ImmSignExt( 6 ) );
+    CompInst.imm = uint32_t( CompInst.ImmSignExt( 6 ) );
   }
 
   CompInst.instSize   = 2;
@@ -786,7 +786,7 @@ RevInst RevCore::DecodeCJInst( uint32_t Inst, uint32_t Entry ) const {
   CompInst.funct3 = InstTable[Entry].funct3;
 
   // registers
-  uint16_t offset = BitExtract<2, 11>( Inst );
+  uint16_t offset = uint16_t( BitExtract<2, 11>( Inst ) );
 
   //swizzle bits offset[11|4|9:8|10|6|7|3:1|5]
   std::bitset<16> offsetBits( offset ), target;
@@ -801,13 +801,13 @@ RevInst RevCore::DecodeCJInst( uint32_t Inst, uint32_t Entry ) const {
   target[8]           = offsetBits[8];
   target[9]           = offsetBits[6];
   target[10]          = offsetBits[10];
-  CompInst.jumpTarget = (u_int16_t) target.to_ulong() << 1;
+  CompInst.jumpTarget = uint16_t( target.to_ulong() << 1 );
 
   if( 0b01 == CompInst.opcode && ( 0b001 == CompInst.funct3 || 0b101 == CompInst.funct3 ) ) {
     //Set rd to x1 if this is a c.jal, x0 if this is a c.j
     CompInst.rd  = 0b001 == CompInst.funct3;
     CompInst.imm = CompInst.jumpTarget;
-    CompInst.imm = uint64_t( CompInst.ImmSignExt( 12 ) );
+    CompInst.imm = uint32_t( CompInst.ImmSignExt( 12 ) );
   }
 
   CompInst.instSize   = 2;
@@ -824,15 +824,20 @@ auto RevCore::matchInst(
   uint32_t                                           Inst
 ) const {
   // Iterate through all entries which match the encoding
+  auto match = map.end();  // No match
   for( auto [it, end] = map.equal_range( encoding ); it != end; ++it ) {
     uint32_t Entry = it->second;
-    // If an entry is valid and has a satisfied predicate, return it
-    if( Entry < InstTable.size() && InstTable[Entry].predicate( Inst ) )
-      return it;
+    // If an entry is valid and has a satisfied predicate
+    if( Entry < InstTable.size() && InstTable[Entry].predicate( Inst ) ) {
+      // Only one instruction entry with a satisfied predicate should match
+      if( match != map.end() )
+        output->fatal(
+          CALL_INFO, -1, "Error: Multiple decodings for instruction 0x%08" PRIx32 " at PC=0x%" PRIx64 "\n", Inst, GetPC()
+        );
+      match = it;
+    }
   }
-
-  // No match
-  return map.end();
+  return match;
 }
 
 RevInst RevCore::DecodeCompressed( uint32_t Inst ) const {
@@ -1202,7 +1207,7 @@ RevInst RevCore::DecodeR4Inst( uint32_t Inst, uint32_t Entry ) const {
   // encodings
   DInst.opcode     = InstTable[Entry].opcode;
   DInst.funct3     = 0x0;
-  DInst.funct2or7  = DECODE_FUNCT2( Inst );
+  DInst.funct2or7  = uint8_t( DECODE_FUNCT2( Inst ) );
   DInst.rm         = DECODE_RM( Inst );
 
   // Whether the instruction raises floating-point exceptions
@@ -1293,7 +1298,7 @@ RevInst RevCore::FetchAndDecodeInst() {
 
   // Stage 1a: handle the crack fault injection
   if( CrackFault ) {
-    uint64_t rval = RevRand( 0, ( uint32_t{ 1 } << fault_width ) - 1 );
+    auto rval = RevRand( 0, ( uint32_t{ 1 } << fault_width ) - 1 );
     Inst |= rval;
 
     // clear the fault
@@ -1504,12 +1509,12 @@ void RevCore::HandleRegFault( uint32_t width ) {
     if( feature->HasD() ) {
       uint64_t tmp;
       memcpy( &tmp, &regFile->DPF[RegIdx], sizeof( tmp ) );
-      tmp |= RevRand( 0, ~( ~uint32_t{ 0 } << width ) );
+      tmp |= RevRand( 0, ~( ~uint64_t{ 0 } << width ) );
       memcpy( &regFile->DPF[RegIdx], &tmp, sizeof( tmp ) );
     } else {
       uint32_t tmp;
       memcpy( &tmp, &regFile->SPF[RegIdx], sizeof( tmp ) );
-      tmp |= RevRand( 0, ~( ~uint64_t{ 0 } << width ) );
+      tmp |= RevRand( 0, ~( ~uint32_t{ 0 } << width ) );
       memcpy( &regFile->SPF[RegIdx], &tmp, sizeof( tmp ) );
     }
     RegPrefix = "f";
@@ -1539,7 +1544,7 @@ bool RevCore::DependencyCheck( uint32_t HartID, const RevInst* I ) const {
   // For ECALL, check for any outstanding dependencies on a0-a7
   if( I->opcode == 0b1110011 && I->imm == 0 && I->funct3 == 0 && I->rd == 0 && I->rs1 == 0 ) {
     for( RevReg reg : { RevReg::a7, RevReg::a0, RevReg::a1, RevReg::a2, RevReg::a3, RevReg::a4, RevReg::a5, RevReg::a6 } ) {
-      if( LSQCheck( HartToDecodeID, RegFile, uint16_t( reg ), RevRegClass::RegGPR ) || ScoreboardCheck( RegFile, uint16_t( reg ), RevRegClass::RegGPR ) ) {
+      if( LSQCheck( HartToDecodeID, RegFile, safe_static_cast<uint16_t>( reg ), RevRegClass::RegGPR ) || ScoreboardCheck( RegFile, uint16_t( reg ), RevRegClass::RegGPR ) ) {
         return true;
       }
     }
@@ -1602,7 +1607,7 @@ uint32_t RevCore::GetNextHartToDecodeID() const {
     return HartToDecodeID;
   }  // This should never happen
   // start with HartToDecodeID + 1
-  uint32_t nextID         = ( HartToDecodeID + 1 ) % Harts.size();
+  uint32_t nextID         = uint32_t( ( HartToDecodeID + 1 ) % Harts.size() );
   // store the original ID to return if no other ID is clear
   uint32_t originalHartID = HartToDecodeID;
   // Loop from HartToDecodeID + 1 to end of Harts
@@ -1781,7 +1786,7 @@ bool RevCore::ClockTick( SST::Cycle_t currentCycle ) {
     RevExt*                       Ext  = Extensions[EToE.first].get();
 
     // -- BEGIN new pipelining implementation
-    Pipeline.emplace_back( std::make_pair( HartToExecID, Inst ) );
+    Pipeline.emplace_back( HartToExecID, Inst );
 
     if( Ext->GetName() == "RV32F" || Ext->GetName() == "RV32D" || Ext->GetName() == "RV64F" || Ext->GetName() == "RV64D" ) {
       Stats.floatsExec++;
@@ -1930,7 +1935,7 @@ std::unique_ptr<RevThread> RevCore::PopThreadFromHart( uint32_t HartID ) {
 void RevCore::PrintStatSummary() {
   auto memStatsTotal = mem->GetMemStatsTotal();
 
-  double eff         = StatsTotal.totalCycles ? double( StatsTotal.cyclesBusy ) / StatsTotal.totalCycles : 0;
+  double eff         = StatsTotal.totalCycles ? double( StatsTotal.cyclesBusy ) / double( StatsTotal.totalCycles ) : 0;
   output->verbose(
     CALL_INFO,
     2,
@@ -2081,7 +2086,7 @@ void RevCore::AssignThread( std::unique_ptr<RevThread> Thread ) {
 uint32_t RevCore::FindIdleHartID() const {
   uint32_t IdleHartID = _REV_INVALID_HART_ID_;
   // Iterate over IdleHarts to find the first idle hart
-  for( size_t i = 0; i < Harts.size(); i++ ) {
+  for( uint32_t i = 0; i < Harts.size(); i++ ) {
     if( IdleHarts[i] ) {
       IdleHartID = i;
       break;

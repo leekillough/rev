@@ -1,7 +1,7 @@
 //
 // _RevCPU_h_
 //
-// Copyright (C) 2017-2024 Tactical Computing Laboratories, LLC
+// Copyright (C) 2017-2025 Tactical Computing Laboratories, LLC
 // All Rights Reserved
 // contact@tactcomplabs.com
 //
@@ -280,7 +280,8 @@ private:
 
   uint8_t PrivTag{};  ///< RevCPU: private tag locator
   //  uint32_t LToken{};   ///< RevCPU: token identifier for PAN Test
-  int address{ -1 };  ///< RevCPU: local network address
+
+  int64_t address{ -1 };  ///< RevCPU: local network address
 
   uint32_t fault_width{};  ///< RevCPU: the width (in bits) for target faults
   // int64_t  fault_range{};  ///< RevCPU: the range of cycles to inject the fault
@@ -327,8 +328,8 @@ private:
 
   std::queue<std::pair<uint32_t, char*>> ZeroRqst{};   ///< RevCPU: tracks incoming zero address put requests; pair<Size, Data>
   std::list<std::pair<uint8_t, int>>     TrackTags{};  ///< RevCPU: tracks the outgoing messages; pair<Tag, Dest>
-  std::vector<std::tuple<uint8_t, uint64_t, uint32_t>> TrackGets{
-  };  ///< RevCPU: tracks the outstanding get messages; tuple<Tag, Addr, Sz>
+  std::vector<std::tuple<uint8_t, uint64_t, uint32_t>>
+    TrackGets{};  ///< RevCPU: tracks the outstanding get messages; tuple<Tag, Addr, Sz>
   ///<         - Tag
   ///<         - Size
   ///<         - Cost

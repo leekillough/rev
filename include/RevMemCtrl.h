@@ -13,16 +13,14 @@
 
 // -- C++ Headers
 #include <algorithm>
-#include <cstdio>
-#include <cstdlib>
-#include <ctime>
+#include <cstddef>
 #include <functional>
-#include <list>
-#include <map>
 #include <memory>
 #include <random>
 #include <tuple>
 #include <type_traits>
+#include <unordered_map>
+#include <utility>
 #include <vector>
 
 // -- SST Headers
@@ -30,82 +28,21 @@
 
 // -- RevCPU Headers
 #include "RevCommon.h"
-#include "RevOpts.h"
-#include "RevTracer.h"
+#include "RevFlag.h"
+#include "RevInstHelpers.h"
 
 namespace SST::RevCPU {
 
-using namespace SST::Interfaces;
-
-// ----------------------------------------
-// Extended StandardMem::Request::Flag enums
-// ----------------------------------------
-enum class RevFlag : uint32_t {
-  F_NONE         = 0,        /// no special operation
-  F_NONCACHEABLE = 1u << 1,  /// non cacheable
-
-  F_BOXNAN       = 1u << 16,  /// NaN-box the 32-bit float
-  F_SEXT32       = 1u << 17,  /// sign extend the 32bit result
-  F_SEXT64       = 1u << 18,  /// sign extend the 64bit result
-  F_ZEXT32       = 1u << 19,  /// zero extend the 32bit result
-  F_ZEXT64       = 1u << 20,  /// zero extend the 64bit result
-  F_RESP         = F_BOXNAN | F_SEXT32 | F_SEXT64 | F_ZEXT32 | F_ZEXT64,
-
-  F_AQ           = 1u << 21,  /// AMO AQ Flag
-  F_RL           = 1u << 22,  /// AMO RL Flag
-
-  F_AMOADD       = 1u << 23,   /// AMO Add
-  F_AMOXOR       = 2u << 23,   /// AMO Xor
-  F_AMOAND       = 3u << 23,   /// AMO And
-  F_AMOOR        = 4u << 23,   /// AMO Or
-  F_AMOMIN       = 5u << 23,   /// AMO Min
-  F_AMOMAX       = 6u << 23,   /// AMO Max
-  F_AMOMINU      = 7u << 23,   /// AMO Minu
-  F_AMOMAXU      = 8u << 23,   /// AMO Maxu
-  F_AMOSWAP      = 9u << 23,   /// AMO Swap
-  F_FORZASUB     = 10u << 23,  /// XForza: AMO SUB
-  F_FORZATHRS    = 11u << 23,  /// XForza: AMO THRS
-  F_FORZAFADD    = 12u << 23,  /// XForza: AMO FADD
-  F_FORZAFSUB    = 13u << 23,  /// XForza: AMO FSUB
-  F_FORZAFSUBR   = 14u << 23,  /// XForza: AMO FSUBR
-  F_ATOMIC       = F_AMOADD | F_AMOXOR | F_AMOAND | F_AMOOR | F_AMOMIN | F_AMOMAX | F_AMOMINU | F_AMOMAXU | F_AMOSWAP,
-
-  F_FORZANN      = 1u << 27,  /// XForza: AMO RETURN NN
-  F_FORZAON      = 2u << 27,  /// XForza: AMO RETURN ON
-  F_FORZANO      = 3u << 27,  /// XForza: AMO RETURN NO
-  F_RETURN       = F_FORZANN | F_FORZAON | F_FORZANO,
+/// AMO data union
+union AMOData {
+  uint8_t       u8;
+  uint16_t      u16;
+  uint32_t      u32;
+  uint64_t      u64;
+  float         f;
+  double        d;
+  unsigned char uc[8];
 };
-
-// Ensure RevFlag is same underlying type as StandardMem::Request::flags_t
-static_assert( std::is_same_v<StandardMem::Request::flags_t, std::underlying_type_t<RevFlag>> );
-
-/// RevFlag: determine if the request has certain flags set
-constexpr bool RevFlagHas( RevFlag flag, RevFlag has ) {
-  return ( safe_static_cast<uint32_t>( flag ) & safe_static_cast<uint32_t>( has ) ) == safe_static_cast<uint32_t>( has );
-}
-
-/// RevFlag: set certain flags
-constexpr void RevFlagSet( RevFlag& flag, RevFlag set ) {
-  flag = RevFlag{ safe_static_cast<uint32_t>( flag ) | safe_static_cast<uint32_t>( set ) };
-}
-
-/// RevFlag: determine if the request is an AMO, and if so, return the operation; otherwise return 0
-constexpr RevFlag RevFlagAtomic( RevFlag flag ) {
-  return RevFlag{ safe_static_cast<uint32_t>( flag ) & safe_static_cast<uint32_t>( RevFlag::F_ATOMIC ) };
-}
-
-/// RevFlag: determine the return flags
-constexpr RevFlag RevFlagReturn( RevFlag flag ) {
-  return RevFlag{ safe_static_cast<uint32_t>( flag ) & safe_static_cast<uint32_t>( RevFlag::F_RETURN ) };
-}
-
-/// RevFlag: determine which response flags are present
-constexpr RevFlag RevFlagResp( RevFlag flag ) {
-  return RevFlag{ safe_static_cast<uint32_t>( flag ) & safe_static_cast<uint32_t>( RevFlag::F_RESP ) };
-}
-
-/// RevFlag: Handle flag response
-void RevHandleFlagResp( void* target, size_t size, RevFlag flags );
 
 // ----------------------------------------
 // RevMemOp
@@ -162,10 +99,7 @@ public:
   uint32_t getSize() const { return Size; }
 
   /// RevMemOp: retrieve the memory buffer
-  std::vector<uint8_t> getBuf() const { return membuf; }
-
-  /// RevMemOp: retrieve the temporary target buffer
-  std::vector<uint8_t> getTempT() const { return tempT; }
+  const std::vector<uint8_t>& getBuf() const { return membuf; }
 
   /// RevMemOp: retrieve the memory operation flags
   RevFlag getFlags() const { return flags; }
@@ -188,9 +122,6 @@ public:
   /// RevMemOp: set the originating memory request
   void setMemReq( const MemReq& req ) { procReq = req; }
 
-  /// RevMemOp: set the temporary target buffer
-  void setTempT( std::vector<uint8_t> T );
-
   /// RevMemOp: retrieve the invalidate flag
   bool getInv() const { return Inv; }
 
@@ -206,11 +137,6 @@ public:
   /// RevMemOp: Get the originating proc memory request
   const MemReq& getMemReq() const { return procReq; }
 
-  // RevMemOp: determine if the request is cache-able
-  bool isCacheable() const {
-    return ( safe_static_cast<uint32_t>( flags ) & safe_static_cast<uint32_t>( RevFlag::F_NONCACHEABLE ) ) == 0;
-  }
-
 private:
   uint32_t             Hart{};       ///< RevMemOp: RISC-V Hart
   uint64_t             Addr{};       ///< RevMemOp: address
@@ -221,7 +147,6 @@ private:
   uint32_t             CustomOpc{};  ///< RevMemOp: custom memory opcode
   uint32_t             SplitRqst{};  ///< RevMemOp: number of split cache line requests
   std::vector<uint8_t> membuf{};     ///< RevMemOp: buffer
-  std::vector<uint8_t> tempT{};      ///< RevMemOp: temporary target buffer for R-M-W ops
   RevFlag              flags{};      ///< RevMemOp: request flags
   void*                target{};     ///< RevMemOp: target register pointer
   MemReq               procReq{};    ///< RevMemOp: original request from RevCore
@@ -432,57 +357,58 @@ public:
 
   // clang-format on
 
-  enum MemCtrlStats : uint32_t {
-    ReadInFlight        = 0,
-    ReadPending         = 1,
-    ReadBytes           = 2,
-    WriteInFlight       = 3,
-    WritePending        = 4,
-    WriteBytes          = 5,
-    FlushInFlight       = 6,
-    FlushPending        = 7,
-    ReadLockInFlight    = 8,
-    ReadLockPending     = 9,
-    ReadLockBytes       = 10,
-    WriteUnlockInFlight = 11,
-    WriteUnlockPending  = 12,
-    WriteUnlockBytes    = 13,
-    LoadLinkInFlight    = 14,
-    LoadLinkPending     = 15,
-    StoreCondInFlight   = 16,
-    StoreCondPending    = 17,
-    CustomInFlight      = 18,
-    CustomPending       = 19,
-    CustomBytes         = 20,
-    FencePending        = 21,
-    AMOAddBytes         = 22,
-    AMOAddPending       = 23,
-    AMOXorBytes         = 24,
-    AMOXorPending       = 25,
-    AMOAndBytes         = 26,
-    AMOAndPending       = 27,
-    AMOOrBytes          = 28,
-    AMOOrPending        = 29,
-    AMOMinBytes         = 30,
-    AMOMinPending       = 31,
-    AMOMaxBytes         = 32,
-    AMOMaxPending       = 33,
-    AMOMinuBytes        = 34,
-    AMOMinuPending      = 35,
-    AMOMaxuBytes        = 36,
-    AMOMaxuPending      = 37,
-    AMOSwapBytes        = 38,
-    AMOSwapPending      = 39,
-    AMOSubBytes         = 40,
-    AMOSubPending       = 41,
-    AMOThrsBytes        = 42,
-    AMOThrsPending      = 43,
-    AMOFAddBytes        = 44,
-    AMOFAddPending      = 45,
-    AMOFSubBytes        = 46,
-    AMOFSubPending      = 47,
-    AMOFSubrBytes       = 48,
-    AMOFSubrPending     = 49,
+  enum class MemCtrlStats : uint32_t {
+    ReadInFlight,
+    ReadPending,
+    ReadBytes,
+    WriteInFlight,
+    WritePending,
+    WriteBytes,
+    FlushInFlight,
+    FlushPending,
+    ReadLockInFlight,
+    ReadLockPending,
+    ReadLockBytes,
+    WriteUnlockInFlight,
+    WriteUnlockPending,
+    WriteUnlockBytes,
+    LoadLinkInFlight,
+    LoadLinkPending,
+    StoreCondInFlight,
+    StoreCondPending,
+    CustomInFlight,
+    CustomPending,
+    CustomBytes,
+    FencePending,
+    AMOAddBytes,
+    AMOAddPending,
+    AMOXorBytes,
+    AMOXorPending,
+    AMOAndBytes,
+    AMOAndPending,
+    AMOOrBytes,
+    AMOOrPending,
+    AMOMinBytes,
+    AMOMinPending,
+    AMOMaxBytes,
+    AMOMaxPending,
+    AMOMinuBytes,
+    AMOMinuPending,
+    AMOMaxuBytes,
+    AMOMaxuPending,
+    AMOSwapBytes,
+    AMOSwapPending,
+    AMOSubBytes,
+    AMOSubPending,
+    AMOThrsBytes,
+    AMOThrsPending,
+    AMOFAddBytes,
+    AMOFAddPending,
+    AMOFSubBytes,
+    AMOFSubPending,
+    AMOFSubrBytes,
+    AMOFSubrPending,
+    END
   };
 
   /// RevBasicMemCtrl: constructor
@@ -591,8 +517,26 @@ public:
   /// RevBasicMemCtrl: handle an AMO for the target READ+MODIFY+WRITE triplet
   void handleAMO( RevMemOp* op ) final;
 
+  /// RevBasicMemCtrl: perform an AMO on local data
+  static AMOData performAMO( RevFlag flags, uint32_t size, void* target, const void* data );
+
+  /// RevBasicMemCtrl: handle an AMO for the target READ+MODIFY+WRITE triplet
+  void performAMOMemH( RevMemOp* op );
+
   /// RevBasicMemCtrl: assign tracer pointer
   void setTracer( RevTracer* tracer ) final;
+
+  /// RevBasicMemCtrl: handle flag response
+  static void RevHandleFlagResp( void* target, size_t size, RevFlag flags );
+
+  /// RevFlag: Perform an integer conversion
+  template<typename SRC, typename DEST>
+  static void RevConvertInt( void* target ) {
+    SRC src;
+    memcpy( &src, target, sizeof( src ) );
+    DEST dest{ src };
+    memcpy( target, &dest, sizeof( dest ) );
+  }
 
 protected:
   // ----------------------------------------
@@ -693,151 +637,39 @@ private:
   /// RevBasicMemCtrl: retrieve the number of outstanding requests on the wire
   uint32_t getNumSplitRqsts( RevMemOp* op );
 
-  /// RevBasicMemCtrl: perform the MODIFY portion of the AMO (READ+MODIFY+WRITE)
-  void performAMO( std::tuple<uint32_t, unsigned char*, void*, RevFlag, RevMemOp*, bool> Entry );
-
   // -- private data members
   StandardMem*       memIface{};         ///< StandardMem memory interface
   RevStdMemHandlers* stdMemHandlers{};   ///< StandardMem interface response handlers
   bool               hasCache{};         ///< detects whether cache layers are present
-  uint64_t           lineSize{};         ///< cache line size
-  uint64_t           max_loads{};        ///< maximum number of outstanding loads
-  uint64_t           max_stores{};       ///< maximum number of outstanding stores
-  uint64_t           max_flush{};        ///< maximum number of oustanding flush events
-  uint64_t           max_llsc{};         ///< maximum number of outstanding llsc events
-  uint64_t           max_readlock{};     ///< maximum number of oustanding readlock events
-  uint64_t           max_writeunlock{};  ///< maximum number of oustanding writelock events
-  uint64_t           max_custom{};       ///< maximum number of oustanding custom events
-  uint64_t           max_ops{};          ///< maximum number of ops to issue per cycle
+  uint32_t           lineSize{};         ///< cache line size
+  uint32_t           max_loads{};        ///< maximum number of outstanding loads
+  uint32_t           max_stores{};       ///< maximum number of outstanding stores
+  uint32_t           max_flush{};        ///< maximum number of oustanding flush events
+  uint32_t           max_llsc{};         ///< maximum number of outstanding llsc events
+  uint32_t           max_readlock{};     ///< maximum number of oustanding readlock events
+  uint32_t           max_writeunlock{};  ///< maximum number of oustanding writelock events
+  uint32_t           max_custom{};       ///< maximum number of oustanding custom events
+  uint32_t           max_ops{};          ///< maximum number of ops to issue per cycle
 
-  uint64_t num_read{};         ///< number of outstanding read requests
-  uint64_t num_write{};        ///< number of outstanding write requests
-  uint64_t num_flush{};        ///< number of outstanding flush requests
-  uint64_t num_llsc{};         ///< number of outstanding LL/SC requests
-  uint64_t num_readlock{};     ///< number of oustanding readlock requests
-  uint64_t num_writeunlock{};  ///< number of oustanding writelock requests
-  uint64_t num_custom{};       ///< number of outstanding custom requests
-  uint64_t num_fence{};        ///< number of oustanding fence requests
+  uint32_t num_read{};         ///< number of outstanding read requests
+  uint32_t num_write{};        ///< number of outstanding write requests
+  uint32_t num_flush{};        ///< number of outstanding flush requests
+  uint32_t num_llsc{};         ///< number of outstanding LL/SC requests
+  uint32_t num_readlock{};     ///< number of oustanding readlock requests
+  uint32_t num_writeunlock{};  ///< number of oustanding writelock requests
+  uint32_t num_custom{};       ///< number of outstanding custom requests
+  uint32_t num_fence{};        ///< number of oustanding fence requests
 
-  std::vector<StandardMem::Request::id_t>         requests{};     ///< outstanding StandardMem requests
-  std::vector<RevMemOp*>                          rqstQ{};        ///< queued memory requests
-  std::map<StandardMem::Request::id_t, RevMemOp*> outstanding{};  ///< map of outstanding requests
-
-#define AMOTABLE_HART   0
-#define AMOTABLE_BUFFER 1
-#define AMOTABLE_TARGET 2
-#define AMOTABLE_FLAGS  3
-#define AMOTABLE_MEMOP  4
-#define AMOTABLE_IN     5
+  std::vector<StandardMem::Request::id_t>                   requests{};     ///< outstanding StandardMem requests
+  std::vector<RevMemOp*>                                    rqstQ{};        ///< queued memory requests
+  std::unordered_map<StandardMem::Request::id_t, RevMemOp*> outstanding{};  ///< map of outstanding requests
 
   /// RevBasicMemCtrl: map of amo operations to memory addresses
-  std::multimap<uint64_t, std::tuple<uint32_t, unsigned char*, void*, RevFlag, RevMemOp*, bool>> AMOTable{};
+  std::unordered_multimap<uint64_t, std::tuple<uint32_t, unsigned char*, void*, RevFlag, RevMemOp*, bool>> AMOTable{};
 
   std::vector<Statistic<uint64_t>*> stats{};  ///< statistics vector
 
 };  // RevBasicMemCtrl
-
-///< Apply Atomic Memory Operation
-/// The operation described by "flags" is applied to memory "Target" with value "value"
-template<typename T>
-void ApplyAMO( RevFlag flags, void* Target, T value ) {
-  // Target and value cast to signed and uint32_t versions
-  auto* TmpTarget  = static_cast<std::make_signed_t<T>*>( Target );
-  auto* TmpTargetU = static_cast<std::make_unsigned_t<T>*>( Target );
-  auto  TmpBuf     = static_cast<std::make_signed_t<T>>( value );
-  auto  TmpBufU    = static_cast<std::make_unsigned_t<T>>( value );
-
-  // Table mapping atomic operations to executable code
-  // clang-format off
-  static const std::pair<RevCPU::RevFlag, std::function<void()>> table[] = {
-    { RevFlag::F_AMOADD,  [&]{ *TmpTarget += TmpBuf; } },
-    { RevFlag::F_AMOXOR,  [&]{ *TmpTarget ^= TmpBuf; } },
-    { RevFlag::F_AMOAND,  [&]{ *TmpTarget &= TmpBuf; } },
-    { RevFlag::F_AMOOR,   [&]{ *TmpTarget |= TmpBuf; } },
-    { RevFlag::F_AMOSWAP, [&]{ *TmpTarget  = TmpBuf; } },
-    { RevFlag::F_AMOMIN,  [&]{ *TmpTarget  = std::min(*TmpTarget,  TmpBuf);  } },
-    { RevFlag::F_AMOMAX,  [&]{ *TmpTarget  = std::max(*TmpTarget,  TmpBuf);  } },
-    { RevFlag::F_AMOMINU, [&]{ *TmpTargetU = std::min(*TmpTargetU, TmpBufU); } },
-    { RevFlag::F_AMOMAXU, [&]{ *TmpTargetU = std::max(*TmpTargetU, TmpBufU); } },
-  };
-  // clang-format on
-  RevFlag amo{ RevFlagAtomic( flags ) };
-  for( const auto& [flag, op] : table ) {
-    if( amo == flag ) {
-      op();
-      break;
-    }
-  }
-}
-
-///< Apply Atomic Memory Operation
-/// The operation described by "flags" is applied to memory "Target" with value "value"
-/// The operation writes the Rd return with the value of "Rtn"
-template<typename T>
-void ApplyForzaAMO( RevFlag flags, void* Target, void* Rtn, T value ) {
-  // Target and value cast to signed and uint32_t versions
-  auto* TmpTarget  = static_cast<std::make_signed_t<T>*>( Target );
-  auto* TmpTargetU = static_cast<std::make_unsigned_t<T>*>( Target );
-  auto  TmpBuf     = static_cast<std::make_signed_t<T>>( value );
-  auto  TmpBufU    = static_cast<std::make_unsigned_t<T>>( value );
-  auto* TmpRtn     = static_cast<std::make_signed_t<T>*>( Rtn );
-  auto* TmpRtnU    = static_cast<std::make_unsigned_t<T>*>( Rtn );
-
-  // Table mapping atomic operations to executable code
-  // clang-format off
-  static const std::tuple<RevFlag, RevFlag, std::function<void()>> table[] = {
-    // 'M' = M-Type (aka NN - both Rd and mem get result)
-    { RevFlag::F_AMOADD,  RevFlag::F_FORZANN, [&]{ *TmpTarget += TmpBuf; *TmpRtn = *TmpTarget; } },
-    { RevFlag::F_AMOXOR,  RevFlag::F_FORZANN, [&]{ *TmpTarget ^= TmpBuf; *TmpRtn = *TmpTarget; } },
-    { RevFlag::F_AMOAND,  RevFlag::F_FORZANN, [&]{ *TmpTarget &= TmpBuf; *TmpRtn = *TmpTarget; } },
-    { RevFlag::F_AMOOR,   RevFlag::F_FORZANN, [&]{ *TmpTarget |= TmpBuf; *TmpRtn = *TmpTarget; } },
-    { RevFlag::F_AMOSWAP, RevFlag::F_FORZANN, [&]{ *TmpTarget  = TmpBuf; *TmpRtn = *TmpTarget; } },
-    { RevFlag::F_AMOMIN,  RevFlag::F_FORZANN, [&]{ *TmpTarget  = std::min(*TmpTarget,  TmpBuf); *TmpRtn = *TmpTarget;  } },
-    { RevFlag::F_AMOMAX,  RevFlag::F_FORZANN, [&]{ *TmpTarget  = std::max(*TmpTarget,  TmpBuf); *TmpRtn = *TmpTarget;  } },
-    { RevFlag::F_AMOMINU, RevFlag::F_FORZANN, [&]{ *TmpTargetU = std::min(*TmpTargetU, TmpBufU); *TmpRtn = *TmpTarget;  } },
-    { RevFlag::F_AMOMAXU, RevFlag::F_FORZANN, [&]{ *TmpTargetU = std::max(*TmpTargetU, TmpBufU); *TmpRtn = *TmpTarget; } },
-
-    // 'S' = S-Type (aka ON - mem unchanged, Rd gets result)
-    { RevFlag::F_AMOADD,  RevFlag::F_FORZAON, [&]{ *TmpRtn = *TmpTarget; *TmpRtn += TmpBuf; } },
-    { RevFlag::F_AMOXOR,  RevFlag::F_FORZAON, [&]{ *TmpRtn = *TmpTarget; *TmpRtn ^= TmpBuf; } },
-    { RevFlag::F_AMOAND,  RevFlag::F_FORZAON, [&]{ *TmpRtn = *TmpTarget; *TmpRtn &= TmpBuf; } },
-    { RevFlag::F_AMOOR,   RevFlag::F_FORZAON, [&]{ *TmpRtn = *TmpTarget; *TmpRtn |= TmpBuf; } },
-    { RevFlag::F_AMOSWAP, RevFlag::F_FORZAON, [&]{ *TmpRtn = *TmpTarget; *TmpRtn = TmpBuf; } },
-    { RevFlag::F_AMOMIN,  RevFlag::F_FORZAON, [&]{ *TmpRtn = *TmpTarget; *TmpRtn = std::min(*TmpTarget,  TmpBuf);  } },
-    { RevFlag::F_AMOMAX,  RevFlag::F_FORZAON, [&]{ *TmpRtn = *TmpTarget; *TmpRtn = std::max(*TmpTarget,  TmpBuf);  } },
-    { RevFlag::F_AMOMINU, RevFlag::F_FORZAON, [&]{ *TmpRtnU = *TmpTargetU; *TmpRtnU = std::min(*TmpTargetU, TmpBufU); } },
-    { RevFlag::F_AMOMAXU, RevFlag::F_FORZAON, [&]{ *TmpRtnU = *TmpTargetU; *TmpRtnU= std::max(*TmpTargetU, TmpBufU); } },
-
-    // 'MS' = MS-Type (aka NO - mem gets result, Rd gets orig memory)
-    { RevFlag::F_AMOADD,  RevFlag::F_FORZANO, [&]{ *TmpRtn = *TmpTarget; *TmpTarget += TmpBuf; } },
-    { RevFlag::F_AMOXOR,  RevFlag::F_FORZANO, [&]{ *TmpRtn = *TmpTarget; *TmpTarget ^= TmpBuf; } },
-    { RevFlag::F_AMOAND,  RevFlag::F_FORZANO, [&]{ *TmpRtn = *TmpTarget; *TmpTarget &= TmpBuf; } },
-    { RevFlag::F_AMOOR,   RevFlag::F_FORZANO, [&]{ *TmpRtn = *TmpTarget; *TmpTarget |= TmpBuf; } },
-    { RevFlag::F_AMOSWAP, RevFlag::F_FORZANO, [&]{ *TmpRtn = *TmpTarget; *TmpTarget  = TmpBuf; } },
-    { RevFlag::F_AMOMIN,  RevFlag::F_FORZANO, [&]{ *TmpRtn = *TmpTarget; *TmpTarget  = std::min(*TmpTarget,  TmpBuf);  } },
-    { RevFlag::F_AMOMAX,  RevFlag::F_FORZANO, [&]{ *TmpRtn = *TmpTarget; *TmpTarget  = std::max(*TmpTarget,  TmpBuf);  } },
-    { RevFlag::F_AMOMINU, RevFlag::F_FORZANO, [&]{ *TmpRtnU = *TmpTargetU; *TmpTargetU = std::min(*TmpTargetU, TmpBufU); } },
-    { RevFlag::F_AMOMAXU, RevFlag::F_FORZANO, [&]{ *TmpRtnU = *TmpTargetU; *TmpTargetU = std::max(*TmpTargetU, TmpBufU); } },
-
-    // 'B' = BASE-Type (aka U - update; update mem, return ack)
-    { RevFlag::F_AMOADD,  RevFlag::F_NONE, [&]{ *TmpTarget += TmpBuf; } },
-    { RevFlag::F_AMOXOR,  RevFlag::F_NONE, [&]{ *TmpTarget ^= TmpBuf; } },
-    { RevFlag::F_AMOAND,  RevFlag::F_NONE, [&]{ *TmpTarget &= TmpBuf; } },
-    { RevFlag::F_AMOOR,   RevFlag::F_NONE, [&]{ *TmpTarget |= TmpBuf; } },
-    { RevFlag::F_AMOSWAP, RevFlag::F_NONE, [&]{ *TmpTarget  = TmpBuf; } },
-    { RevFlag::F_AMOMIN,  RevFlag::F_NONE, [&]{ *TmpTarget  = std::min(*TmpTarget,  TmpBuf);  } },
-    { RevFlag::F_AMOMAX,  RevFlag::F_NONE, [&]{ *TmpTarget  = std::max(*TmpTarget,  TmpBuf);  } },
-    { RevFlag::F_AMOMINU, RevFlag::F_NONE, [&]{ *TmpTargetU = std::min(*TmpTargetU, TmpBufU); } },
-    { RevFlag::F_AMOMAXU, RevFlag::F_NONE, [&]{ *TmpTargetU = std::max(*TmpTargetU, TmpBufU); } },
-  };
-  // clang-format on
-  for( const auto& [amo, rtn, op] : table ) {
-    if( ( RevFlagAtomic( flags ) == amo ) && ( RevFlagReturn( flags ) == rtn ) ) {
-      op();
-      break;
-    }
-  }
-}
 
 }  // namespace SST::RevCPU
 
