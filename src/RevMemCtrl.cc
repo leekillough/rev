@@ -105,7 +105,7 @@ RevBasicMemCtrl::RevBasicMemCtrl( ComponentId_t id, const Params& params )
     num_read( 0 ), num_write( 0 ), num_flush( 0 ), num_llsc( 0 ), num_readlock( 0 ), num_writeunlock( 0 ), num_custom( 0 ),
     num_fence( 0 ) {
 
-  stdMemHandlers        = new RevBasicMemCtrl::RevStdMemHandlers( this, output );
+  stdMemHandlers        = new RevStdMemHandlers( this, output );
 
   std::string ClockFreq = params.find<std::string>( "clock", "1Ghz" );
 
@@ -124,7 +124,7 @@ RevBasicMemCtrl::RevBasicMemCtrl( ComponentId_t id, const Params& params )
     "memIface",
     ComponentInfo::SHARE_NONE,  //*/ComponentInfo::SHARE_PORTS | ComponentInfo::INSERT_STATS,
     getTimeConverter( ClockFreq ),
-    new StandardMem::Handler<SST::RevCPU::RevBasicMemCtrl>( this, &RevBasicMemCtrl::processMemEvent )
+    new StandardMem::Handler<RevBasicMemCtrl>( this, &RevBasicMemCtrl::processMemEvent )
   );
 
   if( !memIface ) {
@@ -139,7 +139,6 @@ RevBasicMemCtrl::RevBasicMemCtrl( ComponentId_t id, const Params& params )
 RevBasicMemCtrl::~RevBasicMemCtrl() {
   for( auto* p : rqstQ )
     delete p;
-  rqstQ.clear();
   delete stdMemHandlers;
 }
 
@@ -153,19 +152,14 @@ void RevBasicMemCtrl::registerStats() {
          "AMOXorPending",   "AMOAndBytes",         "AMOAndPending",      "AMOOrBytes",       "AMOOrPending",
          "AMOMinBytes",     "AMOMinPending",       "AMOMaxBytes",        "AMOMaxPending",    "AMOMinuBytes",
          "AMOMinuPending",  "AMOMaxuBytes",        "AMOMaxuPending",     "AMOSwapBytes",     "AMOSwapPending",
-         "AMOSubBytes",     "AMOSubPending",       "AMOThrsBytes",       "AMOThrsPending",   "AMOFAddBytes",
-         "AMOFaddPending",  "AMOFSubBytes",        "AMOFSubPending",     "AMOFSubrBytes",    "AMOFSubrPending",
        } ) {
     stats.push_back( registerStatistic<uint64_t>( stat ) );
   }
 }
 
-void RevBasicMemCtrl::recordStat( RevBasicMemCtrl::MemCtrlStats Stat, uint64_t Data ) {
-  if( Stat > RevBasicMemCtrl::MemCtrlStats::AMOFSubrPending ) {
-    // do nothing
-    return;
-  }
-  stats[Stat]->addData( Data );
+void RevBasicMemCtrl::recordStat( MemCtrlStats Stat, uint64_t Data ) {
+  if( Stat < MemCtrlStats::END )
+    stats[size_t( Stat )]->addData( Data );
 }
 
 bool RevBasicMemCtrl::sendFLUSHRequest( uint32_t Hart, uint64_t Addr, uint64_t PAddr, uint32_t Size, bool Inv, RevFlag flags ) {
@@ -174,7 +168,7 @@ bool RevBasicMemCtrl::sendFLUSHRequest( uint32_t Hart, uint64_t Addr, uint64_t P
   RevMemOp* Op = new RevMemOp( Hart, Addr, PAddr, Size, MemOp::MemOpFLUSH, flags );
   Op->setInv( Inv );
   rqstQ.push_back( Op );
-  recordStat( RevBasicMemCtrl::MemCtrlStats::FlushPending, 1 );
+  recordStat( MemCtrlStats::FlushPending, 1 );
   return true;
 }
 
@@ -186,7 +180,7 @@ bool RevBasicMemCtrl::sendREADRequest(
   RevMemOp* Op = new RevMemOp( Hart, Addr, PAddr, Size, target, MemOp::MemOpREAD, flags );
   Op->setMemReq( req );
   rqstQ.push_back( Op );
-  recordStat( RevBasicMemCtrl::MemCtrlStats::ReadPending, 1 );
+  recordStat( MemCtrlStats::ReadPending, 1 );
   return true;
 }
 
@@ -197,7 +191,7 @@ bool RevBasicMemCtrl::sendWRITERequest(
     return true;
   RevMemOp* Op = new RevMemOp( Hart, Addr, PAddr, Size, buffer, MemOp::MemOpWRITE, flags );
   rqstQ.push_back( Op );
-  recordStat( RevBasicMemCtrl::MemCtrlStats::WritePending, 1 );
+  recordStat( MemCtrlStats::WritePending, 1 );
   return true;
 }
 
@@ -224,37 +218,35 @@ bool RevBasicMemCtrl::sendAMORequest(
   // response comes back, we will catch the response, perform
   // the MODIFY (using the operation in flags), then dispatch
   // a WRITE operation.
-  AMOTable.emplace( Addr, std::make_tuple( Hart, buffer, target, flags, Op, false ) );
+  auto tmp = std::make_tuple( Hart, buffer, target, flags, Op, false );
+  AMOTable.insert( { Addr, tmp } );
 
   // We have the request created and recorded in the AMOTable
   // Push it onto the request queue
   rqstQ.push_back( Op );
 
   // now we record the stat for the particular AMO
-  static constexpr std::pair<RevFlag, RevBasicMemCtrl::MemCtrlStats> table[] = {
-    {    RevFlag::F_AMOADD,   RevBasicMemCtrl::MemCtrlStats::AMOAddPending},
-    {    RevFlag::F_AMOXOR,   RevBasicMemCtrl::MemCtrlStats::AMOXorPending},
-    {    RevFlag::F_AMOAND,   RevBasicMemCtrl::MemCtrlStats::AMOAndPending},
-    {     RevFlag::F_AMOOR,    RevBasicMemCtrl::MemCtrlStats::AMOOrPending},
-    {    RevFlag::F_AMOMIN,   RevBasicMemCtrl::MemCtrlStats::AMOMinPending},
-    {    RevFlag::F_AMOMAX,   RevBasicMemCtrl::MemCtrlStats::AMOMaxPending},
-    {    RevFlag::F_AMOMIN,  RevBasicMemCtrl::MemCtrlStats::AMOMinuPending},
-    {   RevFlag::F_AMOMAXU,  RevBasicMemCtrl::MemCtrlStats::AMOMaxuPending},
-    {   RevFlag::F_AMOSWAP,  RevBasicMemCtrl::MemCtrlStats::AMOSwapPending},
-    {  RevFlag::F_FORZASUB,   RevBasicMemCtrl::MemCtrlStats::AMOSubPending},
-    { RevFlag::F_FORZATHRS,  RevBasicMemCtrl::MemCtrlStats::AMOThrsPending},
-    { RevFlag::F_FORZAFADD,  RevBasicMemCtrl::MemCtrlStats::AMOFAddPending},
-    { RevFlag::F_FORZAFSUB,  RevBasicMemCtrl::MemCtrlStats::AMOFSubPending},
-    {RevFlag::F_FORZAFSUBR, RevBasicMemCtrl::MemCtrlStats::AMOFSubrPending},
+  static const std::map<RevFlag, MemCtrlStats> table = {
+  // clang-format off
+    { RevFlag::F_AMOADD,   MemCtrlStats::AMOAddPending   },
+    { RevFlag::F_AMOXOR,   MemCtrlStats::AMOXorPending   },
+    { RevFlag::F_AMOAND,   MemCtrlStats::AMOAndPending   },
+    { RevFlag::F_AMOOR,    MemCtrlStats::AMOOrPending    },
+    { RevFlag::F_AMOMIN,   MemCtrlStats::AMOMinPending   },
+    { RevFlag::F_AMOMAX,   MemCtrlStats::AMOMaxPending   },
+    { RevFlag::F_AMOMIN,   MemCtrlStats::AMOMinuPending  },
+    { RevFlag::F_AMOMAXU,  MemCtrlStats::AMOMaxuPending  },
+    { RevFlag::F_AMOSWAP,  MemCtrlStats::AMOSwapPending  },
+    { RevFlag::F_AMOSUB,   MemCtrlStats::AMOSubPending   },
+    { RevFlag::F_AMOTHRES, MemCtrlStats::AMOThrsPending  },
+    { RevFlag::F_AMOFADD,  MemCtrlStats::AMOFAddPending  },
+    { RevFlag::F_AMOFSUB,  MemCtrlStats::AMOFSubPending  },
+    { RevFlag::F_AMOFSUBR, MemCtrlStats::AMOFSubrPending },
+  // clang-format on
   };
-
-  RevFlag amo{ RevFlagAtomic( flags ) };
-  for( const auto& [flag, stat] : table ) {
-    if( amo == flag ) {
-      recordStat( stat, 1 );
-      break;
-    }
-  }
+  auto it = table.find( RevFlagAtomic( flags ) );
+  if( it != table.end() )
+    recordStat( it->second, 1 );
   return true;
 }
 
@@ -266,7 +258,7 @@ bool RevBasicMemCtrl::sendREADLOCKRequest(
   RevMemOp* Op = new RevMemOp( Hart, Addr, PAddr, Size, target, MemOp::MemOpREADLOCK, flags );
   Op->setMemReq( req );
   rqstQ.push_back( Op );
-  recordStat( RevBasicMemCtrl::MemCtrlStats::ReadLockPending, 1 );
+  recordStat( MemCtrlStats::ReadLockPending, 1 );
   return true;
 }
 
@@ -277,7 +269,7 @@ bool RevBasicMemCtrl::sendWRITELOCKRequest(
     return true;
   RevMemOp* Op = new RevMemOp( Hart, Addr, PAddr, Size, buffer, MemOp::MemOpWRITEUNLOCK, flags );
   rqstQ.push_back( Op );
-  recordStat( RevBasicMemCtrl::MemCtrlStats::WriteUnlockPending, 1 );
+  recordStat( MemCtrlStats::WriteUnlockPending, 1 );
   return true;
 }
 
@@ -286,7 +278,7 @@ bool RevBasicMemCtrl::sendLOADLINKRequest( uint32_t Hart, uint64_t Addr, uint64_
     return true;
   RevMemOp* Op = new RevMemOp( Hart, Addr, PAddr, Size, MemOp::MemOpLOADLINK, flags );
   rqstQ.push_back( Op );
-  recordStat( RevBasicMemCtrl::MemCtrlStats::LoadLinkPending, 1 );
+  recordStat( MemCtrlStats::LoadLinkPending, 1 );
   return true;
 }
 
@@ -297,7 +289,7 @@ bool RevBasicMemCtrl::sendSTORECONDRequest(
     return true;
   RevMemOp* Op = new RevMemOp( Hart, Addr, PAddr, Size, buffer, MemOp::MemOpSTORECOND, flags );
   rqstQ.push_back( Op );
-  recordStat( RevBasicMemCtrl::MemCtrlStats::StoreCondPending, 1 );
+  recordStat( MemCtrlStats::StoreCondPending, 1 );
   return true;
 }
 
@@ -308,7 +300,7 @@ bool RevBasicMemCtrl::sendCUSTOMREADRequest(
     return true;
   RevMemOp* Op = new RevMemOp( Hart, Addr, PAddr, Size, target, Opc, MemOp::MemOpCUSTOM, flags );
   rqstQ.push_back( Op );
-  recordStat( RevBasicMemCtrl::MemCtrlStats::CustomPending, 1 );
+  recordStat( MemCtrlStats::CustomPending, 1 );
   return true;
 }
 
@@ -319,14 +311,14 @@ bool RevBasicMemCtrl::sendCUSTOMWRITERequest(
     return true;
   RevMemOp* Op = new RevMemOp( Hart, Addr, PAddr, Size, buffer, Opc, MemOp::MemOpCUSTOM, flags );
   rqstQ.push_back( Op );
-  recordStat( RevBasicMemCtrl::MemCtrlStats::CustomPending, 1 );
+  recordStat( MemCtrlStats::CustomPending, 1 );
   return true;
 }
 
 bool RevBasicMemCtrl::sendFENCE( uint32_t Hart ) {
   RevMemOp* Op = new RevMemOp( Hart, 0, 0, 0, MemOp::MemOpFENCE, RevFlag::F_NONE );
   rqstQ.push_back( Op );
-  recordStat( RevBasicMemCtrl::MemCtrlStats::FencePending, 1 );
+  recordStat( MemCtrlStats::FencePending, 1 );
   return true;
 }
 
@@ -596,7 +588,7 @@ bool RevBasicMemCtrl::buildCacheMemRqst( RevMemOp* op, bool& Success ) {
     requests.push_back( rqst->getID() );
     outstanding[rqst->getID()] = op;
     memIface->send( rqst );
-    recordStat( ReadInFlight, 1 );
+    recordStat( MemCtrlStats::ReadInFlight, 1 );
     num_read++;
     break;
   case MemOp::MemOpWRITE:
@@ -613,7 +605,7 @@ bool RevBasicMemCtrl::buildCacheMemRqst( RevMemOp* op, bool& Success ) {
     requests.push_back( rqst->getID() );
     outstanding[rqst->getID()] = op;
     memIface->send( rqst );
-    recordStat( WriteInFlight, 1 );
+    recordStat( MemCtrlStats::WriteInFlight, 1 );
     num_write++;
     break;
   case MemOp::MemOpFLUSH:
@@ -623,7 +615,7 @@ bool RevBasicMemCtrl::buildCacheMemRqst( RevMemOp* op, bool& Success ) {
     requests.push_back( rqst->getID() );
     outstanding[rqst->getID()] = op;
     memIface->send( rqst );
-    recordStat( FlushInFlight, 1 );
+    recordStat( MemCtrlStats::FlushInFlight, 1 );
     num_flush++;
     break;
   case MemOp::MemOpREADLOCK:
@@ -633,7 +625,7 @@ bool RevBasicMemCtrl::buildCacheMemRqst( RevMemOp* op, bool& Success ) {
     requests.push_back( rqst->getID() );
     outstanding[rqst->getID()] = op;
     memIface->send( rqst );
-    recordStat( ReadLockInFlight, 1 );
+    recordStat( MemCtrlStats::ReadLockInFlight, 1 );
     num_readlock++;
     break;
   case MemOp::MemOpWRITEUNLOCK:
@@ -647,7 +639,7 @@ bool RevBasicMemCtrl::buildCacheMemRqst( RevMemOp* op, bool& Success ) {
     requests.push_back( rqst->getID() );
     outstanding[rqst->getID()] = op;
     memIface->send( rqst );
-    recordStat( WriteUnlockInFlight, 1 );
+    recordStat( MemCtrlStats::WriteUnlockInFlight, 1 );
     num_writeunlock++;
     break;
   case MemOp::MemOpLOADLINK:
@@ -657,7 +649,7 @@ bool RevBasicMemCtrl::buildCacheMemRqst( RevMemOp* op, bool& Success ) {
     requests.push_back( rqst->getID() );
     outstanding[rqst->getID()] = op;
     memIface->send( rqst );
-    recordStat( LoadLinkInFlight, 1 );
+    recordStat( MemCtrlStats::LoadLinkInFlight, 1 );
     num_llsc++;
     break;
   case MemOp::MemOpSTORECOND:
@@ -671,7 +663,7 @@ bool RevBasicMemCtrl::buildCacheMemRqst( RevMemOp* op, bool& Success ) {
     requests.push_back( rqst->getID() );
     outstanding[rqst->getID()] = op;
     memIface->send( rqst );
-    recordStat( StoreCondInFlight, 1 );
+    recordStat( MemCtrlStats::StoreCondInFlight, 1 );
     num_llsc++;
     break;
   case MemOp::MemOpCUSTOM:
@@ -680,7 +672,7 @@ bool RevBasicMemCtrl::buildCacheMemRqst( RevMemOp* op, bool& Success ) {
     requests.push_back( rqst->getID() );
     outstanding[rqst->getID()] = op;
     memIface->send( rqst );
-    recordStat( CustomInFlight, 1 );
+    recordStat( MemCtrlStats::CustomInFlight, 1 );
     num_custom++;
     break;
   case MemOp::MemOpFENCE:
@@ -712,7 +704,7 @@ bool RevBasicMemCtrl::buildCacheMemRqst( RevMemOp* op, bool& Success ) {
       requests.push_back( rqst->getID() );
       outstanding[rqst->getID()] = op;
       memIface->send( rqst );
-      recordStat( ReadInFlight, 1 );
+      recordStat( MemCtrlStats::ReadInFlight, 1 );
       num_read++;
       break;
     case MemOp::MemOpWRITE:
@@ -724,7 +716,7 @@ bool RevBasicMemCtrl::buildCacheMemRqst( RevMemOp* op, bool& Success ) {
       requests.push_back( rqst->getID() );
       outstanding[rqst->getID()] = op;
       memIface->send( rqst );
-      recordStat( WriteInFlight, 1 );
+      recordStat( MemCtrlStats::WriteInFlight, 1 );
       num_write++;
       break;
     case MemOp::MemOpFLUSH:
@@ -733,7 +725,7 @@ bool RevBasicMemCtrl::buildCacheMemRqst( RevMemOp* op, bool& Success ) {
       requests.push_back( rqst->getID() );
       outstanding[rqst->getID()] = op;
       memIface->send( rqst );
-      recordStat( FlushInFlight, 1 );
+      recordStat( MemCtrlStats::FlushInFlight, 1 );
       num_flush++;
       break;
     case MemOp::MemOpREADLOCK:
@@ -741,7 +733,7 @@ bool RevBasicMemCtrl::buildCacheMemRqst( RevMemOp* op, bool& Success ) {
       requests.push_back( rqst->getID() );
       outstanding[rqst->getID()] = op;
       memIface->send( rqst );
-      recordStat( ReadLockInFlight, 1 );
+      recordStat( MemCtrlStats::ReadLockInFlight, 1 );
       num_readlock++;
       break;
     case MemOp::MemOpWRITEUNLOCK:
@@ -753,7 +745,7 @@ bool RevBasicMemCtrl::buildCacheMemRqst( RevMemOp* op, bool& Success ) {
       requests.push_back( rqst->getID() );
       outstanding[rqst->getID()] = op;
       memIface->send( rqst );
-      recordStat( WriteUnlockInFlight, 1 );
+      recordStat( MemCtrlStats::WriteUnlockInFlight, 1 );
       num_writeunlock++;
       break;
     case MemOp::MemOpLOADLINK:
@@ -761,7 +753,7 @@ bool RevBasicMemCtrl::buildCacheMemRqst( RevMemOp* op, bool& Success ) {
       requests.push_back( rqst->getID() );
       outstanding[rqst->getID()] = op;
       memIface->send( rqst );
-      recordStat( LoadLinkInFlight, 1 );
+      recordStat( MemCtrlStats::LoadLinkInFlight, 1 );
       num_llsc++;
       break;
     case MemOp::MemOpSTORECOND:
@@ -773,7 +765,7 @@ bool RevBasicMemCtrl::buildCacheMemRqst( RevMemOp* op, bool& Success ) {
       requests.push_back( rqst->getID() );
       outstanding[rqst->getID()] = op;
       memIface->send( rqst );
-      recordStat( StoreCondInFlight, 1 );
+      recordStat( MemCtrlStats::StoreCondInFlight, 1 );
       num_llsc++;
       break;
     case MemOp::MemOpCUSTOM:
@@ -782,7 +774,7 @@ bool RevBasicMemCtrl::buildCacheMemRqst( RevMemOp* op, bool& Success ) {
       requests.push_back( rqst->getID() );
       outstanding[rqst->getID()] = op;
       memIface->send( rqst );
-      recordStat( CustomInFlight, 1 );
+      recordStat( MemCtrlStats::CustomInFlight, 1 );
       num_custom++;
       break;
     case MemOp::MemOpFENCE:
@@ -811,7 +803,7 @@ bool RevBasicMemCtrl::buildRawMemRqst( RevMemOp* op, RevFlag TmpFlags ) {
     requests.push_back( rqst->getID() );
     outstanding[rqst->getID()] = op;
     memIface->send( rqst );
-    recordStat( ReadInFlight, 1 );
+    recordStat( MemCtrlStats::ReadInFlight, 1 );
     num_read++;
     break;
   case MemOp::MemOpWRITE:
@@ -821,7 +813,7 @@ bool RevBasicMemCtrl::buildRawMemRqst( RevMemOp* op, RevFlag TmpFlags ) {
     requests.push_back( rqst->getID() );
     outstanding[rqst->getID()] = op;
     memIface->send( rqst );
-    recordStat( WriteInFlight, 1 );
+    recordStat( MemCtrlStats::WriteInFlight, 1 );
     num_write++;
     break;
   case MemOp::MemOpFLUSH:
@@ -831,7 +823,7 @@ bool RevBasicMemCtrl::buildRawMemRqst( RevMemOp* op, RevFlag TmpFlags ) {
     requests.push_back( rqst->getID() );
     outstanding[rqst->getID()] = op;
     memIface->send( rqst );
-    recordStat( FlushInFlight, 1 );
+    recordStat( MemCtrlStats::FlushInFlight, 1 );
     num_flush++;
     break;
   case MemOp::MemOpREADLOCK:
@@ -841,7 +833,7 @@ bool RevBasicMemCtrl::buildRawMemRqst( RevMemOp* op, RevFlag TmpFlags ) {
     requests.push_back( rqst->getID() );
     outstanding[rqst->getID()] = op;
     memIface->send( rqst );
-    recordStat( ReadLockInFlight, 1 );
+    recordStat( MemCtrlStats::ReadLockInFlight, 1 );
     num_readlock++;
     break;
   case MemOp::MemOpWRITEUNLOCK:
@@ -851,7 +843,7 @@ bool RevBasicMemCtrl::buildRawMemRqst( RevMemOp* op, RevFlag TmpFlags ) {
     requests.push_back( rqst->getID() );
     outstanding[rqst->getID()] = op;
     memIface->send( rqst );
-    recordStat( WriteUnlockInFlight, 1 );
+    recordStat( MemCtrlStats::WriteUnlockInFlight, 1 );
     num_writeunlock++;
     break;
   case MemOp::MemOpLOADLINK:
@@ -861,7 +853,7 @@ bool RevBasicMemCtrl::buildRawMemRqst( RevMemOp* op, RevFlag TmpFlags ) {
     requests.push_back( rqst->getID() );
     outstanding[rqst->getID()] = op;
     memIface->send( rqst );
-    recordStat( LoadLinkInFlight, 1 );
+    recordStat( MemCtrlStats::LoadLinkInFlight, 1 );
     num_llsc++;
     break;
   case MemOp::MemOpSTORECOND:
@@ -871,7 +863,7 @@ bool RevBasicMemCtrl::buildRawMemRqst( RevMemOp* op, RevFlag TmpFlags ) {
     requests.push_back( rqst->getID() );
     outstanding[rqst->getID()] = op;
     memIface->send( rqst );
-    recordStat( StoreCondInFlight, 1 );
+    recordStat( MemCtrlStats::StoreCondInFlight, 1 );
     num_llsc++;
     break;
   case MemOp::MemOpCUSTOM:
@@ -880,7 +872,7 @@ bool RevBasicMemCtrl::buildRawMemRqst( RevMemOp* op, RevFlag TmpFlags ) {
     requests.push_back( rqst->getID() );
     outstanding[rqst->getID()] = op;
     memIface->send( rqst );
-    recordStat( CustomInFlight, 1 );
+    recordStat( MemCtrlStats::CustomInFlight, 1 );
     num_custom++;
     break;
   case MemOp::MemOpFENCE:
@@ -1195,7 +1187,7 @@ void RevBasicMemCtrl::handleReadResp( StandardMem::ReadResp* ev ) {
 /// The operation described by "flags" is applied to memory "Target" with value "value"
 template<typename T>
 static std::enable_if_t<!std::is_floating_point_v<T>> ApplyAMO( RevFlag flags, void* Target, T value ) {
-  // Target and value cast to signed and uint32_t versions
+  // Target and value cast to signed and unsigned versions
   auto* TmpTarget  = static_cast<std::make_signed_t<T>*>( Target );
   auto* TmpTargetU = static_cast<std::make_unsigned_t<T>*>( Target );
   auto  TmpBuf     = static_cast<std::make_signed_t<T>>( value );
@@ -1203,69 +1195,59 @@ static std::enable_if_t<!std::is_floating_point_v<T>> ApplyAMO( RevFlag flags, v
 
   // Table mapping atomic operations to executable code
   // clang-format off
-  static const std::pair<RevCPU::RevFlag, std::function<void()>> table[] = {
-    { RevFlag::F_AMOADD,    [&]{ *TmpTarget += TmpBuf; } },
-    { RevFlag::F_AMOXOR,    [&]{ *TmpTarget ^= TmpBuf; } },
-    { RevFlag::F_AMOAND,    [&]{ *TmpTarget &= TmpBuf; } },
-    { RevFlag::F_AMOOR,     [&]{ *TmpTarget |= TmpBuf; } },
-    { RevFlag::F_AMOSWAP,   [&]{ *TmpTarget  = TmpBuf; } },
-    { RevFlag::F_AMOMIN,    [&]{ *TmpTarget  = std::min( *TmpTarget,  TmpBuf );  } },
-    { RevFlag::F_AMOMAX,    [&]{ *TmpTarget  = std::max( *TmpTarget,  TmpBuf );  } },
-    { RevFlag::F_AMOMINU,   [&]{ *TmpTargetU = std::min( *TmpTargetU, TmpBufU ); } },
-    { RevFlag::F_AMOMAXU,   [&]{ *TmpTargetU = std::max( *TmpTargetU, TmpBufU ); } },
-    { RevFlag::F_FORZASUB,  [&]{ *TmpTarget -= TmpBuf; } },
-    { RevFlag::F_FORZATHRS, [&]{ *TmpTargetU = *TmpTargetU >= TmpBufU; } },
+  static const std::map<RevFlag, std::function<void()>> table = {
+    { RevFlag::F_AMOADD,   [&]{ *TmpTarget += TmpBuf; } },
+    { RevFlag::F_AMOXOR,   [&]{ *TmpTarget ^= TmpBuf; } },
+    { RevFlag::F_AMOAND,   [&]{ *TmpTarget &= TmpBuf; } },
+    { RevFlag::F_AMOOR,    [&]{ *TmpTarget |= TmpBuf; } },
+    { RevFlag::F_AMOSWAP,  [&]{ *TmpTarget  = TmpBuf; } },
+    { RevFlag::F_AMOMIN,   [&]{ *TmpTarget  = std::min( *TmpTarget,  TmpBuf );  } },
+    { RevFlag::F_AMOMAX,   [&]{ *TmpTarget  = std::max( *TmpTarget,  TmpBuf );  } },
+    { RevFlag::F_AMOMINU,  [&]{ *TmpTargetU = std::min( *TmpTargetU, TmpBufU ); } },
+    { RevFlag::F_AMOMAXU,  [&]{ *TmpTargetU = std::max( *TmpTargetU, TmpBufU ); } },
+    { RevFlag::F_AMOSUB,   [&]{ *TmpTarget -= TmpBuf; } },
+    { RevFlag::F_AMOTHRES, [&]{ *TmpTargetU = *TmpTargetU >= TmpBufU; } },
   };
   // clang-format on
-  RevFlag amo{ RevFlagAtomic( flags ) };
-  for( const auto& [flag, op] : table ) {
-    if( amo == flag ) {
-      op();
-      break;
-    }
-  }
+  table.at( RevFlagAtomic( flags ) )();
 }
 
 /// Forza floating-point atomics
 template<typename T>
 static std::enable_if_t<std::is_floating_point_v<T>> ApplyAMO( RevFlag flags, void* Target, T value ) {
-  auto* TmpTarget = static_cast<T*>( Target );
-  auto  TmpBuf    = value;
+  auto* TmpTarget                                             = static_cast<T*>( Target );
+  auto  TmpBuf                                                = value;
 
+  static const std::map<RevFlag, std::function<void()>> table = {
   // clang-format off
-  static const std::pair<RevCPU::RevFlag, std::function<void()>> table[] = {
-    { RevFlag::F_FORZAFADD,  [&]{ *TmpTarget += TmpBuf; } },
-    { RevFlag::F_FORZAFSUB,  [&]{ *TmpTarget -= TmpBuf; } },
-    { RevFlag::F_FORZAFSUBR, [&]{ *TmpTarget  = TmpBuf - *TmpTarget; } },
-  };
+    { RevFlag::F_AMOFADD,  [&]{ *TmpTarget += TmpBuf; } },
+    { RevFlag::F_AMOFSUB,  [&]{ *TmpTarget -= TmpBuf; } },
+    { RevFlag::F_AMOFSUBR, [&]{ *TmpTarget  = TmpBuf - *TmpTarget; } },
   // clang-format on
-
-  RevFlag amo{ RevFlagAtomicFloat( flags ) };
-  for( const auto& [flag, op] : table ) {
-    if( amo == flag ) {
-      op();
-      break;
-    }
-  }
+  };
+  table.at( RevFlagAtomic( flags ) )();
 }
 
 ///< Apply Atomic Memory Operation
 /// The operation described by "flags" is applied to memory "Target" with value "value"
 /// The operation writes the Rd return with the value of "Rtn"
 template<typename T>
-static void ApplyForzaAMO( RevFlag flags, void* Target, void* Rtn, T value ) {
-  if( RevFlagReturn( flags ) == RevFlag::F_FORZAON )
-    Target = Rtn;  // 'S' = S-Type (aka ON - mem unchanged, Rd gets result)
+static void ApplyForzaAMO( RevFlag flags, void* newMem, void* Rtn, T value ) {
+  if( RevFlagReturn( flags ) == RevFlag::F_AMOON ) {
+    newMem = Rtn;  // 'S' = S-Type (aka ON - mem unchanged, Rd gets result)
+  } else if( RevFlagReturn( flags ) == RevFlag::F_AMONO ) {
+    memcpy( Rtn, newMem, sizeof( T ) );  // NO -- Rd gets original memory
+  }
 
   // Perform the atomic operation on Target
-  ApplyAMO( flags, Target, value );
+  ApplyAMO( flags, newMem, value );
 
-  if( RevFlagReturn( flags ) == RevFlag::F_FORZANN )
-    memcpy( Rtn, Target, sizeof( T ) );  // 'M' = M-Type (aka NN - both Rd and mem get result)
+  if( RevFlagReturn( flags ) == RevFlag::F_AMONN )
+    memcpy( Rtn, newMem, sizeof( T ) );  // 'M' = M-Type (aka NN - both Rd and mem get result)
 }
 
 AMOData RevBasicMemCtrl::performAMO( RevFlag flags, uint32_t size, void* target, const void* data ) {
-  AMOData src, rtn, newMem;
+  AMOData src, newMem;
 
   // Copy the rs2 source register value
   memcpy( &src, data, size );
@@ -1273,26 +1255,20 @@ AMOData RevBasicMemCtrl::performAMO( RevFlag flags, uint32_t size, void* target,
   // Copy the original memory value into New memory
   memcpy( &newMem, target, size );
 
-  // Copy the original memory value into Rtn register
-  memcpy( &rtn, target, size );
-
   // Perform the atomic operation
   if( RevFlagAtomicFloat( flags ) != RevFlag::F_NONE ) {
     switch( size ) {
-    case 4: ApplyForzaAMO( flags, &newMem, &rtn, src.f ); break;
-    case 8: ApplyForzaAMO( flags, &newMem, &rtn, src.d ); break;
+    case 4: ApplyForzaAMO( flags, &newMem, target, src.f ); break;
+    case 8: ApplyForzaAMO( flags, &newMem, target, src.d ); break;
     }
   } else {
     switch( size ) {
-    case 1: ApplyForzaAMO( flags, &newMem, &rtn, src.u8 ); break;
-    case 2: ApplyForzaAMO( flags, &newMem, &rtn, src.u16 ); break;
-    case 4: ApplyForzaAMO( flags, &newMem, &rtn, src.u32 ); break;
-    case 8: ApplyForzaAMO( flags, &newMem, &rtn, src.u64 ); break;
+    case 1: ApplyForzaAMO( flags, &newMem, target, src.u8 ); break;
+    case 2: ApplyForzaAMO( flags, &newMem, target, src.u16 ); break;
+    case 4: ApplyForzaAMO( flags, &newMem, target, src.u32 ); break;
+    case 8: ApplyForzaAMO( flags, &newMem, target, src.u64 ); break;
     }
   }
-
-  // Copy the return value to the destination register
-  memcpy( target, &rtn, size );
 
   // Return the new value to be written to memory
   return newMem;
@@ -1402,9 +1378,8 @@ void RevBasicMemCtrl::handleWriteResp( StandardMem::WriteResp* ev ) {
     outstanding.erase( ev->getID() );
     delete ev;
   } else {
-    output->fatal( CALL_INFO, -1, "Error : found unknown ReadResp\n" );
+    output->fatal( CALL_INFO, -1, "Error : found unknown WriteResp\n" );
   }
-
   num_write--;
 }
 
@@ -1510,7 +1485,7 @@ bool RevBasicMemCtrl::clockTick( Cycle_t cycle ) {
   if( num_fence > 0 ) {
     if( ( num_read + num_write + num_llsc + num_readlock + num_writeunlock + num_custom ) != 0 ) {
       // waiting for the outstanding ops to clear
-      recordStat( RevBasicMemCtrl::MemCtrlStats::FencePending, 1 );
+      recordStat( MemCtrlStats::FencePending, 1 );
       return false;
     } else {
       // clear the fence and continue processing

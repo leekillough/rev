@@ -99,33 +99,33 @@ class XForza : public RevExt {
   static constexpr auto& amo_r_##name##16u       = forzaamo_rem<uint16_t,  op, RevFlag::F_NONE>;     \
   static constexpr auto& amo_r_##name##32u       = forzaamo_rem<uint32_t,  op, RevFlag::F_NONE>;     \
   static constexpr auto& amo_r_##name##64u       = forzaamo_rem<uint64_t,  op, RevFlag::F_NONE>;     \
-  static constexpr auto& amo_r_##name##8migr_nn  = forzaamo_migr<uint8_t,  op, RevFlag::F_FORZANN>;  \
-  static constexpr auto& amo_r_##name##16migr_nn = forzaamo_migr<uint16_t, op, RevFlag::F_FORZANN>;  \
-  static constexpr auto& amo_r_##name##32migr_nn = forzaamo_migr<uint32_t, op, RevFlag::F_FORZANN>;  \
-  static constexpr auto& amo_r_##name##64migr_nn = forzaamo_migr<uint64_t, op, RevFlag::F_FORZANN>;  \
-  static constexpr auto& amo_r_##name##8migr_on  = forzaamo_migr<uint8_t,  op, RevFlag::F_FORZAON>;  \
-  static constexpr auto& amo_r_##name##16migr_on = forzaamo_migr<uint16_t, op, RevFlag::F_FORZAON>;  \
-  static constexpr auto& amo_r_##name##32migr_on = forzaamo_migr<uint32_t, op, RevFlag::F_FORZAON>;  \
-  static constexpr auto& amo_r_##name##64migr_on = forzaamo_migr<uint64_t, op, RevFlag::F_FORZAON>;  \
-  static constexpr auto& amo_r_##name##8migr_no  = forzaamo_migr<uint8_t,  op, RevFlag::F_FORZANO>;  \
-  static constexpr auto& amo_r_##name##16migr_no = forzaamo_migr<uint16_t, op, RevFlag::F_FORZANO>;  \
-  static constexpr auto& amo_r_##name##32migr_no = forzaamo_migr<uint32_t, op, RevFlag::F_FORZANO>;  \
-  static constexpr auto& amo_r_##name##64migr_no = forzaamo_migr<uint64_t, op, RevFlag::F_FORZANO>;  \
-  static constexpr auto& amo_r_##name##8rem_nn   = forzaamo_rem<uint8_t,   op, RevFlag::F_FORZANN>;  \
-  static constexpr auto& amo_r_##name##16rem_nn  = forzaamo_rem<uint16_t,  op, RevFlag::F_FORZANN>;  \
-  static constexpr auto& amo_r_##name##32rem_nn  = forzaamo_rem<uint32_t,  op, RevFlag::F_FORZANN>;  \
-  static constexpr auto& amo_r_##name##64rem_nn  = forzaamo_rem<uint64_t,  op, RevFlag::F_FORZANN>;  \
-  static constexpr auto& amo_r_##name##8rem_on   = forzaamo_rem<uint8_t,   op, RevFlag::F_FORZAON>;  \
-  static constexpr auto& amo_r_##name##16rem_on  = forzaamo_rem<uint16_t,  op, RevFlag::F_FORZAON>;  \
-  static constexpr auto& amo_r_##name##32rem_on  = forzaamo_rem<uint32_t,  op, RevFlag::F_FORZAON>;  \
-  static constexpr auto& amo_r_##name##64rem_on  = forzaamo_rem<uint64_t,  op, RevFlag::F_FORZAON>;  \
-  static constexpr auto& amo_r_##name##8rem_no   = forzaamo_rem<uint8_t,   op, RevFlag::F_FORZANO>;  \
-  static constexpr auto& amo_r_##name##16rem_no  = forzaamo_rem<uint16_t,  op, RevFlag::F_FORZANO>;  \
-  static constexpr auto& amo_r_##name##32rem_no  = forzaamo_rem<uint32_t,  op, RevFlag::F_FORZANO>;  \
-  static constexpr auto& amo_r_##name##64rem_no  = forzaamo_rem<uint64_t,  op, RevFlag::F_FORZANO>;
+  static constexpr auto& amo_r_##name##8migr_nn  = forzaamo_migr<uint8_t,  op, RevFlag::F_AMONN>;  \
+  static constexpr auto& amo_r_##name##16migr_nn = forzaamo_migr<uint16_t, op, RevFlag::F_AMONN>;  \
+  static constexpr auto& amo_r_##name##32migr_nn = forzaamo_migr<uint32_t, op, RevFlag::F_AMONN>;  \
+  static constexpr auto& amo_r_##name##64migr_nn = forzaamo_migr<uint64_t, op, RevFlag::F_AMONN>;  \
+  static constexpr auto& amo_r_##name##8migr_on  = forzaamo_migr<uint8_t,  op, RevFlag::F_AMOON>;  \
+  static constexpr auto& amo_r_##name##16migr_on = forzaamo_migr<uint16_t, op, RevFlag::F_AMOON>;  \
+  static constexpr auto& amo_r_##name##32migr_on = forzaamo_migr<uint32_t, op, RevFlag::F_AMOON>;  \
+  static constexpr auto& amo_r_##name##64migr_on = forzaamo_migr<uint64_t, op, RevFlag::F_AMOON>;  \
+  static constexpr auto& amo_r_##name##8migr_no  = forzaamo_migr<uint8_t,  op, RevFlag::F_AMONO>;  \
+  static constexpr auto& amo_r_##name##16migr_no = forzaamo_migr<uint16_t, op, RevFlag::F_AMONO>;  \
+  static constexpr auto& amo_r_##name##32migr_no = forzaamo_migr<uint32_t, op, RevFlag::F_AMONO>;  \
+  static constexpr auto& amo_r_##name##64migr_no = forzaamo_migr<uint64_t, op, RevFlag::F_AMONO>;  \
+  static constexpr auto& amo_r_##name##8rem_nn   = forzaamo_rem<uint8_t,   op, RevFlag::F_AMONN>;  \
+  static constexpr auto& amo_r_##name##16rem_nn  = forzaamo_rem<uint16_t,  op, RevFlag::F_AMONN>;  \
+  static constexpr auto& amo_r_##name##32rem_nn  = forzaamo_rem<uint32_t,  op, RevFlag::F_AMONN>;  \
+  static constexpr auto& amo_r_##name##64rem_nn  = forzaamo_rem<uint64_t,  op, RevFlag::F_AMONN>;  \
+  static constexpr auto& amo_r_##name##8rem_on   = forzaamo_rem<uint8_t,   op, RevFlag::F_AMOON>;  \
+  static constexpr auto& amo_r_##name##16rem_on  = forzaamo_rem<uint16_t,  op, RevFlag::F_AMOON>;  \
+  static constexpr auto& amo_r_##name##32rem_on  = forzaamo_rem<uint32_t,  op, RevFlag::F_AMOON>;  \
+  static constexpr auto& amo_r_##name##64rem_on  = forzaamo_rem<uint64_t,  op, RevFlag::F_AMOON>;  \
+  static constexpr auto& amo_r_##name##8rem_no   = forzaamo_rem<uint8_t,   op, RevFlag::F_AMONO>;  \
+  static constexpr auto& amo_r_##name##16rem_no  = forzaamo_rem<uint16_t,  op, RevFlag::F_AMONO>;  \
+  static constexpr auto& amo_r_##name##32rem_no  = forzaamo_rem<uint32_t,  op, RevFlag::F_AMONO>;  \
+  static constexpr auto& amo_r_##name##64rem_no  = forzaamo_rem<uint64_t,  op, RevFlag::F_AMONO>;
 
   FORZA_AMO_FUNC( add,  RevFlag::F_AMOADD    )
-  FORZA_AMO_FUNC( sub,  RevFlag::F_FORZASUB  )
+  FORZA_AMO_FUNC( sub,  RevFlag::F_AMOSUB  )
   FORZA_AMO_FUNC( and,  RevFlag::F_AMOAND    )
   FORZA_AMO_FUNC( or,   RevFlag::F_AMOOR     )
   FORZA_AMO_FUNC( xor,  RevFlag::F_AMOXOR    )
@@ -134,7 +134,7 @@ class XForza : public RevExt {
   FORZA_AMO_FUNC( smin, RevFlag::F_AMOMIN    )
   FORZA_AMO_FUNC( umin, RevFlag::F_AMOMINU   )
   FORZA_AMO_FUNC( swap, RevFlag::F_AMOSWAP   )
-  FORZA_AMO_FUNC( thrs, RevFlag::F_FORZATHRS )
+  FORZA_AMO_FUNC( thrs, RevFlag::F_AMOTHRES )
 
   // clang-format on
 

@@ -1016,55 +1016,55 @@ bool RZAAMOCoProc::handleHZOP( Forza::zopEvent* zev, bool& flag ) {
   // 8bit M
   case Forza::zopOpc::Z_HAC_8_M_ADD:
     RevFlagSet( flags, RevFlag::F_AMOADD );
-    RevFlagSet( flags, RevFlag::F_FORZANN );
+    RevFlagSet( flags, RevFlag::F_AMONN );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_8_M_ADD, 1 );
     break;
   case Forza::zopOpc::Z_HAC_8_M_AND:
     RevFlagSet( flags, RevFlag::F_AMOAND );
-    RevFlagSet( flags, RevFlag::F_FORZANN );
+    RevFlagSet( flags, RevFlag::F_AMONN );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_8_M_AND, 1 );
     break;
   case Forza::zopOpc::Z_HAC_8_M_OR:
     RevFlagSet( flags, RevFlag::F_AMOOR );
-    RevFlagSet( flags, RevFlag::F_FORZANN );
+    RevFlagSet( flags, RevFlag::F_AMONN );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_8_M_OR, 1 );
     break;
   case Forza::zopOpc::Z_HAC_8_M_XOR:
     RevFlagSet( flags, RevFlag::F_AMOXOR );
-    RevFlagSet( flags, RevFlag::F_FORZANN );
+    RevFlagSet( flags, RevFlag::F_AMONN );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_8_M_XOR, 1 );
     break;
   case Forza::zopOpc::Z_HAC_8_M_SMAX:
     RevFlagSet( flags, RevFlag::F_AMOMAX );
-    RevFlagSet( flags, RevFlag::F_FORZANN );
+    RevFlagSet( flags, RevFlag::F_AMONN );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_8_M_SMAX, 1 );
     break;
   case Forza::zopOpc::Z_HAC_8_M_MAX:
     RevFlagSet( flags, RevFlag::F_AMOMAXU );
-    RevFlagSet( flags, RevFlag::F_FORZANN );
+    RevFlagSet( flags, RevFlag::F_AMONN );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_8_M_MAX, 1 );
     break;
   case Forza::zopOpc::Z_HAC_8_M_SMIN:
     RevFlagSet( flags, RevFlag::F_AMOMIN );
-    RevFlagSet( flags, RevFlag::F_FORZANN );
+    RevFlagSet( flags, RevFlag::F_AMONN );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_8_M_SMIN, 1 );
     break;
   case Forza::zopOpc::Z_HAC_8_M_MIN:
     RevFlagSet( flags, RevFlag::F_AMOMINU );
-    RevFlagSet( flags, RevFlag::F_FORZANN );
+    RevFlagSet( flags, RevFlag::F_AMONN );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_8_M_MIN, 1 );
     break;
   case Forza::zopOpc::Z_HAC_8_M_SWAP:
     RevFlagSet( flags, RevFlag::F_AMOSWAP );
-    RevFlagSet( flags, RevFlag::F_FORZANN );
+    RevFlagSet( flags, RevFlag::F_AMONN );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_8_M_SWAP, 1 );
     break;
@@ -1081,55 +1081,55 @@ bool RZAAMOCoProc::handleHZOP( Forza::zopEvent* zev, bool& flag ) {
   // 16bit M
   case Forza::zopOpc::Z_HAC_16_M_ADD:
     RevFlagSet( flags, RevFlag::F_AMOADD );
-    RevFlagSet( flags, RevFlag::F_FORZANN );
+    RevFlagSet( flags, RevFlag::F_AMONN );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_16_M_ADD, 1 );
     break;
   case Forza::zopOpc::Z_HAC_16_M_AND:
     RevFlagSet( flags, RevFlag::F_AMOAND );
-    RevFlagSet( flags, RevFlag::F_FORZANN );
+    RevFlagSet( flags, RevFlag::F_AMONN );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_16_M_AND, 1 );
     break;
   case Forza::zopOpc::Z_HAC_16_M_OR:
     RevFlagSet( flags, RevFlag::F_AMOOR );
-    RevFlagSet( flags, RevFlag::F_FORZANN );
+    RevFlagSet( flags, RevFlag::F_AMONN );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_16_M_OR, 1 );
     break;
   case Forza::zopOpc::Z_HAC_16_M_XOR:
     RevFlagSet( flags, RevFlag::F_AMOXOR );
-    RevFlagSet( flags, RevFlag::F_FORZANN );
+    RevFlagSet( flags, RevFlag::F_AMONN );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_16_M_XOR, 1 );
     break;
   case Forza::zopOpc::Z_HAC_16_M_SMAX:
     RevFlagSet( flags, RevFlag::F_AMOMAX );
-    RevFlagSet( flags, RevFlag::F_FORZANN );
+    RevFlagSet( flags, RevFlag::F_AMONN );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_16_M_SMAX, 1 );
     break;
   case Forza::zopOpc::Z_HAC_16_M_MAX:
     RevFlagSet( flags, RevFlag::F_AMOMAXU );
-    RevFlagSet( flags, RevFlag::F_FORZANN );
+    RevFlagSet( flags, RevFlag::F_AMONN );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_16_M_MAX, 1 );
     break;
   case Forza::zopOpc::Z_HAC_16_M_SMIN:
     RevFlagSet( flags, RevFlag::F_AMOMIN );
-    RevFlagSet( flags, RevFlag::F_FORZANN );
+    RevFlagSet( flags, RevFlag::F_AMONN );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_16_M_SMIN, 1 );
     break;
   case Forza::zopOpc::Z_HAC_16_M_MIN:
     RevFlagSet( flags, RevFlag::F_AMOMINU );
-    RevFlagSet( flags, RevFlag::F_FORZANN );
+    RevFlagSet( flags, RevFlag::F_AMONN );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_16_M_MIN, 1 );
     break;
   case Forza::zopOpc::Z_HAC_16_M_SWAP:
     RevFlagSet( flags, RevFlag::F_AMOSWAP );
-    RevFlagSet( flags, RevFlag::F_FORZANN );
+    RevFlagSet( flags, RevFlag::F_AMONN );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_16_M_SWAP, 1 );
     break;
@@ -1146,55 +1146,55 @@ bool RZAAMOCoProc::handleHZOP( Forza::zopEvent* zev, bool& flag ) {
   // 32bit M
   case Forza::zopOpc::Z_HAC_32_M_ADD:
     RevFlagSet( flags, RevFlag::F_AMOADD );
-    RevFlagSet( flags, RevFlag::F_FORZANN );
+    RevFlagSet( flags, RevFlag::F_AMONN );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_32_M_ADD, 1 );
     break;
   case Forza::zopOpc::Z_HAC_32_M_AND:
     RevFlagSet( flags, RevFlag::F_AMOAND );
-    RevFlagSet( flags, RevFlag::F_FORZANN );
+    RevFlagSet( flags, RevFlag::F_AMONN );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_32_M_AND, 1 );
     break;
   case Forza::zopOpc::Z_HAC_32_M_OR:
     RevFlagSet( flags, RevFlag::F_AMOOR );
-    RevFlagSet( flags, RevFlag::F_FORZANN );
+    RevFlagSet( flags, RevFlag::F_AMONN );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_32_M_OR, 1 );
     break;
   case Forza::zopOpc::Z_HAC_32_M_XOR:
     RevFlagSet( flags, RevFlag::F_AMOXOR );
-    RevFlagSet( flags, RevFlag::F_FORZANN );
+    RevFlagSet( flags, RevFlag::F_AMONN );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_32_M_XOR, 1 );
     break;
   case Forza::zopOpc::Z_HAC_32_M_SMAX:
     RevFlagSet( flags, RevFlag::F_AMOMAX );
-    RevFlagSet( flags, RevFlag::F_FORZANN );
+    RevFlagSet( flags, RevFlag::F_AMONN );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_32_M_SMAX, 1 );
     break;
   case Forza::zopOpc::Z_HAC_32_M_MAX:
     RevFlagSet( flags, RevFlag::F_AMOMAXU );
-    RevFlagSet( flags, RevFlag::F_FORZANN );
+    RevFlagSet( flags, RevFlag::F_AMONN );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_32_M_MAX, 1 );
     break;
   case Forza::zopOpc::Z_HAC_32_M_SMIN:
     RevFlagSet( flags, RevFlag::F_AMOMIN );
-    RevFlagSet( flags, RevFlag::F_FORZANN );
+    RevFlagSet( flags, RevFlag::F_AMONN );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_32_M_SMIN, 1 );
     break;
   case Forza::zopOpc::Z_HAC_32_M_MIN:
     RevFlagSet( flags, RevFlag::F_AMOMINU );
-    RevFlagSet( flags, RevFlag::F_FORZANN );
+    RevFlagSet( flags, RevFlag::F_AMONN );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_32_M_MIN, 1 );
     break;
   case Forza::zopOpc::Z_HAC_32_M_SWAP:
     RevFlagSet( flags, RevFlag::F_AMOSWAP );
-    RevFlagSet( flags, RevFlag::F_FORZANN );
+    RevFlagSet( flags, RevFlag::F_AMONN );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_32_M_SWAP, 1 );
     break;
@@ -1211,55 +1211,55 @@ bool RZAAMOCoProc::handleHZOP( Forza::zopEvent* zev, bool& flag ) {
   // 64bit M
   case Forza::zopOpc::Z_HAC_64_M_ADD:
     RevFlagSet( flags, RevFlag::F_AMOADD );
-    RevFlagSet( flags, RevFlag::F_FORZANN );
+    RevFlagSet( flags, RevFlag::F_AMONN );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_64_M_ADD, 1 );
     break;
   case Forza::zopOpc::Z_HAC_64_M_AND:
     RevFlagSet( flags, RevFlag::F_AMOAND );
-    RevFlagSet( flags, RevFlag::F_FORZANN );
+    RevFlagSet( flags, RevFlag::F_AMONN );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_64_M_AND, 1 );
     break;
   case Forza::zopOpc::Z_HAC_64_M_OR:
     RevFlagSet( flags, RevFlag::F_AMOOR );
-    RevFlagSet( flags, RevFlag::F_FORZANN );
+    RevFlagSet( flags, RevFlag::F_AMONN );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_64_M_OR, 1 );
     break;
   case Forza::zopOpc::Z_HAC_64_M_XOR:
     RevFlagSet( flags, RevFlag::F_AMOXOR );
-    RevFlagSet( flags, RevFlag::F_FORZANN );
+    RevFlagSet( flags, RevFlag::F_AMONN );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_64_M_XOR, 1 );
     break;
   case Forza::zopOpc::Z_HAC_64_M_SMAX:
     RevFlagSet( flags, RevFlag::F_AMOMAX );
-    RevFlagSet( flags, RevFlag::F_FORZANN );
+    RevFlagSet( flags, RevFlag::F_AMONN );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_64_M_SMAX, 1 );
     break;
   case Forza::zopOpc::Z_HAC_64_M_MAX:
     RevFlagSet( flags, RevFlag::F_AMOMAXU );
-    RevFlagSet( flags, RevFlag::F_FORZANN );
+    RevFlagSet( flags, RevFlag::F_AMONN );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_64_M_MAX, 1 );
     break;
   case Forza::zopOpc::Z_HAC_64_M_SMIN:
     RevFlagSet( flags, RevFlag::F_AMOMIN );
-    RevFlagSet( flags, RevFlag::F_FORZANN );
+    RevFlagSet( flags, RevFlag::F_AMONN );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_64_M_SMIN, 1 );
     break;
   case Forza::zopOpc::Z_HAC_64_M_MIN:
     RevFlagSet( flags, RevFlag::F_AMOMINU );
-    RevFlagSet( flags, RevFlag::F_FORZANN );
+    RevFlagSet( flags, RevFlag::F_AMONN );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_64_M_MIN, 1 );
     break;
   case Forza::zopOpc::Z_HAC_64_M_SWAP:
     RevFlagSet( flags, RevFlag::F_AMOSWAP );
-    RevFlagSet( flags, RevFlag::F_FORZANN );
+    RevFlagSet( flags, RevFlag::F_AMONN );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_64_M_SWAP, 1 );
     break;
@@ -1276,55 +1276,55 @@ bool RZAAMOCoProc::handleHZOP( Forza::zopEvent* zev, bool& flag ) {
   // 8bit S
   case Forza::zopOpc::Z_HAC_8_S_ADD:
     RevFlagSet( flags, RevFlag::F_AMOADD );
-    RevFlagSet( flags, RevFlag::F_FORZAON );
+    RevFlagSet( flags, RevFlag::F_AMOON );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_8_S_ADD, 1 );
     break;
   case Forza::zopOpc::Z_HAC_8_S_AND:
     RevFlagSet( flags, RevFlag::F_AMOAND );
-    RevFlagSet( flags, RevFlag::F_FORZAON );
+    RevFlagSet( flags, RevFlag::F_AMOON );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_8_S_AND, 1 );
     break;
   case Forza::zopOpc::Z_HAC_8_S_OR:
     RevFlagSet( flags, RevFlag::F_AMOOR );
-    RevFlagSet( flags, RevFlag::F_FORZAON );
+    RevFlagSet( flags, RevFlag::F_AMOON );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_8_S_OR, 1 );
     break;
   case Forza::zopOpc::Z_HAC_8_S_XOR:
     RevFlagSet( flags, RevFlag::F_AMOXOR );
-    RevFlagSet( flags, RevFlag::F_FORZAON );
+    RevFlagSet( flags, RevFlag::F_AMOON );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_8_S_XOR, 1 );
     break;
   case Forza::zopOpc::Z_HAC_8_S_SMAX:
     RevFlagSet( flags, RevFlag::F_AMOMAX );
-    RevFlagSet( flags, RevFlag::F_FORZAON );
+    RevFlagSet( flags, RevFlag::F_AMOON );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_8_S_SMAX, 1 );
     break;
   case Forza::zopOpc::Z_HAC_8_S_MAX:
     RevFlagSet( flags, RevFlag::F_AMOMAXU );
-    RevFlagSet( flags, RevFlag::F_FORZAON );
+    RevFlagSet( flags, RevFlag::F_AMOON );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_8_S_MAX, 1 );
     break;
   case Forza::zopOpc::Z_HAC_8_S_SMIN:
     RevFlagSet( flags, RevFlag::F_AMOMIN );
-    RevFlagSet( flags, RevFlag::F_FORZAON );
+    RevFlagSet( flags, RevFlag::F_AMOON );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_8_S_SMIN, 1 );
     break;
   case Forza::zopOpc::Z_HAC_8_S_MIN:
     RevFlagSet( flags, RevFlag::F_AMOMIN );
-    RevFlagSet( flags, RevFlag::F_FORZAON );
+    RevFlagSet( flags, RevFlag::F_AMOON );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_8_S_SMIN, 1 );
     break;
   case Forza::zopOpc::Z_HAC_8_S_SWAP:
     RevFlagSet( flags, RevFlag::F_AMOSWAP );
-    RevFlagSet( flags, RevFlag::F_FORZAON );
+    RevFlagSet( flags, RevFlag::F_AMOON );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_8_S_SWAP, 1 );
     break;
@@ -1341,55 +1341,55 @@ bool RZAAMOCoProc::handleHZOP( Forza::zopEvent* zev, bool& flag ) {
   // 16bit S
   case Forza::zopOpc::Z_HAC_16_S_ADD:
     RevFlagSet( flags, RevFlag::F_AMOADD );
-    RevFlagSet( flags, RevFlag::F_FORZAON );
+    RevFlagSet( flags, RevFlag::F_AMOON );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_16_S_ADD, 1 );
     break;
   case Forza::zopOpc::Z_HAC_16_S_AND:
     RevFlagSet( flags, RevFlag::F_AMOAND );
-    RevFlagSet( flags, RevFlag::F_FORZAON );
+    RevFlagSet( flags, RevFlag::F_AMOON );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_16_S_AND, 1 );
     break;
   case Forza::zopOpc::Z_HAC_16_S_OR:
     RevFlagSet( flags, RevFlag::F_AMOOR );
-    RevFlagSet( flags, RevFlag::F_FORZAON );
+    RevFlagSet( flags, RevFlag::F_AMOON );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_16_S_OR, 1 );
     break;
   case Forza::zopOpc::Z_HAC_16_S_XOR:
     RevFlagSet( flags, RevFlag::F_AMOXOR );
-    RevFlagSet( flags, RevFlag::F_FORZAON );
+    RevFlagSet( flags, RevFlag::F_AMOON );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_16_S_XOR, 1 );
     break;
   case Forza::zopOpc::Z_HAC_16_S_SMAX:
     RevFlagSet( flags, RevFlag::F_AMOMAX );
-    RevFlagSet( flags, RevFlag::F_FORZAON );
+    RevFlagSet( flags, RevFlag::F_AMOON );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_16_S_SMAX, 1 );
     break;
   case Forza::zopOpc::Z_HAC_16_S_MAX:
     RevFlagSet( flags, RevFlag::F_AMOMAXU );
-    RevFlagSet( flags, RevFlag::F_FORZAON );
+    RevFlagSet( flags, RevFlag::F_AMOON );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_16_S_MAX, 1 );
     break;
   case Forza::zopOpc::Z_HAC_16_S_SMIN:
     RevFlagSet( flags, RevFlag::F_AMOMIN );
-    RevFlagSet( flags, RevFlag::F_FORZAON );
+    RevFlagSet( flags, RevFlag::F_AMOON );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_16_S_SMIN, 1 );
     break;
   case Forza::zopOpc::Z_HAC_16_S_MIN:
     RevFlagSet( flags, RevFlag::F_AMOMINU );
-    RevFlagSet( flags, RevFlag::F_FORZAON );
+    RevFlagSet( flags, RevFlag::F_AMOON );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_16_S_MIN, 1 );
     break;
   case Forza::zopOpc::Z_HAC_16_S_SWAP:
     RevFlagSet( flags, RevFlag::F_AMOSWAP );
-    RevFlagSet( flags, RevFlag::F_FORZAON );
+    RevFlagSet( flags, RevFlag::F_AMOON );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_16_S_SWAP, 1 );
     break;
@@ -1406,55 +1406,55 @@ bool RZAAMOCoProc::handleHZOP( Forza::zopEvent* zev, bool& flag ) {
   // 32bit S
   case Forza::zopOpc::Z_HAC_32_S_ADD:
     RevFlagSet( flags, RevFlag::F_AMOADD );
-    RevFlagSet( flags, RevFlag::F_FORZAON );
+    RevFlagSet( flags, RevFlag::F_AMOON );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_32_S_ADD, 1 );
     break;
   case Forza::zopOpc::Z_HAC_32_S_AND:
     RevFlagSet( flags, RevFlag::F_AMOAND );
-    RevFlagSet( flags, RevFlag::F_FORZAON );
+    RevFlagSet( flags, RevFlag::F_AMOON );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_32_S_AND, 1 );
     break;
   case Forza::zopOpc::Z_HAC_32_S_OR:
     RevFlagSet( flags, RevFlag::F_AMOOR );
-    RevFlagSet( flags, RevFlag::F_FORZAON );
+    RevFlagSet( flags, RevFlag::F_AMOON );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_32_S_OR, 1 );
     break;
   case Forza::zopOpc::Z_HAC_32_S_XOR:
     RevFlagSet( flags, RevFlag::F_AMOXOR );
-    RevFlagSet( flags, RevFlag::F_FORZAON );
+    RevFlagSet( flags, RevFlag::F_AMOON );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_32_S_XOR, 1 );
     break;
   case Forza::zopOpc::Z_HAC_32_S_SMAX:
     RevFlagSet( flags, RevFlag::F_AMOMAX );
-    RevFlagSet( flags, RevFlag::F_FORZAON );
+    RevFlagSet( flags, RevFlag::F_AMOON );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_32_S_SMAX, 1 );
     break;
   case Forza::zopOpc::Z_HAC_32_S_MAX:
     RevFlagSet( flags, RevFlag::F_AMOMAXU );
-    RevFlagSet( flags, RevFlag::F_FORZAON );
+    RevFlagSet( flags, RevFlag::F_AMOON );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_32_S_MAX, 1 );
     break;
   case Forza::zopOpc::Z_HAC_32_S_SMIN:
     RevFlagSet( flags, RevFlag::F_AMOMIN );
-    RevFlagSet( flags, RevFlag::F_FORZAON );
+    RevFlagSet( flags, RevFlag::F_AMOON );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_32_S_SMIN, 1 );
     break;
   case Forza::zopOpc::Z_HAC_32_S_MIN:
     RevFlagSet( flags, RevFlag::F_AMOMINU );
-    RevFlagSet( flags, RevFlag::F_FORZAON );
+    RevFlagSet( flags, RevFlag::F_AMOON );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_32_S_MIN, 1 );
     break;
   case Forza::zopOpc::Z_HAC_32_S_SWAP:
     RevFlagSet( flags, RevFlag::F_AMOSWAP );
-    RevFlagSet( flags, RevFlag::F_FORZAON );
+    RevFlagSet( flags, RevFlag::F_AMOON );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_32_S_SWAP, 1 );
     break;
@@ -1471,55 +1471,55 @@ bool RZAAMOCoProc::handleHZOP( Forza::zopEvent* zev, bool& flag ) {
   // 64bit S
   case Forza::zopOpc::Z_HAC_64_S_ADD:
     RevFlagSet( flags, RevFlag::F_AMOADD );
-    RevFlagSet( flags, RevFlag::F_FORZAON );
+    RevFlagSet( flags, RevFlag::F_AMOON );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_64_S_ADD, 1 );
     break;
   case Forza::zopOpc::Z_HAC_64_S_AND:
     RevFlagSet( flags, RevFlag::F_AMOAND );
-    RevFlagSet( flags, RevFlag::F_FORZAON );
+    RevFlagSet( flags, RevFlag::F_AMOON );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_64_S_AND, 1 );
     break;
   case Forza::zopOpc::Z_HAC_64_S_OR:
     RevFlagSet( flags, RevFlag::F_AMOOR );
-    RevFlagSet( flags, RevFlag::F_FORZAON );
+    RevFlagSet( flags, RevFlag::F_AMOON );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_64_S_OR, 1 );
     break;
   case Forza::zopOpc::Z_HAC_64_S_XOR:
     RevFlagSet( flags, RevFlag::F_AMOXOR );
-    RevFlagSet( flags, RevFlag::F_FORZAON );
+    RevFlagSet( flags, RevFlag::F_AMOON );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_64_S_XOR, 1 );
     break;
   case Forza::zopOpc::Z_HAC_64_S_SMAX:
     RevFlagSet( flags, RevFlag::F_AMOMAX );
-    RevFlagSet( flags, RevFlag::F_FORZAON );
+    RevFlagSet( flags, RevFlag::F_AMOON );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_64_S_SMAX, 1 );
     break;
   case Forza::zopOpc::Z_HAC_64_S_MAX:
     RevFlagSet( flags, RevFlag::F_AMOMAXU );
-    RevFlagSet( flags, RevFlag::F_FORZAON );
+    RevFlagSet( flags, RevFlag::F_AMOON );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_64_S_MAX, 1 );
     break;
   case Forza::zopOpc::Z_HAC_64_S_SMIN:
     RevFlagSet( flags, RevFlag::F_AMOMIN );
-    RevFlagSet( flags, RevFlag::F_FORZAON );
+    RevFlagSet( flags, RevFlag::F_AMOON );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_64_S_SMIN, 1 );
     break;
   case Forza::zopOpc::Z_HAC_64_S_MIN:
     RevFlagSet( flags, RevFlag::F_AMOMINU );
-    RevFlagSet( flags, RevFlag::F_FORZAON );
+    RevFlagSet( flags, RevFlag::F_AMOON );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_64_S_MIN, 1 );
     break;
   case Forza::zopOpc::Z_HAC_64_S_SWAP:
     RevFlagSet( flags, RevFlag::F_AMOSWAP );
-    RevFlagSet( flags, RevFlag::F_FORZAON );
+    RevFlagSet( flags, RevFlag::F_AMOON );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_64_S_SWAP, 1 );
     break;
@@ -1536,55 +1536,55 @@ bool RZAAMOCoProc::handleHZOP( Forza::zopEvent* zev, bool& flag ) {
   // 8bit MS
   case Forza::zopOpc::Z_HAC_8_MS_ADD:
     RevFlagSet( flags, RevFlag::F_AMOADD );
-    RevFlagSet( flags, RevFlag::F_FORZANO );
+    RevFlagSet( flags, RevFlag::F_AMONO );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_8_MS_ADD, 1 );
     break;
   case Forza::zopOpc::Z_HAC_8_MS_AND:
     RevFlagSet( flags, RevFlag::F_AMOAND );
-    RevFlagSet( flags, RevFlag::F_FORZANO );
+    RevFlagSet( flags, RevFlag::F_AMONO );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_8_MS_AND, 1 );
     break;
   case Forza::zopOpc::Z_HAC_8_MS_OR:
     RevFlagSet( flags, RevFlag::F_AMOOR );
-    RevFlagSet( flags, RevFlag::F_FORZANO );
+    RevFlagSet( flags, RevFlag::F_AMONO );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_8_MS_OR, 1 );
     break;
   case Forza::zopOpc::Z_HAC_8_MS_XOR:
     RevFlagSet( flags, RevFlag::F_AMOXOR );
-    RevFlagSet( flags, RevFlag::F_FORZANO );
+    RevFlagSet( flags, RevFlag::F_AMONO );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_8_MS_XOR, 1 );
     break;
   case Forza::zopOpc::Z_HAC_8_MS_SMAX:
     RevFlagSet( flags, RevFlag::F_AMOMAX );
-    RevFlagSet( flags, RevFlag::F_FORZANO );
+    RevFlagSet( flags, RevFlag::F_AMONO );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_8_MS_SMAX, 1 );
     break;
   case Forza::zopOpc::Z_HAC_8_MS_MAX:
     RevFlagSet( flags, RevFlag::F_AMOMAXU );
-    RevFlagSet( flags, RevFlag::F_FORZANO );
+    RevFlagSet( flags, RevFlag::F_AMONO );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_8_MS_MAX, 1 );
     break;
   case Forza::zopOpc::Z_HAC_8_MS_SMIN:
     RevFlagSet( flags, RevFlag::F_AMOMIN );
-    RevFlagSet( flags, RevFlag::F_FORZANO );
+    RevFlagSet( flags, RevFlag::F_AMONO );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_8_MS_SMIN, 1 );
     break;
   case Forza::zopOpc::Z_HAC_8_MS_MIN:
     RevFlagSet( flags, RevFlag::F_AMOMINU );
-    RevFlagSet( flags, RevFlag::F_FORZANO );
+    RevFlagSet( flags, RevFlag::F_AMONO );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_8_MS_MIN, 1 );
     break;
   case Forza::zopOpc::Z_HAC_8_MS_SWAP:
     RevFlagSet( flags, RevFlag::F_AMOSWAP );
-    RevFlagSet( flags, RevFlag::F_FORZANO );
+    RevFlagSet( flags, RevFlag::F_AMONO );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_8_MS_SWAP, 1 );
     break;
@@ -1601,55 +1601,55 @@ bool RZAAMOCoProc::handleHZOP( Forza::zopEvent* zev, bool& flag ) {
   // 16bit MS
   case Forza::zopOpc::Z_HAC_16_MS_ADD:
     RevFlagSet( flags, RevFlag::F_AMOADD );
-    RevFlagSet( flags, RevFlag::F_FORZANO );
+    RevFlagSet( flags, RevFlag::F_AMONO );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_16_MS_ADD, 1 );
     break;
   case Forza::zopOpc::Z_HAC_16_MS_AND:
     RevFlagSet( flags, RevFlag::F_AMOAND );
-    RevFlagSet( flags, RevFlag::F_FORZANO );
+    RevFlagSet( flags, RevFlag::F_AMONO );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_16_MS_AND, 1 );
     break;
   case Forza::zopOpc::Z_HAC_16_MS_OR:
     RevFlagSet( flags, RevFlag::F_AMOOR );
-    RevFlagSet( flags, RevFlag::F_FORZANO );
+    RevFlagSet( flags, RevFlag::F_AMONO );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_16_MS_OR, 1 );
     break;
   case Forza::zopOpc::Z_HAC_16_MS_XOR:
     RevFlagSet( flags, RevFlag::F_AMOXOR );
-    RevFlagSet( flags, RevFlag::F_FORZANO );
+    RevFlagSet( flags, RevFlag::F_AMONO );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_16_MS_XOR, 1 );
     break;
   case Forza::zopOpc::Z_HAC_16_MS_SMAX:
     RevFlagSet( flags, RevFlag::F_AMOMAX );
-    RevFlagSet( flags, RevFlag::F_FORZANO );
+    RevFlagSet( flags, RevFlag::F_AMONO );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_16_MS_SMAX, 1 );
     break;
   case Forza::zopOpc::Z_HAC_16_MS_MAX:
     RevFlagSet( flags, RevFlag::F_AMOMAXU );
-    RevFlagSet( flags, RevFlag::F_FORZANO );
+    RevFlagSet( flags, RevFlag::F_AMONO );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_16_MS_MAX, 1 );
     break;
   case Forza::zopOpc::Z_HAC_16_MS_SMIN:
     RevFlagSet( flags, RevFlag::F_AMOMIN );
-    RevFlagSet( flags, RevFlag::F_FORZANO );
+    RevFlagSet( flags, RevFlag::F_AMONO );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_16_MS_SMIN, 1 );
     break;
   case Forza::zopOpc::Z_HAC_16_MS_MIN:
     RevFlagSet( flags, RevFlag::F_AMOMINU );
-    RevFlagSet( flags, RevFlag::F_FORZANO );
+    RevFlagSet( flags, RevFlag::F_AMONO );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_16_MS_MIN, 1 );
     break;
   case Forza::zopOpc::Z_HAC_16_MS_SWAP:
     RevFlagSet( flags, RevFlag::F_AMOSWAP );
-    RevFlagSet( flags, RevFlag::F_FORZANO );
+    RevFlagSet( flags, RevFlag::F_AMONO );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_16_MS_SWAP, 1 );
     break;
@@ -1666,55 +1666,55 @@ bool RZAAMOCoProc::handleHZOP( Forza::zopEvent* zev, bool& flag ) {
   // 32bit MS
   case Forza::zopOpc::Z_HAC_32_MS_ADD:
     RevFlagSet( flags, RevFlag::F_AMOADD );
-    RevFlagSet( flags, RevFlag::F_FORZANO );
+    RevFlagSet( flags, RevFlag::F_AMONO );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_32_MS_ADD, 1 );
     break;
   case Forza::zopOpc::Z_HAC_32_MS_AND:
     RevFlagSet( flags, RevFlag::F_AMOAND );
-    RevFlagSet( flags, RevFlag::F_FORZANO );
+    RevFlagSet( flags, RevFlag::F_AMONO );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_32_MS_AND, 1 );
     break;
   case Forza::zopOpc::Z_HAC_32_MS_OR:
     RevFlagSet( flags, RevFlag::F_AMOOR );
-    RevFlagSet( flags, RevFlag::F_FORZANO );
+    RevFlagSet( flags, RevFlag::F_AMONO );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_32_MS_OR, 1 );
     break;
   case Forza::zopOpc::Z_HAC_32_MS_XOR:
     RevFlagSet( flags, RevFlag::F_AMOXOR );
-    RevFlagSet( flags, RevFlag::F_FORZANO );
+    RevFlagSet( flags, RevFlag::F_AMONO );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_32_MS_XOR, 1 );
     break;
   case Forza::zopOpc::Z_HAC_32_MS_SMAX:
     RevFlagSet( flags, RevFlag::F_AMOMAX );
-    RevFlagSet( flags, RevFlag::F_FORZANO );
+    RevFlagSet( flags, RevFlag::F_AMONO );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_32_MS_SMAX, 1 );
     break;
   case Forza::zopOpc::Z_HAC_32_MS_MAX:
     RevFlagSet( flags, RevFlag::F_AMOMAXU );
-    RevFlagSet( flags, RevFlag::F_FORZANO );
+    RevFlagSet( flags, RevFlag::F_AMONO );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_32_MS_MAX, 1 );
     break;
   case Forza::zopOpc::Z_HAC_32_MS_SMIN:
     RevFlagSet( flags, RevFlag::F_AMOMIN );
-    RevFlagSet( flags, RevFlag::F_FORZANO );
+    RevFlagSet( flags, RevFlag::F_AMONO );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_32_MS_SMIN, 1 );
     break;
   case Forza::zopOpc::Z_HAC_32_MS_MIN:
     RevFlagSet( flags, RevFlag::F_AMOMINU );
-    RevFlagSet( flags, RevFlag::F_FORZANO );
+    RevFlagSet( flags, RevFlag::F_AMONO );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_32_MS_MIN, 1 );
     break;
   case Forza::zopOpc::Z_HAC_32_MS_SWAP:
     RevFlagSet( flags, RevFlag::F_AMOSWAP );
-    RevFlagSet( flags, RevFlag::F_FORZANO );
+    RevFlagSet( flags, RevFlag::F_AMONO );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_32_MS_SWAP, 1 );
     break;
@@ -1731,55 +1731,55 @@ bool RZAAMOCoProc::handleHZOP( Forza::zopEvent* zev, bool& flag ) {
   // 64bit MS
   case Forza::zopOpc::Z_HAC_64_MS_ADD:
     RevFlagSet( flags, RevFlag::F_AMOADD );
-    RevFlagSet( flags, RevFlag::F_FORZANO );
+    RevFlagSet( flags, RevFlag::F_AMONO );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_64_MS_ADD, 1 );
     break;
   case Forza::zopOpc::Z_HAC_64_MS_AND:
     RevFlagSet( flags, RevFlag::F_AMOAND );
-    RevFlagSet( flags, RevFlag::F_FORZANO );
+    RevFlagSet( flags, RevFlag::F_AMONO );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_64_MS_AND, 1 );
     break;
   case Forza::zopOpc::Z_HAC_64_MS_OR:
     RevFlagSet( flags, RevFlag::F_AMOOR );
-    RevFlagSet( flags, RevFlag::F_FORZANO );
+    RevFlagSet( flags, RevFlag::F_AMONO );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_64_MS_OR, 1 );
     break;
   case Forza::zopOpc::Z_HAC_64_MS_XOR:
     RevFlagSet( flags, RevFlag::F_AMOXOR );
-    RevFlagSet( flags, RevFlag::F_FORZANO );
+    RevFlagSet( flags, RevFlag::F_AMONO );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_64_MS_XOR, 1 );
     break;
   case Forza::zopOpc::Z_HAC_64_MS_SMAX:
     RevFlagSet( flags, RevFlag::F_AMOMAX );
-    RevFlagSet( flags, RevFlag::F_FORZANO );
+    RevFlagSet( flags, RevFlag::F_AMONO );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_64_MS_SMAX, 1 );
     break;
   case Forza::zopOpc::Z_HAC_64_MS_MAX:
     RevFlagSet( flags, RevFlag::F_AMOMAXU );
-    RevFlagSet( flags, RevFlag::F_FORZANO );
+    RevFlagSet( flags, RevFlag::F_AMONO );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_64_MS_MAX, 1 );
     break;
   case Forza::zopOpc::Z_HAC_64_MS_SMIN:
     RevFlagSet( flags, RevFlag::F_AMOMIN );
-    RevFlagSet( flags, RevFlag::F_FORZANO );
+    RevFlagSet( flags, RevFlag::F_AMONO );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_64_MS_SMIN, 1 );
     break;
   case Forza::zopOpc::Z_HAC_64_MS_MIN:
     RevFlagSet( flags, RevFlag::F_AMOMINU );
-    RevFlagSet( flags, RevFlag::F_FORZANO );
+    RevFlagSet( flags, RevFlag::F_AMONO );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_64_MS_MIN, 1 );
     break;
   case Forza::zopOpc::Z_HAC_64_MS_SWAP:
     RevFlagSet( flags, RevFlag::F_AMOSWAP );
-    RevFlagSet( flags, RevFlag::F_FORZANO );
+    RevFlagSet( flags, RevFlag::F_AMONO );
     Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
     recordStat( HZOP_64_MS_SWAP, 1 );
     break;
