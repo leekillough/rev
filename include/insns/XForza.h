@@ -19,6 +19,37 @@ namespace SST::RevCPU {
 class XForza : public RevExt {
 
   // ------------------------------------------------------------
+  // Thread Instructions
+  // ------------------------------------------------------------
+  static bool spawn( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) {
+    // -- RS1 = initial program counter for the newly created (Child) thread
+    // -- RS2 = is copied into register X31 of the child and is expected to
+    //          contain a pointer to an arbitrary block of data in memory to
+    //          be imported by the Child.
+    uint64_t TPC = R->GetX<uint64_t>( Inst.rs1 );
+    uint64_t X31 = R->GetX<uint64_t>( Inst.rs2 );
+
+    // update the cost
+    R->cost += M->RandCost( F->GetMinCost(), F->GetMaxCost() );
+    R->AdvancePC( Inst );
+    return true;
+  }
+
+  static bool quit( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) {
+    // update the cost
+    M->FenceMem( F->GetHartToExecID() );
+    R->AdvancePC( Inst );
+    return true;
+  }
+
+  static bool resched( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) {
+    // update the cost
+    R->cost += M->RandCost( F->GetMinCost(), F->GetMaxCost() );
+    R->AdvancePC( Inst );
+    return true;
+  }
+
+  // ------------------------------------------------------------
   // Remote Atomics
   // ------------------------------------------------------------
   template<typename TYPE, RevFlag Op, RevFlag Rtn>
@@ -157,6 +188,19 @@ class XForza : public RevExt {
 
   struct XForzaInstMCPYDefaults : RevInstDefaults {
     XForzaInstMCPYDefaults() { SetOpcode( 0b1101011 ); }
+  };
+
+  struct XForzaInstThreadDefaults : RevInstDefaults {
+    XForzaInstThreadDefaults() {
+      SetOpcode( 0b1110111 );
+      SetrdClass( RevRegClass::RegGPR );
+      Setrs1Class( RevRegClass::RegGPR );
+      Setrs2Class( RevRegClass::RegGPR );
+    }
+  };
+
+  struct XForzaInstThreadSpcDefaults : RevInstDefaults {
+    XForzaInstThreadSpcDefaults() { SetOpcode( 0b0101011 ); }
   };
 
 #define FORZA_AMO_MACRO( name, u4 )                      \
@@ -314,6 +358,10 @@ class XForza : public RevExt {
     FORZA_AMO_MACRO( amo_r_umin, 1000 )
     FORZA_AMO_MACRO( amo_r_swap, 1001 )
     FORZA_AMO_MACRO( amo_r_thrs, 1110 )
+
+    XForzaInstThreadDefaults().SetMnemonic( "spawn %rd, %rs1, %rs2" ).SetFunct3( 0b000 ).SetFunct2or7( 0b0000000000 ).SetImplFunc( spawn ),
+    XForzaInstThreadSpcDefaults().SetMnemonic( "quit" ).SetFunct3( 0b010 ).SetImplFunc( quit ),
+    XForzaInstThreadSpcDefaults().SetMnemonic( "resched" ).SetFunct3( 0b011 ).SetImplFunc( resched ),
   };
   // clang-format on
 
