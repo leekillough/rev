@@ -27,7 +27,7 @@ foreach(testSrc ${TEST_SRCS})
     PROPERTIES
     ENVIRONMENT "RVASM=${testName}; RVCC=${RVCC}"
     TIMEOUT 30
-    LABELS "rv64;isa"
+    LABELS "rv64;isa;forza_isa"
     PASS_REGULAR_EXPRESSION "${passRegex}")
   if(TEST_LEVEL LESS 2)
     set_tests_properties(${testName} PROPERTIES DISABLED TRUE)
