@@ -730,7 +730,7 @@ public:
   zopMsgT getType() { return Type; }
 
   /// zopEvent: get the payload length
-  uint8_t getLength() { return Packet.size() - Z_NUM_HEADER_FLITS; }
+  uint8_t getLength() { return uint8_t( Packet.size() - Z_NUM_HEADER_FLITS ); }
 
   /// zopEvent: get which flit this is in the transaction
   uint8_t getSeqNum() { return SeqNum; }
