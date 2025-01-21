@@ -1658,34 +1658,31 @@ void RevCore::MarkLoadComplete( const MemReq& req ) {
 }
 
 void RevCore::ReqThreadFromZqm() {
-  output->verbose( CALL_INFO, 11, 0, "NOTE Core %" PRIu32 " needs to request a thread\n", id );
+  //output->verbose( CALL_INFO, 11, 0, "NOTE Core %" PRIu32 " needs to request a thread\n", id );
   if( !HasIdleHart() )
     return;
 
-#if 0
-  SST::Forza::zopEvent *zev = new SST::Forza::zopEvent();
+#if 1
+  auto* zev = new SST::Forza::zopEvent( Forza::zopMsgT::Z_TMIG, Forza::zopOpc::Z_TMIG_REQUEST );
 
   // set all the fields
-  zev->setType(SST::Forza::zopMsgT::Z_TMIG);
-  zev->setID(UINT16_MAX);
-  zev->setCredit(0);
-  zev->setOpc(SST::Forza::zopOpc::Z_TMIG_REQUEST);
-  zev->setAppID(0);
-  zev->setDestZCID((uint8_t)(SST::Forza::zopCompID::Z_ZQM));
-  zev->setDestPCID((uint8_t)(zNic->getPCID(Zone)));
-  zev->setDestPrec((uint8_t)(Precinct));
-  zev->setSrcHart(UINT16_MAX);
-  zev->setSrcZCID((uint8_t)(zNic->getEndpointType()));
-  zev->setSrcPCID((uint8_t)(zNic->getPCID(zNic->getZoneID())));
-  zev->setSrcPrec((uint8_t)(zNic->getPrecinctID()));
+  zev->setID( UINT16_MAX );
+  zev->setAppID( 0 );
+  zev->setDestZCID( (uint8_t) ( SST::Forza::zopCompID::Z_ZQM ) );
+  zev->setDestPCID( (uint8_t) ( zNic->getPCID( zNic->getZoneID() ) ) );
+  zev->setDestPrec( (uint8_t) ( zNic->getPrecinctID() ) );
+  zev->setSrcHart( UINT16_MAX );
+  zev->setSrcZCID( (uint8_t) ( zNic->getEndpointType() ) );
+  zev->setSrcPCID( (uint8_t) ( zNic->getPCID( zNic->getZoneID() ) ) );
+  zev->setSrcPrec( (uint8_t) ( zNic->getPrecinctID() ) );
 
   // no payload
-  //std::vector<uint64_t> Payload;
-  //Payload.push_back((uint64_t)(ThreadID));
-  //zev->setPayload(Payload);
+  zNic->send( zev, SST::Forza::zopCompID::Z_ZQM, zNic->getPCID( zNic->getZoneID() ), zNic->getPrecinctID() );
 
-  zNic->send(zev, SST::Forza::zopCompID::Z_ZQM,
-             zNic->getPCID(Zone), Precinct);
+  // no payload
+  output->verbose( CALL_INFO, 9, 0, "ZAP [%" PRIu32 "] sent thread request\n", id );
+  output->flush();
+
 #endif
 }
 
