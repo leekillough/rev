@@ -299,7 +299,7 @@ class FORZA:
                  inputBufSize="2048B", outputBufSize="2048B",
                  linkBW="100GB/s", nocFlitSize="88B",
                  ringFlitSize="16B", linkLatency="100ns",
-                 xbarBW="800GB/s", verbose="9"):
+                 xbarBW="800GB/s", verbose="4"):
         print("Initializing FORZA")
         self.name = name
         self.zones = zones

@@ -9,11 +9,11 @@
   }
 
 int main( int argc, char** argv ) {
-  long int VAL = ORIG;
-  long int MOD = UPD;
-  __forza_amo_r_add64u( &VAL, MOD );
+  short VAL = ORIG;
+  short MOD = UPD;
+  __forza_amo_r_and64u( &VAL, MOD );
 
-  assert( VAL == ( ORIG + UPD ) );
+  assert( VAL == ( ORIG & UPD ) );
 
   return 0;
 }

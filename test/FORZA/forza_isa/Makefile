@@ -22,10 +22,8 @@ FORZA_OPTS ?= --target=riscv64-unknown-elf -mcpu=forza
 
 all:$(ISA_EXES)
 $(ISA_TESTS): $(ISA_EXES)
-%.o:%.c
-	$(CC) $(FORZA_OPTS)  -o $@ $<
-%.exe:%.o
-	$(RVCC) -o $@ $<
+%.exe:%.c
+	$(CC) $(FORZA_OPTS) -o $@ $<
 clean:
 	rm -Rf *.exe *.o
 

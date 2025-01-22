@@ -9,11 +9,12 @@
   }
 
 int main( int argc, char** argv ) {
-  long int VAL = ORIG;
-  long int MOD = UPD;
-  __forza_amo_r_add64u( &VAL, MOD );
+  short          VAL = ORIG;
+  short          MOD = UPD;
+  volatile short RTN = __forza_amo_r_and64rem_nn( &VAL, MOD );
 
-  assert( VAL == ( ORIG + UPD ) );
+  assert( RTN == ( ORIG & UPD ) );
+  assert( VAL == ( ORIG & UPD ) );
 
   return 0;
 }

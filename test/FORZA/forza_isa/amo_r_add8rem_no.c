@@ -1,6 +1,6 @@
 #include <stdlib.h>
 
-#define ORIG 0x1234
+#define ORIG 0x12
 #define UPD  0x1
 
 #define assert( cond ) \
@@ -9,10 +9,11 @@
   }
 
 int main( int argc, char** argv ) {
-  long int VAL = ORIG;
-  long int MOD = UPD;
-  __forza_amo_r_add64u( &VAL, MOD );
+  char          VAL = ORIG;
+  char          MOD = UPD;
+  volatile char RTN = __forza_amo_r_add64rem_no( &VAL, MOD );
 
+  assert( RTN == ORIG );
   assert( VAL == ( ORIG + UPD ) );
 
   return 0;
