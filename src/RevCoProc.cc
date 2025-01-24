@@ -26,10 +26,8 @@ RevCoProc::~RevCoProc() {
   delete output;
 }
 
-bool RevCoProc::sendSuccessResp( Forza::zopAPI* zNic, Forza::zopEvent* zev, uint16_t SrcHart ) {
-  if( !zNic )
-    return false;
-  if( !zev )
+bool RevCoProc::sendSuccessResp( zopAPI* zNic, zopEvent* zev, uint16_t SrcHart ) {
+  if( !zNic || !zev )
     return false;
 
   output->verbose(
@@ -37,12 +35,12 @@ bool RevCoProc::sendSuccessResp( Forza::zopAPI* zNic, Forza::zopEvent* zev, uint
   );
 
   // create a new event
-  SST::Forza::zopEvent* rsp_zev = new SST::Forza::zopEvent();
+  zopEvent* rsp_zev = new zopEvent();
 
   // set all the fields
-  rsp_zev->setType( SST::Forza::zopMsgT::Z_RESP );
+  rsp_zev->setType( zopMsgT::Z_RESP );
   rsp_zev->setID( zev->getID() );
-  rsp_zev->setOpc( SST::Forza::zopOpc::Z_RESP_SACK );
+  rsp_zev->setOpc( zopOpc::Z_RESP_SACK );
   rsp_zev->setAppID( zev->getAppID() );
   rsp_zev->setResZero( zev->getResZero() );
   rsp_zev->setDestHart( zev->getSrcHart() );
@@ -57,35 +55,33 @@ bool RevCoProc::sendSuccessResp( Forza::zopAPI* zNic, Forza::zopEvent* zev, uint
   rsp_zev->setMboxID( zev->getMbxID() );
 
   // no payload
-  //if (zev->getOpc() == SST::Forza::zopOpc::Z_MZOP_SDMA) {
+  //if (zev->getOpc() == zopOpc::Z_MZOP_SDMA) {
   //output->verbose(CALL_INFO, 5, 0, "Received SDMA from %s to %s\n", zev->getSrcString().c_str(), zev->getDestString().c_str() );
   //output->verbose(CALL_INFO, 5, 0, "Sending RESP_SACK from %s to %s\n", rsp_zev->getSrcString().c_str(), rsp_zev->getDestString().c_str() );
   //}
 
   // inject the packet
-  zNic->send( rsp_zev, ( SST::Forza::zopCompID )( zev->getSrcZCID() ) );
+  zNic->send( rsp_zev, zopCompID( zev->getSrcZCID() ) );
 
   return true;
 }
 
-bool RevCoProc::sendSuccessResp( Forza::zopAPI* zNic, Forza::zopEvent* zev, uint16_t SrcHart, uint64_t Data ) {
-  if( zNic == nullptr )
-    return false;
-  if( zev == nullptr )
+bool RevCoProc::sendSuccessResp( zopAPI* zNic, zopEvent* zev, uint16_t SrcHart, uint64_t Data ) {
+  if( !zNic || !zev )
     return false;
 
   output->verbose( CALL_INFO, 9, 0, "[FORZA][RZA][]: Building LOAD or HZOP response for MSG @ ID=%" PRIu16 "\n", zev->getID() );
 
   uint64_t Addr = 0;
-  zev->getFLIT( Forza::Z_FLIT_ADDR, &Addr );
+  zev->getFLIT( Z_FLIT_ADDR, &Addr );
 
   // create a new event
-  SST::Forza::zopEvent* rsp_zev = new SST::Forza::zopEvent();
+  zopEvent* rsp_zev = new zopEvent();
 
   // set all the fields
-  rsp_zev->setType( SST::Forza::zopMsgT::Z_RESP );
+  rsp_zev->setType( zopMsgT::Z_RESP );
   rsp_zev->setID( zev->getID() );
-  rsp_zev->setOpc( SST::Forza::zopOpc::Z_RESP_LR );
+  rsp_zev->setOpc( zopOpc::Z_RESP_LR );
   rsp_zev->setAppID( 0 );
   rsp_zev->setDestHart( zev->getSrcHart() );
   rsp_zev->setDestZCID( zev->getSrcZCID() );
@@ -103,7 +99,7 @@ bool RevCoProc::sendSuccessResp( Forza::zopAPI* zNic, Forza::zopEvent* zev, uint
   rsp_zev->encodeEvent();
 
   // inject the packet
-  zNic->send( rsp_zev, ( SST::Forza::zopCompID )( zev->getSrcZCID() ) );
+  zNic->send( rsp_zev, zopCompID( zev->getSrcZCID() ) );
 
   return true;
 }
@@ -202,9 +198,9 @@ void RZALSCoProc::registerStats() {
   }
 }
 
-void RZALSCoProc::recordStat( RZALSCoProc::mzopStats Stat, uint64_t Data ) {
-  if( Stat < RZALSCoProc::MZOP_END ) {
-    stats[Stat]->addData( Data );
+void RZALSCoProc::recordStat( mzopStats Stat, uint64_t Data ) {
+  if( Stat < mzopStats::MZOP_END ) {
+    stats[size_t( Stat )]->addData( Data );
   }
 }
 
@@ -230,9 +226,9 @@ void RZALSCoProc::CheckLSQueue() {
   for( auto it = LoadQ.begin(); it != LoadQ.end(); ++it ) {
     auto& [zev, rs2] = *it;
 
-    if( Alloc.getState( rs2 ) == _H_DIRTY ) {
+    if( Alloc.getState( rs2 ) == Hazard::DIRTY ) {
       // load to register has occurred, time to build a response
-      if( !sendSuccessResp( zNic, zev, Forza::Z_MZOP_PIPE_HART, Alloc.GetX( rs2 ) ) ) {
+      if( !sendSuccessResp( zNic, zev, Z_MZOP_PIPE_HART, Alloc.GetX( rs2 ) ) ) {
         output->fatal(
           CALL_INFO, -1, "[FORZA][RZA][MZOP]: Failed to send success response for ZOP ID=%" PRIu16 "\n", zev->getID()
         );
@@ -241,7 +237,7 @@ void RZALSCoProc::CheckLSQueue() {
 
       // clear the request from the ZRqst map
       uint64_t Addr = 0;
-      if( !zev->getFLIT( Forza::Z_FLIT_ADDR, &Addr ) ) {
+      if( !zev->getFLIT( Z_FLIT_ADDR, &Addr ) ) {
         output->fatal( CALL_INFO, -1, "[FORZA][RZA] Erroneous packet contents for ZOP in CheckLSQueue\n" );
       }
       Mem->clearZRqst( Addr );
@@ -261,23 +257,53 @@ void RZALSCoProc::MarkLoadComplete( const MemReq& req ) {
   Alloc.setDirty( (uint32_t) ( req.getDestReg() ) );
 }
 
-bool RZALSCoProc::handleMZOP( Forza::zopEvent* zev, bool& flag ) {
-  uint32_t Rs1         = _UNDEF_REG;
-  uint32_t Rs2         = _UNDEF_REG;
+// clang-format off
+const std::unordered_map<zopOpc, std::tuple<RZALSCoProc::mzopKind, uint32_t, mzopStats, RevFlag>> RZALSCoProc::mzopTable = {
+  // unsigned loads
+  { zopOpc::Z_MZOP_LB,   {  mzopKind::load, 1, mzopStats::MZOP_LB,   RevFlag::F_ZEXT64 } },
+  { zopOpc::Z_MZOP_LH,   {  mzopKind::load, 2, mzopStats::MZOP_LH,   RevFlag::F_ZEXT64 } },
+  { zopOpc::Z_MZOP_LW,   {  mzopKind::load, 4, mzopStats::MZOP_LW,   RevFlag::F_ZEXT64 } },
+  { zopOpc::Z_MZOP_LD,   {  mzopKind::load, 8, mzopStats::MZOP_LD,   RevFlag::F_NONE   } },
+
+  // signed loads
+  { zopOpc::Z_MZOP_LSB,  {  mzopKind::load, 1, mzopStats::MZOP_LSB,  RevFlag::F_SEXT64 } },
+  { zopOpc::Z_MZOP_LSH,  {  mzopKind::load, 2, mzopStats::MZOP_LSH,  RevFlag::F_SEXT64 } },
+  { zopOpc::Z_MZOP_LSW,  {  mzopKind::load, 4, mzopStats::MZOP_LSW,  RevFlag::F_SEXT64 } },
+
+  // stores
+  { zopOpc::Z_MZOP_SB,   { mzopKind::store, 1, mzopStats::MZOP_SB,   RevFlag::F_NONE   } },
+  { zopOpc::Z_MZOP_SH,   { mzopKind::store, 2, mzopStats::MZOP_SH,   RevFlag::F_NONE   } },
+  { zopOpc::Z_MZOP_SW,   { mzopKind::store, 4, mzopStats::MZOP_SW,   RevFlag::F_NONE   } },
+  { zopOpc::Z_MZOP_SD,   { mzopKind::store, 8, mzopStats::MZOP_SD,   RevFlag::F_NONE   } },
+
+  // ?SIGNED STORES? !!! We should not need these!!! Stores store N bytes regardless of signedness
+  // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  { zopOpc::Z_MZOP_SSB,  { mzopKind::store, 1, mzopStats::MZOP_SSB,  RevFlag::F_NONE   } },
+  { zopOpc::Z_MZOP_SSH,  { mzopKind::store, 2, mzopStats::MZOP_SSH,  RevFlag::F_NONE   } },
+  { zopOpc::Z_MZOP_SSW,  { mzopKind::store, 4, mzopStats::MZOP_SSW,  RevFlag::F_NONE   } },
+  // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+  // dma stores
+  { zopOpc::Z_MZOP_SDMA, { mzopKind::sdma,  0, mzopStats::MZOP_SDMA, RevFlag::F_NONE   } },
+};
+
+// clang-format on
+
+bool RZALSCoProc::handleMZOP( zopEvent* zev, bool& flag ) {
+  uint32_t Rs1         = UNDEF_REG;
+  uint32_t Rs2         = UNDEF_REG;
   uint64_t Addr        = 0;  // -- Forza::Z_FLIT_ADDR: FLIT 2
-  uint64_t Data        = 0;  // -- Forza::Z_FLIT_DATA: FLIT 3
 
   // this is the actual number of data flits
   // these variables are only used for the DMA store operations
-  uint32_t RealFlitLen = (uint32_t) ( zev->getLength() );
-  uint32_t i, j, cur = 0;
+  uint32_t RealFlitLen = uint32_t( zev->getLength() );
 
   if( !Alloc.getRegs( Rs1, Rs2 ) ) {
     return false;
   }
 
   // preload the address
-  if( !zev->getFLIT( Forza::Z_FLIT_ADDR, &Addr ) ) {
+  if( !zev->getFLIT( Z_FLIT_ADDR, &Addr ) ) {
     output->fatal(
       CALL_INFO,
       -1,
@@ -288,180 +314,49 @@ bool RZALSCoProc::handleMZOP( Forza::zopEvent* zev, bool& flag ) {
   }
 
   // used only for load operations
-  MemReq req{
-    Addr, (uint16_t) ( Rs2 ), RevRegClass::RegGPR, Forza::Z_MZOP_PIPE_HART, MemOp::MemOpREAD, true, MarkLoadCompleteFunc };
+  MemReq req{ Addr, uint16_t( Rs2 ), RevRegClass::RegGPR, Z_MZOP_PIPE_HART, MemOp::MemOpREAD, true, MarkLoadCompleteFunc };
 
   // set the address
   Alloc.SetX( Rs1, Addr );
 
-  switch( zev->getOpc() ) {
-  // uint32_t loads
-  case Forza::zopOpc::Z_MZOP_LB:
-    Alloc.SetX( Rs2, 0 );
-    Mem->ReadVal( Forza::Z_MZOP_PIPE_HART, Addr, reinterpret_cast<uint8_t*>( Alloc.getRegAddr( Rs2 ) ), req, RevFlag::F_NONE );
-    zev->setMemReq( req );
-    LoadQ.emplace_back( zev, Rs2 );
-    flag = false;
-    recordStat( MZOP_LB, 1 );
-    break;
-  case Forza::zopOpc::Z_MZOP_LH:
-    Alloc.SetX( Rs2, 0 );
-    Mem->ReadVal( Forza::Z_MZOP_PIPE_HART, Addr, reinterpret_cast<uint16_t*>( Alloc.getRegAddr( Rs2 ) ), req, RevFlag::F_NONE );
-    zev->setMemReq( req );
-    LoadQ.emplace_back( zev, Rs2 );
-    flag = false;
-    recordStat( MZOP_LH, 1 );
-    break;
-  case Forza::zopOpc::Z_MZOP_LW:
-    Alloc.SetX( Rs2, 0 );
-    Mem->ReadVal( Forza::Z_MZOP_PIPE_HART, Addr, reinterpret_cast<uint32_t*>( Alloc.getRegAddr( Rs2 ) ), req, RevFlag::F_NONE );
-    zev->setMemReq( req );
-    LoadQ.emplace_back( zev, Rs2 );
-    flag = false;
-    recordStat( MZOP_LW, 1 );
-    break;
-  case Forza::zopOpc::Z_MZOP_LD:
-    Alloc.SetX( Rs2, 0 );
-    Mem->ReadVal( Forza::Z_MZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs2 ), req, RevFlag::F_NONE );
-    zev->setMemReq( req );
-    LoadQ.emplace_back( zev, Rs2 );
-    flag = false;
-    recordStat( MZOP_LD, 1 );
-    break;
-  // signed loads
-  case Forza::zopOpc::Z_MZOP_LSB:
-    Alloc.SetX( Rs2, 0 );
-    Mem->ReadVal( Forza::Z_MZOP_PIPE_HART, Addr, reinterpret_cast<int8_t*>( Alloc.getRegAddr( Rs2 ) ), req, RevFlag::F_SEXT64 );
-    zev->setMemReq( req );
-    LoadQ.emplace_back( zev, Rs2 );
-    flag = false;
-    recordStat( MZOP_LSB, 1 );
-    break;
-  case Forza::zopOpc::Z_MZOP_LSH:
-    Alloc.SetX( Rs2, 0 );
-    Mem->ReadVal( Forza::Z_MZOP_PIPE_HART, Addr, reinterpret_cast<int16_t*>( Alloc.getRegAddr( Rs2 ) ), req, RevFlag::F_SEXT64 );
-    zev->setMemReq( req );
-    LoadQ.emplace_back( zev, Rs2 );
-    flag = false;
-    recordStat( MZOP_LSH, 1 );
-    break;
-  case Forza::zopOpc::Z_MZOP_LSW:
-    Alloc.SetX( Rs2, 0 );
-    Mem->ReadVal( Forza::Z_MZOP_PIPE_HART, Addr, reinterpret_cast<int32_t*>( Alloc.getRegAddr( Rs2 ) ), req, RevFlag::F_SEXT64 );
-    zev->setMemReq( req );
-    LoadQ.emplace_back( zev, Rs2 );
-    flag = false;
-    recordStat( MZOP_LSW, 1 );
-    break;
+  // Look up the opcode
+  auto opc = zev->getOpc();
+  auto it  = mzopTable.find( opc );
+  if( it == mzopTable.end() ) {
+    output->verbose( CALL_INFO, 9, 0, "[FORZA][RZA][MZOP]: Erroneous MZOP opcode=%" PRIu8 "\n", safe_static_cast<uint8_t>( opc ) );
+    return false;
+  }
 
-  // uint32_t & signed stores
-  case Forza::zopOpc::Z_MZOP_SB:
-    if( !zev->getFLIT( Forza::Z_FLIT_DATA, &Data ) ) {
-      output->fatal(
-        CALL_INFO,
-        -1,
-        "[FORZA][RZA][MZOP]: MZOP packet has no data FLIT: Type=%s, ID=%" PRIu16 "\n",
-        zNic->msgTToStr( zev->getType() ).c_str(),
-        zev->getID()
-      );
-    }
-    Mem->Write( Forza::Z_MZOP_PIPE_HART, Addr, static_cast<uint8_t>( Data ) );
-    flag = true;
-    recordStat( MZOP_SB, 1 );
-    break;
-  case Forza::zopOpc::Z_MZOP_SH:
-    if( !zev->getFLIT( Forza::Z_FLIT_DATA, &Data ) ) {
-      output->fatal(
-        CALL_INFO,
-        -1,
-        "[FORZA][RZA][MZOP]: MZOP packet has no data FLIT: Type=%s, ID=%" PRIu16 "\n",
-        zNic->msgTToStr( zev->getType() ).c_str(),
-        zev->getID()
-      );
-    }
-    Mem->Write( Forza::Z_MZOP_PIPE_HART, Addr, static_cast<uint16_t>( Data ) );
-    flag = true;
-    recordStat( MZOP_SH, 1 );
-    break;
-  case Forza::zopOpc::Z_MZOP_SW:
-    if( !zev->getFLIT( Forza::Z_FLIT_DATA, &Data ) ) {
-      output->fatal(
-        CALL_INFO,
-        -1,
-        "[FORZA][RZA][MZOP]: MZOP packet has no data FLIT: Type=%s, ID=%" PRIu16 "\n",
-        zNic->msgTToStr( zev->getType() ).c_str(),
-        zev->getID()
-      );
-    }
-    Mem->Write( Forza::Z_MZOP_PIPE_HART, Addr, static_cast<uint32_t>( Data ) );
-    flag = true;
-    recordStat( MZOP_SW, 1 );
-    break;
-  case Forza::zopOpc::Z_MZOP_SD:
-    if( !zev->getFLIT( Forza::Z_FLIT_DATA, &Data ) ) {
-      output->fatal(
-        CALL_INFO,
-        -1,
-        "[FORZA][RZA][MZOP]: MZOP packet has no data FLIT: Type=%s, ID=%" PRIu16 "\n",
-        zNic->msgTToStr( zev->getType() ).c_str(),
-        zev->getID()
-      );
-    }
-    Mem->Write( Forza::Z_MZOP_PIPE_HART, Addr, Data );
-    flag = true;
-    recordStat( MZOP_SD, 1 );
-    break;
-  case Forza::zopOpc::Z_MZOP_SSB:
-    if( !zev->getFLIT( Forza::Z_FLIT_DATA, &Data ) ) {
-      output->fatal(
-        CALL_INFO,
-        -1,
-        "[FORZA][RZA][MZOP]: MZOP packet has no data FLIT: Type=%s, ID=%" PRIu16 "\n",
-        zNic->msgTToStr( zev->getType() ).c_str(),
-        zev->getID()
-      );
-    }
-    Mem->Write( Forza::Z_MZOP_PIPE_HART, Addr, static_cast<int8_t>( Data ) );
-    flag = true;
-    recordStat( MZOP_SSB, 1 );
-    break;
-  case Forza::zopOpc::Z_MZOP_SSH:
-    if( !zev->getFLIT( Forza::Z_FLIT_DATA, &Data ) ) {
-      output->fatal(
-        CALL_INFO,
-        -1,
-        "[FORZA][RZA][MZOP]: MZOP packet has no data FLIT: Type=%s, ID=%" PRIu16 "\n",
-        zNic->msgTToStr( zev->getType() ).c_str(),
-        zev->getID()
-      );
-    }
-    Mem->Write( Forza::Z_MZOP_PIPE_HART, Addr, static_cast<int16_t>( Data ) );
-    flag = true;
-    recordStat( MZOP_SSH, 1 );
-    break;
-  case Forza::zopOpc::Z_MZOP_SSW:
-    if( !zev->getFLIT( Forza::Z_FLIT_DATA, &Data ) ) {
-      output->fatal(
-        CALL_INFO,
-        -1,
-        "[FORZA][RZA][MZOP]: MZOP packet has no data FLIT: Type=%s, ID=%" PRIu16 "\n",
-        zNic->msgTToStr( zev->getType() ).c_str(),
-        zev->getID()
-      );
-    }
-    Mem->Write( Forza::Z_MZOP_PIPE_HART, Addr, static_cast<int32_t>( Data ) );
-    flag = true;
-    recordStat( MZOP_SSW, 1 );
-    break;
+  // Extract the fields
+  const auto& [kind, size, stat, flags] = it->second;
 
-  // dma stores
-  case Forza::zopOpc::Z_MZOP_SDMA: {
+  // Execute the code corresponding to the entry
+  switch( kind ) {
+  case mzopKind::store: {  // Stores
+    uint64_t Data = 0;
+    if( !zev->getFLIT( Z_FLIT_DATA, &Data ) ) {
+      output->fatal(
+        CALL_INFO,
+        -1,
+        "[FORZA][RZA][MZOP]: MZOP packet has no data FLIT: Type=%s, ID=%" PRIu16 "\n",
+        zNic->msgTToStr( zev->getType() ).c_str(),
+        zev->getID()
+      );
+    }
+    if( !Mem->WriteMem( Z_MZOP_PIPE_HART, Addr, size, &Data ) )
+      output->fatal( CALL_INFO, -1, "Error: could not write memory\n" );
+    flag = true;
+    break;
+  }
+
+  case mzopKind::sdma: {  // DMA Stores
     // build a bulk write
-    auto Buf = std::make_unique<uint8_t[]>( RealFlitLen * 8 );
+    auto   Buf = std::make_unique<uint8_t[]>( RealFlitLen * 8 );
+    size_t cur = 0;
 
-    for( i = 0; i < RealFlitLen; i++ ) {
-      Data = 0;
-      if( !zev->getFLIT( ( Forza::Z_FLIT_DATA ) + i, &Data ) ) {
+    for( uint32_t i = 0; i < RealFlitLen; i++ ) {
+      uint64_t Data = 0;
+      if( !zev->getFLIT( Z_FLIT_DATA + i, &Data ) ) {
         output->fatal(
           CALL_INFO,
           -1,
@@ -471,30 +366,33 @@ bool RZALSCoProc::handleMZOP( Forza::zopEvent* zev, bool& flag ) {
           zev->getID()
         );
       }
-
-      for( j = 0; j < 8; j++ ) {
-        Buf[cur] = ( ( Data >> ( j * 8 ) ) & 0b11111111 );
-        cur++;
+      for( uint32_t i = 0; i < 8; i++ ) {
+        Buf[cur++] = uint8_t( Data & 0xff );
+        Data >>= 8;
       }
     }
 
     // write buffer
-    Mem->WriteMem( Forza::Z_MZOP_PIPE_HART, Addr, RealFlitLen * 8, Buf.get() );
+    if( !Mem->WriteMem( Z_MZOP_PIPE_HART, Addr, RealFlitLen * 8, Buf.get() ) )
+      output->fatal( CALL_INFO, -1, "Error: could not write memory\n" );
     flag = true;
-    recordStat( MZOP_SDMA, 1 );
-  } break;
-  default:
-    // not an MZOP
-    output->verbose(
-      CALL_INFO, 9, 0, "[FORZA][RZA][MZOP]: Erroneous MZOP opcode=%" PRIu8 "\n", static_cast<uint8_t>( zev->getOpc() )
-    );
-    return false;
     break;
   }
 
+  case mzopKind::load:  // Loads
+    Alloc.SetX( Rs2, 0 );
+    Mem->ReadMem( Z_MZOP_PIPE_HART, Addr, size, Alloc.getRegAddr( Rs2 ), req, flags );
+    zev->setMemReq( req );
+    LoadQ.emplace_back( zev, Rs2 );
+    flag = false;
+    break;
+  }
+
+  recordStat( stat, 1 );
+
   if( flag ) {
     // this was a write, signal a success response
-    if( !sendSuccessResp( zNic, zev, Forza::Z_MZOP_PIPE_HART ) ) {
+    if( !sendSuccessResp( zNic, zev, Z_MZOP_PIPE_HART ) ) {
       output->fatal( CALL_INFO, -1, "[FORZA][RZA][MZOP]: Failed to send success response for ZOP ID=%" PRIu16 "\n", zev->getID() );
     }
     // go ahead and clear the RS2 as we dont need it for WRITE requests
@@ -508,8 +406,8 @@ bool RZALSCoProc::handleMZOP( Forza::zopEvent* zev, bool& flag ) {
   return true;
 }
 
-bool RZALSCoProc::InjectZOP( Forza::zopEvent* zev, bool& flag ) {
-  if( zev->getType() != Forza::zopMsgT::Z_MZOP ) {
+bool RZALSCoProc::InjectZOP( zopEvent* zev, bool& flag ) {
+  if( zev->getType() != zopMsgT::Z_MZOP ) {
     // wrong ZOP type injected
     output->fatal(
       CALL_INFO, -1, "[FORZA][RZA][MZOP]: Cannot handle ZOP message of type: %s\n", zNic->msgTToStr( zev->getType() ).c_str()
@@ -540,56 +438,59 @@ RZAAMOCoProc::~RZAAMOCoProc() {
 
 void RZAAMOCoProc::registerStats() {
   for( auto* stat : {
-         "HZOP_8_BASE_ADD",    "HZOP_8_BASE_AND",    "HZOP_8_BASE_OR",    "HZOP_8_BASE_XOR",    "HZOP_8_BASE_SMAX",
-         "HZOP_8_BASE_MAX",    "HZOP_8_BASE_SMIN",   "HZOP_8_BASE_MIN",   "HZOP_8_BASE_SWAP",   "HZOP_8_BASE_CAS",
-         "HZOP_8_BASE_FADD",   "HZOP_8_BASE_FSUB",   "HZOP_8_BASE_FRSUB", "HZOP_16_BASE_ADD",   "HZOP_16_BASE_AND",
-         "HZOP_16_BASE_OR",    "HZOP_16_BASE_XOR",   "HZOP_16_BASE_SMAX", "HZOP_16_BASE_MAX",   "HZOP_16_BASE_SMIN",
-         "HZOP_16_BASE_MIN",   "HZOP_16_BASE_SWAP",  "HZOP_16_BASE_CAS",  "HZOP_16_BASE_FADD",  "HZOP_16_BASE_FSUB",
-         "HZOP_16_BASE_FRSUB", "HZOP_32_BASE_ADD",   "HZOP_32_BASE_AND",  "HZOP_32_BASE_OR",    "HZOP_32_BASE_XOR",
-         "HZOP_32_BASE_SMAX",  "HZOP_32_BASE_MAX",   "HZOP_32_BASE_SMIN", "HZOP_32_BASE_MIN",   "HZOP_32_BASE_SWAP",
-         "HZOP_32_BASE_CAS",   "HZOP_32_BASE_FADD",  "HZOP_32_BASE_FSUB", "HZOP_32_BASE_FRSUB", "HZOP_64_BASE_ADD",
-         "HZOP_64_BASE_AND",   "HZOP_64_BASE_OR",    "HZOP_64_BASE_XOR",  "HZOP_64_BASE_SMAX",  "HZOP_64_BASE_MAX",
-         "HZOP_64_BASE_SMIN",  "HZOP_64_BASE_MIN",   "HZOP_64_BASE_SWAP", "HZOP_64_BASE_CAS",   "HZOP_64_BASE_FADD",
-         "HZOP_64_BASE_FSUB",  "HZOP_64_BASE_FRSUB", "HZOP_8_M_ADD",      "HZOP_8_M_AND",       "HZOP_8_M_OR",
-         "HZOP_8_M_XOR",       "HZOP_8_M_SMAX",      "HZOP_8_M_MAX",      "HZOP_8_M_SMIN",      "HZOP_8_M_MIN",
-         "HZOP_8_M_SWAP",      "HZOP_8_M_CAS",       "HZOP_8_M_FADD",     "HZOP_8_M_FSUB",      "HZOP_8_M_FRSUB",
-         "HZOP_16_M_ADD",      "HZOP_16_M_AND",      "HZOP_16_M_OR",      "HZOP_16_M_XOR",      "HZOP_16_M_SMAX",
-         "HZOP_16_M_MAX",      "HZOP_16_M_SMIN",     "HZOP_16_M_MIN",     "HZOP_16_M_SWAP",     "HZOP_16_M_CAS",
-         "HZOP_16_M_FADD",     "HZOP_16_M_FSUB",     "HZOP_16_M_FRSUB",   "HZOP_32_M_ADD",      "HZOP_32_M_AND",
-         "HZOP_32_M_OR",       "HZOP_32_M_XOR",      "HZOP_32_M_SMAX",    "HZOP_32_M_MAX",      "HZOP_32_M_SMIN",
-         "HZOP_32_M_MIN",      "HZOP_32_M_SWAP",     "HZOP_32_M_CAS",     "HZOP_32_M_FADD",     "HZOP_32_M_FSUB",
-         "HZOP_32_M_FRSUB",    "HZOP_64_M_ADD",      "HZOP_64_M_AND",     "HZOP_64_M_OR",       "HZOP_64_M_XOR",
-         "HZOP_64_M_SMAX",     "HZOP_64_M_MAX",      "HZOP_64_M_SMIN",    "HZOP_64_M_MIN",      "HZOP_64_M_SWAP",
-         "HZOP_64_M_CAS",      "HZOP_64_M_FADD",     "HZOP_64_M_FSUB",    "HZOP_64_M_FRSUB",    "HZOP_8_S_ADD",
-         "HZOP_8_S_AND",       "HZOP_8_S_OR",        "HZOP_8_S_XOR",      "HZOP_8_S_SMAX",      "HZOP_8_S_MAX",
-         "HZOP_8_S_SMIN",      "HZOP_8_S_MIN",       "HZOP_8_S_SWAP",     "HZOP_8_S_CAS",       "HZOP_8_S_FADD",
-         "HZOP_8_S_FSUB",      "HZOP_8_S_FRSUB",     "HZOP_16_S_ADD",     "HZOP_16_S_AND",      "HZOP_16_S_OR",
-         "HZOP_16_S_XOR",      "HZOP_16_S_SMAX",     "HZOP_16_S_MAX",     "HZOP_16_S_SMIN",     "HZOP_16_S_MIN",
-         "HZOP_16_S_SWAP",     "HZOP_16_S_CAS",      "HZOP_16_S_FADD",    "HZOP_16_S_FSUB",     "HZOP_16_S_FRSUB",
-         "HZOP_32_S_ADD",      "HZOP_32_S_AND",      "HZOP_32_S_OR",      "HZOP_32_S_XOR",      "HZOP_32_S_SMAX",
-         "HZOP_32_S_MAX",      "HZOP_32_S_SMIN",     "HZOP_32_S_MIN",     "HZOP_32_S_SWAP",     "HZOP_32_S_CAS",
-         "HZOP_32_S_FADD",     "HZOP_32_S_FSUB",     "HZOP_32_S_FRSUB",   "HZOP_64_S_ADD",      "HZOP_64_S_AND",
-         "HZOP_64_S_OR",       "HZOP_64_S_XOR",      "HZOP_64_S_SMAX",    "HZOP_64_S_MAX",      "HZOP_64_S_SMIN",
-         "HZOP_64_S_MIN",      "HZOP_64_S_SWAP",     "HZOP_64_S_CAS",     "HZOP_64_S_FADD",     "HZOP_64_S_FSUB",
-         "HZOP_64_S_FRSUB",    "HZOP_8_MS_ADD",      "HZOP_8_MS_AND",     "HZOP_8_MS_OR",       "HZOP_8_MS_XOR",
-         "HZOP_8_MS_SMAX",     "HZOP_8_MS_MAX",      "HZOP_8_MS_SMIN",    "HZOP_8_MS_MIN",      "HZOP_8_MS_SWAP",
-         "HZOP_8_MS_CAS",      "HZOP_8_MS_FADD",     "HZOP_8_MS_FSUB",    "HZOP_8_MS_FRSUB",    "HZOP_16_MS_ADD",
-         "HZOP_16_MS_AND",     "HZOP_16_MS_OR",      "HZOP_16_MS_XOR",    "HZOP_16_MS_SMAX",    "HZOP_16_MS_MAX",
-         "HZOP_16_MS_SMIN",    "HZOP_16_MS_MIN",     "HZOP_16_MS_SWAP",   "HZOP_16_MS_CAS",     "HZOP_16_MS_FADD",
-         "HZOP_16_MS_FSUB",    "HZOP_16_MS_FRSUB",   "HZOP_32_MS_ADD",    "HZOP_32_MS_AND",     "HZOP_32_MS_OR",
-         "HZOP_32_MS_XOR",     "HZOP_32_MS_SMAX",    "HZOP_32_MS_MAX",    "HZOP_32_MS_SMIN",    "HZOP_32_MS_MIN",
-         "HZOP_32_MS_SWAP",    "HZOP_32_MS_CAS",     "HZOP_32_MS_FADD",   "HZOP_32_MS_FSUB",    "HZOP_32_MS_FRSUB",
-         "HZOP_64_MS_ADD",     "HZOP_64_MS_AND",     "HZOP_64_MS_OR",     "HZOP_64_MS_XOR",     "HZOP_64_MS_SMAX",
-         "HZOP_64_MS_MAX",     "HZOP_64_MS_SMIN",    "HZOP_64_MS_MIN",    "HZOP_64_MS_SWAP",    "HZOP_64_MS_CAS",
+         "HZOP_8_BASE_ADD",    "HZOP_8_BASE_AND",    "HZOP_8_BASE_OR",      "HZOP_8_BASE_XOR",     "HZOP_8_BASE_SMAX",
+         "HZOP_8_BASE_MAX",    "HZOP_8_BASE_SMIN",   "HZOP_8_BASE_MIN",     "HZOP_8_BASE_SWAP",    "HZOP_8_BASE_CAS",
+         "HZOP_8_BASE_THRESH", "HZOP_8_BASE_FADD",   "HZOP_8_BASE_FSUB",    "HZOP_8_BASE_FRSUB",   "HZOP_16_BASE_ADD",
+         "HZOP_16_BASE_AND",   "HZOP_16_BASE_OR",    "HZOP_16_BASE_XOR",    "HZOP_16_BASE_SMAX",   "HZOP_16_BASE_MAX",
+         "HZOP_16_BASE_SMIN",  "HZOP_16_BASE_MIN",   "HZOP_16_BASE_SWAP",   "HZOP_16_BASE_CAS",    "HZOP_16_BASE_THRESH",
+         "HZOP_16_BASE_FADD",  "HZOP_16_BASE_FSUB",  "HZOP_16_BASE_FRSUB",  "HZOP_32_BASE_ADD",    "HZOP_32_BASE_AND",
+         "HZOP_32_BASE_OR",    "HZOP_32_BASE_XOR",   "HZOP_32_BASE_SMAX",   "HZOP_32_BASE_MAX",    "HZOP_32_BASE_SMIN",
+         "HZOP_32_BASE_MIN",   "HZOP_32_BASE_SWAP",  "HZOP_32_BASE_CAS",    "HZOP_32_BASE_THRESH", "HZOP_32_BASE_FADD",
+         "HZOP_32_BASE_FSUB",  "HZOP_32_BASE_FRSUB", "HZOP_64_BASE_ADD",    "HZOP_64_BASE_AND",    "HZOP_64_BASE_OR",
+         "HZOP_64_BASE_XOR",   "HZOP_64_BASE_SMAX",  "HZOP_64_BASE_MAX",    "HZOP_64_BASE_SMIN",   "HZOP_64_BASE_MIN",
+         "HZOP_64_BASE_SWAP",  "HZOP_64_BASE_CAS",   "HZOP_64_BASE_THRESH", "HZOP_64_BASE_FADD",   "HZOP_64_BASE_FSUB",
+         "HZOP_64_BASE_FRSUB", "HZOP_8_M_ADD",       "HZOP_8_M_AND",        "HZOP_8_M_OR",         "HZOP_8_M_XOR",
+         "HZOP_8_M_SMAX",      "HZOP_8_M_MAX",       "HZOP_8_M_SMIN",       "HZOP_8_M_MIN",        "HZOP_8_M_SWAP",
+         "HZOP_8_M_CAS",       "HZOP_8_M_THRESH",    "HZOP_8_M_FADD",       "HZOP_8_M_FSUB",       "HZOP_8_M_FRSUB",
+         "HZOP_16_M_ADD",      "HZOP_16_M_AND",      "HZOP_16_M_OR",        "HZOP_16_M_XOR",       "HZOP_16_M_SMAX",
+         "HZOP_16_M_MAX",      "HZOP_16_M_SMIN",     "HZOP_16_M_MIN",       "HZOP_16_M_SWAP",      "HZOP_16_M_CAS",
+         "HZOP_16_M_THRESH",   "HZOP_16_M_FADD",     "HZOP_16_M_FSUB",      "HZOP_16_M_FRSUB",     "HZOP_32_M_ADD",
+         "HZOP_32_M_AND",      "HZOP_32_M_OR",       "HZOP_32_M_XOR",       "HZOP_32_M_SMAX",      "HZOP_32_M_MAX",
+         "HZOP_32_M_SMIN",     "HZOP_32_M_MIN",      "HZOP_32_M_SWAP",      "HZOP_32_M_CAS",       "HZOP_32_M_THRESH",
+         "HZOP_32_M_FADD",     "HZOP_32_M_FSUB",     "HZOP_32_M_FRSUB",     "HZOP_64_M_ADD",       "HZOP_64_M_AND",
+         "HZOP_64_M_OR",       "HZOP_64_M_XOR",      "HZOP_64_M_SMAX",      "HZOP_64_M_MAX",       "HZOP_64_M_SMIN",
+         "HZOP_64_M_MIN",      "HZOP_64_M_SWAP",     "HZOP_64_M_CAS",       "HZOP_64_M_THRESH",    "HZOP_64_M_FADD",
+         "HZOP_64_M_FSUB",     "HZOP_64_M_FRSUB",    "HZOP_8_S_ADD",        "HZOP_8_S_AND",        "HZOP_8_S_OR",
+         "HZOP_8_S_XOR",       "HZOP_8_S_SMAX",      "HZOP_8_S_MAX",        "HZOP_8_S_SMIN",       "HZOP_8_S_MIN",
+         "HZOP_8_S_SWAP",      "HZOP_8_S_CAS",       "HZOP_8_S_FADD",       "HZOP_8_S_FSUB",       "HZOP_8_S_FRSUB",
+         "HZOP_16_S_ADD",      "HZOP_16_S_AND",      "HZOP_16_S_OR",        "HZOP_16_S_XOR",       "HZOP_16_S_SMAX",
+         "HZOP_16_S_MAX",      "HZOP_16_S_SMIN",     "HZOP_16_S_MIN",       "HZOP_16_S_SWAP",      "HZOP_16_S_CAS",
+         "HZOP_16_S_THRESH",   "HZOP_16_S_FADD",     "HZOP_16_S_FSUB",      "HZOP_16_S_FRSUB",     "HZOP_32_S_ADD",
+         "HZOP_32_S_AND",      "HZOP_32_S_OR",       "HZOP_32_S_XOR",       "HZOP_32_S_SMAX",      "HZOP_32_S_MAX",
+         "HZOP_32_S_SMIN",     "HZOP_32_S_MIN",      "HZOP_32_S_SWAP",      "HZOP_32_S_CAS",       "HZOP_32_S_THRESH",
+         "HZOP_32_S_FADD",     "HZOP_32_S_FSUB",     "HZOP_32_S_FRSUB",     "HZOP_64_S_ADD",       "HZOP_64_S_AND",
+         "HZOP_64_S_OR",       "HZOP_64_S_XOR",      "HZOP_64_S_SMAX",      "HZOP_64_S_MAX",       "HZOP_64_S_SMIN",
+         "HZOP_64_S_MIN",      "HZOP_64_S_SWAP",     "HZOP_64_S_CAS",       "HZOP_64_S_THRESH",    "HZOP_64_S_FADD",
+         "HZOP_64_S_FSUB",     "HZOP_64_S_FRSUB",    "HZOP_8_MS_ADD",       "HZOP_8_MS_AND",       "HZOP_8_MS_OR",
+         "HZOP_8_MS_XOR",      "HZOP_8_MS_SMAX",     "HZOP_8_MS_MAX",       "HZOP_8_MS_SMIN",      "HZOP_8_MS_MIN",
+         "HZOP_8_MS_SWAP",     "HZOP_8_MS_CAS",      "HZOP_8_MS_THRESH",    "HZOP_8_MS_FADD",      "HZOP_8_MS_FSUB",
+         "HZOP_8_MS_FRSUB",    "HZOP_16_MS_ADD",     "HZOP_16_MS_AND",      "HZOP_16_MS_OR",       "HZOP_16_MS_XOR",
+         "HZOP_16_MS_SMAX",    "HZOP_16_MS_MAX",     "HZOP_16_MS_SMIN",     "HZOP_16_MS_MIN",      "HZOP_16_MS_SWAP",
+         "HZOP_16_MS_CAS",     "HZOP_16_MS_THRESH",  "HZOP_16_MS_FADD",     "HZOP_16_MS_FSUB",     "HZOP_16_MS_FRSUB",
+         "HZOP_32_MS_ADD",     "HZOP_32_MS_AND",     "HZOP_32_MS_OR",       "HZOP_32_MS_XOR",      "HZOP_32_MS_SMAX",
+         "HZOP_32_MS_MAX",     "HZOP_32_MS_SMIN",    "HZOP_32_MS_MIN",      "HZOP_32_MS_SWAP",     "HZOP_32_MS_CAS",
+         "HZOP_32_MS_THRESH",  "HZOP_32_MS_FADD",    "HZOP_32_MS_FSUB",     "HZOP_32_MS_FRSUB",    "HZOP_64_MS_ADD",
+         "HZOP_64_MS_AND",     "HZOP_64_MS_OR",      "HZOP_64_MS_XOR",      "HZOP_64_MS_SMAX",     "HZOP_64_MS_MAX",
+         "HZOP_64_MS_SMIN",    "HZOP_64_MS_MIN",     "HZOP_64_MS_SWAP",     "HZOP_64_MS_CAS",      "HZOP_64_MS_THRESH",
          "HZOP_64_MS_FADD",    "HZOP_64_MS_FSUB",    "HZOP_64_MS_FRSUB",
        } ) {
     stats.push_back( registerStatistic<uint64_t>( stat ) );
   }
 }
 
-void RZAAMOCoProc::recordStat( RZAAMOCoProc::hzopStats Stat, uint64_t Data ) {
-  if( Stat < RZAAMOCoProc::HZOP_END ) {
-    stats[Stat]->addData( Data );
+void RZAAMOCoProc::recordStat( hzopStats Stat, uint64_t Data ) {
+  if( Stat < hzopStats::HZOP_END ) {
+    stats[size_t( Stat )]->addData( Data );
   }
 }
 
@@ -610,12 +511,273 @@ bool RZAAMOCoProc::ClockTick( SST::Cycle_t cycle ) {
   return true;
 }
 
-bool RZAAMOCoProc::handleHZOP( Forza::zopEvent* zev, bool& flag ) {
+// clang-format off
+const std::unordered_map<zopOpc, std::tuple<uint32_t, hzopStats, RevFlag, RevFlag>> RZAAMOCoProc::zopAMOTable = {
+  // 8bit base
+  { zopOpc::Z_HAC_8_BASE_ADD,     { 1, hzopStats::HZOP_8_BASE_ADD,     RevFlag::F_AMOADD,   RevFlag::F_NONE  } },
+  { zopOpc::Z_HAC_8_BASE_AND,     { 1, hzopStats::HZOP_8_BASE_AND,     RevFlag::F_AMOAND,   RevFlag::F_NONE  } },
+  { zopOpc::Z_HAC_8_BASE_OR,      { 1, hzopStats::HZOP_8_BASE_OR,      RevFlag::F_AMOOR,    RevFlag::F_NONE  } },
+  { zopOpc::Z_HAC_8_BASE_XOR,     { 1, hzopStats::HZOP_8_BASE_XOR,     RevFlag::F_AMOXOR,   RevFlag::F_NONE  } },
+  { zopOpc::Z_HAC_8_BASE_SMAX,    { 1, hzopStats::HZOP_8_BASE_SMAX,    RevFlag::F_AMOMAX,   RevFlag::F_NONE  } },
+  { zopOpc::Z_HAC_8_BASE_MAX,     { 1, hzopStats::HZOP_8_BASE_MAX,     RevFlag::F_AMOMAXU,  RevFlag::F_NONE  } },
+  { zopOpc::Z_HAC_8_BASE_SMIN,    { 1, hzopStats::HZOP_8_BASE_SMIN,    RevFlag::F_AMOMIN,   RevFlag::F_NONE  } },
+  { zopOpc::Z_HAC_8_BASE_MIN,     { 1, hzopStats::HZOP_8_BASE_MIN,     RevFlag::F_AMOMINU,  RevFlag::F_NONE  } },
+  { zopOpc::Z_HAC_8_BASE_SWAP,    { 1, hzopStats::HZOP_8_BASE_SWAP,    RevFlag::F_AMOSWAP,  RevFlag::F_NONE  } },
+//{ zopOpc::Z_HAC_8_BASE_CAS,     { 1, hzopStats::HZOP_8_BASE_CAS,     RevFlag::F_AMOCAS,   RevFlag::F_NONE  } },
+  { zopOpc::Z_HAC_8_BASE_THRESH,  { 1, hzopStats::HZOP_8_BASE_THRESH,  RevFlag::F_AMOTHRES, RevFlag::F_NONE  } },
+  { zopOpc::Z_HAC_8_BASE_FADD,    { 1, hzopStats::HZOP_8_BASE_FADD,    RevFlag::F_AMOFADD,  RevFlag::F_NONE  } },
+  { zopOpc::Z_HAC_8_BASE_FSUB,    { 1, hzopStats::HZOP_8_BASE_FSUB,    RevFlag::F_AMOFSUB,  RevFlag::F_NONE  } },
+  { zopOpc::Z_HAC_8_BASE_FRSUB,   { 1, hzopStats::HZOP_8_BASE_FRSUB,   RevFlag::F_AMOFSUBR, RevFlag::F_NONE  } },
+
+  // 16bit base
+  { zopOpc::Z_HAC_16_BASE_ADD,    { 2, hzopStats::HZOP_16_BASE_ADD,    RevFlag::F_AMOADD,   RevFlag::F_NONE  } },
+  { zopOpc::Z_HAC_16_BASE_AND,    { 2, hzopStats::HZOP_16_BASE_AND,    RevFlag::F_AMOAND,   RevFlag::F_NONE  } },
+  { zopOpc::Z_HAC_16_BASE_OR,     { 2, hzopStats::HZOP_16_BASE_OR,     RevFlag::F_AMOOR,    RevFlag::F_NONE  } },
+  { zopOpc::Z_HAC_16_BASE_XOR,    { 2, hzopStats::HZOP_16_BASE_XOR,    RevFlag::F_AMOXOR,   RevFlag::F_NONE  } },
+  { zopOpc::Z_HAC_16_BASE_SMAX,   { 2, hzopStats::HZOP_16_BASE_SMAX,   RevFlag::F_AMOMAX,   RevFlag::F_NONE  } },
+  { zopOpc::Z_HAC_16_BASE_MAX,    { 2, hzopStats::HZOP_16_BASE_MAX,    RevFlag::F_AMOMAXU,  RevFlag::F_NONE  } },
+  { zopOpc::Z_HAC_16_BASE_SMIN,   { 2, hzopStats::HZOP_16_BASE_SMIN,   RevFlag::F_AMOMIN,   RevFlag::F_NONE  } },
+  { zopOpc::Z_HAC_16_BASE_MIN,    { 2, hzopStats::HZOP_16_BASE_MIN,    RevFlag::F_AMOMINU,  RevFlag::F_NONE  } },
+  { zopOpc::Z_HAC_16_BASE_SWAP,   { 2, hzopStats::HZOP_16_BASE_SWAP,   RevFlag::F_AMOSWAP,  RevFlag::F_NONE  } },
+//{ zopOpc::Z_HAC_16_BASE_CAS,    { 2, hzopStats::HZOP_16_BASE_CAS,    RevFlag::F_AMOCAS,   RevFlag::F_NONE  } },
+  { zopOpc::Z_HAC_16_BASE_THRESH, { 2, hzopStats::HZOP_16_BASE_THRESH, RevFlag::F_AMOTHRES, RevFlag::F_NONE  } },
+  { zopOpc::Z_HAC_16_BASE_FADD,   { 2, hzopStats::HZOP_16_BASE_FADD,   RevFlag::F_AMOFADD,  RevFlag::F_NONE  } },
+  { zopOpc::Z_HAC_16_BASE_FSUB,   { 2, hzopStats::HZOP_16_BASE_FSUB,   RevFlag::F_AMOFSUB,  RevFlag::F_NONE  } },
+  { zopOpc::Z_HAC_16_BASE_FRSUB,  { 2, hzopStats::HZOP_16_BASE_FRSUB,  RevFlag::F_AMOFSUBR, RevFlag::F_NONE  } },
+
+  // 32bit base
+  { zopOpc::Z_HAC_32_BASE_ADD,    { 4, hzopStats::HZOP_32_BASE_ADD,    RevFlag::F_AMOADD,   RevFlag::F_NONE  } },
+  { zopOpc::Z_HAC_32_BASE_AND,    { 4, hzopStats::HZOP_32_BASE_AND,    RevFlag::F_AMOAND,   RevFlag::F_NONE  } },
+  { zopOpc::Z_HAC_32_BASE_OR,     { 4, hzopStats::HZOP_32_BASE_OR,     RevFlag::F_AMOOR,    RevFlag::F_NONE  } },
+  { zopOpc::Z_HAC_32_BASE_XOR,    { 4, hzopStats::HZOP_32_BASE_XOR,    RevFlag::F_AMOXOR,   RevFlag::F_NONE  } },
+  { zopOpc::Z_HAC_32_BASE_SMAX,   { 4, hzopStats::HZOP_32_BASE_SMAX,   RevFlag::F_AMOMAX,   RevFlag::F_NONE  } },
+  { zopOpc::Z_HAC_32_BASE_MAX,    { 4, hzopStats::HZOP_32_BASE_MAX,    RevFlag::F_AMOMAXU,  RevFlag::F_NONE  } },
+  { zopOpc::Z_HAC_32_BASE_SMIN,   { 4, hzopStats::HZOP_32_BASE_SMIN,   RevFlag::F_AMOMIN,   RevFlag::F_NONE  } },
+  { zopOpc::Z_HAC_32_BASE_MIN,    { 4, hzopStats::HZOP_32_BASE_MIN,    RevFlag::F_AMOMINU,  RevFlag::F_NONE  } },
+  { zopOpc::Z_HAC_32_BASE_SWAP,   { 4, hzopStats::HZOP_32_BASE_SWAP,   RevFlag::F_AMOSWAP,  RevFlag::F_NONE  } },
+//{ zopOpc::Z_HAC_32_BASE_CAS,    { 4, hzopStats::HZOP_32_BASE_CAS,    RevFlag::F_AMOCAS,   RevFlag::F_NONE  } },
+  { zopOpc::Z_HAC_32_BASE_THRESH, { 4, hzopStats::HZOP_32_BASE_THRESH, RevFlag::F_AMOTHRES, RevFlag::F_NONE  } },
+  { zopOpc::Z_HAC_32_BASE_FADD,   { 4, hzopStats::HZOP_32_BASE_FADD,   RevFlag::F_AMOFADD,  RevFlag::F_NONE  } },
+  { zopOpc::Z_HAC_32_BASE_FSUB,   { 4, hzopStats::HZOP_32_BASE_FSUB,   RevFlag::F_AMOFSUB,  RevFlag::F_NONE  } },
+  { zopOpc::Z_HAC_32_BASE_FRSUB,  { 4, hzopStats::HZOP_32_BASE_FRSUB,  RevFlag::F_AMOFSUBR, RevFlag::F_NONE  } },
+
+  // 64bit base
+  { zopOpc::Z_HAC_64_BASE_ADD,    { 8, hzopStats::HZOP_64_BASE_ADD,    RevFlag::F_AMOADD,   RevFlag::F_NONE  } },
+  { zopOpc::Z_HAC_64_BASE_AND,    { 8, hzopStats::HZOP_64_BASE_AND,    RevFlag::F_AMOAND,   RevFlag::F_NONE  } },
+  { zopOpc::Z_HAC_64_BASE_OR,     { 8, hzopStats::HZOP_64_BASE_OR,     RevFlag::F_AMOOR,    RevFlag::F_NONE  } },
+  { zopOpc::Z_HAC_64_BASE_XOR,    { 8, hzopStats::HZOP_64_BASE_XOR,    RevFlag::F_AMOXOR,   RevFlag::F_NONE  } },
+  { zopOpc::Z_HAC_64_BASE_SMAX,   { 8, hzopStats::HZOP_64_BASE_SMAX,   RevFlag::F_AMOMAX,   RevFlag::F_NONE  } },
+  { zopOpc::Z_HAC_64_BASE_MAX,    { 8, hzopStats::HZOP_64_BASE_MAX,    RevFlag::F_AMOMAXU,  RevFlag::F_NONE  } },
+  { zopOpc::Z_HAC_64_BASE_SMIN,   { 8, hzopStats::HZOP_64_BASE_SMIN,   RevFlag::F_AMOMIN,   RevFlag::F_NONE  } },
+  { zopOpc::Z_HAC_64_BASE_MIN,    { 8, hzopStats::HZOP_64_BASE_MIN,    RevFlag::F_AMOMINU,  RevFlag::F_NONE  } },
+  { zopOpc::Z_HAC_64_BASE_SWAP,   { 8, hzopStats::HZOP_64_BASE_SWAP,   RevFlag::F_AMOSWAP,  RevFlag::F_NONE  } },
+//{ zopOpc::Z_HAC_64_BASE_CAS,    { 8, hzopStats::HZOP_64_BASE_CAS,    RevFlag::F_AMOCAS,   RevFlag::F_NONE  } },
+  { zopOpc::Z_HAC_64_BASE_THRESH, { 8, hzopStats::HZOP_64_BASE_THRESH, RevFlag::F_AMOTHRES, RevFlag::F_NONE  } },
+  { zopOpc::Z_HAC_64_BASE_FADD,   { 8, hzopStats::HZOP_64_BASE_FADD,   RevFlag::F_AMOFADD,  RevFlag::F_NONE  } },
+  { zopOpc::Z_HAC_64_BASE_FSUB,   { 8, hzopStats::HZOP_64_BASE_FSUB,   RevFlag::F_AMOFSUB,  RevFlag::F_NONE  } },
+  { zopOpc::Z_HAC_64_BASE_FRSUB,  { 8, hzopStats::HZOP_64_BASE_FRSUB,  RevFlag::F_AMOFSUBR, RevFlag::F_NONE  } },
+
+  // 8bit M
+  { zopOpc::Z_HAC_8_M_ADD,        { 1, hzopStats::HZOP_8_M_ADD,        RevFlag::F_AMOADD,   RevFlag::F_AMONN } },
+  { zopOpc::Z_HAC_8_M_AND,        { 1, hzopStats::HZOP_8_M_AND,        RevFlag::F_AMOAND,   RevFlag::F_AMONN } },
+  { zopOpc::Z_HAC_8_M_OR,         { 1, hzopStats::HZOP_8_M_OR,         RevFlag::F_AMOOR,    RevFlag::F_AMONN } },
+  { zopOpc::Z_HAC_8_M_XOR,        { 1, hzopStats::HZOP_8_M_XOR,        RevFlag::F_AMOXOR,   RevFlag::F_AMONN } },
+  { zopOpc::Z_HAC_8_M_SMAX,       { 1, hzopStats::HZOP_8_M_SMAX,       RevFlag::F_AMOMAX,   RevFlag::F_AMONN } },
+  { zopOpc::Z_HAC_8_M_MAX,        { 1, hzopStats::HZOP_8_M_MAX,        RevFlag::F_AMOMAXU,  RevFlag::F_AMONN } },
+  { zopOpc::Z_HAC_8_M_SMIN,       { 1, hzopStats::HZOP_8_M_SMIN,       RevFlag::F_AMOMIN,   RevFlag::F_AMONN } },
+  { zopOpc::Z_HAC_8_M_MIN,        { 1, hzopStats::HZOP_8_M_MIN,        RevFlag::F_AMOMINU,  RevFlag::F_AMONN } },
+  { zopOpc::Z_HAC_8_M_SWAP,       { 1, hzopStats::HZOP_8_M_SWAP,       RevFlag::F_AMOSWAP,  RevFlag::F_AMONN } },
+//{ zopOpc::Z_HAC_8_M_CAS,        { 1, hzopStats::HZOP_8_M_CAS,        RevFlag::F_AMOCAS,   RevFlag::F_AMONN } },
+  { zopOpc::Z_HAC_8_M_THRESH,     { 1, hzopStats::HZOP_8_M_THRESH,     RevFlag::F_AMOTHRES, RevFlag::F_AMONN } },
+  { zopOpc::Z_HAC_8_M_FADD,       { 1, hzopStats::HZOP_8_M_FADD,       RevFlag::F_AMOFADD,  RevFlag::F_AMONN } },
+  { zopOpc::Z_HAC_8_M_FSUB,       { 1, hzopStats::HZOP_8_M_FSUB,       RevFlag::F_AMOFSUB,  RevFlag::F_AMONN } },
+  { zopOpc::Z_HAC_8_M_FRSUB,      { 1, hzopStats::HZOP_8_M_FRSUB,      RevFlag::F_AMOFSUBR, RevFlag::F_AMONN } },
+
+  // 16bit M
+  { zopOpc::Z_HAC_16_M_ADD,       { 2, hzopStats::HZOP_16_M_ADD,       RevFlag::F_AMOADD,   RevFlag::F_AMONN } },
+  { zopOpc::Z_HAC_16_M_AND,       { 2, hzopStats::HZOP_16_M_AND,       RevFlag::F_AMOAND,   RevFlag::F_AMONN } },
+  { zopOpc::Z_HAC_16_M_OR,        { 2, hzopStats::HZOP_16_M_OR,        RevFlag::F_AMOOR,    RevFlag::F_AMONN } },
+  { zopOpc::Z_HAC_16_M_XOR,       { 2, hzopStats::HZOP_16_M_XOR,       RevFlag::F_AMOXOR,   RevFlag::F_AMONN } },
+  { zopOpc::Z_HAC_16_M_SMAX,      { 2, hzopStats::HZOP_16_M_SMAX,      RevFlag::F_AMOMAX,   RevFlag::F_AMONN } },
+  { zopOpc::Z_HAC_16_M_MAX,       { 2, hzopStats::HZOP_16_M_MAX,       RevFlag::F_AMOMAXU,  RevFlag::F_AMONN } },
+  { zopOpc::Z_HAC_16_M_SMIN,      { 2, hzopStats::HZOP_16_M_SMIN,      RevFlag::F_AMOMIN,   RevFlag::F_AMONN } },
+  { zopOpc::Z_HAC_16_M_MIN,       { 2, hzopStats::HZOP_16_M_MIN,       RevFlag::F_AMOMINU,  RevFlag::F_AMONN } },
+  { zopOpc::Z_HAC_16_M_SWAP,      { 2, hzopStats::HZOP_16_M_SWAP,      RevFlag::F_AMOSWAP,  RevFlag::F_AMONN } },
+//{ zopOpc::Z_HAC_16_M_CAS,       { 2, hzopStats::HZOP_16_M_CAS,       RevFlag::F_AMOCAS,   RevFlag::F_AMONN } },
+  { zopOpc::Z_HAC_16_M_THRESH,    { 2, hzopStats::HZOP_16_M_THRESH,    RevFlag::F_AMOTHRES, RevFlag::F_AMONN } },
+  { zopOpc::Z_HAC_16_M_FADD,      { 2, hzopStats::HZOP_16_M_FADD,      RevFlag::F_AMOFADD,  RevFlag::F_AMONN } },
+  { zopOpc::Z_HAC_16_M_FSUB,      { 2, hzopStats::HZOP_16_M_FSUB,      RevFlag::F_AMOFSUB,  RevFlag::F_AMONN } },
+  { zopOpc::Z_HAC_16_M_FRSUB,     { 2, hzopStats::HZOP_16_M_FRSUB,     RevFlag::F_AMOFSUBR, RevFlag::F_AMONN } },
+
+  // 32bit M
+  { zopOpc::Z_HAC_32_M_ADD,       { 4, hzopStats::HZOP_32_M_ADD,       RevFlag::F_AMOADD,   RevFlag::F_AMONN } },
+  { zopOpc::Z_HAC_32_M_AND,       { 4, hzopStats::HZOP_32_M_AND,       RevFlag::F_AMOAND,   RevFlag::F_AMONN } },
+  { zopOpc::Z_HAC_32_M_OR,        { 4, hzopStats::HZOP_32_M_OR,        RevFlag::F_AMOOR,    RevFlag::F_AMONN } },
+  { zopOpc::Z_HAC_32_M_XOR,       { 4, hzopStats::HZOP_32_M_XOR,       RevFlag::F_AMOXOR,   RevFlag::F_AMONN } },
+  { zopOpc::Z_HAC_32_M_SMAX,      { 4, hzopStats::HZOP_32_M_SMAX,      RevFlag::F_AMOMAX,   RevFlag::F_AMONN } },
+  { zopOpc::Z_HAC_32_M_MAX,       { 4, hzopStats::HZOP_32_M_MAX,       RevFlag::F_AMOMAXU,  RevFlag::F_AMONN } },
+  { zopOpc::Z_HAC_32_M_SMIN,      { 4, hzopStats::HZOP_32_M_SMIN,      RevFlag::F_AMOMIN,   RevFlag::F_AMONN } },
+  { zopOpc::Z_HAC_32_M_MIN,       { 4, hzopStats::HZOP_32_M_MIN,       RevFlag::F_AMOMINU,  RevFlag::F_AMONN } },
+  { zopOpc::Z_HAC_32_M_SWAP,      { 4, hzopStats::HZOP_32_M_SWAP,      RevFlag::F_AMOSWAP,  RevFlag::F_AMONN } },
+//{ zopOpc::Z_HAC_32_M_CAS,       { 4, hzopStats::HZOP_32_M_CAS,       RevFlag::F_AMOCAS,   RevFlag::F_AMONN } },
+  { zopOpc::Z_HAC_32_M_THRESH,    { 4, hzopStats::HZOP_32_M_THRESH,    RevFlag::F_AMOTHRES, RevFlag::F_AMONN } },
+  { zopOpc::Z_HAC_32_M_FADD,      { 4, hzopStats::HZOP_32_M_FADD,      RevFlag::F_AMOFADD,  RevFlag::F_AMONN } },
+  { zopOpc::Z_HAC_32_M_FSUB,      { 4, hzopStats::HZOP_32_M_FSUB,      RevFlag::F_AMOFSUB,  RevFlag::F_AMONN } },
+  { zopOpc::Z_HAC_32_M_FRSUB,     { 4, hzopStats::HZOP_32_M_FRSUB,     RevFlag::F_AMOFSUBR, RevFlag::F_AMONN } },
+
+  // 64bit M
+  { zopOpc::Z_HAC_64_M_ADD,       { 8, hzopStats::HZOP_64_M_ADD,       RevFlag::F_AMOADD,   RevFlag::F_AMONN } },
+  { zopOpc::Z_HAC_64_M_AND,       { 8, hzopStats::HZOP_64_M_AND,       RevFlag::F_AMOAND,   RevFlag::F_AMONN } },
+  { zopOpc::Z_HAC_64_M_OR,        { 8, hzopStats::HZOP_64_M_OR,        RevFlag::F_AMOOR,    RevFlag::F_AMONN } },
+  { zopOpc::Z_HAC_64_M_XOR,       { 8, hzopStats::HZOP_64_M_XOR,       RevFlag::F_AMOXOR,   RevFlag::F_AMONN } },
+  { zopOpc::Z_HAC_64_M_SMAX,      { 8, hzopStats::HZOP_64_M_SMAX,      RevFlag::F_AMOMAX,   RevFlag::F_AMONN } },
+  { zopOpc::Z_HAC_64_M_MAX,       { 8, hzopStats::HZOP_64_M_MAX,       RevFlag::F_AMOMAXU,  RevFlag::F_AMONN } },
+  { zopOpc::Z_HAC_64_M_SMIN,      { 8, hzopStats::HZOP_64_M_SMIN,      RevFlag::F_AMOMIN,   RevFlag::F_AMONN } },
+  { zopOpc::Z_HAC_64_M_MIN,       { 8, hzopStats::HZOP_64_M_MIN,       RevFlag::F_AMOMINU,  RevFlag::F_AMONN } },
+  { zopOpc::Z_HAC_64_M_SWAP,      { 8, hzopStats::HZOP_64_M_SWAP,      RevFlag::F_AMOSWAP,  RevFlag::F_AMONN } },
+//{ zopOpc::Z_HAC_64_M_CAS,       { 8, hzopStats::HZOP_64_M_CAS,       RevFlag::F_AMOCAS,   RevFlag::F_AMONN } },
+  { zopOpc::Z_HAC_64_M_THRESH,    { 8, hzopStats::HZOP_64_M_THRESH,    RevFlag::F_AMOTHRES, RevFlag::F_AMONN } },
+  { zopOpc::Z_HAC_64_M_FADD,      { 8, hzopStats::HZOP_64_M_FADD,      RevFlag::F_AMOFADD,  RevFlag::F_AMONN } },
+  { zopOpc::Z_HAC_64_M_FSUB,      { 8, hzopStats::HZOP_64_M_FSUB,      RevFlag::F_AMOFSUB,  RevFlag::F_AMONN } },
+  { zopOpc::Z_HAC_64_M_FRSUB,     { 8, hzopStats::HZOP_64_M_FRSUB,     RevFlag::F_AMOFSUBR, RevFlag::F_AMONN } },
+
+  // 8bit S
+  { zopOpc::Z_HAC_8_S_ADD,        { 1, hzopStats::HZOP_8_S_ADD,        RevFlag::F_AMOADD,   RevFlag::F_AMOON } },
+  { zopOpc::Z_HAC_8_S_AND,        { 1, hzopStats::HZOP_8_S_AND,        RevFlag::F_AMOAND,   RevFlag::F_AMOON } },
+  { zopOpc::Z_HAC_8_S_OR,         { 1, hzopStats::HZOP_8_S_OR,         RevFlag::F_AMOOR,    RevFlag::F_AMOON } },
+  { zopOpc::Z_HAC_8_S_XOR,        { 1, hzopStats::HZOP_8_S_XOR,        RevFlag::F_AMOXOR,   RevFlag::F_AMOON } },
+  { zopOpc::Z_HAC_8_S_SMAX,       { 1, hzopStats::HZOP_8_S_SMAX,       RevFlag::F_AMOMAX,   RevFlag::F_AMOON } },
+  { zopOpc::Z_HAC_8_S_MAX,        { 1, hzopStats::HZOP_8_S_MAX,        RevFlag::F_AMOMAXU,  RevFlag::F_AMOON } },
+  { zopOpc::Z_HAC_8_S_SMIN,       { 1, hzopStats::HZOP_8_S_SMIN,       RevFlag::F_AMOMIN,   RevFlag::F_AMOON } },
+  { zopOpc::Z_HAC_8_S_MIN,        { 1, hzopStats::HZOP_8_S_MIN,        RevFlag::F_AMOMINU,  RevFlag::F_AMOON } },
+  { zopOpc::Z_HAC_8_S_SWAP,       { 1, hzopStats::HZOP_8_S_SWAP,       RevFlag::F_AMOSWAP,  RevFlag::F_AMOON } },
+//{ zopOpc::Z_HAC_8_S_CAS,        { 1, hzopStats::HZOP_8_S_CAS,        RevFlag::F_AMOCAS,   RevFlag::F_AMOON } },
+  { zopOpc::Z_HAC_8_S_THRESH,     { 1, hzopStats::HZOP_8_S_THRESH,     RevFlag::F_AMOTHRES, RevFlag::F_AMOON } },
+  { zopOpc::Z_HAC_8_S_FADD,       { 1, hzopStats::HZOP_8_S_FADD,       RevFlag::F_AMOFADD,  RevFlag::F_AMOON } },
+  { zopOpc::Z_HAC_8_S_FSUB,       { 1, hzopStats::HZOP_8_S_FSUB,       RevFlag::F_AMOFSUB,  RevFlag::F_AMOON } },
+  { zopOpc::Z_HAC_8_S_FRSUB,      { 1, hzopStats::HZOP_8_S_FRSUB,      RevFlag::F_AMOFSUBR, RevFlag::F_AMOON } },
+
+  // 16bit S
+  { zopOpc::Z_HAC_16_S_ADD,       { 2, hzopStats::HZOP_16_S_ADD,       RevFlag::F_AMOADD,   RevFlag::F_AMOON } },
+  { zopOpc::Z_HAC_16_S_AND,       { 2, hzopStats::HZOP_16_S_AND,       RevFlag::F_AMOAND,   RevFlag::F_AMOON } },
+  { zopOpc::Z_HAC_16_S_OR,        { 2, hzopStats::HZOP_16_S_OR,        RevFlag::F_AMOOR,    RevFlag::F_AMOON } },
+  { zopOpc::Z_HAC_16_S_XOR,       { 2, hzopStats::HZOP_16_S_XOR,       RevFlag::F_AMOXOR,   RevFlag::F_AMOON } },
+  { zopOpc::Z_HAC_16_S_SMAX,      { 2, hzopStats::HZOP_16_S_SMAX,      RevFlag::F_AMOMAX,   RevFlag::F_AMOON } },
+  { zopOpc::Z_HAC_16_S_MAX,       { 2, hzopStats::HZOP_16_S_MAX,       RevFlag::F_AMOMAXU,  RevFlag::F_AMOON } },
+  { zopOpc::Z_HAC_16_S_SMIN,      { 2, hzopStats::HZOP_16_S_SMIN,      RevFlag::F_AMOMIN,   RevFlag::F_AMOON } },
+  { zopOpc::Z_HAC_16_S_MIN,       { 2, hzopStats::HZOP_16_S_MIN,       RevFlag::F_AMOMINU,  RevFlag::F_AMOON } },
+  { zopOpc::Z_HAC_16_S_SWAP,      { 2, hzopStats::HZOP_16_S_SWAP,      RevFlag::F_AMOSWAP,  RevFlag::F_AMOON } },
+//{ zopOpc::Z_HAC_16_S_CAS,       { 2, hzopStats::HZOP_16_S_CAS,       RevFlag::F_AMOCAS,   RevFlag::F_AMOON } },
+  { zopOpc::Z_HAC_16_S_THRESH,    { 2, hzopStats::HZOP_16_S_THRESH,    RevFlag::F_AMOTHRES, RevFlag::F_AMOON } },
+  { zopOpc::Z_HAC_16_S_FADD,      { 2, hzopStats::HZOP_16_S_FADD,      RevFlag::F_AMOFADD,  RevFlag::F_AMOON } },
+  { zopOpc::Z_HAC_16_S_FSUB,      { 2, hzopStats::HZOP_16_S_FSUB,      RevFlag::F_AMOFSUB,  RevFlag::F_AMOON } },
+  { zopOpc::Z_HAC_16_S_FRSUB,     { 2, hzopStats::HZOP_16_S_FRSUB,     RevFlag::F_AMOFSUBR, RevFlag::F_AMOON } },
+
+  // 32bit S
+  { zopOpc::Z_HAC_32_S_ADD,       { 4, hzopStats::HZOP_32_S_ADD,       RevFlag::F_AMOADD,   RevFlag::F_AMOON } },
+  { zopOpc::Z_HAC_32_S_AND,       { 4, hzopStats::HZOP_32_S_AND,       RevFlag::F_AMOAND,   RevFlag::F_AMOON } },
+  { zopOpc::Z_HAC_32_S_OR,        { 4, hzopStats::HZOP_32_S_OR,        RevFlag::F_AMOOR,    RevFlag::F_AMOON } },
+  { zopOpc::Z_HAC_32_S_XOR,       { 4, hzopStats::HZOP_32_S_XOR,       RevFlag::F_AMOXOR,   RevFlag::F_AMOON } },
+  { zopOpc::Z_HAC_32_S_SMAX,      { 4, hzopStats::HZOP_32_S_SMAX,      RevFlag::F_AMOMAX,   RevFlag::F_AMOON } },
+  { zopOpc::Z_HAC_32_S_MAX,       { 4, hzopStats::HZOP_32_S_MAX,       RevFlag::F_AMOMAXU,  RevFlag::F_AMOON } },
+  { zopOpc::Z_HAC_32_S_SMIN,      { 4, hzopStats::HZOP_32_S_SMIN,      RevFlag::F_AMOMIN,   RevFlag::F_AMOON } },
+  { zopOpc::Z_HAC_32_S_MIN,       { 4, hzopStats::HZOP_32_S_MIN,       RevFlag::F_AMOMINU,  RevFlag::F_AMOON } },
+  { zopOpc::Z_HAC_32_S_SWAP,      { 4, hzopStats::HZOP_32_S_SWAP,      RevFlag::F_AMOSWAP,  RevFlag::F_AMOON } },
+//{ zopOpc::Z_HAC_32_S_CAS,       { 4, hzopStats::HZOP_32_S_CAS,       RevFlag::F_AMOCAS,   RevFlag::F_AMOON } },
+  { zopOpc::Z_HAC_32_S_THRESH,    { 4, hzopStats::HZOP_32_S_THRESH,    RevFlag::F_AMOTHRES, RevFlag::F_AMOON } },
+  { zopOpc::Z_HAC_32_S_FADD,      { 4, hzopStats::HZOP_32_S_FADD,      RevFlag::F_AMOFADD,  RevFlag::F_AMOON } },
+  { zopOpc::Z_HAC_32_S_FSUB,      { 4, hzopStats::HZOP_32_S_FSUB,      RevFlag::F_AMOFSUB,  RevFlag::F_AMOON } },
+  { zopOpc::Z_HAC_32_S_FRSUB,     { 4, hzopStats::HZOP_32_S_FRSUB,     RevFlag::F_AMOFSUBR, RevFlag::F_AMOON } },
+
+  // 64bit S
+  { zopOpc::Z_HAC_64_S_ADD,       { 8, hzopStats::HZOP_64_S_ADD,       RevFlag::F_AMOADD,   RevFlag::F_AMOON } },
+  { zopOpc::Z_HAC_64_S_AND,       { 8, hzopStats::HZOP_64_S_AND,       RevFlag::F_AMOAND,   RevFlag::F_AMOON } },
+  { zopOpc::Z_HAC_64_S_OR,        { 8, hzopStats::HZOP_64_S_OR,        RevFlag::F_AMOOR,    RevFlag::F_AMOON } },
+  { zopOpc::Z_HAC_64_S_XOR,       { 8, hzopStats::HZOP_64_S_XOR,       RevFlag::F_AMOXOR,   RevFlag::F_AMOON } },
+  { zopOpc::Z_HAC_64_S_SMAX,      { 8, hzopStats::HZOP_64_S_SMAX,      RevFlag::F_AMOMAX,   RevFlag::F_AMOON } },
+  { zopOpc::Z_HAC_64_S_MAX,       { 8, hzopStats::HZOP_64_S_MAX,       RevFlag::F_AMOMAXU,  RevFlag::F_AMOON } },
+  { zopOpc::Z_HAC_64_S_SMIN,      { 8, hzopStats::HZOP_64_S_SMIN,      RevFlag::F_AMOMIN,   RevFlag::F_AMOON } },
+  { zopOpc::Z_HAC_64_S_MIN,       { 8, hzopStats::HZOP_64_S_MIN,       RevFlag::F_AMOMINU,  RevFlag::F_AMOON } },
+  { zopOpc::Z_HAC_64_S_SWAP,      { 8, hzopStats::HZOP_64_S_SWAP,      RevFlag::F_AMOSWAP,  RevFlag::F_AMOON } },
+//{ zopOpc::Z_HAC_64_S_CAS,       { 8, hzopStats::HZOP_64_S_CAS,       RevFlag::F_AMOCAS,   RevFlag::F_AMOON } },
+  { zopOpc::Z_HAC_64_S_THRESH,    { 8, hzopStats::HZOP_64_S_THRESH,    RevFlag::F_AMOTHRES, RevFlag::F_AMOON } },
+  { zopOpc::Z_HAC_64_S_FADD,      { 8, hzopStats::HZOP_64_S_FADD,      RevFlag::F_AMOFADD,  RevFlag::F_AMOON } },
+  { zopOpc::Z_HAC_64_S_FSUB,      { 8, hzopStats::HZOP_64_S_FSUB,      RevFlag::F_AMOFSUB,  RevFlag::F_AMOON } },
+  { zopOpc::Z_HAC_64_S_FRSUB,     { 8, hzopStats::HZOP_64_S_FRSUB,     RevFlag::F_AMOFSUBR, RevFlag::F_AMOON } },
+
+  // 8bit MS
+  { zopOpc::Z_HAC_8_MS_ADD,       { 1, hzopStats::HZOP_8_MS_ADD,       RevFlag::F_AMOADD,   RevFlag::F_AMONO } },
+  { zopOpc::Z_HAC_8_MS_AND,       { 1, hzopStats::HZOP_8_MS_AND,       RevFlag::F_AMOAND,   RevFlag::F_AMONO } },
+  { zopOpc::Z_HAC_8_MS_OR,        { 1, hzopStats::HZOP_8_MS_OR,        RevFlag::F_AMOOR,    RevFlag::F_AMONO } },
+  { zopOpc::Z_HAC_8_MS_XOR,       { 1, hzopStats::HZOP_8_MS_XOR,       RevFlag::F_AMOXOR,   RevFlag::F_AMONO } },
+  { zopOpc::Z_HAC_8_MS_SMAX,      { 1, hzopStats::HZOP_8_MS_SMAX,      RevFlag::F_AMOMAX,   RevFlag::F_AMONO } },
+  { zopOpc::Z_HAC_8_MS_MAX,       { 1, hzopStats::HZOP_8_MS_MAX,       RevFlag::F_AMOMAXU,  RevFlag::F_AMONO } },
+  { zopOpc::Z_HAC_8_MS_SMIN,      { 1, hzopStats::HZOP_8_MS_SMIN,      RevFlag::F_AMOMIN,   RevFlag::F_AMONO } },
+  { zopOpc::Z_HAC_8_MS_MIN,       { 1, hzopStats::HZOP_8_MS_MIN,       RevFlag::F_AMOMINU,  RevFlag::F_AMONO } },
+  { zopOpc::Z_HAC_8_MS_SWAP,      { 1, hzopStats::HZOP_8_MS_SWAP,      RevFlag::F_AMOSWAP,  RevFlag::F_AMONO } },
+//{ zopOpc::Z_HAC_8_MS_CAS,       { 1, hzopStats::HZOP_8_MS_CAS,       RevFlag::F_AMOCAS,   RevFlag::F_AMONO } },
+  { zopOpc::Z_HAC_8_MS_THRESH,    { 1, hzopStats::HZOP_8_MS_THRESH,    RevFlag::F_AMOTHRES, RevFlag::F_AMONO } },
+  { zopOpc::Z_HAC_8_MS_FADD,      { 1, hzopStats::HZOP_8_MS_FADD,      RevFlag::F_AMOFADD,  RevFlag::F_AMONO } },
+  { zopOpc::Z_HAC_8_MS_FSUB,      { 1, hzopStats::HZOP_8_MS_FSUB,      RevFlag::F_AMOFSUB,  RevFlag::F_AMONO } },
+  { zopOpc::Z_HAC_8_MS_FRSUB,     { 1, hzopStats::HZOP_8_MS_FRSUB,     RevFlag::F_AMOFSUBR, RevFlag::F_AMONO } },
+
+  // 16bit MS
+  { zopOpc::Z_HAC_16_MS_ADD,      { 2, hzopStats::HZOP_16_MS_ADD,      RevFlag::F_AMOADD,   RevFlag::F_AMONO } },
+  { zopOpc::Z_HAC_16_MS_AND,      { 2, hzopStats::HZOP_16_MS_AND,      RevFlag::F_AMOAND,   RevFlag::F_AMONO } },
+  { zopOpc::Z_HAC_16_MS_OR,       { 2, hzopStats::HZOP_16_MS_OR,       RevFlag::F_AMOOR,    RevFlag::F_AMONO } },
+  { zopOpc::Z_HAC_16_MS_XOR,      { 2, hzopStats::HZOP_16_MS_XOR,      RevFlag::F_AMOXOR,   RevFlag::F_AMONO } },
+  { zopOpc::Z_HAC_16_MS_SMAX,     { 2, hzopStats::HZOP_16_MS_SMAX,     RevFlag::F_AMOMAX,   RevFlag::F_AMONO } },
+  { zopOpc::Z_HAC_16_MS_MAX,      { 2, hzopStats::HZOP_16_MS_MAX,      RevFlag::F_AMOMAXU,  RevFlag::F_AMONO } },
+  { zopOpc::Z_HAC_16_MS_SMIN,     { 2, hzopStats::HZOP_16_MS_SMIN,     RevFlag::F_AMOMIN,   RevFlag::F_AMONO } },
+  { zopOpc::Z_HAC_16_MS_MIN,      { 2, hzopStats::HZOP_16_MS_MIN,      RevFlag::F_AMOMINU,  RevFlag::F_AMONO } },
+  { zopOpc::Z_HAC_16_MS_SWAP,     { 2, hzopStats::HZOP_16_MS_SWAP,     RevFlag::F_AMOSWAP,  RevFlag::F_AMONO } },
+//{ zopOpc::Z_HAC_16_MS_CAS,      { 2, hzopStats::HZOP_16_MS_CAS,      RevFlag::F_AMOCAS,   RevFlag::F_AMONO } },
+  { zopOpc::Z_HAC_16_MS_THRESH,   { 2, hzopStats::HZOP_16_MS_THRESH,   RevFlag::F_AMOTHRES, RevFlag::F_AMONO } },
+  { zopOpc::Z_HAC_16_MS_FADD,     { 2, hzopStats::HZOP_16_MS_FADD,     RevFlag::F_AMOFADD,  RevFlag::F_AMONO } },
+  { zopOpc::Z_HAC_16_MS_FSUB,     { 2, hzopStats::HZOP_16_MS_FSUB,     RevFlag::F_AMOFSUB,  RevFlag::F_AMONO } },
+  { zopOpc::Z_HAC_16_MS_FRSUB,    { 2, hzopStats::HZOP_16_MS_FRSUB,    RevFlag::F_AMOFSUBR, RevFlag::F_AMONO } },
+
+  // 32bit MS
+  { zopOpc::Z_HAC_32_MS_ADD,      { 4, hzopStats::HZOP_32_MS_ADD,      RevFlag::F_AMOADD,   RevFlag::F_AMONO } },
+  { zopOpc::Z_HAC_32_MS_AND,      { 4, hzopStats::HZOP_32_MS_AND,      RevFlag::F_AMOAND,   RevFlag::F_AMONO } },
+  { zopOpc::Z_HAC_32_MS_OR,       { 4, hzopStats::HZOP_32_MS_OR,       RevFlag::F_AMOOR,    RevFlag::F_AMONO } },
+  { zopOpc::Z_HAC_32_MS_XOR,      { 4, hzopStats::HZOP_32_MS_XOR,      RevFlag::F_AMOXOR,   RevFlag::F_AMONO } },
+  { zopOpc::Z_HAC_32_MS_SMAX,     { 4, hzopStats::HZOP_32_MS_SMAX,     RevFlag::F_AMOMAX,   RevFlag::F_AMONO } },
+  { zopOpc::Z_HAC_32_MS_MAX,      { 4, hzopStats::HZOP_32_MS_MAX,      RevFlag::F_AMOMAXU,  RevFlag::F_AMONO } },
+  { zopOpc::Z_HAC_32_MS_SMIN,     { 4, hzopStats::HZOP_32_MS_SMIN,     RevFlag::F_AMOMIN,   RevFlag::F_AMONO } },
+  { zopOpc::Z_HAC_32_MS_MIN,      { 4, hzopStats::HZOP_32_MS_MIN,      RevFlag::F_AMOMINU,  RevFlag::F_AMONO } },
+  { zopOpc::Z_HAC_32_MS_SWAP,     { 4, hzopStats::HZOP_32_MS_SWAP,     RevFlag::F_AMOSWAP,  RevFlag::F_AMONO } },
+//{ zopOpc::Z_HAC_32_MS_CAS,      { 4, hzopStats::HZOP_32_MS_CAS,      RevFlag::F_AMOCAS,   RevFlag::F_AMONO } },
+  { zopOpc::Z_HAC_32_MS_THRESH,   { 4, hzopStats::HZOP_32_MS_THRESH,   RevFlag::F_AMOTHRES, RevFlag::F_AMONO } },
+  { zopOpc::Z_HAC_32_MS_FADD,     { 4, hzopStats::HZOP_32_MS_FADD,     RevFlag::F_AMOFADD,  RevFlag::F_AMONO } },
+  { zopOpc::Z_HAC_32_MS_FSUB,     { 4, hzopStats::HZOP_32_MS_FSUB,     RevFlag::F_AMOFSUB,  RevFlag::F_AMONO } },
+  { zopOpc::Z_HAC_32_MS_FRSUB,    { 4, hzopStats::HZOP_32_MS_FRSUB,    RevFlag::F_AMOFSUBR, RevFlag::F_AMONO } },
+
+  // 64bit MS
+  { zopOpc::Z_HAC_64_MS_ADD,      { 8, hzopStats::HZOP_64_MS_ADD,      RevFlag::F_AMOADD,   RevFlag::F_AMONO } },
+  { zopOpc::Z_HAC_64_MS_AND,      { 8, hzopStats::HZOP_64_MS_AND,      RevFlag::F_AMOAND,   RevFlag::F_AMONO } },
+  { zopOpc::Z_HAC_64_MS_OR,       { 8, hzopStats::HZOP_64_MS_OR,       RevFlag::F_AMOOR,    RevFlag::F_AMONO } },
+  { zopOpc::Z_HAC_64_MS_XOR,      { 8, hzopStats::HZOP_64_MS_XOR,      RevFlag::F_AMOXOR,   RevFlag::F_AMONO } },
+  { zopOpc::Z_HAC_64_MS_SMAX,     { 8, hzopStats::HZOP_64_MS_SMAX,     RevFlag::F_AMOMAX,   RevFlag::F_AMONO } },
+  { zopOpc::Z_HAC_64_MS_MAX,      { 8, hzopStats::HZOP_64_MS_MAX,      RevFlag::F_AMOMAXU,  RevFlag::F_AMONO } },
+  { zopOpc::Z_HAC_64_MS_SMIN,     { 8, hzopStats::HZOP_64_MS_SMIN,     RevFlag::F_AMOMIN,   RevFlag::F_AMONO } },
+  { zopOpc::Z_HAC_64_MS_MIN,      { 8, hzopStats::HZOP_64_MS_MIN,      RevFlag::F_AMOMINU,  RevFlag::F_AMONO } },
+  { zopOpc::Z_HAC_64_MS_SWAP,     { 8, hzopStats::HZOP_64_MS_SWAP,     RevFlag::F_AMOSWAP,  RevFlag::F_AMONO } },
+//{ zopOpc::Z_HAC_64_MS_CAS,      { 8, hzopStats::HZOP_64_MS_CAS,      RevFlag::F_AMOCAS,   RevFlag::F_AMONO } },
+  { zopOpc::Z_HAC_64_MS_THRESH,   { 8, hzopStats::HZOP_64_MS_THRESH,   RevFlag::F_AMOTHRES, RevFlag::F_AMONO } },
+  { zopOpc::Z_HAC_64_MS_FADD,     { 8, hzopStats::HZOP_64_MS_FADD,     RevFlag::F_AMOFADD,  RevFlag::F_AMONO } },
+  { zopOpc::Z_HAC_64_MS_FSUB,     { 8, hzopStats::HZOP_64_MS_FSUB,     RevFlag::F_AMOFSUB,  RevFlag::F_AMONO } },
+  { zopOpc::Z_HAC_64_MS_FRSUB,    { 8, hzopStats::HZOP_64_MS_FRSUB,    RevFlag::F_AMOFSUBR, RevFlag::F_AMONO } },
+};
+
+// clang-format on
+
+bool RZAAMOCoProc::handleHZOP( zopEvent* zev, bool& flag ) {
   flag          = false;  // these are handled as READ requests; eg they hazard
-  uint32_t Rs1  = _UNDEF_REG;
-  uint32_t Rs2  = _UNDEF_REG;
-  uint64_t Addr = 0;  // -- Forza::Z_FLIT_ADDR: FLIT 2
-  uint64_t Data = 0;  // -- Forza::Z_FLIT_DATA: FLIT 3
+  uint32_t Rs1  = UNDEF_REG;
+  uint32_t Rs2  = UNDEF_REG;
+  uint64_t Addr = 0;  // -- Z_FLIT_ADDR: FLIT 2
+  uint64_t Data = 0;  // -- Z_FLIT_DATA: FLIT 3
 
   // get some registers
   if( !Alloc.getRegs( Rs1, Rs2 ) ) {
@@ -623,7 +785,7 @@ bool RZAAMOCoProc::handleHZOP( Forza::zopEvent* zev, bool& flag ) {
   }
 
   // preload the address
-  if( !zev->getFLIT( Forza::Z_FLIT_ADDR, &Addr ) ) {
+  if( !zev->getFLIT( Z_FLIT_ADDR, &Addr ) ) {
     output->fatal(
       CALL_INFO,
       -1,
@@ -634,7 +796,7 @@ bool RZAAMOCoProc::handleHZOP( Forza::zopEvent* zev, bool& flag ) {
   }
 
   // preload the data
-  if( !zev->getFLIT( Forza::Z_FLIT_DATA, &Data ) ) {
+  if( !zev->getFLIT( Z_FLIT_DATA, &Data ) ) {
     output->fatal(
       CALL_INFO,
       -1,
@@ -645,1161 +807,30 @@ bool RZAAMOCoProc::handleHZOP( Forza::zopEvent* zev, bool& flag ) {
   }
 
   // setup the MemReq
-  MemReq req{ Addr, (uint16_t) ( Rs2 ), RevRegClass::RegGPR, Forza::Z_MZOP_PIPE_HART, MemOp::MemOpAMO, true, MarkLoadCompleteFunc };
+  MemReq req{ Addr, uint16_t( Rs2 ), RevRegClass::RegGPR, Z_MZOP_PIPE_HART, MemOp::MemOpAMO, true, MarkLoadCompleteFunc };
 
   // set the registers
   Alloc.SetX( Rs1, Data );
   Alloc.SetX( Rs2, 0 );
   zev->setMemReq( req );
 
-  // temporary flag value
-  RevFlag flags{ RevFlag::F_NONE };
-
-  switch( zev->getOpc() ) {
-  // 8bit base
-  case Forza::zopOpc::Z_HAC_8_BASE_ADD:
-    Mem->AMOVal(
-      Forza::Z_HZOP_PIPE_HART,
-      Addr,
-      reinterpret_cast<uint32_t*>( Alloc.getRegAddr( Rs1 ) ),
-      reinterpret_cast<uint32_t*>( Alloc.getRegAddr( Rs2 ) ),
-      req,
-      RevFlag::F_AMOADD
-    );
-    recordStat( HZOP_8_BASE_ADD, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_8_BASE_AND:
-    Mem->AMOVal(
-      Forza::Z_HZOP_PIPE_HART,
-      Addr,
-      reinterpret_cast<uint32_t*>( Alloc.getRegAddr( Rs1 ) ),
-      reinterpret_cast<uint32_t*>( Alloc.getRegAddr( Rs2 ) ),
-      req,
-      RevFlag::F_AMOAND
-    );
-    recordStat( HZOP_8_BASE_ADD, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_8_BASE_OR:
-    Mem->AMOVal(
-      Forza::Z_HZOP_PIPE_HART,
-      Addr,
-      reinterpret_cast<uint32_t*>( Alloc.getRegAddr( Rs1 ) ),
-      reinterpret_cast<uint32_t*>( Alloc.getRegAddr( Rs2 ) ),
-      req,
-      RevFlag::F_AMOOR
-    );
-    recordStat( HZOP_8_BASE_OR, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_8_BASE_XOR:
-    Mem->AMOVal(
-      Forza::Z_HZOP_PIPE_HART,
-      Addr,
-      reinterpret_cast<uint32_t*>( Alloc.getRegAddr( Rs1 ) ),
-      reinterpret_cast<uint32_t*>( Alloc.getRegAddr( Rs2 ) ),
-      req,
-      RevFlag::F_AMOXOR
-    );
-    recordStat( HZOP_8_BASE_XOR, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_8_BASE_SMAX:
-    Mem->AMOVal(
-      Forza::Z_HZOP_PIPE_HART,
-      Addr,
-      reinterpret_cast<uint32_t*>( Alloc.getRegAddr( Rs1 ) ),
-      reinterpret_cast<uint32_t*>( Alloc.getRegAddr( Rs2 ) ),
-      req,
-      RevFlag::F_AMOMAX
-    );
-    recordStat( HZOP_8_BASE_SMAX, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_8_BASE_MAX:
-    Mem->AMOVal(
-      Forza::Z_HZOP_PIPE_HART,
-      Addr,
-      reinterpret_cast<uint32_t*>( Alloc.getRegAddr( Rs1 ) ),
-      reinterpret_cast<uint32_t*>( Alloc.getRegAddr( Rs2 ) ),
-      req,
-      RevFlag::F_AMOMAXU
-    );
-    recordStat( HZOP_8_BASE_MAX, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_8_BASE_SMIN:
-    Mem->AMOVal(
-      Forza::Z_HZOP_PIPE_HART,
-      Addr,
-      reinterpret_cast<uint32_t*>( Alloc.getRegAddr( Rs1 ) ),
-      reinterpret_cast<uint32_t*>( Alloc.getRegAddr( Rs2 ) ),
-      req,
-      RevFlag::F_AMOMIN
-    );
-    recordStat( HZOP_8_BASE_SMIN, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_8_BASE_MIN:
-    Mem->AMOVal(
-      Forza::Z_HZOP_PIPE_HART,
-      Addr,
-      reinterpret_cast<uint32_t*>( Alloc.getRegAddr( Rs1 ) ),
-      reinterpret_cast<uint32_t*>( Alloc.getRegAddr( Rs2 ) ),
-      req,
-      RevFlag::F_AMOMINU
-    );
-    recordStat( HZOP_8_BASE_MIN, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_8_BASE_SWAP:
-    Mem->AMOVal(
-      Forza::Z_HZOP_PIPE_HART,
-      Addr,
-      reinterpret_cast<uint32_t*>( Alloc.getRegAddr( Rs1 ) ),
-      reinterpret_cast<uint32_t*>( Alloc.getRegAddr( Rs2 ) ),
-      req,
-      RevFlag::F_AMOSWAP
-    );
-    recordStat( HZOP_8_BASE_SWAP, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_8_BASE_CAS:
-  case Forza::zopOpc::Z_HAC_8_BASE_FADD:
-  case Forza::zopOpc::Z_HAC_8_BASE_FSUB:
-  case Forza::zopOpc::Z_HAC_8_BASE_FRSUB:
-  case Forza::zopOpc::Z_HAC_8_BASE_THRESH:
+  // Look up the opcode
+  zopOpc opc = zev->getOpc();
+  auto   it  = zopAMOTable.find( opc );
+  if( it == zopAMOTable.end() ) {
     output->verbose(
-      CALL_INFO, 9, 0, "[FORZA][RZA][HZOP]: Unimplemented HZOP opcode=%" PRIu8 "\n", static_cast<uint8_t>( zev->getOpc() )
+      CALL_INFO, 9, 0, "[FORZA][RZA][HZOP]: Unimplemented HZOP opcode=%" PRIu8 "\n", safe_static_cast<uint8_t>( opc )
     );
     return false;
-    break;
-  // 16bit base
-  case Forza::zopOpc::Z_HAC_16_BASE_ADD:
-    Mem->AMOVal(
-      Forza::Z_HZOP_PIPE_HART,
-      Addr,
-      reinterpret_cast<uint32_t*>( Alloc.getRegAddr( Rs1 ) ),
-      reinterpret_cast<uint32_t*>( Alloc.getRegAddr( Rs2 ) ),
-      req,
-      RevFlag::F_AMOADD
-    );
-    recordStat( HZOP_16_BASE_ADD, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_16_BASE_AND:
-    Mem->AMOVal(
-      Forza::Z_HZOP_PIPE_HART,
-      Addr,
-      reinterpret_cast<uint32_t*>( Alloc.getRegAddr( Rs1 ) ),
-      reinterpret_cast<uint32_t*>( Alloc.getRegAddr( Rs2 ) ),
-      req,
-      RevFlag::F_AMOAND
-    );
-    recordStat( HZOP_16_BASE_AND, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_16_BASE_OR:
-    Mem->AMOVal(
-      Forza::Z_HZOP_PIPE_HART,
-      Addr,
-      reinterpret_cast<uint32_t*>( Alloc.getRegAddr( Rs1 ) ),
-      reinterpret_cast<uint32_t*>( Alloc.getRegAddr( Rs2 ) ),
-      req,
-      RevFlag::F_AMOOR
-    );
-    recordStat( HZOP_16_BASE_OR, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_16_BASE_XOR:
-    Mem->AMOVal(
-      Forza::Z_HZOP_PIPE_HART,
-      Addr,
-      reinterpret_cast<uint32_t*>( Alloc.getRegAddr( Rs1 ) ),
-      reinterpret_cast<uint32_t*>( Alloc.getRegAddr( Rs2 ) ),
-      req,
-      RevFlag::F_AMOXOR
-    );
-    recordStat( HZOP_16_BASE_XOR, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_16_BASE_SMAX:
-    Mem->AMOVal(
-      Forza::Z_HZOP_PIPE_HART,
-      Addr,
-      reinterpret_cast<uint32_t*>( Alloc.getRegAddr( Rs1 ) ),
-      reinterpret_cast<uint32_t*>( Alloc.getRegAddr( Rs2 ) ),
-      req,
-      RevFlag::F_AMOMAX
-    );
-    recordStat( HZOP_16_BASE_SMAX, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_16_BASE_MAX:
-    Mem->AMOVal(
-      Forza::Z_HZOP_PIPE_HART,
-      Addr,
-      reinterpret_cast<uint32_t*>( Alloc.getRegAddr( Rs1 ) ),
-      reinterpret_cast<uint32_t*>( Alloc.getRegAddr( Rs2 ) ),
-      req,
-      RevFlag::F_AMOMAXU
-    );
-    recordStat( HZOP_16_BASE_MAX, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_16_BASE_SMIN:
-    Mem->AMOVal(
-      Forza::Z_HZOP_PIPE_HART,
-      Addr,
-      reinterpret_cast<uint32_t*>( Alloc.getRegAddr( Rs1 ) ),
-      reinterpret_cast<uint32_t*>( Alloc.getRegAddr( Rs2 ) ),
-      req,
-      RevFlag::F_AMOMIN
-    );
-    recordStat( HZOP_16_BASE_SMIN, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_16_BASE_MIN:
-    Mem->AMOVal(
-      Forza::Z_HZOP_PIPE_HART,
-      Addr,
-      reinterpret_cast<uint32_t*>( Alloc.getRegAddr( Rs1 ) ),
-      reinterpret_cast<uint32_t*>( Alloc.getRegAddr( Rs2 ) ),
-      req,
-      RevFlag::F_AMOMINU
-    );
-    recordStat( HZOP_16_BASE_MIN, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_16_BASE_SWAP:
-    Mem->AMOVal(
-      Forza::Z_HZOP_PIPE_HART,
-      Addr,
-      reinterpret_cast<uint32_t*>( Alloc.getRegAddr( Rs1 ) ),
-      reinterpret_cast<uint32_t*>( Alloc.getRegAddr( Rs2 ) ),
-      req,
-      RevFlag::F_AMOSWAP
-    );
-    recordStat( HZOP_16_BASE_SWAP, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_16_BASE_CAS:
-  case Forza::zopOpc::Z_HAC_16_BASE_FADD:
-  case Forza::zopOpc::Z_HAC_16_BASE_FSUB:
-  case Forza::zopOpc::Z_HAC_16_BASE_FRSUB:
-  case Forza::zopOpc::Z_HAC_16_BASE_THRESH:
-    output->verbose(
-      CALL_INFO, 9, 0, "[FORZA][RZA][HZOP]: Unimplemented HZOP opcode=%" PRIu8 "\n", static_cast<uint8_t>( zev->getOpc() )
-    );
-    return false;
-    break;
-  // 32bit base
-  case Forza::zopOpc::Z_HAC_32_BASE_ADD:
-    Mem->AMOVal(
-      Forza::Z_HZOP_PIPE_HART,
-      Addr,
-      reinterpret_cast<uint32_t*>( Alloc.getRegAddr( Rs1 ) ),
-      reinterpret_cast<uint32_t*>( Alloc.getRegAddr( Rs2 ) ),
-      req,
-      RevFlag::F_AMOADD
-    );
-    recordStat( HZOP_32_BASE_ADD, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_32_BASE_AND:
-    Mem->AMOVal(
-      Forza::Z_HZOP_PIPE_HART,
-      Addr,
-      reinterpret_cast<uint32_t*>( Alloc.getRegAddr( Rs1 ) ),
-      reinterpret_cast<uint32_t*>( Alloc.getRegAddr( Rs2 ) ),
-      req,
-      RevFlag::F_AMOAND
-    );
-    recordStat( HZOP_32_BASE_AND, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_32_BASE_OR:
-    Mem->AMOVal(
-      Forza::Z_HZOP_PIPE_HART,
-      Addr,
-      reinterpret_cast<uint32_t*>( Alloc.getRegAddr( Rs1 ) ),
-      reinterpret_cast<uint32_t*>( Alloc.getRegAddr( Rs2 ) ),
-      req,
-      RevFlag::F_AMOOR
-    );
-    recordStat( HZOP_32_BASE_OR, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_32_BASE_XOR:
-    Mem->AMOVal(
-      Forza::Z_HZOP_PIPE_HART,
-      Addr,
-      reinterpret_cast<uint32_t*>( Alloc.getRegAddr( Rs1 ) ),
-      reinterpret_cast<uint32_t*>( Alloc.getRegAddr( Rs2 ) ),
-      req,
-      RevFlag::F_AMOXOR
-    );
-    recordStat( HZOP_32_BASE_XOR, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_32_BASE_SMAX:
-    Mem->AMOVal(
-      Forza::Z_HZOP_PIPE_HART,
-      Addr,
-      reinterpret_cast<uint32_t*>( Alloc.getRegAddr( Rs1 ) ),
-      reinterpret_cast<uint32_t*>( Alloc.getRegAddr( Rs2 ) ),
-      req,
-      RevFlag::F_AMOMAX
-    );
-    recordStat( HZOP_32_BASE_SMAX, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_32_BASE_MAX:
-    Mem->AMOVal(
-      Forza::Z_HZOP_PIPE_HART,
-      Addr,
-      reinterpret_cast<uint32_t*>( Alloc.getRegAddr( Rs1 ) ),
-      reinterpret_cast<uint32_t*>( Alloc.getRegAddr( Rs2 ) ),
-      req,
-      RevFlag::F_AMOMAXU
-    );
-    recordStat( HZOP_32_BASE_MAX, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_32_BASE_SMIN:
-    Mem->AMOVal(
-      Forza::Z_HZOP_PIPE_HART,
-      Addr,
-      reinterpret_cast<uint32_t*>( Alloc.getRegAddr( Rs1 ) ),
-      reinterpret_cast<uint32_t*>( Alloc.getRegAddr( Rs2 ) ),
-      req,
-      RevFlag::F_AMOMIN
-    );
-    recordStat( HZOP_32_BASE_SMIN, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_32_BASE_MIN:
-    Mem->AMOVal(
-      Forza::Z_HZOP_PIPE_HART,
-      Addr,
-      reinterpret_cast<uint32_t*>( Alloc.getRegAddr( Rs1 ) ),
-      reinterpret_cast<uint32_t*>( Alloc.getRegAddr( Rs2 ) ),
-      req,
-      RevFlag::F_AMOMINU
-    );
-    recordStat( HZOP_32_BASE_MIN, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_32_BASE_SWAP:
-    Mem->AMOVal(
-      Forza::Z_HZOP_PIPE_HART,
-      Addr,
-      reinterpret_cast<uint32_t*>( Alloc.getRegAddr( Rs1 ) ),
-      reinterpret_cast<uint32_t*>( Alloc.getRegAddr( Rs2 ) ),
-      req,
-      RevFlag::F_AMOSWAP
-    );
-    recordStat( HZOP_32_BASE_SWAP, 1 );
-    break;
-  // 64bit base
-  case Forza::zopOpc::Z_HAC_64_BASE_ADD:
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, RevFlag::F_AMOADD );
-    recordStat( HZOP_64_BASE_ADD, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_64_BASE_AND:
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, RevFlag::F_AMOAND );
-    recordStat( HZOP_64_BASE_AND, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_64_BASE_OR:
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, RevFlag::F_AMOOR );
-    recordStat( HZOP_64_BASE_OR, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_64_BASE_XOR:
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, RevFlag::F_AMOXOR );
-    recordStat( HZOP_64_BASE_XOR, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_64_BASE_SMAX:
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, RevFlag::F_AMOMAX );
-    recordStat( HZOP_64_BASE_SMAX, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_64_BASE_MAX:
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, RevFlag::F_AMOMAXU );
-    recordStat( HZOP_64_BASE_MAX, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_64_BASE_SMIN:
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, RevFlag::F_AMOMIN );
-    recordStat( HZOP_64_BASE_SMIN, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_64_BASE_MIN:
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, RevFlag::F_AMOMINU );
-    recordStat( HZOP_64_BASE_MIN, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_64_BASE_SWAP:
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, RevFlag::F_AMOSWAP );
-    recordStat( HZOP_64_BASE_SWAP, 1 );
-    break;
-  // 8bit M
-  case Forza::zopOpc::Z_HAC_8_M_ADD:
-    RevFlagSet( flags, RevFlag::F_AMOADD );
-    RevFlagSet( flags, RevFlag::F_AMONN );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_8_M_ADD, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_8_M_AND:
-    RevFlagSet( flags, RevFlag::F_AMOAND );
-    RevFlagSet( flags, RevFlag::F_AMONN );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_8_M_AND, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_8_M_OR:
-    RevFlagSet( flags, RevFlag::F_AMOOR );
-    RevFlagSet( flags, RevFlag::F_AMONN );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_8_M_OR, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_8_M_XOR:
-    RevFlagSet( flags, RevFlag::F_AMOXOR );
-    RevFlagSet( flags, RevFlag::F_AMONN );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_8_M_XOR, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_8_M_SMAX:
-    RevFlagSet( flags, RevFlag::F_AMOMAX );
-    RevFlagSet( flags, RevFlag::F_AMONN );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_8_M_SMAX, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_8_M_MAX:
-    RevFlagSet( flags, RevFlag::F_AMOMAXU );
-    RevFlagSet( flags, RevFlag::F_AMONN );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_8_M_MAX, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_8_M_SMIN:
-    RevFlagSet( flags, RevFlag::F_AMOMIN );
-    RevFlagSet( flags, RevFlag::F_AMONN );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_8_M_SMIN, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_8_M_MIN:
-    RevFlagSet( flags, RevFlag::F_AMOMINU );
-    RevFlagSet( flags, RevFlag::F_AMONN );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_8_M_MIN, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_8_M_SWAP:
-    RevFlagSet( flags, RevFlag::F_AMOSWAP );
-    RevFlagSet( flags, RevFlag::F_AMONN );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_8_M_SWAP, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_8_M_CAS:
-  case Forza::zopOpc::Z_HAC_8_M_FADD:
-  case Forza::zopOpc::Z_HAC_8_M_FSUB:
-  case Forza::zopOpc::Z_HAC_8_M_FRSUB:
-  case Forza::zopOpc::Z_HAC_8_M_THRESH:
-    output->verbose(
-      CALL_INFO, 9, 0, "[FORZA][RZA][HZOP]: Unimplemented HZOP opcode=%" PRIu8 "\n", static_cast<uint8_t>( zev->getOpc() )
-    );
-    return false;
-    break;
-  // 16bit M
-  case Forza::zopOpc::Z_HAC_16_M_ADD:
-    RevFlagSet( flags, RevFlag::F_AMOADD );
-    RevFlagSet( flags, RevFlag::F_AMONN );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_16_M_ADD, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_16_M_AND:
-    RevFlagSet( flags, RevFlag::F_AMOAND );
-    RevFlagSet( flags, RevFlag::F_AMONN );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_16_M_AND, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_16_M_OR:
-    RevFlagSet( flags, RevFlag::F_AMOOR );
-    RevFlagSet( flags, RevFlag::F_AMONN );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_16_M_OR, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_16_M_XOR:
-    RevFlagSet( flags, RevFlag::F_AMOXOR );
-    RevFlagSet( flags, RevFlag::F_AMONN );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_16_M_XOR, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_16_M_SMAX:
-    RevFlagSet( flags, RevFlag::F_AMOMAX );
-    RevFlagSet( flags, RevFlag::F_AMONN );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_16_M_SMAX, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_16_M_MAX:
-    RevFlagSet( flags, RevFlag::F_AMOMAXU );
-    RevFlagSet( flags, RevFlag::F_AMONN );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_16_M_MAX, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_16_M_SMIN:
-    RevFlagSet( flags, RevFlag::F_AMOMIN );
-    RevFlagSet( flags, RevFlag::F_AMONN );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_16_M_SMIN, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_16_M_MIN:
-    RevFlagSet( flags, RevFlag::F_AMOMINU );
-    RevFlagSet( flags, RevFlag::F_AMONN );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_16_M_MIN, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_16_M_SWAP:
-    RevFlagSet( flags, RevFlag::F_AMOSWAP );
-    RevFlagSet( flags, RevFlag::F_AMONN );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_16_M_SWAP, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_16_M_CAS:
-  case Forza::zopOpc::Z_HAC_16_M_FADD:
-  case Forza::zopOpc::Z_HAC_16_M_FSUB:
-  case Forza::zopOpc::Z_HAC_16_M_FRSUB:
-  case Forza::zopOpc::Z_HAC_16_M_THRESH:
-    output->verbose(
-      CALL_INFO, 9, 0, "[FORZA][RZA][HZOP]: Unimplemented HZOP opcode=%" PRIu8 "\n", static_cast<uint8_t>( zev->getOpc() )
-    );
-    return false;
-    break;
-  // 32bit M
-  case Forza::zopOpc::Z_HAC_32_M_ADD:
-    RevFlagSet( flags, RevFlag::F_AMOADD );
-    RevFlagSet( flags, RevFlag::F_AMONN );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_32_M_ADD, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_32_M_AND:
-    RevFlagSet( flags, RevFlag::F_AMOAND );
-    RevFlagSet( flags, RevFlag::F_AMONN );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_32_M_AND, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_32_M_OR:
-    RevFlagSet( flags, RevFlag::F_AMOOR );
-    RevFlagSet( flags, RevFlag::F_AMONN );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_32_M_OR, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_32_M_XOR:
-    RevFlagSet( flags, RevFlag::F_AMOXOR );
-    RevFlagSet( flags, RevFlag::F_AMONN );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_32_M_XOR, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_32_M_SMAX:
-    RevFlagSet( flags, RevFlag::F_AMOMAX );
-    RevFlagSet( flags, RevFlag::F_AMONN );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_32_M_SMAX, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_32_M_MAX:
-    RevFlagSet( flags, RevFlag::F_AMOMAXU );
-    RevFlagSet( flags, RevFlag::F_AMONN );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_32_M_MAX, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_32_M_SMIN:
-    RevFlagSet( flags, RevFlag::F_AMOMIN );
-    RevFlagSet( flags, RevFlag::F_AMONN );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_32_M_SMIN, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_32_M_MIN:
-    RevFlagSet( flags, RevFlag::F_AMOMINU );
-    RevFlagSet( flags, RevFlag::F_AMONN );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_32_M_MIN, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_32_M_SWAP:
-    RevFlagSet( flags, RevFlag::F_AMOSWAP );
-    RevFlagSet( flags, RevFlag::F_AMONN );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_32_M_SWAP, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_32_M_CAS:
-  case Forza::zopOpc::Z_HAC_32_M_FADD:
-  case Forza::zopOpc::Z_HAC_32_M_FSUB:
-  case Forza::zopOpc::Z_HAC_32_M_FRSUB:
-  case Forza::zopOpc::Z_HAC_32_M_THRESH:
-    output->verbose(
-      CALL_INFO, 9, 0, "[FORZA][RZA][HZOP]: Unimplemented HZOP opcode=%" PRIu8 "\n", static_cast<uint8_t>( zev->getOpc() )
-    );
-    return false;
-    break;
-  // 64bit M
-  case Forza::zopOpc::Z_HAC_64_M_ADD:
-    RevFlagSet( flags, RevFlag::F_AMOADD );
-    RevFlagSet( flags, RevFlag::F_AMONN );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_64_M_ADD, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_64_M_AND:
-    RevFlagSet( flags, RevFlag::F_AMOAND );
-    RevFlagSet( flags, RevFlag::F_AMONN );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_64_M_AND, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_64_M_OR:
-    RevFlagSet( flags, RevFlag::F_AMOOR );
-    RevFlagSet( flags, RevFlag::F_AMONN );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_64_M_OR, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_64_M_XOR:
-    RevFlagSet( flags, RevFlag::F_AMOXOR );
-    RevFlagSet( flags, RevFlag::F_AMONN );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_64_M_XOR, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_64_M_SMAX:
-    RevFlagSet( flags, RevFlag::F_AMOMAX );
-    RevFlagSet( flags, RevFlag::F_AMONN );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_64_M_SMAX, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_64_M_MAX:
-    RevFlagSet( flags, RevFlag::F_AMOMAXU );
-    RevFlagSet( flags, RevFlag::F_AMONN );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_64_M_MAX, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_64_M_SMIN:
-    RevFlagSet( flags, RevFlag::F_AMOMIN );
-    RevFlagSet( flags, RevFlag::F_AMONN );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_64_M_SMIN, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_64_M_MIN:
-    RevFlagSet( flags, RevFlag::F_AMOMINU );
-    RevFlagSet( flags, RevFlag::F_AMONN );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_64_M_MIN, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_64_M_SWAP:
-    RevFlagSet( flags, RevFlag::F_AMOSWAP );
-    RevFlagSet( flags, RevFlag::F_AMONN );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_64_M_SWAP, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_64_M_CAS:
-  case Forza::zopOpc::Z_HAC_64_M_FADD:
-  case Forza::zopOpc::Z_HAC_64_M_FSUB:
-  case Forza::zopOpc::Z_HAC_64_M_FRSUB:
-  case Forza::zopOpc::Z_HAC_64_M_THRESH:
-    output->verbose(
-      CALL_INFO, 9, 0, "[FORZA][RZA][HZOP]: Unimplemented HZOP opcode=%" PRIu8 "\n", static_cast<uint8_t>( zev->getOpc() )
-    );
-    return false;
-    break;
-  // 8bit S
-  case Forza::zopOpc::Z_HAC_8_S_ADD:
-    RevFlagSet( flags, RevFlag::F_AMOADD );
-    RevFlagSet( flags, RevFlag::F_AMOON );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_8_S_ADD, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_8_S_AND:
-    RevFlagSet( flags, RevFlag::F_AMOAND );
-    RevFlagSet( flags, RevFlag::F_AMOON );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_8_S_AND, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_8_S_OR:
-    RevFlagSet( flags, RevFlag::F_AMOOR );
-    RevFlagSet( flags, RevFlag::F_AMOON );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_8_S_OR, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_8_S_XOR:
-    RevFlagSet( flags, RevFlag::F_AMOXOR );
-    RevFlagSet( flags, RevFlag::F_AMOON );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_8_S_XOR, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_8_S_SMAX:
-    RevFlagSet( flags, RevFlag::F_AMOMAX );
-    RevFlagSet( flags, RevFlag::F_AMOON );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_8_S_SMAX, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_8_S_MAX:
-    RevFlagSet( flags, RevFlag::F_AMOMAXU );
-    RevFlagSet( flags, RevFlag::F_AMOON );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_8_S_MAX, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_8_S_SMIN:
-    RevFlagSet( flags, RevFlag::F_AMOMIN );
-    RevFlagSet( flags, RevFlag::F_AMOON );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_8_S_SMIN, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_8_S_MIN:
-    RevFlagSet( flags, RevFlag::F_AMOMIN );
-    RevFlagSet( flags, RevFlag::F_AMOON );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_8_S_SMIN, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_8_S_SWAP:
-    RevFlagSet( flags, RevFlag::F_AMOSWAP );
-    RevFlagSet( flags, RevFlag::F_AMOON );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_8_S_SWAP, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_8_S_CAS:
-  case Forza::zopOpc::Z_HAC_8_S_FADD:
-  case Forza::zopOpc::Z_HAC_8_S_FSUB:
-  case Forza::zopOpc::Z_HAC_8_S_FRSUB:
-  case Forza::zopOpc::Z_HAC_8_S_THRESH:
-    output->verbose(
-      CALL_INFO, 9, 0, "[FORZA][RZA][HZOP]: Unimplemented HZOP opcode=%" PRIu8 "\n", static_cast<uint8_t>( zev->getOpc() )
-    );
-    return false;
-    break;
-  // 16bit S
-  case Forza::zopOpc::Z_HAC_16_S_ADD:
-    RevFlagSet( flags, RevFlag::F_AMOADD );
-    RevFlagSet( flags, RevFlag::F_AMOON );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_16_S_ADD, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_16_S_AND:
-    RevFlagSet( flags, RevFlag::F_AMOAND );
-    RevFlagSet( flags, RevFlag::F_AMOON );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_16_S_AND, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_16_S_OR:
-    RevFlagSet( flags, RevFlag::F_AMOOR );
-    RevFlagSet( flags, RevFlag::F_AMOON );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_16_S_OR, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_16_S_XOR:
-    RevFlagSet( flags, RevFlag::F_AMOXOR );
-    RevFlagSet( flags, RevFlag::F_AMOON );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_16_S_XOR, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_16_S_SMAX:
-    RevFlagSet( flags, RevFlag::F_AMOMAX );
-    RevFlagSet( flags, RevFlag::F_AMOON );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_16_S_SMAX, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_16_S_MAX:
-    RevFlagSet( flags, RevFlag::F_AMOMAXU );
-    RevFlagSet( flags, RevFlag::F_AMOON );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_16_S_MAX, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_16_S_SMIN:
-    RevFlagSet( flags, RevFlag::F_AMOMIN );
-    RevFlagSet( flags, RevFlag::F_AMOON );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_16_S_SMIN, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_16_S_MIN:
-    RevFlagSet( flags, RevFlag::F_AMOMINU );
-    RevFlagSet( flags, RevFlag::F_AMOON );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_16_S_MIN, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_16_S_SWAP:
-    RevFlagSet( flags, RevFlag::F_AMOSWAP );
-    RevFlagSet( flags, RevFlag::F_AMOON );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_16_S_SWAP, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_16_S_CAS:
-  case Forza::zopOpc::Z_HAC_16_S_FADD:
-  case Forza::zopOpc::Z_HAC_16_S_FSUB:
-  case Forza::zopOpc::Z_HAC_16_S_FRSUB:
-  case Forza::zopOpc::Z_HAC_16_S_THRESH:
-    output->verbose(
-      CALL_INFO, 9, 0, "[FORZA][RZA][HZOP]: Unimplemented HZOP opcode=%" PRIu8 "\n", static_cast<uint8_t>( zev->getOpc() )
-    );
-    return false;
-    break;
-  // 32bit S
-  case Forza::zopOpc::Z_HAC_32_S_ADD:
-    RevFlagSet( flags, RevFlag::F_AMOADD );
-    RevFlagSet( flags, RevFlag::F_AMOON );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_32_S_ADD, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_32_S_AND:
-    RevFlagSet( flags, RevFlag::F_AMOAND );
-    RevFlagSet( flags, RevFlag::F_AMOON );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_32_S_AND, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_32_S_OR:
-    RevFlagSet( flags, RevFlag::F_AMOOR );
-    RevFlagSet( flags, RevFlag::F_AMOON );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_32_S_OR, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_32_S_XOR:
-    RevFlagSet( flags, RevFlag::F_AMOXOR );
-    RevFlagSet( flags, RevFlag::F_AMOON );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_32_S_XOR, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_32_S_SMAX:
-    RevFlagSet( flags, RevFlag::F_AMOMAX );
-    RevFlagSet( flags, RevFlag::F_AMOON );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_32_S_SMAX, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_32_S_MAX:
-    RevFlagSet( flags, RevFlag::F_AMOMAXU );
-    RevFlagSet( flags, RevFlag::F_AMOON );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_32_S_MAX, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_32_S_SMIN:
-    RevFlagSet( flags, RevFlag::F_AMOMIN );
-    RevFlagSet( flags, RevFlag::F_AMOON );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_32_S_SMIN, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_32_S_MIN:
-    RevFlagSet( flags, RevFlag::F_AMOMINU );
-    RevFlagSet( flags, RevFlag::F_AMOON );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_32_S_MIN, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_32_S_SWAP:
-    RevFlagSet( flags, RevFlag::F_AMOSWAP );
-    RevFlagSet( flags, RevFlag::F_AMOON );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_32_S_SWAP, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_32_S_CAS:
-  case Forza::zopOpc::Z_HAC_32_S_FADD:
-  case Forza::zopOpc::Z_HAC_32_S_FSUB:
-  case Forza::zopOpc::Z_HAC_32_S_FRSUB:
-  case Forza::zopOpc::Z_HAC_32_S_THRESH:
-    output->verbose(
-      CALL_INFO, 9, 0, "[FORZA][RZA][HZOP]: Unimplemented HZOP opcode=%" PRIu8 "\n", static_cast<uint8_t>( zev->getOpc() )
-    );
-    return false;
-    break;
-  // 64bit S
-  case Forza::zopOpc::Z_HAC_64_S_ADD:
-    RevFlagSet( flags, RevFlag::F_AMOADD );
-    RevFlagSet( flags, RevFlag::F_AMOON );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_64_S_ADD, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_64_S_AND:
-    RevFlagSet( flags, RevFlag::F_AMOAND );
-    RevFlagSet( flags, RevFlag::F_AMOON );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_64_S_AND, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_64_S_OR:
-    RevFlagSet( flags, RevFlag::F_AMOOR );
-    RevFlagSet( flags, RevFlag::F_AMOON );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_64_S_OR, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_64_S_XOR:
-    RevFlagSet( flags, RevFlag::F_AMOXOR );
-    RevFlagSet( flags, RevFlag::F_AMOON );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_64_S_XOR, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_64_S_SMAX:
-    RevFlagSet( flags, RevFlag::F_AMOMAX );
-    RevFlagSet( flags, RevFlag::F_AMOON );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_64_S_SMAX, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_64_S_MAX:
-    RevFlagSet( flags, RevFlag::F_AMOMAXU );
-    RevFlagSet( flags, RevFlag::F_AMOON );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_64_S_MAX, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_64_S_SMIN:
-    RevFlagSet( flags, RevFlag::F_AMOMIN );
-    RevFlagSet( flags, RevFlag::F_AMOON );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_64_S_SMIN, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_64_S_MIN:
-    RevFlagSet( flags, RevFlag::F_AMOMINU );
-    RevFlagSet( flags, RevFlag::F_AMOON );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_64_S_MIN, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_64_S_SWAP:
-    RevFlagSet( flags, RevFlag::F_AMOSWAP );
-    RevFlagSet( flags, RevFlag::F_AMOON );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_64_S_SWAP, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_64_S_CAS:
-  case Forza::zopOpc::Z_HAC_64_S_FADD:
-  case Forza::zopOpc::Z_HAC_64_S_FSUB:
-  case Forza::zopOpc::Z_HAC_64_S_FRSUB:
-  case Forza::zopOpc::Z_HAC_64_S_THRESH:
-    output->verbose(
-      CALL_INFO, 9, 0, "[FORZA][RZA][HZOP]: Unimplemented HZOP opcode=%" PRIu8 "\n", static_cast<uint8_t>( zev->getOpc() )
-    );
-    return false;
-    break;
-  // 8bit MS
-  case Forza::zopOpc::Z_HAC_8_MS_ADD:
-    RevFlagSet( flags, RevFlag::F_AMOADD );
-    RevFlagSet( flags, RevFlag::F_AMONO );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_8_MS_ADD, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_8_MS_AND:
-    RevFlagSet( flags, RevFlag::F_AMOAND );
-    RevFlagSet( flags, RevFlag::F_AMONO );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_8_MS_AND, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_8_MS_OR:
-    RevFlagSet( flags, RevFlag::F_AMOOR );
-    RevFlagSet( flags, RevFlag::F_AMONO );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_8_MS_OR, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_8_MS_XOR:
-    RevFlagSet( flags, RevFlag::F_AMOXOR );
-    RevFlagSet( flags, RevFlag::F_AMONO );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_8_MS_XOR, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_8_MS_SMAX:
-    RevFlagSet( flags, RevFlag::F_AMOMAX );
-    RevFlagSet( flags, RevFlag::F_AMONO );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_8_MS_SMAX, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_8_MS_MAX:
-    RevFlagSet( flags, RevFlag::F_AMOMAXU );
-    RevFlagSet( flags, RevFlag::F_AMONO );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_8_MS_MAX, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_8_MS_SMIN:
-    RevFlagSet( flags, RevFlag::F_AMOMIN );
-    RevFlagSet( flags, RevFlag::F_AMONO );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_8_MS_SMIN, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_8_MS_MIN:
-    RevFlagSet( flags, RevFlag::F_AMOMINU );
-    RevFlagSet( flags, RevFlag::F_AMONO );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_8_MS_MIN, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_8_MS_SWAP:
-    RevFlagSet( flags, RevFlag::F_AMOSWAP );
-    RevFlagSet( flags, RevFlag::F_AMONO );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_8_MS_SWAP, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_8_MS_CAS:
-  case Forza::zopOpc::Z_HAC_8_MS_FADD:
-  case Forza::zopOpc::Z_HAC_8_MS_FSUB:
-  case Forza::zopOpc::Z_HAC_8_MS_FRSUB:
-  case Forza::zopOpc::Z_HAC_8_MS_THRESH:
-    output->verbose(
-      CALL_INFO, 9, 0, "[FORZA][RZA][HZOP]: Unimplemented HZOP opcode=%" PRIu8 "\n", static_cast<uint8_t>( zev->getOpc() )
-    );
-    return false;
-    break;
-  // 16bit MS
-  case Forza::zopOpc::Z_HAC_16_MS_ADD:
-    RevFlagSet( flags, RevFlag::F_AMOADD );
-    RevFlagSet( flags, RevFlag::F_AMONO );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_16_MS_ADD, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_16_MS_AND:
-    RevFlagSet( flags, RevFlag::F_AMOAND );
-    RevFlagSet( flags, RevFlag::F_AMONO );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_16_MS_AND, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_16_MS_OR:
-    RevFlagSet( flags, RevFlag::F_AMOOR );
-    RevFlagSet( flags, RevFlag::F_AMONO );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_16_MS_OR, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_16_MS_XOR:
-    RevFlagSet( flags, RevFlag::F_AMOXOR );
-    RevFlagSet( flags, RevFlag::F_AMONO );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_16_MS_XOR, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_16_MS_SMAX:
-    RevFlagSet( flags, RevFlag::F_AMOMAX );
-    RevFlagSet( flags, RevFlag::F_AMONO );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_16_MS_SMAX, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_16_MS_MAX:
-    RevFlagSet( flags, RevFlag::F_AMOMAXU );
-    RevFlagSet( flags, RevFlag::F_AMONO );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_16_MS_MAX, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_16_MS_SMIN:
-    RevFlagSet( flags, RevFlag::F_AMOMIN );
-    RevFlagSet( flags, RevFlag::F_AMONO );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_16_MS_SMIN, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_16_MS_MIN:
-    RevFlagSet( flags, RevFlag::F_AMOMINU );
-    RevFlagSet( flags, RevFlag::F_AMONO );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_16_MS_MIN, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_16_MS_SWAP:
-    RevFlagSet( flags, RevFlag::F_AMOSWAP );
-    RevFlagSet( flags, RevFlag::F_AMONO );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_16_MS_SWAP, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_16_MS_CAS:
-  case Forza::zopOpc::Z_HAC_16_MS_FADD:
-  case Forza::zopOpc::Z_HAC_16_MS_FSUB:
-  case Forza::zopOpc::Z_HAC_16_MS_FRSUB:
-  case Forza::zopOpc::Z_HAC_16_MS_THRESH:
-    output->verbose(
-      CALL_INFO, 9, 0, "[FORZA][RZA][HZOP]: Unimplemented HZOP opcode=%" PRIu8 "\n", static_cast<uint8_t>( zev->getOpc() )
-    );
-    return false;
-    break;
-  // 32bit MS
-  case Forza::zopOpc::Z_HAC_32_MS_ADD:
-    RevFlagSet( flags, RevFlag::F_AMOADD );
-    RevFlagSet( flags, RevFlag::F_AMONO );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_32_MS_ADD, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_32_MS_AND:
-    RevFlagSet( flags, RevFlag::F_AMOAND );
-    RevFlagSet( flags, RevFlag::F_AMONO );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_32_MS_AND, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_32_MS_OR:
-    RevFlagSet( flags, RevFlag::F_AMOOR );
-    RevFlagSet( flags, RevFlag::F_AMONO );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_32_MS_OR, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_32_MS_XOR:
-    RevFlagSet( flags, RevFlag::F_AMOXOR );
-    RevFlagSet( flags, RevFlag::F_AMONO );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_32_MS_XOR, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_32_MS_SMAX:
-    RevFlagSet( flags, RevFlag::F_AMOMAX );
-    RevFlagSet( flags, RevFlag::F_AMONO );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_32_MS_SMAX, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_32_MS_MAX:
-    RevFlagSet( flags, RevFlag::F_AMOMAXU );
-    RevFlagSet( flags, RevFlag::F_AMONO );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_32_MS_MAX, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_32_MS_SMIN:
-    RevFlagSet( flags, RevFlag::F_AMOMIN );
-    RevFlagSet( flags, RevFlag::F_AMONO );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_32_MS_SMIN, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_32_MS_MIN:
-    RevFlagSet( flags, RevFlag::F_AMOMINU );
-    RevFlagSet( flags, RevFlag::F_AMONO );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_32_MS_MIN, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_32_MS_SWAP:
-    RevFlagSet( flags, RevFlag::F_AMOSWAP );
-    RevFlagSet( flags, RevFlag::F_AMONO );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_32_MS_SWAP, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_32_MS_CAS:
-  case Forza::zopOpc::Z_HAC_32_MS_FADD:
-  case Forza::zopOpc::Z_HAC_32_MS_FSUB:
-  case Forza::zopOpc::Z_HAC_32_MS_FRSUB:
-  case Forza::zopOpc::Z_HAC_32_MS_THRESH:
-    output->verbose(
-      CALL_INFO, 9, 0, "[FORZA][RZA][HZOP]: Unimplemented HZOP opcode=%" PRIu8 "\n", static_cast<uint8_t>( zev->getOpc() )
-    );
-    return false;
-    break;
-  // 64bit MS
-  case Forza::zopOpc::Z_HAC_64_MS_ADD:
-    RevFlagSet( flags, RevFlag::F_AMOADD );
-    RevFlagSet( flags, RevFlag::F_AMONO );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_64_MS_ADD, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_64_MS_AND:
-    RevFlagSet( flags, RevFlag::F_AMOAND );
-    RevFlagSet( flags, RevFlag::F_AMONO );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_64_MS_AND, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_64_MS_OR:
-    RevFlagSet( flags, RevFlag::F_AMOOR );
-    RevFlagSet( flags, RevFlag::F_AMONO );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_64_MS_OR, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_64_MS_XOR:
-    RevFlagSet( flags, RevFlag::F_AMOXOR );
-    RevFlagSet( flags, RevFlag::F_AMONO );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_64_MS_XOR, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_64_MS_SMAX:
-    RevFlagSet( flags, RevFlag::F_AMOMAX );
-    RevFlagSet( flags, RevFlag::F_AMONO );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_64_MS_SMAX, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_64_MS_MAX:
-    RevFlagSet( flags, RevFlag::F_AMOMAXU );
-    RevFlagSet( flags, RevFlag::F_AMONO );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_64_MS_MAX, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_64_MS_SMIN:
-    RevFlagSet( flags, RevFlag::F_AMOMIN );
-    RevFlagSet( flags, RevFlag::F_AMONO );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_64_MS_SMIN, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_64_MS_MIN:
-    RevFlagSet( flags, RevFlag::F_AMOMINU );
-    RevFlagSet( flags, RevFlag::F_AMONO );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_64_MS_MIN, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_64_MS_SWAP:
-    RevFlagSet( flags, RevFlag::F_AMOSWAP );
-    RevFlagSet( flags, RevFlag::F_AMONO );
-    Mem->AMOVal( Forza::Z_HZOP_PIPE_HART, Addr, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-    recordStat( HZOP_64_MS_SWAP, 1 );
-    break;
-  case Forza::zopOpc::Z_HAC_64_MS_CAS:
-  case Forza::zopOpc::Z_HAC_64_MS_FADD:
-  case Forza::zopOpc::Z_HAC_64_MS_FSUB:
-  case Forza::zopOpc::Z_HAC_64_MS_FRSUB:
-  case Forza::zopOpc::Z_HAC_64_MS_THRESH:
-    output->verbose(
-      CALL_INFO, 9, 0, "[FORZA][RZA][HZOP]: Unimplemented HZOP opcode=%" PRIu8 "\n", static_cast<uint8_t>( zev->getOpc() )
-    );
-    return false;
-    break;
-  default:
-    output->verbose(
-      CALL_INFO, 9, 0, "[FORZA][RZA][HZOP]: Erroneous HZOP opcode=%" PRIu8 "\n", static_cast<uint8_t>( zev->getOpc() )
-    );
-    return false;
-    break;
   }
+
+  // Extract the fields
+  const auto& [size, stat, amoOp, amoRtn] = it->second;
+
+  auto flags{ amoOp };
+  RevFlagSet( flags, amoRtn );
+  Mem->AMOMem( Z_HZOP_PIPE_HART, Addr, size, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
+  recordStat( stat, 1 );
 
   // add the request to the AMOQ
   AMOQ.emplace_back( zev, Rs1, Rs2 );
@@ -1807,8 +838,8 @@ bool RZAAMOCoProc::handleHZOP( Forza::zopEvent* zev, bool& flag ) {
   return true;
 }
 
-bool RZAAMOCoProc::InjectZOP( Forza::zopEvent* zev, bool& flag ) {
-  if( zev->getType() != Forza::zopMsgT::Z_HZOPAC ) {
+bool RZAAMOCoProc::InjectZOP( zopEvent* zev, bool& flag ) {
+  if( zev->getType() != zopMsgT::Z_HZOPAC ) {
     // wrong ZOP type injected
     output->fatal(
       CALL_INFO, -1, "[FORZA][RZA][HZOP]: Cannot handle ZOP message of type: %s\n", zNic->msgTToStr( zev->getType() ).c_str()
@@ -1828,9 +859,9 @@ void RZAAMOCoProc::CheckLSQueue() {
   for( auto it = AMOQ.begin(); it != AMOQ.end(); ++it ) {
     auto& [zev, rs1, rs2] = *it;
 
-    if( Alloc.getState( rs2 ) == _H_DIRTY ) {
+    if( Alloc.getState( rs2 ) == Hazard::DIRTY ) {
       // load to register has occurred, time to build a response
-      if( !sendSuccessResp( zNic, zev, Forza::Z_HZOP_PIPE_HART, Alloc.GetX( rs2 ) ) ) {
+      if( !sendSuccessResp( zNic, zev, Z_HZOP_PIPE_HART, Alloc.GetX( rs2 ) ) ) {
         output->fatal(
           CALL_INFO, -1, "[FORZA][RZA][HZOP]: Failed to send success response for ZOP ID=%" PRIu16 "\n", zev->getID()
         );
@@ -1842,7 +873,7 @@ void RZAAMOCoProc::CheckLSQueue() {
 
       // clear the request from the ZRqst map
       uint64_t Addr = 0;
-      if( !zev->getFLIT( Forza::Z_FLIT_ADDR, &Addr ) ) {
+      if( !zev->getFLIT( Z_FLIT_ADDR, &Addr ) ) {
         output->fatal( CALL_INFO, -1, "[FORZA][RZA] Erroneous packet contents for ZOP in CheckLSQueue\n" );
       }
       Mem->clearZRqst( Addr );
