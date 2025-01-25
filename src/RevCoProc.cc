@@ -258,7 +258,7 @@ void RZALSCoProc::MarkLoadComplete( const MemReq& req ) {
 }
 
 // clang-format off
-const std::unordered_map<zopOpc, std::tuple<RZALSCoProc::mzopKind, uint32_t, mzopStats, RevFlag>> RZALSCoProc::mzopTable = {
+decltype(RZALSCoProc::mzopTable) RZALSCoProc::mzopTable = {
   // unsigned loads
   { zopOpc::Z_MZOP_LB,   {  mzopKind::load, 1, mzopStats::MZOP_LB,   RevFlag::F_ZEXT64 } },
   { zopOpc::Z_MZOP_LH,   {  mzopKind::load, 2, mzopStats::MZOP_LH,   RevFlag::F_ZEXT64 } },
@@ -512,7 +512,7 @@ bool RZAAMOCoProc::ClockTick( SST::Cycle_t cycle ) {
 }
 
 // clang-format off
-const std::unordered_map<zopOpc, std::tuple<uint32_t, hzopStats, RevFlag, RevFlag>> RZAAMOCoProc::zopAMOTable = {
+decltype(RZAAMOCoProc::zopAMOTable) RZAAMOCoProc::zopAMOTable = {
   // 8bit base
   { zopOpc::Z_HAC_8_BASE_ADD,     { 1, hzopStats::HZOP_8_BASE_ADD,     RevFlag::F_AMOADD,   RevFlag::F_NONE  } },
   { zopOpc::Z_HAC_8_BASE_AND,     { 1, hzopStats::HZOP_8_BASE_AND,     RevFlag::F_AMOAND,   RevFlag::F_NONE  } },
