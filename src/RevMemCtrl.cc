@@ -1116,37 +1116,37 @@ static std::enable_if_t<!std::is_floating_point_v<T>> ApplyAMO( RevFlag flags, v
 
   // Table mapping atomic operations to executable code
   // clang-format off
-  static const std::map<RevFlag, std::function<void()>> table = {
-    { RevFlag::F_AMOADD,   [&]{ *TmpTarget += TmpBuf; } },
-    { RevFlag::F_AMOXOR,   [&]{ *TmpTarget ^= TmpBuf; } },
-    { RevFlag::F_AMOAND,   [&]{ *TmpTarget &= TmpBuf; } },
-    { RevFlag::F_AMOOR,    [&]{ *TmpTarget |= TmpBuf; } },
-    { RevFlag::F_AMOSWAP,  [&]{ *TmpTarget  = TmpBuf; } },
-    { RevFlag::F_AMOMIN,   [&]{ *TmpTarget  = std::min( *TmpTarget,  TmpBuf );  } },
-    { RevFlag::F_AMOMAX,   [&]{ *TmpTarget  = std::max( *TmpTarget,  TmpBuf );  } },
-    { RevFlag::F_AMOMINU,  [&]{ *TmpTargetU = std::min( *TmpTargetU, TmpBufU ); } },
-    { RevFlag::F_AMOMAXU,  [&]{ *TmpTargetU = std::max( *TmpTargetU, TmpBufU ); } },
-    { RevFlag::F_AMOSUB,   [&]{ *TmpTarget -= TmpBuf; } },
-    { RevFlag::F_AMOTHRES, [&]{ *TmpTargetU = *TmpTargetU >= TmpBufU; } },
+  switch( RevFlagAtomic( flags ) ) {
+    case RevFlag::F_AMOADD:   *TmpTarget += TmpBuf; break;
+    case RevFlag::F_AMOXOR:   *TmpTarget ^= TmpBuf; break;
+    case RevFlag::F_AMOAND:   *TmpTarget &= TmpBuf; break;
+    case RevFlag::F_AMOOR:    *TmpTarget |= TmpBuf; break;
+    case RevFlag::F_AMOSWAP:  *TmpTarget  = TmpBuf; break;
+    case RevFlag::F_AMOMIN:   *TmpTarget  = std::min(*TmpTarget,  TmpBuf); break;
+    case RevFlag::F_AMOMAX:   *TmpTarget  = std::max(*TmpTarget,  TmpBuf); break;
+    case RevFlag::F_AMOMINU:  *TmpTargetU = std::min(*TmpTargetU, TmpBufU); break;
+    case RevFlag::F_AMOMAXU:  *TmpTargetU = std::max(*TmpTargetU, TmpBufU); break;
+    case RevFlag::F_AMOSUB:   *TmpTarget -= TmpBuf; break;
+    case RevFlag::F_AMOTHRES: *TmpTargetU = *TmpTargetU >= TmpBufU; break;
+    default: break;
   };
   // clang-format on
-  table.at( RevFlagAtomic( flags ) )();
 }
 
 /// Forza floating-point atomics
 template<typename T>
 static std::enable_if_t<std::is_floating_point_v<T>> ApplyAMO( RevFlag flags, void* Target, T value ) {
-  auto* TmpTarget                                             = static_cast<T*>( Target );
-  auto  TmpBuf                                                = value;
+  auto* TmpTarget = static_cast<T*>( Target );
+  auto  TmpBuf    = value;
 
-  static const std::map<RevFlag, std::function<void()>> table = {
   // clang-format off
-    { RevFlag::F_AMOFADD,  [&]{ *TmpTarget += TmpBuf; } },
-    { RevFlag::F_AMOFSUB,  [&]{ *TmpTarget -= TmpBuf; } },
-    { RevFlag::F_AMOFSUBR, [&]{ *TmpTarget  = TmpBuf - *TmpTarget; } },
-  // clang-format on
+  switch ( RevFlagAtomicFloat( flags) ) {
+    case RevFlag::F_AMOFADD:  *TmpTarget += TmpBuf; break;
+    case RevFlag::F_AMOFSUB:  *TmpTarget -= TmpBuf; break;
+    case RevFlag::F_AMOFSUBR: *TmpTarget  = TmpBuf - *TmpTarget; break;
+    default: break;
   };
-  table.at( RevFlagAtomic( flags ) )();
+  // clang-format on
 }
 
 ///< Apply Atomic Memory Operation
