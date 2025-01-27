@@ -136,21 +136,6 @@ int64_t RingNetNIC::getNextAddress() {
     if( endPoints[i] > myAddr )
       return endPoints[i];
 
-#if 0
-  for( uint32_t i = 0; i < endPoints.size(); i++ ) {
-    output.verbose( CALL_INFO, 5, 0, "TJD: endpoint[%" PRIu32 "]=%" PRIu64 "\n", i, endPoints[i] );
-  }
-  for( uint32_t i = 0; i < endPoints.size(); i++ ) {
-    if( endPoints[i] == myAddr ) {
-      if( ( i + 1 ) <= ( endPoints.size() - 1 ) ) {
-        return endPoints[i + 1];
-      } else {
-        return endPoints[0];
-      }
-    }
-  }
-  return 0;
-#endif
   output.fatal( CALL_INFO, -1, "Failed to find a valid endPoint\n" );
   return 0;
 }

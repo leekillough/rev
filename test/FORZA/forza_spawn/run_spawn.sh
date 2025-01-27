@@ -14,7 +14,7 @@ make clean && make
 
 # Check that the exec was built...
 if [[ -f forza_spawn.exe ]]; then
-  sst --add-lib-path=../../build/src/ ../forza-test-config-ring.py -- -a 4 -z 1 -o 1 -p 1 -r ./forza_spawn.exe -s 1,1:1
+  sst --add-lib-path=../../build/src/ ../forza-test-config-ring.py -- -a 4 -z 1 -o 2 -p 1 -r ./forza_spawn.exe -s 1,1:1
 else
   echo "Test FORZA forza_spawn.c: forza_send.exe not Found - likely build failed"
   exit 1

@@ -330,6 +330,13 @@ public:
     return it != Setter.end() ? it->second : std::function<bool( uint32_t, uint64_t )>{};
   }
 
+  ///< RevCore: FORZA - denote thread was received
+  void ThreadReceivedFromZqm() {
+    this->ThreadReqd = false;
+    output->verbose( CALL_INFO, 9, 0, "packet\n" );
+    output->flush();
+  }
+
 private:
   std::unordered_map<uint32_t, std::function<uint64_t( uint32_t )>>       Getter{};
   std::unordered_map<uint32_t, std::function<bool( uint32_t, uint64_t )>> Setter{};

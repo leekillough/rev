@@ -535,7 +535,7 @@ bool zopNIC::msgNotify( int vn ) {
 
   // if this is a ZIP device (see above)
 
-  // if this is a ZAP device and a thread migration or mzop (scratchpad req, methinks - tjd, 6-sept-24),
+  // if this is a ZAP device and a thread migration or mzop (mzop going to zap should just be scratchpad req, methinks - tjd, 6-sept-24),
   // send it to the RevCPU handler
   if( ( Type == Forza::zopCompID::Z_ZAP0 || Type == Forza::zopCompID::Z_ZAP1 || Type == Forza::zopCompID::Z_ZAP2 ||
         Type == Forza::zopCompID::Z_ZAP3 ) &&

@@ -960,13 +960,26 @@ void RevCPU::handleZOPThreadMigrateIntRegs( Forza::zopEvent* zev ) {
 void RevCPU::handleZOPThreadMigrateSpawn( Forza::zopEvent* zev ) {
   output.verbose( CALL_INFO, 9, 0, "[FORZA][ZAP] Handling thread migration - Spawn case\n" );
 
-  const auto& pkt                              = zev->getPacket();
+  const auto& pkt = zev->getPacket();
   // The thread-specific data is formatted as follows:
   // pkt[0] = <header info>
   // pkt[1] = <header info>
-  // pkt[2] = [63:32] State info [31:0] THREAD PC
-  // pkt[3] = x[31] register contents (5-sept-24, tjd: this is my reading of zap doc...needs some clarification)
+  // pkt[2] = <addr> // part of packet header
+  // pkt[3] = [63:32] State info [31:0] THREAD PC
+  // pkt[4] = x[31] register contents == pointer to spawn block in memory (5-sept-24, tjd: this is my reading of zap doc...needs some clarification)
 
+  for( uint32_t i = 0; i < pkt.size(); i++ )
+    output.verbose( CALL_INFO, 9, 0, "[FORZA][ZAP] SpawnPacket[%" PRIu32 "]=0x%" PRIx64 "\n", i, pkt[i] );
+
+  output.verbose( CALL_INFO, 9, 0, "[FORZA][ZAP] Handling thread migration - Spawn case. Handling incomplete; deleting packet\n" );
+  output.flush();
+
+  // Reset RevCore::ThreadReqd; very hacky, but only one core per CPU in the current model
+  Procs[0]->ThreadReceivedFromZqm();
+
+  delete zev;
+
+#if 0
   // Create the regfile
   std::unique_ptr<RevRegFile> MigratedRegState = std::make_unique<RevRegFile>( Procs[0].get() );
   uint64_t                    pc               = uint32_t( pkt[2] );
@@ -992,6 +1005,7 @@ void RevCPU::handleZOPThreadMigrateSpawn( Forza::zopEvent* zev ) {
 
   output.verbose( CALL_INFO, 1, 0, "[FORZA][ZAP] Received spawn that starts at address: 0x%" PRIx64 "\n", pc );
   ReadyThreads.push_back( std::move( MigratedThread ) );
+#endif
 }
 
 void RevCPU::handleZOPThreadMigrate( Forza::zopEvent* zev ) {
@@ -1234,6 +1248,7 @@ bool RevCPU::clockTick( SST::Cycle_t currentCycle ) {
     HandleThreadStateChangesForProc( i );
 
     if( Procs[i]->HasNoBusyHarts() ) {
+      output.verbose( CALL_INFO, 5, 0, "TJD: Disable=%u at cycle=%" PRIu64 " \n", i, currentCycle );
       Enabled[i] = false;
     }
   }

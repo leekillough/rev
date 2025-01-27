@@ -1662,28 +1662,25 @@ void RevCore::ReqThreadFromZqm() {
   if( !HasIdleHart() )
     return;
 
-#if 1
-  auto* zev = new SST::Forza::zopEvent( Forza::zopMsgT::Z_TMIG, Forza::zopOpc::Z_TMIG_REQUEST );
+  // (24-jan-2025) sim model fills hart 0 before this function is executed
+
+  ThreadReqd = true;
+  auto* zev  = new Forza::zopEvent( Forza::zopMsgT::Z_TMIG, Forza::zopOpc::Z_TMIG_REQUEST );
 
   // set all the fields
   zev->setID( UINT16_MAX );
   zev->setAppID( 0 );
-  zev->setDestZCID( (uint8_t) ( SST::Forza::zopCompID::Z_ZQM ) );
+  zev->setDestZCID( (uint8_t) ( Forza::zopCompID::Z_ZQM ) );
   zev->setDestPCID( (uint8_t) ( zNic->getPCID( zNic->getZoneID() ) ) );
   zev->setDestPrec( (uint8_t) ( zNic->getPrecinctID() ) );
-  zev->setSrcHart( UINT16_MAX );
+  //zev->setSrcHart( UINT16_MAX );
+  zev->setSrcHart( 0 );  // Don't use UINT16_MAX - not appropriately handled by ZOPNET
   zev->setSrcZCID( (uint8_t) ( zNic->getEndpointType() ) );
   zev->setSrcPCID( (uint8_t) ( zNic->getPCID( zNic->getZoneID() ) ) );
   zev->setSrcPrec( (uint8_t) ( zNic->getPrecinctID() ) );
 
   // no payload
-  zNic->send( zev, SST::Forza::zopCompID::Z_ZQM, zNic->getPCID( zNic->getZoneID() ), zNic->getPrecinctID() );
-
-  // no payload
-  output->verbose( CALL_INFO, 9, 0, "ZAP [%" PRIu32 "] sent thread request\n", id );
-  output->flush();
-
-#endif
+  zNic->send( zev, Forza::zopCompID::Z_ZQM, zNic->getPCID( zNic->getZoneID() ), zNic->getPrecinctID() );
 }
 
 bool RevCore::ClockTick( SST::Cycle_t currentCycle ) {
@@ -1693,9 +1690,9 @@ bool RevCore::ClockTick( SST::Cycle_t currentCycle ) {
   ++cycles;
   currentSimCycle = currentCycle;
 
-  // FORZA specific
-  if( zNic && !ThreadReqd )
-    ReqThreadFromZqm();
+  if( !ThreadReqd )
+    output->verbose( CALL_INFO, 9, 0, "AAA: ThreadReqd = false\n" );
+  output->flush();
 
   // -- MAIN PROGRAM LOOP --
   //
@@ -1885,6 +1882,7 @@ bool RevCore::ClockTick( SST::Cycle_t currentCycle ) {
     // if no work is found, don't update the PC
     // just wait and spin
     if( HartHasNoDependencies( HartToDecodeID ) ) {
+      output->verbose( CALL_INFO, 9, 0, "TJD: Core %" PRIu32 " ; No dependency found\n", id );
       std::unique_ptr<RevThread> ActiveThread = PopThreadFromHart( HartToDecodeID );
       ActiveThread->SetState( ThreadState::DONE );
       HartsClearToExecute[HartToDecodeID] = false;
@@ -1896,6 +1894,7 @@ bool RevCore::ClockTick( SST::Cycle_t currentCycle ) {
     if( HartToExecID != _REV_INVALID_HART_ID_ && !IdleHarts[HartToExecID] && HartHasNoDependencies( HartToExecID ) ) {
       // TODO: Is using HartToDecodeID correct?  Everything else here is
       // using HartToExecID
+      output->verbose( CALL_INFO, 9, 0, "TJD: Core %" PRIu32 " ; No exec dependency found\n", id );
       std::unique_ptr<RevThread> ActiveThread = PopThreadFromHart( HartToDecodeID );
       ActiveThread->SetState( ThreadState::DONE );
       HartsClearToExecute[HartToExecID] = false;
@@ -1910,6 +1909,14 @@ bool RevCore::ClockTick( SST::Cycle_t currentCycle ) {
   if( Tracer )
     Tracer->Render( currentCycle );
 #endif
+
+  // FORZA specific
+  if( !ThreadReqd )
+    output->verbose( CALL_INFO, 9, 0, "ThreadReqd = false\n" );
+  output->flush();
+
+  if( zNic && !ThreadReqd )
+    ReqThreadFromZqm();
 
   return rtn;
 }
