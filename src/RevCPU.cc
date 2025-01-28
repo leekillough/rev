@@ -1233,7 +1233,6 @@ bool RevCPU::clockTick( SST::Cycle_t currentCycle ) {
   bool rtn = true;
 
   output.verbose( CALL_INFO, 8, 0, "Cycle: %" PRIu64 "\n", currentCycle );
-  output.flush();
 
   // Process the ZOPQ
   if( EnableRZA ) {
@@ -1326,15 +1325,22 @@ bool RevCPU::clockTick( SST::Cycle_t currentCycle ) {
     rtn = false;
   }
 
+  /**
+   * Making a couple of big assumptions within this little block of code here:
+   * 1. Initial thread always starts and stops on a specific zap; this is also the only zap that is
+   *    registered as a primary component - none of the other zaps are registered this way
+   * 2. The isMainThreadComplete boolean is set once the initial thread goes back to a PC==0
+   *
+   */
   if( zNic ) {
     if( ( Precinct == 0 ) && ( Zone == 0 ) && ( zNic->getEndpointType() == Forza::zopCompID::Z_ZAP0 ) &&
         ( Procs[0]->isMainThreadComplete() ) ) {
       output.verbose( CALL_INFO, 5, 0, "TJD; Ok to end sim\n" );
       primaryComponentOKToEndSim();
     }
+    return false;
   }
   return rtn;
-  //return false;
 }
 
 // Initializes a RevThread object.
