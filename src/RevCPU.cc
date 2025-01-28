@@ -44,11 +44,13 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params ) : SST::Compon
 
   // Inform SST to wait until we authorize it to exit
   EnableRZA                  = params.find<bool>( "enableRZA", 0 );
+#if 0
   if( !EnableRZA ) {
     // RZA's do not call these are they are effectively peripheral components
     registerAsPrimaryComponent();
     primaryComponentDoNotEndSim();
   }
+#endif
 
   bool enableMsgRza = params.find<bool>( "enableMsgRZA", 0 );
 
@@ -219,6 +221,21 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params ) : SST::Compon
       }
       zNic->setEndpointType( zapId );
       output.verbose( CALL_INFO, 4, 0, "[FORZA] device=%s initialized as ZAP device: ZAP%d\n", getName().c_str(), zap );
+
+      if( ( Precinct == 0 ) && ( Zone == 0 ) && ( zapId == Forza::zopCompID::Z_ZAP0 ) ) {
+        output.verbose(
+          CALL_INFO,
+          4,
+          0,
+          "[FORZA] device=%s initialized as ZAP device: ZAP%d, prec=%u, zone=%u \n",
+          getName().c_str(),
+          zap,
+          Precinct,
+          Zone
+        );
+        registerAsPrimaryComponent();
+        primaryComponentDoNotEndSim();
+      }
 
       zoneRing = loadUserSubComponent<SST::Forza::RingNetAPI>( "ring_nic" );
       if( zoneRing ) {
@@ -1216,6 +1233,7 @@ bool RevCPU::clockTick( SST::Cycle_t currentCycle ) {
   bool rtn = true;
 
   output.verbose( CALL_INFO, 8, 0, "Cycle: %" PRIu64 "\n", currentCycle );
+  output.flush();
 
   // Process the ZOPQ
   if( EnableRZA ) {
@@ -1230,7 +1248,7 @@ bool RevCPU::clockTick( SST::Cycle_t currentCycle ) {
   for( uint32_t i = 0; i < Procs.size(); i++ ) {
     // Check if we have more work to assign and places to put it
     UpdateThreadAssignments( i );
-    if( Enabled[i] ) {
+    if( true /* Enabled[i] */ ) {
       if( !Procs[i]->ClockTick( currentCycle ) ) {
         if( EnableCoProc && !CoProcs.empty() ) {
           CoProcs[i]->Teardown();
@@ -1299,13 +1317,21 @@ bool RevCPU::clockTick( SST::Cycle_t currentCycle ) {
       std::ofstream dumpFile( Name + ".dump.final", std::ios::binary );
       Mem->DumpMemSeg( Seg, 16, dumpFile );
     }
-    primaryComponentOKToEndSim();
+    //primaryComponentOKToEndSim();
     output.verbose( CALL_INFO, 5, 0, "OK to end sim at cycle: %" PRIu64 "\n", static_cast<uint64_t>( currentCycle ) );
   } else {
     rtn = false;
   }
 
-  return rtn;
+  if( zNic ) {
+    if( ( Precinct == 0 ) && ( Zone == 0 ) && ( zNic->getEndpointType() == Forza::zopCompID::Z_ZAP0 ) &&
+        ( Procs[0]->isMainThreadComplete() ) ) {
+      output.verbose( CALL_INFO, 5, 0, "TJD; Ok to end sim\n" );
+      primaryComponentOKToEndSim();
+    }
+  }
+  //return rtn;
+  return false;
 }
 
 // Initializes a RevThread object.

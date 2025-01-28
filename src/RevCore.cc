@@ -1690,6 +1690,8 @@ bool RevCore::ClockTick( SST::Cycle_t currentCycle ) {
   ++cycles;
   currentSimCycle = currentCycle;
 
+  output->verbose( CALL_INFO, 8, 0, "Core Cycle: %" PRIu64 "\n", currentCycle );
+
   if( !ThreadReqd )
     output->verbose( CALL_INFO, 9, 0, "AAA: ThreadReqd = false\n" );
   output->flush();
@@ -1889,6 +1891,7 @@ bool RevCore::ClockTick( SST::Cycle_t currentCycle ) {
       HartsClearToDecode[HartToDecodeID]  = false;
       IdleHarts.set( HartToDecodeID );
       AddThreadsThatChangedState( std::move( ActiveThread ) );
+      MainThreadComplete = true;
     }
 
     if( HartToExecID != _REV_INVALID_HART_ID_ && !IdleHarts[HartToExecID] && HartHasNoDependencies( HartToExecID ) ) {

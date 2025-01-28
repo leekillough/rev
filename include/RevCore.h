@@ -337,6 +337,8 @@ public:
     output->flush();
   }
 
+  bool isMainThreadComplete() const { return MainThreadComplete; }
+
 private:
   std::unordered_map<uint32_t, std::function<uint64_t( uint32_t )>>       Getter{};
   std::unordered_map<uint32_t, std::function<bool( uint32_t, uint64_t )>> Setter{};
@@ -359,15 +361,16 @@ private:
   std::bitset<_MAX_HARTS_>              HartsClearToDecode{};   ///< RevCore: Thread is clear to start (proceed with decode)
   std::bitset<_MAX_HARTS_>              HartsClearToExecute{};  ///< RevCore: Thread is clear to execute (no register dependencides)
 
-  Forza::zopAPI*     zNic{};        ///< RevCore: ZOPNic object
-  Forza::zopMsgID*   zNicMsgIds{};  ///< RevCore: FORZA ZOP NIC Message ID handler
-  Forza::RingNetAPI* zoneRing{};    ///< RevCPU: FORZA Zone Ring network
-  bool               ThreadReqd{};  ///< RevCore: FORZA Thread has been requested from ZQM
-  uint32_t           numHarts{};    ///< RevCore: Number of Harts for this core
-  RevOpts*           opts{};        ///< RevCore: options object
-  RevMem*            mem{};         ///< RevCore: memory object
-  RevCoProc*         coProc{};      ///< RevCore: attached co-processor
-  RevLoader*         loader{};      ///< RevCore: loader object
+  Forza::zopAPI*     zNic{};                ///< RevCore: ZOPNic object
+  Forza::zopMsgID*   zNicMsgIds{};          ///< RevCore: FORZA ZOP NIC Message ID handler
+  Forza::RingNetAPI* zoneRing{};            ///< RevCPU: FORZA Zone Ring network
+  bool               ThreadReqd{};          ///< RevCore: FORZA Thread has been requested from ZQM
+  bool               MainThreadComplete{};  /// tjd testing
+  uint32_t           numHarts{};            ///< RevCore: Number of Harts for this core
+  RevOpts*           opts{};                ///< RevCore: options object
+  RevMem*            mem{};                 ///< RevCore: memory object
+  RevCoProc*         coProc{};              ///< RevCore: attached co-processor
+  RevLoader*         loader{};              ///< RevCore: loader object
 
   // Function pointer to the GetNewThreadID function in RevCPU (monotonically increasing thread ID counter)
   std::function<uint32_t()> const GetNewThreadID;
