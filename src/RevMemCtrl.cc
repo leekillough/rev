@@ -218,8 +218,7 @@ bool RevBasicMemCtrl::sendAMORequest(
   // response comes back, we will catch the response, perform
   // the MODIFY (using the operation in flags), then dispatch
   // a WRITE operation.
-  auto tmp = std::make_tuple( Hart, buffer, target, flags, Op, false );
-  AMOTable.insert( { Addr, tmp } );
+  AMOTable.emplace( Addr, std::tuple{ Hart, buffer, target, flags, Op, false } );
 
   // We have the request created and recorded in the AMOTable
   // Push it onto the request queue
@@ -227,7 +226,7 @@ bool RevBasicMemCtrl::sendAMORequest(
 
   // now we record the stat for the particular AMO
   switch( RevFlagAtomic( flags ) ) {
-  // clang-format off
+    // clang-format off
     case RevFlag::F_AMOADD:   recordStat( MemCtrlStats::AMOAddPending,  1 ); break;
     case RevFlag::F_AMOXOR:   recordStat( MemCtrlStats::AMOXorPending,  1 ); break;
     case RevFlag::F_AMOAND:   recordStat( MemCtrlStats::AMOAndPending,  1 ); break;
