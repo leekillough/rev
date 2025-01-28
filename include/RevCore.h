@@ -303,7 +303,7 @@ public:
   bool HasIdleHart() const { return IdleHarts.any(); }
 
   ///< RevCore: FORZA - Request a thread from the ZQM if HART available
-  void ReqThreadFromZqm();
+  void ReqThreadFromZqm( SST::Cycle_t currentCycle );
 
   ///< RevCore: Returns the number of cycles executed so far
   uint64_t GetCycles() const { return cycles; }
@@ -337,7 +337,7 @@ public:
     output->flush();
   }
 
-  bool isMainThreadComplete() const { return MainThreadComplete; }
+  [[nodiscard]] bool isMainThreadComplete() const { return MainThreadComplete; }
 
 private:
   std::unordered_map<uint32_t, std::function<uint64_t( uint32_t )>>       Getter{};

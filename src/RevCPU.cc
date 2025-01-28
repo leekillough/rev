@@ -1246,9 +1246,12 @@ bool RevCPU::clockTick( SST::Cycle_t currentCycle ) {
 
   // Execute each enabled core
   for( uint32_t i = 0; i < Procs.size(); i++ ) {
+    // Have zap(s) request work
+    Procs[i]->ReqThreadFromZqm( currentCycle );
+
     // Check if we have more work to assign and places to put it
     UpdateThreadAssignments( i );
-    if( true /* Enabled[i] */ ) {
+    if( Enabled[i] ) {
       if( !Procs[i]->ClockTick( currentCycle ) ) {
         if( EnableCoProc && !CoProcs.empty() ) {
           CoProcs[i]->Teardown();
@@ -1266,7 +1269,7 @@ bool RevCPU::clockTick( SST::Cycle_t currentCycle ) {
     HandleThreadStateChangesForProc( i );
 
     if( Procs[i]->HasNoBusyHarts() ) {
-      output.verbose( CALL_INFO, 5, 0, "TJD: Disable=%u at cycle=%" PRIu64 " \n", i, currentCycle );
+      //output.verbose( CALL_INFO, 5, 0, "TJD: Disable=%u at cycle=%" PRIu64 " \n", i, currentCycle );
       Enabled[i] = false;
     }
   }
@@ -1330,8 +1333,8 @@ bool RevCPU::clockTick( SST::Cycle_t currentCycle ) {
       primaryComponentOKToEndSim();
     }
   }
-  //return rtn;
-  return false;
+  return rtn;
+  //return false;
 }
 
 // Initializes a RevThread object.

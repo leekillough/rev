@@ -1657,13 +1657,13 @@ void RevCore::MarkLoadComplete( const MemReq& req ) {
   );
 }
 
-void RevCore::ReqThreadFromZqm() {
+void RevCore::ReqThreadFromZqm( SST::Cycle_t currentCycle ) {
   //output->verbose( CALL_INFO, 11, 0, "NOTE Core %" PRIu32 " needs to request a thread\n", id );
-  if( !HasIdleHart() )
+  if( ThreadReqd || !HasIdleHart() )
     return;
 
   // (24-jan-2025) sim model fills hart 0 before this function is executed
-
+  output->verbose( CALL_INFO, 9, 0, "Core %" PRIu32 " requesting a thread at cycle%" PRIu64 "\n", id, currentCycle );
   ThreadReqd = true;
   auto* zev  = new Forza::zopEvent( Forza::zopMsgT::Z_TMIG, Forza::zopOpc::Z_TMIG_REQUEST );
 
@@ -1692,9 +1692,9 @@ bool RevCore::ClockTick( SST::Cycle_t currentCycle ) {
 
   output->verbose( CALL_INFO, 8, 0, "Core Cycle: %" PRIu64 "\n", currentCycle );
 
-  if( !ThreadReqd )
-    output->verbose( CALL_INFO, 9, 0, "AAA: ThreadReqd = false\n" );
-  output->flush();
+  //if( !ThreadReqd )
+  //  output->verbose( CALL_INFO, 9, 0, "AAA: ThreadReqd = false\n" );
+  //output->flush();
 
   // -- MAIN PROGRAM LOOP --
   //
@@ -1913,13 +1913,15 @@ bool RevCore::ClockTick( SST::Cycle_t currentCycle ) {
     Tracer->Render( currentCycle );
 #endif
 
-  // FORZA specific
+    // FORZA specific
+#if 0
   if( !ThreadReqd )
     output->verbose( CALL_INFO, 9, 0, "ThreadReqd = false\n" );
   output->flush();
 
   if( zNic && !ThreadReqd )
     ReqThreadFromZqm();
+#endif
 
   return rtn;
 }
