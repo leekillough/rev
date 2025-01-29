@@ -667,13 +667,7 @@ public:
   void setClearMsgID( bool r ) { ClearMsgID = r; }
 
   /// zopEvent: retrieve the data payload from the packet
-  std::vector<uint64_t> getPayload() {
-    std::vector<uint64_t> P;
-    for( uint32_t i = Z_NUM_HEADER_FLITS; i < Packet.size(); i++ ) {
-      P.push_back( Packet[i] );
-    }
-    return P;
-  }
+  std::vector<uint64_t> getPayload() { return { Packet.begin() + Z_NUM_HEADER_FLITS, Packet.end() }; }
 
   /// zopEvent: set the full source info
   void setFullSrc( uint16_t Hart, zopCompID zoneComp, zopPrecID precComp, uint16_t Prec ) {
@@ -1245,7 +1239,7 @@ private:
   void registerStats();
 
   /// zopNIC: adds a statistic value to the desired entry
-  void recordStat( zopNIC::zopStats Stat, uint64_t Data );
+  void recordStat( zopNIC::zopStats Stat, uint64_t Data = 1 );
 
   /// zopNIC: retrieve the zopStat entry from the target zopEvent
   zopNIC::zopStats getStatFromPacket( zopEvent* ev );

@@ -654,7 +654,7 @@ bool zopNIC::handleFence( zopEvent* ev ) {
     // fence has not been encountered, set it
     ev->setFence();
     HARTFence[ReqHart]++;
-    recordStat( getStatFromPacket( ev ), 1 );
+    recordStat( getStatFromPacket( ev ) );
     output.verbose(
       CALL_INFO,
       9,
@@ -715,7 +715,7 @@ bool zopNIC::clockTick( SST::Cycle_t cycle ) {
         ev->encodeEvent();
         if( iFace->spaceToSend( 0, int( P.size() * 64 ) ) ) {
           // we have space to send
-          recordStat( getStatFromPacket( ev ), 1 );
+          recordStat( getStatFromPacket( ev ) );
           recordStat( zopStats::BytesSent, P.size() * 64 );
           thisCycle++;
           iFace->send( ( *it ), 0 );
@@ -754,7 +754,7 @@ bool zopNIC::clockTick( SST::Cycle_t cycle ) {
             outstanding.push_back( V );
           }
           ev->encodeEvent();
-          recordStat( getStatFromPacket( ev ), 1 );
+          recordStat( getStatFromPacket( ev ) );
           recordStat( zopStats::BytesSent, P.size() * 64 );
           thisCycle++;
           iFace->send( ( *it ), 0 );

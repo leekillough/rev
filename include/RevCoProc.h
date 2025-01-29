@@ -382,7 +382,7 @@ private:
   void registerStats();
 
   /// RZALSCoProc: record the target statistic
-  void recordStat( mzopStats Stat, uint64_t Data );
+  void recordStat( mzopStats Stat, uint64_t Data = 1 );
 
   std::vector<std::pair<Forza::zopEvent*, uint32_t>> LoadQ;  ///< RZALSCoProc: Outstanding load queue
 
@@ -955,7 +955,7 @@ private:
   void registerStats();
 
   /// RZAAMOCoProc: record the target statistic
-  void recordStat( hzopStats Stat, uint64_t Data );
+  void recordStat( hzopStats Stat, uint64_t Data = 1 );
 
   std::vector<std::tuple<Forza::zopEvent*, uint32_t, uint32_t>> AMOQ;  ///< RZAAMOCoProc: Outstanding load queue
 

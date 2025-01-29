@@ -388,7 +388,7 @@ bool RZALSCoProc::handleMZOP( zopEvent* zev, bool& flag ) {
     break;
   }
 
-  recordStat( stat, 1 );
+  recordStat( stat );
 
   if( flag ) {
     // this was a write, signal a success response
@@ -830,7 +830,7 @@ bool RZAAMOCoProc::handleHZOP( zopEvent* zev, bool& flag ) {
   auto flags{ amoOp };
   RevFlagSet( flags, amoRtn );
   Mem->AMOMem( Z_HZOP_PIPE_HART, Addr, size, Alloc.getRegAddr( Rs1 ), Alloc.getRegAddr( Rs2 ), req, flags );
-  recordStat( stat, 1 );
+  recordStat( stat );
 
   // add the request to the AMOQ
   AMOQ.emplace_back( zev, Rs1, Rs2 );
