@@ -13,6 +13,7 @@
 
 // -- C++ Headers
 #include <algorithm>
+#include <array>
 #include <cstddef>
 #include <functional>
 #include <memory>
@@ -274,8 +275,30 @@ protected:
 // ----------------------------------------
 // RevBasicMemCtrl
 // ----------------------------------------
-class RevBasicMemCtrl final : public RevMemCtrl {
-public:
+struct RevBasicMemCtrl final : RevMemCtrl {
+  enum class MemParam : uint32_t {
+    loads,  ///< number of outstanding load requests
+    read = loads,
+    stores,  ///< number of outstanding store requests
+    write = stores,
+    flush,        ///< number of oustanding flush requests
+    lrsc,         ///< number of outstanding LR/SC requests
+    readlock,     ///< number of oustanding readlock requests
+    writeunlock,  ///< number of oustanding writelock requests
+    custom,       ///< number of oustanding custom requests
+    fence,        ///< number of oustanding fence requests
+    ops,          ///< number of ops to issue per cycle
+    END
+  };
+
+  struct MemParam_t {
+    std::array<uint32_t, safe_static_cast<size_t>( MemParam::END )> paramVal{};
+
+    auto& operator[]( MemParam param ) { return paramVal[safe_static_cast<size_t>( param )]; }
+
+    auto& operator[]( MemParam param ) const { return paramVal[safe_static_cast<size_t>( param )]; }
+  };
+
   SST_ELI_REGISTER_SUBCOMPONENT(
     RevBasicMemCtrl,
     "revcpu",
@@ -291,7 +314,7 @@ public:
                           { "max_loads",      "Sets the maximum number of outstanding loads",               "64" },
                           { "max_stores",     "Sets the maximum number of outstanding stores",              "64" },
                           { "max_flush",      "Sets the maxmium number of oustanding flush events",         "64" },
-                          { "max_llsc",       "Sets the maximum number of outstanding LL/SC events",        "64" },
+                          { "max_lrsc",       "Sets the maximum number of outstanding LR/SC events",        "64" },
                           { "max_readlock",   "Sets the maxmium number of outstanding readlock events",     "64" },
                           { "max_writeunlock","Sets the maximum number of outstanding writeunlock events",  "64" },
                           { "max_custom",     "Sets the maximum number of outstanding custom events",       "64" },
@@ -506,16 +529,16 @@ public:
   void handleResp( RESP* ev, const char* name, uint32_t* counter );
 
   /// RevBasicMemCtrl: handle a read response
-  void handleReadResp( StandardMem::ReadResp* ev ) final { handleResp( ev, "ReadResp", &num_read ); }
+  void handleReadResp( StandardMem::ReadResp* ev ) final { handleResp( ev, "ReadResp", &num[MemParam::loads] ); }
 
   /// RevBasicMemCtrl: handle a write response
-  void handleWriteResp( StandardMem::WriteResp* ev ) final { handleResp( ev, "WriteResp", &num_write ); }
+  void handleWriteResp( StandardMem::WriteResp* ev ) final { handleResp( ev, "WriteResp", &num[MemParam::stores] ); }
 
   /// RevBasicMemCtrl: handle a flush response
-  void handleFlushResp( StandardMem::FlushResp* ev ) final { handleResp( ev, "FlushResp", &num_flush ); }
+  void handleFlushResp( StandardMem::FlushResp* ev ) final { handleResp( ev, "FlushResp", &num[MemParam::flush] ); }
 
   /// RevBasicMemCtrl: handle a custom response
-  void handleCustomResp( StandardMem::CustomResp* ev ) final { handleResp( ev, "CustomResp", &num_custom ); }
+  void handleCustomResp( StandardMem::CustomResp* ev ) final { handleResp( ev, "CustomResp", &num[MemParam::custom] ); }
 
   /// RevBasicMemCtrl: handle an invalidate response
   void handleInvResp( StandardMem::InvNotify* ev ) final { handleResp( ev, "InvResp", nullptr ); }
@@ -580,28 +603,10 @@ protected:
 
 private:
   /// RevBasicMemCtrl: process the next memory request
-  bool processNextRqst(
-    uint32_t& t_max_loads,
-    uint32_t& t_max_stores,
-    uint32_t& t_max_flush,
-    uint32_t& t_max_llsc,
-    uint32_t& t_max_readlock,
-    uint32_t& t_max_writeunlock,
-    uint32_t& t_max_custom,
-    uint32_t& t_max_ops
-  );
+  bool processNextRqst( MemParam_t& t );
 
   /// RevBasicMemCtrl: determine if we can instantiate the target memory operation
-  bool isMemOpAvail(
-    const RevMemOp* Op,
-    uint32_t&       t_max_loads,
-    uint32_t&       t_max_stores,
-    uint32_t&       t_max_flush,
-    uint32_t&       t_max_llsc,
-    uint32_t&       t_max_readlock,
-    uint32_t&       t_max_writeunlock,
-    uint32_t&       t_max_custom
-  ) const;
+  bool isMemOpAvail( const RevMemOp* Op, MemParam_t& t ) const;
 
   /// RevBasicMemCtrl: Add a new memory request
   void addMemRqst( RevMemOp* op, Interfaces::StandardMem::Request* rqst ) {
@@ -635,7 +640,10 @@ private:
   void recordStat( MemCtrlStats Stat, uint64_t Data = 1 );
 
   /// RevBasicMemCtrl: returns the total number of outstanding requests
-  uint64_t getTotalRqsts() const { return num_read + num_write + num_llsc + num_readlock + num_writeunlock + num_custom; }
+  uint64_t getTotalRqsts() const {
+    return num[MemParam::loads] + num[MemParam::stores] + num[MemParam::lrsc] + num[MemParam::readlock] +
+           num[MemParam::writeunlock] + num[MemParam::custom];
+  }
 
   /// RevBasicMemCtrl: Determine the number of cache lines are required
   uint32_t getNumCacheLines( uint64_t Addr, uint32_t Size ) const;
@@ -647,31 +655,15 @@ private:
   uint32_t getNumSplitRqsts( RevMemOp* op ) const;
 
   // -- private data members
-  StandardMem*       memIface{};         ///< StandardMem memory interface
-  RevStdMemHandlers* stdMemHandlers{};   ///< StandardMem interface response handlers
-  bool               hasCache{};         ///< detects whether cache layers are present
-  uint32_t           lineSize{};         ///< cache line size
-  uint32_t           max_loads{};        ///< maximum number of outstanding loads
-  uint32_t           max_stores{};       ///< maximum number of outstanding stores
-  uint32_t           max_flush{};        ///< maximum number of oustanding flush events
-  uint32_t           max_llsc{};         ///< maximum number of outstanding llsc events
-  uint32_t           max_readlock{};     ///< maximum number of oustanding readlock events
-  uint32_t           max_writeunlock{};  ///< maximum number of oustanding writelock events
-  uint32_t           max_custom{};       ///< maximum number of oustanding custom events
-  uint32_t           max_ops{};          ///< maximum number of ops to issue per cycle
-
-  uint32_t num_read{};         ///< number of outstanding read requests
-  uint32_t num_write{};        ///< number of outstanding write requests
-  uint32_t num_flush{};        ///< number of outstanding flush requests
-  uint32_t num_llsc{};         ///< number of outstanding LL/SC requests
-  uint32_t num_readlock{};     ///< number of oustanding readlock requests
-  uint32_t num_writeunlock{};  ///< number of oustanding writelock requests
-  uint32_t num_custom{};       ///< number of outstanding custom requests
-  uint32_t num_fence{};        ///< number of oustanding fence requests
-
-  std::vector<StandardMem::Request::id_t>                   requests{};     ///< outstanding StandardMem requests
-  std::vector<RevMemOp*>                                    rqstQ{};        ///< queued memory requests
-  std::unordered_map<StandardMem::Request::id_t, RevMemOp*> outstanding{};  ///< map of outstanding requests
+  StandardMem*                                              memIface{};        ///< StandardMem memory interface
+  RevStdMemHandlers*                                        stdMemHandlers{};  ///< StandardMem interface response handlers
+  bool                                                      hasCache{};        ///< detects whether cache layers are present
+  uint32_t                                                  lineSize{};        ///< cache line size
+  MemParam_t                                                num{};             ///< numbers in effect of memory parameters
+  MemParam_t                                                max{};             ///< maximums allowable of memory parameters
+  std::vector<StandardMem::Request::id_t>                   requests{};        ///< outstanding StandardMem requests
+  std::vector<RevMemOp*>                                    rqstQ{};           ///< queued memory requests
+  std::unordered_map<StandardMem::Request::id_t, RevMemOp*> outstanding{};     ///< map of outstanding requests
 
   /// RevBasicMemCtrl: map of amo operations to memory addresses
   std::unordered_multimap<uint64_t, std::tuple<uint32_t, void*, void*, RevFlag, RevMemOp*, bool>> AMOTable{};
