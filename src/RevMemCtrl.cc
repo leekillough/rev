@@ -175,7 +175,7 @@ bool RevBasicMemCtrl::sendAMORequest(
 
   // now we record the stat for the particular AMO
   switch( RevFlagAtomic( flags ) ) {
-    // clang-format off
+  // clang-format off
     case RevFlag::F_AMOADD:   recordStat( MemCtrlStats::AMOAddPending   ); break;
     case RevFlag::F_AMOXOR:   recordStat( MemCtrlStats::AMOXorPending   ); break;
     case RevFlag::F_AMOAND:   recordStat( MemCtrlStats::AMOAndPending   ); break;
@@ -310,7 +310,7 @@ bool RevBasicMemCtrl::isMemOpAvail(
 ) const {
   auto cmp = []( auto& stat, auto val ) { return stat < val ? ++stat, true : false; };
   switch( Op->getOp() ) {
-  // clang-format off
+    // clang-format off
     case MemOp::MemOpREAD:        return cmp( t_max_loads,       max_loads       );
     case MemOp::MemOpWRITE:       return cmp( t_max_stores,      max_stores      );
     case MemOp::MemOpFLUSH:       return cmp( t_max_flush,       max_flush       );
@@ -388,7 +388,7 @@ bool RevBasicMemCtrl::buildCacheMemRqst( RevMemOp* op, bool& Success ) {
   // if we don't have enough request slots, then requeue the entire RevMemOp
   Success = false;
   switch( op->getOp() ) {
-    // clang-format off
+  // clang-format off
     case MemOp::MemOpREAD:         if( max_loads       - num_read        < NumLines ) return true; break;
     case MemOp::MemOpWRITE:        if( max_stores      - num_write       < NumLines ) return true; break;
     case MemOp::MemOpFLUSH:        if( max_flush       - num_flush       < NumLines ) return true; break;
@@ -905,6 +905,21 @@ void RevBasicMemCtrl::performAMOMemH( RevMemOp* Tmp ) {
   rqstQ.push_back( Op );
 }
 
+// determine if we have an atomic request associated with this read/write operation
+bool RevBasicMemCtrl::isAMO( RevMemOp* op ) {
+  bool isAMO = false;
+  for( auto [i, end] = AMOTable.equal_range( op->getAddr() ); i != end; ) {
+    const auto& [hart, buffer, target, flags, memop, in] = i->second;
+    if( memop == op ) {
+      AMOTable.erase( i++ );  // erase the current entry so we can add a new one
+      isAMO = true;
+    } else {
+      ++i;
+    }
+  }
+  return isAMO;
+}
+
 template<typename RESP>
 void RevBasicMemCtrl::handleResp( RESP* ev, const char* name, uint32_t* counter ) {
   auto id = ev->getID();
@@ -946,38 +961,25 @@ void RevBasicMemCtrl::handleResp( RESP* ev, const char* name, uint32_t* counter 
   if( op->getSplitRqst() <= 1 || getNumSplitRqsts( op ) == 1 ) {
     // if this was not a split request or it was the last request to service, delete the op
 
-    // Handle read and write responses
-    if constexpr( std::is_same_v<RESP, StandardMem::ReadResp> || std::is_same_v<RESP, StandardMem::WriteResp> ) {
+    if constexpr( std::is_same_v<RESP, StandardMem::ReadResp> ) {
+      // handleReadResp
+
+      // determine if we need to sign/zero extend or NaN-box the read value
+      RevHandleFlagResp( op->getTarget(), op->getSize(), op->getFlags() );
 
       // determine if we have an atomic request associated with this read/write operation
-      bool isAMO = false;
-      for( auto [i, end] = AMOTable.equal_range( op->getAddr() ); i != end; ++i ) {
-        const auto& [hart, buffer, target, flags, memop, in] = i->second;
-        if( memop == op ) {
-          AMOTable.erase( i );  // erase the current entry so we can add a new one
-          isAMO = true;
-          break;
-        }
+      if( isAMO( op ) ) {
+        performAMOMemH( op );  // perform the atomic operation and generate a WRITE request
+      } else {
+        op->getMemReq().MarkLoadComplete();  // for non-atomic operations, mark load complete
       }
 
-      if constexpr( std::is_same_v<RESP, StandardMem::ReadResp> ) {
-        // handleReadResp
+    } else if constexpr( std::is_same_v<RESP, StandardMem::WriteResp> ) {
+      // handleWriteResp
 
-        // determine if we need to sign/zero extend or NaN-box the read value
-        RevHandleFlagResp( op->getTarget(), op->getSize(), op->getFlags() );
-
-        if( isAMO ) {
-          performAMOMemH( op );  // perform the atomic operation and generate a WRITE request
-        } else {
-          op->getMemReq().MarkLoadComplete();  // for non-atomic operations, mark load complete
-        }
-
-      } else {
-        // handleWriteResp
-
-        // For atomic operations, mark the original load complete after write is completed
-        if( isAMO )
-          op->getMemReq().MarkLoadComplete();
+      // determine if we have an atomic request associated with this read/write operation
+      if( isAMO( op ) ) {
+        op->getMemReq().MarkLoadComplete();  // mark the original load complete after write is completed
       }
     }
 
