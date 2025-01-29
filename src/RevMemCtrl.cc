@@ -292,7 +292,7 @@ void RevBasicMemCtrl::setup() {
 void RevBasicMemCtrl::finish() {}
 
 bool RevBasicMemCtrl::isMemOpAvail( const RevMemOp* Op, MemParam_t& t ) const {
-  MemParam param;
+  MemParam param{};
   // clang-format off
   switch( Op->getOp() ) {
     case MemOp::MemOpREAD:         param = MemParam::loads;        break;

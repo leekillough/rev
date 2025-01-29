@@ -275,7 +275,8 @@ protected:
 // ----------------------------------------
 // RevBasicMemCtrl
 // ----------------------------------------
-struct RevBasicMemCtrl final : RevMemCtrl {
+class RevBasicMemCtrl final : public RevMemCtrl {
+public:
   enum class MemParam : uint32_t {
     loads,  ///< number of outstanding load requests
     read = loads,
