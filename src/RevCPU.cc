@@ -222,21 +222,6 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params ) : SST::Compon
       zNic->setEndpointType( zapId );
       output.verbose( CALL_INFO, 4, 0, "[FORZA] device=%s initialized as ZAP device: ZAP%d\n", getName().c_str(), zap );
 
-      if( ( Precinct == 0 ) && ( Zone == 0 ) && ( zapId == Forza::zopCompID::Z_ZAP0 ) ) {
-        output.verbose(
-          CALL_INFO,
-          4,
-          0,
-          "[FORZA] device=%s initialized as ZAP device: ZAP%d, prec=%u, zone=%u \n",
-          getName().c_str(),
-          zap,
-          Precinct,
-          Zone
-        );
-        registerAsPrimaryComponent();
-        primaryComponentDoNotEndSim();
-      }
-
       zoneRing = loadUserSubComponent<SST::Forza::RingNetAPI>( "ring_nic" );
       if( zoneRing ) {
         output.verbose( CALL_INFO, 4, 0, "[FORZA] device=%s create zone ring\n", getName().c_str() );
@@ -248,6 +233,21 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params ) : SST::Compon
       output.flush();
     }
   }
+
+  // Configure some SST registration
+  if( !EnableRZA && !EnableZopNIC ) {
+    // Not FORZA - treat per normal
+    registerAsPrimaryComponent();
+    primaryComponentDoNotEndSim();
+  }
+  if( !EnableRZA ) {
+    // We are a FORZA ZAP - only want zone 0 to be the primary components...and legit, probably only zap0, but not sure
+    // how we can enforce that....hmmmm.
+    if( ( Precinct == 0 ) && ( Zone == 0 ) /* && ( zNic->getEndpointType() == Forza::zopCompID::Z_ZAP0 ) */ ) {
+      registerAsPrimaryComponent();
+      primaryComponentDoNotEndSim();
+    }
+  }  // else, we're a FORZA RZA and are effectively a peripheral component
 
   // Set TLB Size
   auto tlbSize = params.find<uint32_t>( "tlbSize", 512 );
@@ -1245,8 +1245,10 @@ bool RevCPU::clockTick( SST::Cycle_t currentCycle ) {
 
   // Execute each enabled core
   for( uint32_t i = 0; i < Procs.size(); i++ ) {
-    // Have zap(s) request work
-    Procs[i]->ReqThreadFromZqm( currentCycle );
+    if( EnableZopNIC ) {
+      // Have zap(s) request work
+      Procs[i]->ReqThreadFromZqm( currentCycle );
+    }
 
     // Check if we have more work to assign and places to put it
     UpdateThreadAssignments( i );
@@ -1319,7 +1321,8 @@ bool RevCPU::clockTick( SST::Cycle_t currentCycle ) {
       std::ofstream dumpFile( Name + ".dump.final", std::ios::binary );
       Mem->DumpMemSeg( Seg, 16, dumpFile );
     }
-    //primaryComponentOKToEndSim();
+    if( !EnableZopNIC )  // probably not FORZA
+      primaryComponentOKToEndSim();
     output.verbose( CALL_INFO, 5, 0, "OK to end sim at cycle: %" PRIu64 "\n", static_cast<uint64_t>( currentCycle ) );
   } else {
     rtn = false;
@@ -1333,7 +1336,7 @@ bool RevCPU::clockTick( SST::Cycle_t currentCycle ) {
    *
    */
   if( zNic ) {
-    if( ( Precinct == 0 ) && ( Zone == 0 ) && ( zNic->getEndpointType() == Forza::zopCompID::Z_ZAP0 ) &&
+    if( ( Precinct == 0 ) && ( Zone == 0 ) /* && ( zNic->getEndpointType() == Forza::zopCompID::Z_ZAP0 ) */ &&
         ( Procs[0]->isMainThreadComplete() ) ) {
       output.verbose( CALL_INFO, 5, 0, "TJD; Ok to end sim\n" );
       primaryComponentOKToEndSim();

@@ -331,11 +331,7 @@ public:
   }
 
   ///< RevCore: FORZA - denote thread was received
-  void ThreadReceivedFromZqm() {
-    this->ThreadReqd = false;
-    output->verbose( CALL_INFO, 9, 0, "packet\n" );
-    output->flush();
-  }
+  void ThreadReceivedFromZqm() { ThreadReqd = false; }
 
   [[nodiscard]] bool isMainThreadComplete() const { return MainThreadComplete; }
 

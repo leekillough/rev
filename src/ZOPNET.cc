@@ -750,7 +750,7 @@ bool zopNIC::clockTick( SST::Cycle_t cycle ) {
           bool skip =
             ( ev->getType() == SST::Forza::zopMsgT::Z_RESP ) && ( ( ev->getDestZCID() == (uint8_t) SST::Forza::zopCompID::Z_ZEN ) ||
                                                                   ( ev->getDestZCID() == (uint8_t) SST::Forza::zopCompID::Z_ZQM ) );
-          skip = ( skip && ( ev->getType() == SST::Forza::zopMsgT::Z_TMIG ) );  //also skip anything migrate related
+          skip = ( skip || ( ev->getType() == SST::Forza::zopMsgT::Z_TMIG ) );  //also skip anything migrate related
           if( ( ev->getOpc() != SST::Forza::zopOpc::Z_MSG_ZBAR ) && ( !skip ) ) {
             ev->setID( msgId[Hart].getMsgId() );
             auto V = std::make_tuple( Hart, ev->getID(), ev->isRead(), ev->getTarget(), ev->getOpc(), ev->getMemReq() );
