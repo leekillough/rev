@@ -296,11 +296,8 @@ uint32_t RevBasicMemCtrl::getNumCacheLines( uint64_t Addr, uint32_t Size ) const
 
 bool RevBasicMemCtrl::buildCacheMemRqst( const std::shared_ptr<RevMemOp>& op ) {
   uint32_t bytesLeft = op->getSize();
-  if( !bytesLeft )
-    return false;
-
-  uint64_t base     = op->getAddr();
-  uint32_t NumLines = getNumCacheLines( base, bytesLeft );
+  uint64_t base      = op->getAddr();
+  uint32_t NumLines  = getNumCacheLines( base, bytesLeft );
 
 #ifdef _REV_DEBUG_
   std::cout << "Building caching mem request for addr=0x" << std::hex << base << std::dec << "; NumLines = " << NumLines
@@ -493,33 +490,9 @@ bool RevBasicMemCtrl::buildStandardMemRqst( const std::shared_ptr<RevMemOp>& op 
   }
 }
 
-/// RevBasicMemCtrl: determine if there are any pending AMOs that would prevent a request from dispatching
-bool RevBasicMemCtrl::isPendingAMO( std::list<std::shared_ptr<RevMemOp>>::const_iterator Slot ) const {
-  if( AMOTable.empty() )
-    return false;
-  auto Hart  = ( *Slot )->getHart();
-  auto Flags = ( *Slot )->getFlags();
-  for( auto it = rqstQ.cbegin(); it != Slot; ++it ) {
-    // if a preceding request is from the same hart
-    if( ( *it )->getHart() == Hart ) {
-      if( RevFlagAtomic( Flags ) != RevFlag::F_NONE && RevFlagHas( Flags, RevFlag::F_RL ) ) {
-        // this implies that the same Hart has preceding memory ops
-        // in which case, we can't dispatch this release AMO until they clear
-        return true;
-      }
-      auto flags = ( *it )->getFlags();
-      if( RevFlagAtomic( flags ) != RevFlag::F_NONE && RevFlagHas( flags, RevFlag::F_AQ ) ) {
-        // This implies that we found a preceding request in the request queue that:
-        // 1) was an AMO, 2) had the AQ flag set, and 3) came from the same HART as 'Slot'.
-        // We must wait until this operation clears before this particular request can proceed.
-        return true;
-      }
-    }
-  }
-  return false;
-}
-
 bool RevBasicMemCtrl::processNextRqst( MemOpParams& memOps ) {
+  std::unordered_set<uint32_t> pastHartRequests, pastHartAcquires;
+
   // retrieve the next candidate memory operation
   for( auto Slot = rqstQ.cbegin(); Slot != rqstQ.cend(); ++Slot ) {
     MemOp memOp = ( *Slot )->getOp();
@@ -533,13 +506,22 @@ bool RevBasicMemCtrl::processNextRqst( MemOpParams& memOps ) {
       return false;
     }
 
+    auto Hart  = ( *Slot )->getHart();
+    auto Flags = ( *Slot )->getFlags();
+
     // If there are request slots available for this operation
     if( memOps[memOp] < memOpMax[memOp] ) {
-      // determine if we have any AMOs that would prevent us
-      // from dispatching this request.  if this returns 'true'
-      // then we can't dispatch the request.  note that
-      // we do this after processing FENCE requests
-      if( isPendingAMO( Slot ) )
+      // Determine if we have any AMOs that would prevent us from dispatching this request.
+      // Note that we do this AFTER processing FENCE requests.
+
+      // If this request has atomic flags and the Release flag, delay it if any previous requests match the same hart
+      // This implies that the same Hart has preceding memory ops in which case, we can't dispatch this release until they clear
+      if( RevFlagAtomic( Flags ) != RevFlag::F_NONE && RevFlagHas( Flags, RevFlag::F_RL ) && pastHartRequests.count( Hart ) )
+        return false;
+
+      // Delay if any past requests on the same hart were acquires
+      // We must wait until they clear before this particular request can proceed
+      if( pastHartAcquires.count( Hart ) )
         return false;
 
       // build a StandardMem request
@@ -555,6 +537,13 @@ bool RevBasicMemCtrl::processNextRqst( MemOpParams& memOps ) {
         return false;
       }
     }
+
+    // Record this hart as having been seen
+    pastHartRequests.insert( Hart );
+
+    // Record this hart as having been seen if this is an atomic acquire request
+    if( RevFlagAtomic( Flags ) != RevFlag::F_NONE && RevFlagHas( Flags, RevFlag::F_AQ ) )
+      pastHartAcquires.insert( Hart );
   }
 
   // if we reach this point, then we've attempted to

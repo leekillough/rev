@@ -602,9 +602,6 @@ private:
   /// RevBasicMemCtrl: build cache-aligned requests
   bool buildCacheMemRqst( const std::shared_ptr<RevMemOp>& op );
 
-  /// RevBasicMemCtrl: determine if there are any pending AMOs that would prevent a request from dispatching
-  bool isPendingAMO( std::list<std::shared_ptr<RevMemOp>>::const_iterator Slot ) const;
-
   /// RevBasicMemCtrl: register statistics
   void registerStats();
 
