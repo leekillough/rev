@@ -603,7 +603,7 @@ private:
   bool buildCacheMemRqst( const std::shared_ptr<RevMemOp>& op );
 
   /// RevBasicMemCtrl: determine if there are any pending AMOs that would prevent a request from dispatching
-  bool isPendingAMO( std::deque<std::shared_ptr<RevMemOp>>::const_iterator Slot ) const;
+  bool isPendingAMO( std::list<std::shared_ptr<RevMemOp>>::const_iterator Slot ) const;
 
   /// RevBasicMemCtrl: register statistics
   void registerStats();
@@ -633,7 +633,7 @@ private:
   MemOpParams  memOpNum{};  ///< numbers in effect of memory parameters
   MemOpParams  memOpMax{};  ///< maximums allowable of memory parameters
   std::unordered_map<StandardMem::Request::id_t, std::shared_ptr<RevMemOp>> outstanding{};  ///< map of outstanding requests
-  std::deque<std::shared_ptr<RevMemOp>>                                     rqstQ{};        ///< queued memory requests
+  std::list<std::shared_ptr<RevMemOp>>                                      rqstQ{};        ///< queued memory requests
 
   ///< StandardMem interface response handlers
   const std::unique_ptr<RevStdMemHandlers> stdMemHandlers{ new RevStdMemHandlers( this, output.get() ) };

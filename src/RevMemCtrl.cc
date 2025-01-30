@@ -494,7 +494,7 @@ bool RevBasicMemCtrl::buildStandardMemRqst( const std::shared_ptr<RevMemOp>& op 
 }
 
 /// RevBasicMemCtrl: determine if there are any pending AMOs that would prevent a request from dispatching
-bool RevBasicMemCtrl::isPendingAMO( std::deque<std::shared_ptr<RevMemOp>>::const_iterator Slot ) const {
+bool RevBasicMemCtrl::isPendingAMO( std::list<std::shared_ptr<RevMemOp>>::const_iterator Slot ) const {
   if( AMOTable.empty() )
     return false;
   auto Hart  = ( *Slot )->getHart();
