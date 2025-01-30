@@ -716,30 +716,24 @@ bool RevBasicMemCtrl::isAMO( const std::shared_ptr<RevMemOp>& op ) {
 }
 
 template<typename RESP>
-void RevBasicMemCtrl::handleResp( RESP* ev, const char* name, uint32_t* counter ) {
-  auto id = ev->getID();
-  auto it = std::find( requests.begin(), requests.end(), id );
-  if( it == requests.end() )
-    output->fatal( CALL_INFO, -1, "Error : found unknown %s\n", name );
-  requests.erase( it );
-
-  auto& op = outstanding[id];
-  if( !op )
-    output->fatal( CALL_INFO, -1, "RevMemOp is null in handle%s\n", name );
+void RevBasicMemCtrl::handleResp( RESP* ev, const char* name ) {
+  auto it = outstanding.find( ev->getID() );
+  if( it == outstanding.end() )
+    output->fatal( CALL_INFO, -1, "Outstanding memory request not found in handle%s\n", name );
+  const auto& op = it->second;
 
 #ifdef _REV_DEBUG_
-  std::cout << "handle" << name << " : id=" << id << " @Addr= 0x" << std::hex << op->getAddr() << std::dec << std::endl;
+  std::cout << "handle" << name << " : id=" << ev->getID() << " @Addr= 0x" << std::hex << op->getAddr() << std::dec << std::endl;
 #endif
 
   // For read responses, handle split requests
   if constexpr( std::is_same_v<RESP, StandardMem::ReadResp> ) {
 
 #ifdef _REV_DEBUG_
-    for( uint32_t i = 0; i < op->getSize(); i++ ) {
-      std::cout << "               : data[" << i << "] = " << (uint32_t) ( ev->data[i] ) << std::endl;
-    }
+    for( uint32_t i = 0; i < op->getSize(); i++ )
+      std::cout << "               : data[" << i << "] = " << uint32_t( ev->data[i] ) << std::endl;
     std::cout << "isOutstanding val = 0x" << std::hex << op->getMemReq().isOutstanding << std::dec << std::endl;
-    std::cout << "Address of the target register = 0x" << std::hex << (uint64_t*) ( op->getTarget() ) << std::dec << std::endl;
+    std::cout << "Address of the target register = 0x" << std::hex << op->getTarget() << std::dec << std::endl;
 #endif
 
     // determine if we have a split read request
@@ -779,10 +773,9 @@ void RevBasicMemCtrl::handleResp( RESP* ev, const char* name, uint32_t* counter 
     }
   }
 
-  outstanding.erase( id );
-  delete ev;
-  if( counter )
-    --*counter;
+  --memOpNum[op->getOp()];  // decrement the number of outstanding requests of this MemOp
+  outstanding.erase( it );  // erase the entry with this id
+  delete ev;                // delete the response
 }
 
 bool RevBasicMemCtrl::clockTick( Cycle_t cycle ) {
