@@ -29,8 +29,10 @@ exec >> "rev.jenkins.${SLURM_JOB_ID}.out" 2>&1
 sst --version
 sst-info revcpu
 
-#-- Stage 2: setup the symlinks
-ln -s /jenkins/forza/GT/sst-forza-elements forza-elts
+#-- Stage 2: setup the GT components
+rm -Rf ./forza-elts
+mkdir -p forza-elts
+cp -R /jenkins/forza/GT/sst-forza-elements/* ./forza-elts/
 
 #-- Stage 3: setup the build directories
 mkdir -p build
