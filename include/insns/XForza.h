@@ -44,7 +44,7 @@ class XForza : public RevExt {
 
   static bool resched( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) {
     // update the cost
-    R->cost += M->RandCost( F->GetMinCost(), F->GetMaxCost() );
+    M->FenceMem( F->GetHartToExecID() );
     R->AdvancePC( Inst );
     return true;
   }
