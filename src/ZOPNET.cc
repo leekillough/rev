@@ -94,7 +94,7 @@ void zopNIC::registerStats() {
          "MZOPSent",
          "HZOPACSent",
          "HZOPVSent",
-         "RZOPSent",
+         "PZOPSent",
          "MSGSent",
          "TMIGSent",
          "TMGTSent",
@@ -125,7 +125,7 @@ zopNIC::zopStats zopNIC::getStatFromPacket( zopEvent* ev ) {
   case zopMsgT::Z_MZOP: return zopStats::MZOPSent;
   case zopMsgT::Z_HZOPAC: return zopStats::HZOPACSent;
   //case zopMsgT::Z_HZOPV: return zopStats::HZOPVSent;
-  //case zopMsgT::Z_RZOP: return zopStats::RZOPSent;
+  //case zopMsgT::Z_PZOP: return zopStats::PZOPSent;
   case zopMsgT::Z_MSG: return zopStats::MSGSent;
   case zopMsgT::Z_TMIG: return zopStats::TMIGSent;
   //case zopMsgT::Z_TMGT: return zopStats::TMGTSent;

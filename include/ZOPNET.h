@@ -96,7 +96,7 @@ inline constexpr uint64_t Z_FLIT_RESZERO     = 0;
 
 inline constexpr uint64_t Z_MZOP_PIPE_HART   = 0;
 inline constexpr uint64_t Z_HZOP_PIPE_HART   = 1;
-inline constexpr uint64_t Z_RZOP_PIPE_HART   = 2;
+//inline constexpr uint64_t Z_RZOP_PIPE_HART   = 2; // unused
 
 inline constexpr uint64_t Z_MZOP_DMA_MAX     = 2040;
 
@@ -109,12 +109,12 @@ enum class zopMsgT : uint8_t {
   // Commented items are currently unused/unsupported
   Z_MZOP    = 0b00000,  /// FORZA MZOP
   Z_HZOPAC  = 0b00001,  /// FORZA HZOP ATOMICS/CUSTOM
-  //Z_HZOPV  = 0b00010,  /// FORZA HZOP VECTOR
-  //Z_RZOP   = 0b00011,  /// FORZA RZOP
+  //Z_HZOPV = 0b00010,  /// FORZA HZOP VECTOR
+  //Z_PZOP    = 0b00011,  /// FORZA PZOP
   Z_MSG     = 0b00100,  /// FORZA MESSAGING
   Z_TMIG    = 0b00101,  /// FORZA THREAD MIGRATION
-  //Z_TMGT   = 0b00110,  /// FORZA THREAD MANAGEMENT
-  //Z_SYSC   = 0b00111,  /// FORZA SYSCALL
+  //Z_TMGT  = 0b00110,  /// FORZA THREAD MANAGEMENT
+  //Z_SYSC  = 0b00111,  /// FORZA SYSCALL
   Z_RESP    = 0b01000,  /// FORZA RESPONSE
   // -- 0b01001 - 0b01101 UNASSIGNED
   Z_FENCE   = 0b01110,  /// FORZE FENCE
@@ -410,6 +410,7 @@ enum class zopOpc : uint8_t {
   Z_TMIG_INTREGS       = 0b00000000,  /// zopOpc: THREAD MIGRATION migrate state + int regs
   Z_TMIG_FPREGS        = 0b00000001,  /// zopOpc: THREAD MIGRATION migrate state + int regs + fp regs
   Z_TMIG_SPAWN         = 0b00000010,  /// zopOpc: THREAD MIGRATION Spawned thread
+  Z_TMIG_PZOP          = 0b00000011,  /// zopOpc: THREAD MIGRATION PZOP
   Z_TMIG_REQUEST       = 0b00000100,  /// zopOpc: THREAD MIGRATION ZAP requesting a thread
 
   // -- RZA RESPONSE --
@@ -907,7 +908,7 @@ public:
     case zopMsgT::Z_MZOP: return "MZOP";
     case zopMsgT::Z_HZOPAC: return "HZOPAC";
     //case zopMsgT::Z_HZOPV: return "HZOPV";
-    //case zopMsgT::Z_RZOP: return "RZOP";
+    //case zopMsgT::Z_PZOP: return "PZOP";
     case zopMsgT::Z_MSG: return "MSG";
     case zopMsgT::Z_TMIG: return "TMIG";
     //case zopMsgT::Z_TMGT: return "TMGT";
@@ -1089,7 +1090,7 @@ public:
     case zopMsgT::Z_MZOP: return "MZOP";
     case zopMsgT::Z_HZOPAC: return "HZOPAC";
     //case zopMsgT::Z_HZOPV: return "HZOPV";
-    //case zopMsgT::Z_RZOP: return "RZOP";
+    //case zopMsgT::Z_PZOP: return "PZOP";
     case zopMsgT::Z_MSG: return "MSG";
     case zopMsgT::Z_TMIG: return "TMIG";
     //case zopMsgT::Z_TMGT: return "TMGT";
@@ -1130,7 +1131,7 @@ public:
     { "MZOPSent", "Number of MZOPs sent", "count", 1 },
     { "HZOPACSent", "Number of HZOPACs sent", "count", 1 },
     { "HZOPVSent", "Number of HZOPVs sent", "count", 1 },
-    { "RZOPSent", "Number of RZOPs sent", "count", 1 },
+    { "PZOPSent", "Number of PZOPs sent", "count", 1 },
     { "MSGSent", "Number of MSGs sent", "count", 1 },
     { "TMIGSent", "Number of TMIGs sent", "count", 1 },
     { "TMGTSent", "Number of TMGTs sent", "count", 1 },
@@ -1145,7 +1146,7 @@ public:
     MZOPSent   = 1,
     HZOPACSent = 2,
     HZOPVSent  = 3,
-    RZOPSent   = 4,
+    PZOPSent   = 4,
     MSGSent    = 5,
     TMIGSent   = 6,
     TMGTSent   = 7,
