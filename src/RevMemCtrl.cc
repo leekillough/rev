@@ -810,9 +810,8 @@ void RevBasicMemCtrl::handleResp( RESP* ev, const char* name ) {
     }
   }
 
-  --memOpNum[op->getOp()];  // decrement the number of outstanding requests of this MemOp
-  outstanding.erase( it );  // erase the entry with this id
-  delete ev;                // delete the response
+  outstanding.erase( it );
+  delete ev;
 }
 
 bool RevBasicMemCtrl::clockTick( Cycle_t cycle ) {

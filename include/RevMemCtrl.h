@@ -533,16 +533,28 @@ public:
   void handleResp( RESP* ev, const char* name );
 
   /// RevBasicMemCtrl: handle a read response
-  void handleReadResp( StandardMem::ReadResp* ev ) final { handleResp( ev, "ReadResp" ); }
+  void handleReadResp( StandardMem::ReadResp* ev ) final {
+    handleResp( ev, "ReadResp" );
+    --memOpNum[MemOp::MemOpREAD];
+  }
 
   /// RevBasicMemCtrl: handle a write response
-  void handleWriteResp( StandardMem::WriteResp* ev ) final { handleResp( ev, "WriteResp" ); }
+  void handleWriteResp( StandardMem::WriteResp* ev ) final {
+    handleResp( ev, "WriteResp" );
+    --memOpNum[MemOp::MemOpWRITE];
+  }
 
   /// RevBasicMemCtrl: handle a flush response
-  void handleFlushResp( StandardMem::FlushResp* ev ) final { handleResp( ev, "FlushResp" ); }
+  void handleFlushResp( StandardMem::FlushResp* ev ) final {
+    handleResp( ev, "FlushResp" );
+    --memOpNum[MemOp::MemOpFLUSH];
+  }
 
   /// RevBasicMemCtrl: handle a custom response
-  void handleCustomResp( StandardMem::CustomResp* ev ) final { handleResp( ev, "CustomResp" ); }
+  void handleCustomResp( StandardMem::CustomResp* ev ) final {
+    handleResp( ev, "CustomResp" );
+    --memOpNum[MemOp::MemOpCUSTOM];
+  }
 
   /// RevBasicMemCtrl: handle an invalidate response
   void handleInvResp( StandardMem::InvNotify* ev ) final { handleResp( ev, "InvResp" ); }
