@@ -989,6 +989,57 @@ void RevCPU::handleZOPThreadMigrateSpawn( Forza::zopEvent* zev ) {
     output.verbose( CALL_INFO, 9, 0, "[FORZA][ZAP] SpawnPacket[%" PRIu32 "]=0x%" PRIx64 "\n", i, pkt[i] );
 
   output.verbose( CALL_INFO, 9, 0, "[FORZA][ZAP] Handling thread migration - Spawn case. Handling incomplete; deleting packet\n" );
+
+  // Reset RevCore::ThreadReqd; very hacky, but only one core per CPU in the current model
+  Procs[0]->ThreadReceivedFromZqm();
+
+  delete zev;
+
+#if 0
+  // Create the regfile
+  std::unique_ptr<RevRegFile> MigratedRegState = std::make_unique<RevRegFile>( Procs[0].get() );
+  uint64_t                    pc               = uint32_t( pkt[2] );
+  MigratedRegState->SetPC( pc );
+  for( uint32_t i = 1; i < 31; i++ ) {
+    MigratedRegState->SetX( i, 0 );
+  }
+  MigratedRegState->SetX( 31, pkt[3] );
+
+  uint64_t ThreadMemTopAddr       = MigratedRegState->GetX<uint64_t>( RevReg::tp );
+  uint64_t ThreadMemBaseAddr      = ThreadMemTopAddr - Mem->GetTLSSize() - _STACK_SIZE_;
+
+  // TODO: Remove ThreadMemSeg upon ThreadCompletion (ie. ThreadState == DONE)
+  std::shared_ptr<MemSegment> seg = std::make_shared<MemSegment>( ThreadMemBaseAddr, Mem->GetTLSSize() + _STACK_SIZE_ );
+  Mem->GetThreadMemSegs().push_back( seg );
+
+  std::unique_ptr<RevThread> MigratedThread = std::make_unique<RevThread>(
+    GetNewThreadID(),  // TODO: Include in Payload
+    _INVALID_TID_,     // TODO: Include in payload
+    seg,
+    std::move( MigratedRegState )
+  );
+
+  output.verbose( CALL_INFO, 1, 0, "[FORZA][ZAP] Received spawn that starts at address: 0x%" PRIx64 "\n", pc );
+  ReadyThreads.push_back( std::move( MigratedThread ) );
+#endif
+}
+
+void RevCPU::handleZOPThreadMigratePZOP( Forza::zopEvent* zev ) {
+  output.verbose( CALL_INFO, 9, 0, "[FORZA][ZAP] Handling thread migration - PZOP case\n" );
+
+  const auto& pkt = zev->getPacket();
+  // The thread-specific data is formatted as follows:
+  // pkt[0] = <header info>
+  // pkt[1] = <header info>
+  // pkt[2] = <addr> // part of packet header
+  ///// TODO: Below here needs to be updated
+  // pkt[3] = [63:32] State info [31:0] THREAD PC
+  // pkt[4] = x[31] register contents == pointer to spawn block in memory (5-sept-24, tjd: this is my reading of zap doc...needs some clarification)
+
+  for( uint32_t i = 0; i < pkt.size(); i++ )
+    output.verbose( CALL_INFO, 9, 0, "[FORZA][ZAP] PZOPPacket[%" PRIu32 "]=0x%" PRIx64 "\n", i, pkt[i] );
+
+  output.verbose( CALL_INFO, 9, 0, "[FORZA][ZAP] Handling thread migration - PZOP case. Handling incomplete; deleting packet\n" );
   output.flush();
 
   // Reset RevCore::ThreadReqd; very hacky, but only one core per CPU in the current model
@@ -1032,6 +1083,7 @@ void RevCPU::handleZOPThreadMigrate( Forza::zopEvent* zev ) {
     output.fatal( CALL_INFO, -1, "[FORZA][ZAP] TMIG_FPREGS not yet handled; message ID=%" PRIu16 "\n", zev->getID() );
     break;
   case SST::Forza::zopOpc::Z_TMIG_SPAWN: handleZOPThreadMigrateSpawn( zev ); break;
+  case SST::Forza::zopOpc::Z_TMIG_PZOP: handleZOPThreadMigratePZOP( zev ); break;
   default:
     output.fatal( CALL_INFO, -1, "[FORZA][ZAP] Invalid TMIG opcode; opcode=%" PRIu8 "\n", static_cast<uint8_t>( zev->getOpc() ) );
     break;

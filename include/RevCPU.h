@@ -432,6 +432,9 @@ private:
   /// RevCPU: Handle FORZA Thread Migration with a spawned thread
   void handleZOPThreadMigrateSpawn( Forza::zopEvent* zev );
 
+  /// RevCPU: Handle FORZA Thread Migration with a spawned thread
+  void handleZOPThreadMigratePZOP( Forza::zopEvent* zev );
+
   /// RevCPU: Handle FORZA Thread Migration (Top level)
   void handleZOPThreadMigrate( Forza::zopEvent* zev );
 

@@ -3770,6 +3770,7 @@ const std::unordered_map<uint32_t, EcallStatus(RevCore::*)()> RevCore::Ecalls = 
     { 4015, &RevCore::ECALL_forza_debug_print }, //, forza_debug_print();
     { 4016, &RevCore::ECALL_forza_remote_update },      //, forza_remote_update(uint64_t *dest, uint64_t data);
     { 4017, &RevCore::ECALL_forza_spawn_word },      //, forza_spawn_word(uint64_t data);
+    { 4018, &RevCore::ECALL_forza_pzop_word },      //, forza_pzop_word(uint64_t data);
     { 9000, &RevCore::ECALL_dump_mem_range },           // rev_dump_mem_range(uint64_t addr, uint64_t size)
     { 9001, &RevCore::ECALL_dump_mem_range_to_file },   // rev_dump_mem_range_to_file(const unsigned char* outputFile, uint64_t addr, uint64_t size)
     { 9002, &RevCore::ECALL_dump_stack },               // rev_dump_stack()
@@ -4510,6 +4511,50 @@ EcallStatus RevCore::ECALL_forza_spawn_word() {
     SST::Forza::zopCompID::Z_ZEN,
     SST::Forza::ringMsgT::R_UPDATE,
     Forza::R_ZENEQS,
+    data
+  );
+
+  if( zoneRing ) {
+    int64_t next_dest = zoneRing->getNextAddress();
+    output->verbose(
+      CALL_INFO,
+      5,
+      0,
+      "[ZAP] %" PRIu8 " sending ring message; CSR=0x%" PRIx16 "; op=%" PRIu8 "\n",
+      static_cast<uint8_t>( zNic->getEndpointType() ),
+      ring_ev->getCSR(),
+      static_cast<uint8_t>( ring_ev->getOp() )
+    );
+    zoneRing->send( ring_ev, next_dest );
+  } else {
+    output->verbose( CALL_INFO, 5, 0, "[ERROR] NO RING NETWORK\n" );
+    delete ring_ev;
+  }
+
+  return EcallStatus::SUCCESS;
+}
+
+// 4018, forza_pzop_word
+// using this to test out the pzop plumbing
+EcallStatus RevCore::ECALL_forza_pzop_word() {
+  uint64_t data = RegFile->GetX<uint64_t>( RevReg::a0 );
+
+  output->verbose(
+    CALL_INFO,
+    2,
+    0,
+    "ECALL: forza_pzop_word called by thread %" PRIu32 " on hart %" PRIu32 ", val=%" PRIu32 "\n",
+    GetActiveThreadID(),
+    HartToExecID,
+    zNic->getPrecinctID()
+  );
+
+  SST::Forza::ringEvent* ring_ev = new SST::Forza::ringEvent(
+    zNic->getEndpointType(),
+    uint16_t( HartToExecID ),
+    SST::Forza::zopCompID::Z_ZEN,
+    SST::Forza::ringMsgT::R_UPDATE,
+    Forza::R_ZENEQP,
     data
   );
 
