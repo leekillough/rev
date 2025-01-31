@@ -40,7 +40,7 @@ cd build || exit
 rm -Rf ./*
 
 #-- Stage 4: initiate the build
-cmake -DCMAKE_BUILD_TYPE=Debug -DRVCC=${RVCC} ../
+cmake -DCMAKE_BUILD_TYPE=Debug -DFORZA_ISA_TESTS=ON -DRVCC=${RVCC} ../
 make clean
 make uninstall
 make -j
