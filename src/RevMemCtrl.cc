@@ -86,11 +86,6 @@ void RevBasicMemCtrl::registerStats() {
   }
 }
 
-void RevBasicMemCtrl::recordStat( MemCtrlStats Stat, uint64_t Data ) {
-  if( Stat < MemCtrlStats::END )
-    stats[size_t( Stat )]->addData( Data );
-}
-
 bool RevBasicMemCtrl::sendFLUSHRequest( uint32_t Hart, uint64_t Addr, uint64_t PAddr, uint32_t Size, bool Inv, RevFlag flags ) {
   if( Size ) {
     auto Op = std::make_shared<RevMemOp>( Hart, Addr, PAddr, Size, MemOp::MemOpFLUSH, flags );
@@ -127,29 +122,16 @@ bool RevBasicMemCtrl::sendWRITERequest(
 bool RevBasicMemCtrl::sendAMORequest(
   uint32_t Hart, uint64_t Addr, uint64_t PAddr, uint32_t Size, unsigned char* buffer, void* target, const MemReq& req, RevFlag flags
 ) {
-  if( Size == 0 )
-    return true;
-
   // Check to see if our flags contain an atomic request
   if( RevFlagAtomic( flags ) == RevFlag::F_NONE ) {
     // not an atomic request
     return true;
   }
 
-  // Create a memory operation for the AMO
-  // Since this is a read-modify-write operation, the first RevMemOp
-  // is a MemOp::MemOpREAD.
+  // Create a memory operation for the AMO read
+  // Since this is a read-modify-write operation, the first RevMemOp is a MemOp::MemOpREAD.
   auto Op = std::make_shared<RevMemOp>( Hart, Addr, PAddr, Size, buffer, target, MemOp::MemOpREAD, flags );
   Op->setMemReq( req );
-
-  // Store the first operation in the AMOTable.  When the read
-  // response comes back, we will catch the response, perform
-  // the MODIFY (using the operation in flags), then dispatch
-  // a WRITE operation.
-  AMOTable.emplace( Addr, std::tuple{ Hart, buffer, target, flags, Op, false } );
-
-  // We have the request created and recorded in the AMOTable
-  // Push it onto the request queue
   rqstQ.emplace_back( std::move( Op ) );
 
   // now we record the stat for the particular AMO
@@ -269,25 +251,22 @@ void RevBasicMemCtrl::init( uint32_t phase ) {
   }
 }
 
-// ---------------------------------------------------------
-// Cache Handler Logic
-// ---------------------------------------------------------
-// There are five potential scenarios:
-// 1. Caching is disabled (no L1 cache detected)
-// 2. Addr = Cache Aligned && Size <= LineSize
-// 3. Addr = Cache Aligned && Size > LineSize
-// 4. Addr = !Cache Aligned && Size <= LineSize
-// 5. Addr = !Cache Aligned && Size > LineSize
-//
-// We handle these by adjusting:
-// 1. the number of cache lines to request
-// 2. the base address of each request (cache aligned)
-//
-// If caching is disabled, then the number of cache lines is
-// ALWAYS 1 and we dispatch a single memory requests per
-// RevMemOp
-// ---------------------------------------------------------
+/// RevBasicMemCtrl: Add a new memory request
+void RevBasicMemCtrl::addMemRqst( const std::shared_ptr<RevMemOp>& op, Interfaces::StandardMem::Request* rqst ) {
+  // Map the request ID to a RevMemOp shared_ptr and iterator pointing to mapping from hart to op
+  if( !outstanding.try_emplace( rqst->getID(), op, hartOutstanding.emplace( op->getHart(), op ) ).second )
+    output->fatal( CALL_INFO, -1, "Error: Memory request with the same ID added twice\n" );
 
+  // Increment the request count of the RevMemOp
+  ++op->rqstCount();
+
+  // Send the request
+  memIface->send( rqst );
+}
+
+// -------------------------------------------------------------
+// Cache Handler Logic
+// -------------------------------------------------------------
 bool RevBasicMemCtrl::buildStandardMemRqst( const std::shared_ptr<RevMemOp>& op ) {
 #ifdef _REV_DEBUG_
   std::cout << "building mem request for addr=0x" << std::hex << op->getAddr() << std::dec << "; flags = 0x" << std::hex
@@ -322,8 +301,6 @@ bool RevBasicMemCtrl::buildStandardMemRqst( const std::shared_ptr<RevMemOp>& op 
 #ifdef _REV_DEBUG_
   std::cout << "Found sufficient request slots for " << NumLines << " cache lines" << std::endl;
 #endif
-
-  op->setSplitRqst( NumLines );
 
   auto flags   = safe_static_cast<flags_t>( hasCache ? op->getStdFlags() : op->getNonCacheFlags() );
   auto curByte = op->getBuf().begin();
@@ -402,76 +379,6 @@ bool RevBasicMemCtrl::buildStandardMemRqst( const std::shared_ptr<RevMemOp>& op 
   return true;
 }
 
-bool RevBasicMemCtrl::processNextRqst( MemOpParams& memOps ) {
-  std::unordered_set<uint32_t> pastHartRequests, pastHartAcquires;
-
-  // retrieve the next candidate memory operation
-  for( auto Slot = rqstQ.cbegin(); Slot != rqstQ.cend(); ++Slot ) {
-    MemOp memOp = ( *Slot )->getOp();
-
-    if( memOp == MemOp::MemOpFENCE ) {
-      // time to fence!
-      // saturate and exit this cycle
-      // no need to build a StandardMem request
-      rqstQ.erase( Slot );
-      ++memOpNum[MemOp::MemOpFENCE];
-      return false;
-    }
-
-    auto Hart  = ( *Slot )->getHart();
-    auto Flags = ( *Slot )->getFlags();
-
-    // If there are request slots available for this operation
-    if( memOps[memOp] < memOpMax[memOp] ) {
-      // Determine if we have any AMOs that would prevent us from dispatching this request.
-      // Note that we do this AFTER processing FENCE requests.
-
-      // If this request has the Release flag, delay it if any previous requests match the same hart
-      // This implies that the same Hart has preceding memory ops in which case, we can't dispatch this release until they clear
-      if( RevFlagHas( Flags, RevFlag::F_RL ) && pastHartRequests.count( Hart ) )
-        return false;
-
-      // Delay if any past requests on the same hart were acquires
-      // We must wait until they clear before this particular request can proceed
-      if( pastHartAcquires.count( Hart ) )
-        return false;
-
-      // build a StandardMem request
-      if( buildStandardMemRqst( *Slot ) ) {
-        rqstQ.erase( Slot );          // Sent the request; remove it
-        ++memOps[memOp];              // Increment the number of this kind of memory request for this clock
-        ++memOps[MemOp::MemOpTOTAL];  // Increment the total number of memory requests for this clock
-        return true;
-      } else {
-        // stop processing any more memory requests for this clock
-        // otherwise, this request will induce an infinite loop
-        // since we leave the current (failed) request in the queue
-        return false;
-      }
-    }
-
-    // Record this hart as having been seen
-    pastHartRequests.insert( Hart );
-
-    // Record this hart as having been seen if this is an acquire request
-    if( RevFlagHas( Flags, RevFlag::F_AQ ) )
-      pastHartAcquires.insert( Hart );
-  }
-
-  // if we reach this point, then we've attempted to
-  // process all the potential requests.  none exist
-  // that can be dispatched at this time.
-#ifdef _REV_DEBUG_
-  for( uint32_t i = 0; i < rqstQ.size(); i++ ) {
-    std::cout << "rqstQ[" << i << "] = " << rqstQ[i]->getOp() << " @ 0x" << std::hex << rqstQ[i]->getAddr() << std::dec
-              << "; physAddr = 0x" << std::hex << rqstQ[i]->getPhysAddr() << std::dec << std::endl;
-  }
-#endif
-
-  return false;
-}
-
-/// RevFlag: Handle flag response
 void RevBasicMemCtrl::RevHandleFlagResp( void* target, size_t size, RevFlag flags ) {
   if( RevFlagHas( flags, RevFlag::F_BOXNAN ) && size < sizeof( double ) ) {
     BoxNaN( static_cast<double*>( target ), static_cast<float*>( target ) );
@@ -599,62 +506,34 @@ AMOData RevBasicMemCtrl::performAMO( RevFlag flags, uint32_t size, void* target,
   return newMem;
 }
 
-void RevBasicMemCtrl::performAMOMemH( const std::shared_ptr<RevMemOp>& readOp ) {
-  if( readOp == nullptr ) {
-    output->fatal( CALL_INFO, -1, "Error : AMOTable entry is null\n" );
-  }
-
-  RevFlag  flags = readOp->getFlags();
-  uint32_t size  = readOp->getSize();
+void RevBasicMemCtrl::handleAMOResp( const std::shared_ptr<RevMemOp>& readOp ) {
+  auto flags  = readOp->getFlags();
+  auto size   = readOp->getSize();
 
   // Perform the AMO operation on the already-loaded data
-  auto newMem    = performAMO( flags, size, readOp->getTarget(), &readOp->getBuf()[0] );
+  auto newMem = performAMO( flags, size, readOp->getTarget(), &readOp->getBuf()[0] );
 
-  // copy the modified target data over to the buffer and build the memory request
-  // this will write the value to memory
-  auto writeOp   = std::make_shared<RevMemOp>(
-    readOp->getHart(),
-    readOp->getAddr(),
-    readOp->getPhysAddr(),
-    size,
-    std::vector( newMem.uc, newMem.uc + size ),
-    MemOp::MemOpWRITE,
-    flags  // TODO: getPhysAddr()->nullptr
+  // Build the memory request that will write the modified value to memory
+  auto writeOp =
+    std::make_shared<RevMemOp>( readOp->getHart(), readOp->getAddr(), readOp->getPhysAddr(), size, MemOp::MemOpWRITE, flags );
+
+  // Move the memory request object, but DO NOT mark the load as complete.
+  // The actual write response from the read-modify-write process will mark the
+  // load as complete. At this point, move the MemReq object to the new request.
+  writeOp->setMemReq( std::move( readOp->getMemReq() ) );
+
+  // Immediately issue the Write request after the Read request finishes. The
+  // rqstQ only waits for the atomic Read to complete before it issues other
+  // memory requests. This ensures the Read-modify-Write is atomic w.r.t the
+  // issuance of other memory requests.
+  addMemRqst(
+    writeOp,
+    new Interfaces::StandardMem::Write(
+      writeOp->getAddr(), size, { newMem.uc, newMem.uc + size }, false, safe_static_cast<flags_t>( flags )
+    )
   );
-
-  // Retrieve the memory request object, but DO NOT mark the load
-  // as complete.  The actual write response from the read-modify-write
-  // process will mark the load as complete.  At this point, copy the
-  // MemReq object to the new request
-  writeOp->setMemReq( readOp->getMemReq() );
-
-  // insert a new entry into the AMO Table
-  AMOTable.emplace(
-    writeOp->getAddr(),
-    std::tuple{
-      writeOp->getHart(),
-      nullptr,  // this can be null here since we don't need to modify the response
-      writeOp->getTarget(),
-      writeOp->getFlags(),
-      writeOp,
-      true }
-  );
-  rqstQ.emplace_back( std::move( writeOp ) );
-}
-
-// determine if we have an atomic request associated with this read/write operation
-bool RevBasicMemCtrl::isAMO( const std::shared_ptr<RevMemOp>& op ) {
-  bool isAMO = false;
-  for( auto [it, end] = AMOTable.equal_range( op->getAddr() ); it != end; ) {
-    const auto& [hart, buffer, target, flags, memop, in] = it->second;
-    if( memop == op ) {
-      AMOTable.erase( it++ );  // erase the current entry so we can add a new one
-      isAMO = true;
-    } else {
-      ++it;
-    }
-  }
-  return isAMO;
+  ++memOpNum[MemOp::MemOpWRITE];
+  recordStat( MemCtrlStats::WriteInFlight );
 }
 
 template<typename RESP>
@@ -662,47 +541,112 @@ void RevBasicMemCtrl::handleResp( RESP* ev, const char* name ) {
   auto node = outstanding.extract( ev->getID() );
   if( node.empty() )
     output->fatal( CALL_INFO, -1, "Outstanding memory request not found in handle%s\n", name );
-  const auto& op = node.mapped();
+  const auto& [op, hartOutstandingEntry] = node.mapped();
 
+  // For read requests, copy the read data to the portion of the Rev memory target
   if constexpr( std::is_same_v<RESP, StandardMem::ReadResp> ) {
-    // determine if we have a split read request
-    if( op->getSplitRqst() > 1 ) {
-      // split request exists; determine how to handle it
-      memcpy( static_cast<uint8_t*>( op->getTarget() ) + ( ev->pAddr - op->getAddr() ), &ev->data[0], ev->size );
-    } else {
-      // no split request exists; handle as normal
-      memcpy( op->getTarget(), &ev->data[0], op->getSize() );
-    }
+    memcpy( static_cast<uint8_t*>( op->getTarget() ) + ( ev->pAddr - op->getAddr() ), &ev->data[0], ev->size );
   }
 
-  delete ev;  // delete the StandardMem request
+  delete ev;                                      // delete the StandardMem request
+  hartOutstanding.erase( hartOutstandingEntry );  // delete the entry mapping harts to outstanding requests
 
-  if constexpr( std::is_same_v<RESP, StandardMem::ReadResp> || std::is_same_v<RESP, StandardMem::WriteResp> ) {
-    // determine if we have no more requests remaining with the same RevMemOp
-    if( std::none_of( outstanding.begin(), outstanding.end(), [&]( auto& x ) { return x.second == op; } ) ) {
+  if( !--op->rqstCount() ) {  // If there are no more requests associated with this RevMemOp
+    // handleReadResp
+    if constexpr( std::is_same_v<RESP, StandardMem::ReadResp> ) {
+      // determine if we need to sign/zero extend or NaN-box the read value
+      RevHandleFlagResp( op->getTarget(), op->getSize(), op->getFlags() );
 
-      // handleReadResp
-      if constexpr( std::is_same_v<RESP, StandardMem::ReadResp> ) {
-        // determine if we need to sign/zero extend or NaN-box the read value
-        RevHandleFlagResp( op->getTarget(), op->getSize(), op->getFlags() );
-
-        // determine if we have an atomic request associated with this read operation
-        if( isAMO( op ) ) {
-          performAMOMemH( op );  // perform the atomic operation and generate a WRITE request
-        } else {
-          op->getMemReq().MarkLoadComplete();  // for non-atomic reads, mark load complete
-        }
+      // determine if we have an atomic request associated with this read operation
+      if( RevFlagAtomic( op->getFlags() ) != RevFlag::F_NONE ) {
+        handleAMOResp( op );  // perform the atomic operation and generate a WRITE request
+      } else {
+        op->getMemReq().MarkLoadComplete();  // for non-atomic reads, mark load complete
       }
-
-      // handleWriteResp
-      if constexpr( std::is_same_v<RESP, StandardMem::WriteResp> ) {
-        // determine if we have an atomic request associated with this write operation
-        if( isAMO( op ) ) {
-          op->getMemReq().MarkLoadComplete();  // mark the original read complete after write is completed
-        }
+    }
+    // handleWriteResp
+    if constexpr( std::is_same_v<RESP, StandardMem::WriteResp> ) {
+      // determine if we have an atomic request associated with this write operation
+      if( RevFlagAtomic( op->getFlags() ) != RevFlag::F_NONE ) {
+        op->getMemReq().MarkLoadComplete();  // mark the original read complete after write is completed
       }
     }
   }
+}
+
+// TODO: handle fence operations here?
+bool RevBasicMemCtrl::isPending( const std::shared_ptr<RevMemOp>& thisOp ) {
+  bool is_release = RevFlagHas( thisOp->getFlags(), RevFlag::F_RL );
+
+  // Go through all outstanding memory operations for this hart
+  for( auto [it, end] = hartOutstanding.equal_range( thisOp->getHart() ); it != end; ++it ) {
+    // If this request has the Release flag, delay it if there are any outstanding requests in same hart
+    if( is_release )
+      return true;
+
+    const auto& op    = it->second;
+    RevFlag     flags = op->getFlags();
+
+    // If any outstanding request in the same hart has the Acquire flag, delay this request
+    if( RevFlagHas( flags, RevFlag::F_AQ ) )
+      return true;
+
+    // If any outstanding request in the same hart is an atomic read, delay this request
+    // until the atomic read is completed and the corresponding atomic write is issued
+    if( RevFlagAtomic( flags ) != RevFlag::F_NONE && op->getOp() == MemOp::MemOpREAD )
+      return true;
+  }
+  return false;
+}
+
+bool RevBasicMemCtrl::processNextRqst( MemOpParams& memOps ) {
+  // retrieve the next candidate memory operation
+  for( auto Slot = rqstQ.cbegin(); Slot != rqstQ.cend(); ++Slot ) {
+    MemOp memOp = ( *Slot )->getOp();
+
+    if( memOp == MemOp::MemOpFENCE ) {
+      // time to fence!
+      // saturate and exit this cycle
+      // no need to build a StandardMem request
+      rqstQ.erase( Slot );
+      ++memOpNum[MemOp::MemOpFENCE];
+      return false;
+    }
+
+    // Determine if we have any Acquire/Release flags or atomic operations
+    // that would prevent us from dispatching this request.
+    // Note that we do this AFTER processing FENCE requests.
+    if( isPending( *Slot ) )
+      return false;
+
+    // If there are request slots available for this operation
+    if( memOps[memOp] < memOpMax[memOp] ) {
+      // build a StandardMem request
+      if( buildStandardMemRqst( *Slot ) ) {
+        rqstQ.erase( Slot );          // Sent the request; remove it
+        ++memOps[memOp];              // Increment the number of this kind of memory request for this clock
+        ++memOps[MemOp::MemOpTOTAL];  // Increment the total number of memory requests for this clock
+        return true;
+      } else {
+        // stop processing any more memory requests for this clock
+        // otherwise, this request will induce an infinite loop
+        // since we leave the current (failed) request in the queue
+        return false;
+      }
+    }
+  }
+
+  // if we reach this point, then we've attempted to
+  // process all the potential requests.  none exist
+  // that can be dispatched at this time.
+#ifdef _REV_DEBUG_
+  for( uint32_t i = 0; i < rqstQ.size(); i++ ) {
+    std::cout << "rqstQ[" << i << "] = " << rqstQ[i]->getOp() << " @ 0x" << std::hex << rqstQ[i]->getAddr() << std::dec
+              << "; physAddr = 0x" << std::hex << rqstQ[i]->getPhysAddr() << std::dec << std::endl;
+  }
+#endif
+
+  return false;
 }
 
 bool RevBasicMemCtrl::clockTick( Cycle_t cycle ) {
