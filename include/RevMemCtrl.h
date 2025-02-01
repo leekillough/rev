@@ -454,10 +454,10 @@ public:
   void init( uint32_t phase ) final;
 
   /// RevBasicMemCtrl: setup function
-  void setup() final;
+  void setup() final { memIface->setup(); }
 
   /// RevBasicMemCtrl: finish function
-  void finish() final;
+  void finish() final {}
 
   /// RevBasicMemCtrl: clock tick function
   virtual bool clockTick( Cycle_t cycle );
@@ -647,15 +647,6 @@ private:
     return memOpNum[MemOp::MemOpREAD] + memOpNum[MemOp::MemOpWRITE] + memOpNum[MemOp::MemOpLOADLINK] +
            memOpNum[MemOp::MemOpREADLOCK] + memOpNum[MemOp::MemOpWRITEUNLOCK] + memOpNum[MemOp::MemOpCUSTOM];
   }
-
-  /// RevBasicMemCtrl: Determine the number of cache lines are required
-  uint32_t getNumCacheLines( uint64_t Addr, uint32_t Size ) const;
-
-  /// RevBasicMemCtrl: Retrieve the base cache line request size
-  uint32_t getBaseCacheLineSize( uint64_t Addr, uint32_t Size ) const;
-
-  /// RevBasicMemCtrl: retrieve the number of outstanding requests on the wire
-  uint32_t getNumSplitRqsts( const std::shared_ptr<RevMemOp>& op ) const;
 
   // -- private data members
   StandardMem* memIface{};  ///< StandardMem memory interface
