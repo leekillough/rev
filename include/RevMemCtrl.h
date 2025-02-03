@@ -235,26 +235,18 @@ class RevBasicMemCtrl final : public RevMemCtrl {
 public:
   // Memory operation parameters indexable with MemOp
   class MemOpParams {
-    std::array<uint32_t, safe_static_cast<size_t>( MemOp::END )> paramVal{};
+    std::array<uint32_t, safe_static_cast<size_t>( MemOp::END )> param{};
 
   public:
     // Access a memory operation parameter
     auto& operator[]( MemOp op ) {
       if( op == MemOp::MemOpSTORECOND )  // Combine LR+SC
         op = MemOp::MemOpLOADLINK;
-      return paramVal.at( safe_static_cast<size_t>( op ) );
+      return param.at( safe_static_cast<size_t>( op ) );
     }
 
     // const version
     const auto& operator[]( MemOp op ) const { return const_cast<MemOpParams&>( *this )[op]; }
-
-    // default non-aggregate constructors and assignment operators
-    explicit MemOpParams()                       = default;
-    ~MemOpParams()                               = default;
-    MemOpParams( const MemOpParams& )            = default;
-    MemOpParams( MemOpParams&& )                 = default;
-    MemOpParams& operator=( const MemOpParams& ) = default;
-    MemOpParams& operator=( MemOpParams&& )      = default;
   };
 
   SST_ELI_REGISTER_SUBCOMPONENT(
@@ -474,8 +466,8 @@ public:
   bool isAMO( const std::shared_ptr<RevMemOp>& op );
 
   /// RevBasicMemCtrl: handle a response generally
-  template<typename RESP>
-  void handleResp( RESP* ev, MemOp memOp, const char* name = "" );
+  template<MemOp memOp, typename RESP>
+  void handleResp( RESP* ev );
 
   /// RevBasicMemCtrl: perform an AMO on local data
   static AMOData performAMO( RevFlag flags, uint32_t size, void* target, const void* data );
@@ -502,43 +494,35 @@ private:
   // ----------------------------------------
   // RevStdMemHandlers
   // ----------------------------------------
-  struct RevStdMemHandlers final : Interfaces::StandardMem::RequestHandler {
-    friend class RevBasicMemCtrl;
-
+  struct RevStdMemHandlers final : StandardMem::RequestHandler {
     /// RevStdMemHandlers: constructor
-    RevStdMemHandlers( RevBasicMemCtrl* Ctrl ) : Interfaces::StandardMem::RequestHandler( Ctrl->output.get() ), Ctrl( Ctrl ) {}
+    explicit RevStdMemHandlers( RevBasicMemCtrl* Ctrl ) : RequestHandler( Ctrl->output.get() ), Ctrl( Ctrl ) {}
 
-    /// RevStdMemHandlers: destructor
-    ~RevStdMemHandlers() final                               = default;
+    /// RevStdMemHandlers: handlers
+    void handle( StandardMem::ReadResp* ev ) final { Ctrl->handleResp<MemOp::MemOpREAD>( ev ); }
 
-    /// RevStdMemHandlers: disallow copying and assignment
-    RevStdMemHandlers( const RevStdMemHandlers& )            = delete;
-    RevStdMemHandlers& operator=( const RevStdMemHandlers& ) = delete;
+    void handle( StandardMem::WriteResp* ev ) final { Ctrl->handleResp<MemOp::MemOpWRITE>( ev ); }
 
-    void handle( StandardMem::ReadResp* ev ) final { Ctrl->handleResp( ev, MemOp::MemOpREAD, "ReadResp" ); }
+    void handle( StandardMem::FlushResp* ev ) final { Ctrl->handleResp<MemOp::MemOpFLUSH>( ev ); }
 
-    void handle( StandardMem::WriteResp* ev ) final { Ctrl->handleResp( ev, MemOp::MemOpWRITE, "WriteResp" ); }
+    void handle( StandardMem::CustomResp* ev ) final { Ctrl->handleResp<MemOp::MemOpCUSTOM>( ev ); }
 
-    void handle( StandardMem::FlushResp* ev ) final { Ctrl->handleResp( ev, MemOp::MemOpFLUSH, "FlushResp" ); }
-
-    void handle( StandardMem::CustomResp* ev ) final { Ctrl->handleResp( ev, MemOp::MemOpCUSTOM, "CustomResp" ); }
-
-    void handle( StandardMem::InvNotify* ev ) final { Ctrl->handleResp( ev, MemOp::MemOpINV, "InvResp" ); }
+    void handle( StandardMem::InvNotify* ev ) final { Ctrl->handleResp<MemOp::MemOpINV>( ev ); }
 
     // ---------------------------------------------------------------
     // RevStdMemHandlers
     // ---------------------------------------------------------------
 
   private:
-    RevBasicMemCtrl* Ctrl{};  ///< RevStdMemHandlers: memory controller object
+    RevBasicMemCtrl* const Ctrl;  ///< RevStdMemHandlers: memory controller object
 
   };  // class RevStdMemHandlers
 
   /// RevBasicMemCtrl: process the next memory request
-  bool processNextRqst( MemOpParams& t );
+  bool processNextRqst();
 
   /// RevBasicMemCtrl: Add a new memory request
-  void addMemRqst( const std::shared_ptr<RevMemOp>& op, MemOp memOp, MemCtrlStats stat, Interfaces::StandardMem::Request* rqst );
+  void sendMemRqst( const std::shared_ptr<RevMemOp>& op, MemOp memOp, MemCtrlStats stat, StandardMem::Request* rqst );
 
   /// RevBasicMemCtrl: build a standard memory request
   bool buildStandardMemRqst( const std::shared_ptr<RevMemOp>& op );
@@ -547,7 +531,7 @@ private:
   void registerStats();
 
   /// RevBasicMemCtrl: whether a memory operation is pending on previous memory operations
-  bool isPending( const std::shared_ptr<RevMemOp>& op );
+  bool isPendingAMO( const std::shared_ptr<RevMemOp>& op );
 
   /// RevBasicMemCtrl: inject statistics data for the target metric
   void recordStat( MemCtrlStats Stat, uint64_t Data = 1 ) {
@@ -555,21 +539,15 @@ private:
       stats[size_t( Stat )]->addData( Data );
   }
 
-  /// RevBasicMemCtrl: returns the total number of outstanding requests
-  auto getTotalRqsts() const {
-    return memOpNum[MemOp::MemOpREAD] + memOpNum[MemOp::MemOpWRITE] + memOpNum[MemOp::MemOpLOADLINK] +
-           memOpNum[MemOp::MemOpREADLOCK] + memOpNum[MemOp::MemOpWRITEUNLOCK] + memOpNum[MemOp::MemOpCUSTOM];
-  }
-
   // -- private data members
-  StandardMem*                         memIface{};  ///< StandardMem memory interface
-  bool                                 hasCache{};  ///< detects whether cache layers are present
-  uint32_t                             lineSize{};  ///< cache line size
-  MemOpParams                          memOpNum{};  ///< numbers in effect of memory parameters
-  MemOpParams                          memOpMax{};  ///< maximums allowable of memory parameters
-  std::vector<Statistic<uint64_t>*>    stats{};     ///< statistics vector
-  std::list<std::shared_ptr<RevMemOp>> rqstQ{};     ///< queued memory requests
-  RevTracer*                           Tracer{};    ///< tracer pointer
+  RevTracer*                            Tracer{};    ///< tracer pointer
+  StandardMem*                          memIface{};  ///< StandardMem memory interface
+  bool                                  hasCache{};  ///< detects whether cache layers are present
+  uint32_t                              lineSize{};  ///< cache line size
+  MemOpParams                           memOpNum{};  ///< numbers in effect of memory parameters
+  MemOpParams                           memOpMax{};  ///< maximums allowable of memory parameters
+  std::vector<Statistic<uint64_t>*>     stats{};     ///< statistics vector
+  std::queue<std::shared_ptr<RevMemOp>> rqstQ{};     ///< queued memory requests
 
   ///< map of outstanding memory requests based on Request id
   std::unordered_map<
