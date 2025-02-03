@@ -60,7 +60,7 @@ class XForza : public RevExt {
     RevFlagSet( flags, RevFlag::F_RL );
 
     MemReq req(
-      R->RV64[Inst.rs1], Inst.rd, RevRegClass::RegGPR, F->GetHartToExecID(), MemOp::MemOpAMO, true, R->GetMarkLoadComplete()
+      R->RV64[Inst.rs1], Inst.rd, RevRegClass::RegGPR, F->GetHartToExecID(), MemOp::MemOpREAD, true, R->GetMarkLoadComplete()
     );
     R->LSQueue->insert( req.LSQHashPair() );
     M->AMOVal(
@@ -89,7 +89,7 @@ class XForza : public RevExt {
     RevFlagSet( flags, RevFlag::F_RL );
 
     MemReq req(
-      R->RV64[Inst.rs1], Inst.rd, RevRegClass::RegGPR, F->GetHartToExecID(), MemOp::MemOpAMO, true, R->GetMarkLoadComplete()
+      R->RV64[Inst.rs1], Inst.rd, RevRegClass::RegGPR, F->GetHartToExecID(), MemOp::MemOpREAD, true, R->GetMarkLoadComplete()
     );
     R->LSQueue->insert( req.LSQHashPair() );
     M->AMOVal(

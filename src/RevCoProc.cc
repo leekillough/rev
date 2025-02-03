@@ -807,7 +807,7 @@ bool RZAAMOCoProc::handleHZOP( zopEvent* zev, bool& flag ) {
   }
 
   // setup the MemReq
-  MemReq req{ Addr, uint16_t( Rs2 ), RevRegClass::RegGPR, Z_MZOP_PIPE_HART, MemOp::MemOpAMO, true, MarkLoadCompleteFunc };
+  MemReq req{ Addr, uint16_t( Rs2 ), RevRegClass::RegGPR, Z_MZOP_PIPE_HART, MemOp::MemOpREAD, true, MarkLoadCompleteFunc };
 
   // set the registers
   Alloc.SetX( Rs1, Data );
