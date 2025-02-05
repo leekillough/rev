@@ -1658,7 +1658,6 @@ void RevCore::MarkLoadComplete( const MemReq& req ) {
 }
 
 void RevCore::ReqThreadFromZqm( SST::Cycle_t currentCycle ) {
-  //output->verbose( CALL_INFO, 11, 0, "NOTE Core %" PRIu32 " needs to request a thread\n", id );
   if( ThreadReqd || !HasIdleHart() )
     return;
 
@@ -1691,10 +1690,6 @@ bool RevCore::ClockTick( SST::Cycle_t currentCycle ) {
   currentSimCycle = currentCycle;
 
   output->verbose( CALL_INFO, 8, 0, "Core Cycle: %" PRIu64 "\n", currentCycle );
-
-  //if( !ThreadReqd )
-  //  output->verbose( CALL_INFO, 9, 0, "AAA: ThreadReqd = false\n" );
-  //output->flush();
 
   // -- MAIN PROGRAM LOOP --
   //

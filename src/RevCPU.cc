@@ -1042,7 +1042,7 @@ void RevCPU::handleZOPThreadMigratePZOP( Forza::zopEvent* zev ) {
   output.verbose( CALL_INFO, 9, 0, "[FORZA][ZAP] Handling thread migration - PZOP case. Handling incomplete; deleting packet\n" );
   output.flush();
 
-  // Reset RevCore::ThreadReqd; very hacky, but only one core per CPU in the current model
+  // Reset RevCore::ThreadReqd; very hacky, but only one core per CPU in the current forza model
   Procs[0]->ThreadReceivedFromZqm();
 
   delete zev;
