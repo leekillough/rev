@@ -254,7 +254,7 @@ bool RZALSCoProc::ClockTick( SST::Cycle_t cycle ) {
 }
 
 void RZALSCoProc::MarkLoadComplete( const MemReq& req ) {
-  Alloc.setDirty( (uint32_t) ( req.getDestReg() ) );
+  Alloc.setDirty( req.DestReg );
 }
 
 // clang-format off
@@ -885,7 +885,7 @@ void RZAAMOCoProc::CheckLSQueue() {
 }
 
 void RZAAMOCoProc::MarkLoadComplete( const MemReq& req ) {
-  Alloc.setDirty( (uint32_t) ( req.getDestReg() ) );
+  Alloc.setDirty( req.DestReg );
 }
 
 }  // namespace SST::RevCPU
