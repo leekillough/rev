@@ -16,9 +16,12 @@
 #include <array>
 #include <cstddef>
 #include <functional>
+#include <iostream>
+#include <map>
 #include <memory>
 #include <queue>
 #include <random>
+#include <string>
 #include <tuple>
 #include <type_traits>
 #include <unordered_map>
