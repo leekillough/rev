@@ -16,8 +16,6 @@
 #include <array>
 #include <cstddef>
 #include <functional>
-#include <iostream>
-#include <map>
 #include <memory>
 #include <queue>
 #include <random>
@@ -518,16 +516,17 @@ private:
   void rqstQpush( const std::shared_ptr<RevMemOp>& op );
 
   // -- private data members
-  RevTracer*                        Tracer{};    ///< tracer pointer
-  StandardMem*                      memIface{};  ///< StandardMem memory interface
-  bool                              hasCache{};  ///< detects whether cache layers are present
-  uint32_t                          lineSize{};  ///< cache line size
-  MemOpParams                       memOpNum{};  ///< numbers in effect of memory parameters
-  MemOpParams                       memOpMax{};  ///< maximums allowable of memory parameters
-  std::vector<Statistic<uint64_t>*> stats{};     ///< statistics vector
+  RevTracer*                            Tracer{};    ///< tracer pointer
+  StandardMem*                          memIface{};  ///< StandardMem memory interface
+  bool                                  hasCache{};  ///< detects whether cache layers are present
+  uint32_t                              lineSize{};  ///< cache line size
+  MemOpParams                           memOpNum{};  ///< numbers in effect of memory parameters
+  MemOpParams                           memOpMax{};  ///< maximums allowable of memory parameters
+  std::vector<Statistic<uint64_t>*>     stats{};     ///< statistics vector
+  std::queue<std::shared_ptr<RevMemOp>> rqstQ;
 
-  std::multimap<uint32_t, std::shared_ptr<RevMemOp>>             rqstQ;
-  std::map<uint32_t, std::array<decltype( rqstQ )::iterator, 2>> rqstQit;
+  //  std::multimap<uint32_t, std::shared_ptr<RevMemOp>> rqstQ;
+  //  std::map<uint32_t, std::array<decltype(rqstQ)::iterator, 2>> rqstQit;
 
   ///< map of outstanding memory requests based on Hart id
   // note: std::multimap is used because it keeps iterators valid while std::unordered_multimap does not
