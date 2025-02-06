@@ -147,7 +147,7 @@ public:
   };
 
   /// RevMem: determine if there are any outstanding requests
-  bool outstandingRqsts();
+  bool outstandingRqsts() const { return ctrl && ctrl->outstandingRqsts(); }
 
   /// RevMem: handle incoming memory event
   void handleEvent( Interfaces::StandardMem::Request* ev ) {}
@@ -171,7 +171,15 @@ public:
   uint64_t GetStackBottom() { return stacktop - _STACK_SIZE_; }
 
   /// RevMem: initiate a memory fence
-  bool FenceMem( uint32_t Hart );
+  bool FenceMem( uint32_t Hart ) {
+    if( ctrl ) {
+      return ctrl->sendFENCE( Hart );
+    } else if( zNic && !isRZA ) {
+      // generate a Fence packet
+      return __ZOP_FENCEHart( Hart );
+    }
+    return true;  // base RevMem support does nothing here
+  }
 
   /// RevMem: retrieves the cache line size.  Returns 0 if no cache is configured
   uint32_t getLineSize() { return ctrl ? ctrl->getLineSize() : 64; }
@@ -189,13 +197,17 @@ public:
   bool ReadMem( uint32_t Hart, uint64_t Addr, uint32_t Len, void* Target, const MemReq& req, RevFlag flags = RevFlag::F_NONE );
 
   /// RevMem: flush a cache line
-  bool FlushLine( uint32_t Hart, uint64_t Addr );
+  bool FlushLine( uint32_t Hart, uint64_t Addr ) {
+    return !ctrl || ctrl->sendFLUSHRequest( Hart, Addr, 0, getLineSize(), false, RevFlag::F_NONE );
+  }
 
   /// RevMem: invalidate a cache line
-  bool InvLine( uint32_t Hart, uint64_t Addr );
+  bool InvLine( uint32_t Hart, uint64_t Addr ) {
+    return !ctrl || ctrl->sendFLUSHRequest( Hart, Addr, 0, getLineSize(), true, RevFlag::F_NONE );
+  }
 
   /// RevMem: clean a line
-  bool CleanLine( uint32_t Hart, uint64_t Addr );
+  bool CleanLine( uint32_t Hart, uint64_t Addr ) { return !ctrl || ( ctrl->sendFENCE( Hart ) && FlushLine( Hart, Addr ) ); }
 
   // ----------------------------------------------------
   // ---- Read Memory Interfaces
@@ -434,10 +446,10 @@ public:
 
 private:
   /// FORZA: convert a standard RISC-V AMO opcode to a ZOP opcode
-  Forza::zopOpc flagToZOP( uint32_t flags, size_t Len );
+  Forza::zopOpc flagToZOP( RevFlag flags, size_t Len );
 
   /// FORZA: convert a standard RISC-V memory request to a ZOP opcode
-  Forza::zopOpc memToZOP( uint32_t flags, size_t Len, bool Write );
+  Forza::zopOpc memToZOP( RevFlag flags, size_t Len, bool Write );
 
   /// FORZA: send an AMO request
   bool ZOP_AMOMem( uint32_t Hart, uint64_t Addr, size_t Len, void* Data, void* Target, const MemReq& req, RevFlag flags );

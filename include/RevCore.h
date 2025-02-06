@@ -372,8 +372,8 @@ private:
   std::function<uint32_t()> const GetNewThreadID;
 
   // If a given assigned thread experiences a change of state, it sets the corresponding bit
-  std::vector<std::unique_ptr<RevThread>> ThreadsThatChangedState{
-  };  ///< RevCore: used to signal to RevCPU that the thread assigned to HART has changed state
+  std::vector<std::unique_ptr<RevThread>>
+    ThreadsThatChangedState{};  ///< RevCore: used to signal to RevCPU that the thread assigned to HART has changed state
 
 public:
   SST::Output* const output;  ///< RevCore: output handler
@@ -386,8 +386,8 @@ private:
   RevCoreStats                      StatsTotal{};                 ///< RevCore: collection of total performance stats
   std::unique_ptr<RevPrefetcher>    sfetch{};                     ///< RevCore: stream instruction prefetcher
 
-  std::shared_ptr<std::unordered_multimap<uint64_t, MemReq>> LSQueue{
-  };  ///< RevCore: Load / Store queue used to track memory operations. Currently only tracks outstanding loads.
+  std::shared_ptr<std::unordered_multimap<uint64_t, MemReq>>
+    LSQueue{};  ///< RevCore: Load / Store queue used to track memory operations. Currently only tracks outstanding loads.
   TimeConverter* timeConverter{};  ///< RevCore: Time converter for RTC
 
   RevRegFile* RegFile        = nullptr;        ///< RevCore: Initial pointer to HartToDecodeID RegFile

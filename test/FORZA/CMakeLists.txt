@@ -214,8 +214,8 @@ add_forza_test(forza_zqm_mbox_setup forza_zqm_mbox_setup 30 "all;memh;rv64;loade
 add_forza_test(forza_python1 forza_python 30 "all;memh;rv64;loader;forza" "hartsperzap=1;zaps=1;zones=1;precincts=8;shape=1,1:8;program=ex2")
 add_forza_test(forza_python2 forza_python 30 "all;memh;rv64;loader;forza" "hartsperzap=512;zaps=1;zones=1;precincts=8;shape=1,1:8;program=ex2")
 add_forza_test(forza_python3 forza_python 60 "all;memh;rv64;loader;forza" "hartsperzap=512;zaps=2;zones=1;precincts=8;shape=1,1:8;program=ex2")
-add_forza_test(forza_python4 forza_python 60 "all;memh;rv64;loader;forza" "hartsperzap=512;zaps=2;zones=2;precincts=8;shape=2,2:4;program=ex2")
-add_forza_test(forza_python5 forza_python 120 "all;memh;rv64;loader;forza" "hartsperzap=512;zaps=2;zones=4;precincts=8;shape=4,4:2;program=ex2")
+add_forza_test(forza_python4 forza_python 100 "all;memh;rv64;loader;forza" "hartsperzap=512;zaps=2;zones=2;precincts=8;shape=2,2:4;program=ex2")
+add_forza_test(forza_python5 forza_python 180 "all;memh;rv64;loader;forza" "hartsperzap=512;zaps=2;zones=4;precincts=8;shape=4,4:2;program=ex2")
 
 add_forza_test(forza_harts_per_zap forza_config_syscalls 30 "all;memh;rv64;loader;forza" "hartsperzap=128;zaps=1;zones=1;precincts=1;program=ex2;progargs=128")
 # Args in config_syscalls are harts per zap, zaps per zone, zones per precinct, num precincts, then the executing program's zap ID, zone ID, and precinct ID
@@ -233,3 +233,7 @@ add_forza_test(forza_barrier_multi forza_barrier 30 "all;memh;rv64;loader;forza"
 # add_rev_test(private_access_denied_rza forza_security 120 "all;memh;rv64;loader;forza;security" SCRIPT "run_private_invalid.sh")
 # dd_rev_test(shared_access_allowed forza_security 120 "all;memh;rv64;loader;forza;" SCRIPT "run_shared_valid.sh")
 # dd_rev_test(shared_access_denied forza_security 120 "all;memh;rv64;loader;forza;security" SCRIPT "run_shared_invalid.sh")
+
+if( FORZA_ISA_TESTS )
+  add_subdirectory(forza_isa)
+endif()

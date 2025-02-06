@@ -43,15 +43,6 @@ RevMem::RevMem( uint64_t memSize, RevOpts* opts, SST::Output* output )
   AddMemSegAt( stacktop, 1024 );  // Add the 1024 bytes for the program header information
 }
 
-bool RevMem::outstandingRqsts() {
-  if( ctrl ) {
-    return ctrl->outstandingRqsts();
-  }
-
-  // RevMemCtrl is not enabled; no outstanding requests
-  return false;
-}
-
 void RevMem::HandleMemFault( uint32_t width ) {
   // build up the fault payload
   uint64_t rval    = RevRand( 0, ( uint32_t{ 1 } << width ) - 1 );
@@ -96,16 +87,16 @@ void RevMem::LR( uint32_t hart, uint64_t addr, size_t len, void* target, const M
   // A reservation maps a hart to an (addr, len) range and is invalidated if any other hart writes to this range
   LRSC.insert_or_assign( hart, std::pair( addr, len ) );
 
-  // now handle the memory operation
-  uint64_t       pageNum  = addr >> addrShift;
-  uint64_t       physAddr = CalcPhysAddr( pageNum, addr );
-  unsigned char* BaseMem  = &physMem[physAddr];
-
   if( ctrl ) {
-    ctrl->sendREADLOCKRequest( hart, addr, uint64_t( BaseMem ), uint32_t( len ), target, req, flags );
+    ctrl->sendREADLOCKRequest( hart, addr, 0, uint32_t( len ), target, req, flags );
   } else {
+    // now handle the memory operation
+    uint64_t       pageNum  = addr >> addrShift;
+    uint64_t       physAddr = CalcPhysAddr( pageNum, addr );
+    unsigned char* BaseMem  = &physMem[physAddr];
+
     memcpy( target, BaseMem, len );
-    RevHandleFlagResp( target, len, flags );
+    RevBasicMemCtrl::RevHandleFlagResp( target, len, flags );
     // clear the hazard
     req.MarkLoadComplete();
   }
@@ -196,7 +187,7 @@ void RevMem::AddToTLB( uint64_t vAddr, uint64_t physAddr ) {
     // Insert the vAddr and physAddr into the TLB and LRU list
     LRUQueue.push_front( vAddr );
     TLB.insert( {
-      vAddr, { physAddr, LRUQueue.begin() }
+      vAddr, {physAddr, LRUQueue.begin()}
     } );
   }
 }
@@ -498,16 +489,6 @@ uint64_t RevMem::AllocMemAt( const uint64_t& BaseAddr, const uint64_t& SegSize )
   return ret;
 }
 
-bool RevMem::FenceMem( uint32_t Hart ) {
-  if( ctrl ) {
-    return ctrl->sendFENCE( Hart );
-  } else if( zNic && !isRZA ) {
-    // generate a Fence packet
-    return __ZOP_FENCEHart( Hart );
-  }
-  return true;  // base RevMem support does nothing here
-}
-
 bool RevMem::AMOMem( uint32_t Hart, uint64_t Addr, uint32_t Len, void* Data, void* Target, const MemReq& req, RevFlag flags ) {
 #ifdef _REV_DEBUG_
   std::cout << "AMO of " << Len << " Bytes Starting at 0x" << std::hex << Addr << std::dec << std::endl;
@@ -515,44 +496,25 @@ bool RevMem::AMOMem( uint32_t Hart, uint64_t Addr, uint32_t Len, void* Data, voi
 
   if( ctrl ) {
     // sending to the RevMemCtrl
-    uint64_t       pageNum  = Addr >> addrShift;
-    uint64_t       physAddr = CalcPhysAddr( pageNum, Addr );
-    unsigned char* BaseMem  = &physMem[physAddr];
-
-    ctrl->sendAMORequest( Hart, Addr, uint64_t( BaseMem ), Len, static_cast<unsigned char*>( Data ), Target, req, flags );
+    ctrl->sendAMORequest( Hart, Addr, 0, Len, static_cast<unsigned char*>( Data ), Target, req, flags );
   } else if( zNic && !isRZA ) {
     // send a ZOP request to the RZA
     ZOP_AMOMem( Hart, Addr, Len, Data, Target, req, flags );
   } else {
     // process the request locally
-    union {
-      uint32_t TmpD4;
-      uint64_t TmpD8;
-    };
 
     // Get a copy of the data operand
-    memcpy( &TmpD8, Data, Len );
+    AMOData data;
+    memcpy( &data, Data, Len );
 
     // Read Target from memory
     ReadMem( Hart, Addr, Len, Target, req, flags );
 
-    union {
-      uint32_t TmpT4;
-      uint64_t TmpT8;
-    };
-
-    // Make a copy of Target for atomic operation
-    memcpy( &TmpT8, Target, Len );
-
     // Perform atomic operation
-    if( Len == 4 ) {
-      ApplyAMO( flags, &TmpT4, TmpD4 );
-    } else {
-      ApplyAMO( flags, &TmpT8, TmpD8 );
-    }
+    auto newMem = RevBasicMemCtrl::performAMO( flags, Len, Target, &data );
 
     // Write new value to memory
-    WriteMem( Hart, Addr, Len, &TmpT8, flags );
+    WriteMem( Hart, Addr, Len, &newMem, flags );
 
     // clear the hazard
     req.MarkLoadComplete();
@@ -637,7 +599,7 @@ bool RevMem::ReadMem( uint32_t Hart, uint64_t Addr, uint32_t Len, void* Target, 
     memcpy( DataMem + remainder, &physMem[adjPhysAddr], Len - remainder );
 
     // Handle flag response
-    RevHandleFlagResp( Target, Len, flags );
+    RevBasicMemCtrl::RevHandleFlagResp( Target, Len, flags );
 
     // clear the hazard - if this was an AMO operation then we will clear outside of this function in AMOMem()
     if( MemOp::MemOpAMO != req.ReqType )
@@ -645,37 +607,6 @@ bool RevMem::ReadMem( uint32_t Hart, uint64_t Addr, uint32_t Len, void* Target, 
   }
 
   memStats.bytesRead += Len;
-  return true;
-}
-
-bool RevMem::FlushLine( uint32_t Hart, uint64_t Addr ) {
-  uint64_t pageNum  = Addr >> addrShift;
-  uint64_t physAddr = CalcPhysAddr( pageNum, Addr );
-  if( ctrl ) {
-    ctrl->sendFLUSHRequest( Hart, Addr, physAddr, getLineSize(), false, RevFlag::F_NONE );
-  }
-  // else, this is effectively a nop
-  return true;
-}
-
-bool RevMem::InvLine( uint32_t Hart, uint64_t Addr ) {
-  uint64_t pageNum  = Addr >> addrShift;
-  uint64_t physAddr = CalcPhysAddr( pageNum, Addr );
-  if( ctrl ) {
-    ctrl->sendFLUSHRequest( Hart, Addr, physAddr, getLineSize(), true, RevFlag::F_NONE );
-  }
-  // else, this is effectively a nop
-  return true;
-}
-
-bool RevMem::CleanLine( uint32_t Hart, uint64_t Addr ) {
-  uint64_t pageNum  = Addr >> addrShift;
-  uint64_t physAddr = CalcPhysAddr( pageNum, Addr );
-  if( ctrl ) {
-    ctrl->sendFENCE( Hart );
-    ctrl->sendFLUSHRequest( Hart, Addr, physAddr, getLineSize(), false, RevFlag::F_NONE );
-  }
-  // else, this is effectively a nop
   return true;
 }
 
@@ -840,104 +771,237 @@ uint64_t RevMem::ExpandHeap( uint64_t Size ) {
 // ----------------------------------------------------
 // ---- FORZA Interfaces
 // ----------------------------------------------------
-SST::Forza::zopOpc RevMem::flagToZOP( uint32_t flags, size_t Len ) {
+SST::Forza::zopOpc RevMem::flagToZOP( RevFlag flags, size_t Len ) {
 
-  static const std::tuple<RevCPU::RevFlag, size_t, Forza::zopOpc> table[] = {
-    { RevCPU::RevFlag::F_AMOADD, 1,   Forza::zopOpc::Z_HAC_8_BASE_ADD},
-    { RevCPU::RevFlag::F_AMOXOR, 1,   Forza::zopOpc::Z_HAC_8_BASE_XOR},
-    { RevCPU::RevFlag::F_AMOAND, 1,   Forza::zopOpc::Z_HAC_8_BASE_AND},
-    {  RevCPU::RevFlag::F_AMOOR, 1,    Forza::zopOpc::Z_HAC_8_BASE_OR},
-    {RevCPU::RevFlag::F_AMOSWAP, 1,  Forza::zopOpc::Z_HAC_8_BASE_SWAP},
-    { RevCPU::RevFlag::F_AMOMIN, 1,  Forza::zopOpc::Z_HAC_8_BASE_SMIN},
-    { RevCPU::RevFlag::F_AMOMAX, 1,  Forza::zopOpc::Z_HAC_8_BASE_SMAX},
-    {RevCPU::RevFlag::F_AMOMINU, 1,   Forza::zopOpc::Z_HAC_8_BASE_MIN},
-    {RevCPU::RevFlag::F_AMOMAXU, 1,   Forza::zopOpc::Z_HAC_8_BASE_MAX},
-    { RevCPU::RevFlag::F_AMOADD, 2,  Forza::zopOpc::Z_HAC_16_BASE_ADD},
-    { RevCPU::RevFlag::F_AMOXOR, 2,  Forza::zopOpc::Z_HAC_16_BASE_XOR},
-    { RevCPU::RevFlag::F_AMOAND, 2,  Forza::zopOpc::Z_HAC_16_BASE_AND},
-    {  RevCPU::RevFlag::F_AMOOR, 2,   Forza::zopOpc::Z_HAC_16_BASE_OR},
-    {RevCPU::RevFlag::F_AMOSWAP, 2, Forza::zopOpc::Z_HAC_16_BASE_SWAP},
-    { RevCPU::RevFlag::F_AMOMIN, 2, Forza::zopOpc::Z_HAC_16_BASE_SMIN},
-    { RevCPU::RevFlag::F_AMOMAX, 2, Forza::zopOpc::Z_HAC_16_BASE_SMAX},
-    {RevCPU::RevFlag::F_AMOMINU, 2,  Forza::zopOpc::Z_HAC_16_BASE_MIN},
-    {RevCPU::RevFlag::F_AMOMAXU, 2,  Forza::zopOpc::Z_HAC_16_BASE_MAX},
-    { RevCPU::RevFlag::F_AMOADD, 4,  Forza::zopOpc::Z_HAC_32_BASE_ADD},
-    { RevCPU::RevFlag::F_AMOXOR, 4,  Forza::zopOpc::Z_HAC_32_BASE_XOR},
-    { RevCPU::RevFlag::F_AMOAND, 4,  Forza::zopOpc::Z_HAC_32_BASE_AND},
-    {  RevCPU::RevFlag::F_AMOOR, 4,   Forza::zopOpc::Z_HAC_32_BASE_OR},
-    {RevCPU::RevFlag::F_AMOSWAP, 4, Forza::zopOpc::Z_HAC_32_BASE_SWAP},
-    { RevCPU::RevFlag::F_AMOMIN, 4, Forza::zopOpc::Z_HAC_32_BASE_SMIN},
-    { RevCPU::RevFlag::F_AMOMAX, 4, Forza::zopOpc::Z_HAC_32_BASE_SMAX},
-    {RevCPU::RevFlag::F_AMOMINU, 4,  Forza::zopOpc::Z_HAC_32_BASE_MIN},
-    {RevCPU::RevFlag::F_AMOMAXU, 4,  Forza::zopOpc::Z_HAC_32_BASE_MAX},
-    { RevCPU::RevFlag::F_AMOADD, 8,  Forza::zopOpc::Z_HAC_64_BASE_ADD},
-    { RevCPU::RevFlag::F_AMOXOR, 8,  Forza::zopOpc::Z_HAC_64_BASE_XOR},
-    { RevCPU::RevFlag::F_AMOAND, 8,  Forza::zopOpc::Z_HAC_64_BASE_AND},
-    {  RevCPU::RevFlag::F_AMOOR, 8,   Forza::zopOpc::Z_HAC_64_BASE_OR},
-    {RevCPU::RevFlag::F_AMOSWAP, 8, Forza::zopOpc::Z_HAC_64_BASE_SWAP},
-    { RevCPU::RevFlag::F_AMOMIN, 8, Forza::zopOpc::Z_HAC_64_BASE_SMIN},
-    { RevCPU::RevFlag::F_AMOMAX, 8, Forza::zopOpc::Z_HAC_64_BASE_SMAX},
-    {RevCPU::RevFlag::F_AMOMINU, 8,  Forza::zopOpc::Z_HAC_64_BASE_MIN},
-    {RevCPU::RevFlag::F_AMOMAXU, 8,  Forza::zopOpc::Z_HAC_64_BASE_MAX},
+  output->verbose(
+    CALL_INFO,
+    4,
+    0,
+    "Decoding all flags ZOPs: "
+    "flags=%" PRIu32 ", len=%" PRIuPTR "\n",
+    safe_static_cast<uint32_t>( flags ),
+    Len
+  );
+
+  // Note: This table is effectively populated in reverse order
+  // The values at the  bottom of the table correspond to the U-style atomics
+  // that have no return value (on an ACK).  They are matched last as the second
+  // array value `RevFlag::F_NONE`
+  //
+  // -- Encoding Styles: Z_HAC_width_type_OP
+  // -- widths of 8, 16, 32, 64 (bits [1:0])
+  // -- For the types below, bits [3:2]
+  // -- 'B' = BASE-Type (aka U - update; update mem, return ack)
+  // -- 'M' = M-Type (aka NN - both Rd and mem get result)
+  // -- 'S' = S-Type (aka ON - mem unchanged, Rd gets result)
+  // -- 'MS' = MS-Type (aka NO - mem gets result, Rd gets orig memory)
+  // Function defined in bits [7:4] - function codes 0xB and 0xF unused
+  static constexpr std::tuple<RevFlag, RevFlag, size_t, Forza::zopOpc> table[] = {
+  // clang-format off
+    { RevFlag::F_AMOADD,  RevFlag::F_AMONN, 1, Forza::zopOpc::Z_HAC_8_M_ADD      },
+    { RevFlag::F_AMOXOR,  RevFlag::F_AMONN, 1, Forza::zopOpc::Z_HAC_8_M_XOR      },
+    { RevFlag::F_AMOAND,  RevFlag::F_AMONN, 1, Forza::zopOpc::Z_HAC_8_M_AND      },
+    { RevFlag::F_AMOOR,   RevFlag::F_AMONN, 1, Forza::zopOpc::Z_HAC_8_M_OR       },
+    { RevFlag::F_AMOSWAP, RevFlag::F_AMONN, 1, Forza::zopOpc::Z_HAC_8_M_SWAP     },
+    { RevFlag::F_AMOMIN,  RevFlag::F_AMONN, 1, Forza::zopOpc::Z_HAC_8_M_SMIN     },
+    { RevFlag::F_AMOMAX,  RevFlag::F_AMONN, 1, Forza::zopOpc::Z_HAC_8_M_SMAX     },
+    { RevFlag::F_AMOMINU, RevFlag::F_AMONN, 1, Forza::zopOpc::Z_HAC_8_M_MIN      },
+    { RevFlag::F_AMOMAXU, RevFlag::F_AMONN, 1, Forza::zopOpc::Z_HAC_8_M_MAX      },
+    { RevFlag::F_AMOADD,  RevFlag::F_AMONN, 2, Forza::zopOpc::Z_HAC_16_M_ADD     },
+    { RevFlag::F_AMOXOR,  RevFlag::F_AMONN, 2, Forza::zopOpc::Z_HAC_16_M_XOR     },
+    { RevFlag::F_AMOAND,  RevFlag::F_AMONN, 2, Forza::zopOpc::Z_HAC_16_M_AND     },
+    { RevFlag::F_AMOOR,   RevFlag::F_AMONN, 2, Forza::zopOpc::Z_HAC_16_M_OR      },
+    { RevFlag::F_AMOSWAP, RevFlag::F_AMONN, 2, Forza::zopOpc::Z_HAC_16_M_SWAP    },
+    { RevFlag::F_AMOMIN,  RevFlag::F_AMONN, 2, Forza::zopOpc::Z_HAC_16_M_SMIN    },
+    { RevFlag::F_AMOMAX,  RevFlag::F_AMONN, 2, Forza::zopOpc::Z_HAC_16_M_SMAX    },
+    { RevFlag::F_AMOMINU, RevFlag::F_AMONN, 2, Forza::zopOpc::Z_HAC_16_M_MIN     },
+    { RevFlag::F_AMOMAXU, RevFlag::F_AMONN, 2, Forza::zopOpc::Z_HAC_16_M_MAX     },
+    { RevFlag::F_AMOADD,  RevFlag::F_AMONN, 4, Forza::zopOpc::Z_HAC_32_M_ADD     },
+    { RevFlag::F_AMOXOR,  RevFlag::F_AMONN, 4, Forza::zopOpc::Z_HAC_32_M_XOR     },
+    { RevFlag::F_AMOAND,  RevFlag::F_AMONN, 4, Forza::zopOpc::Z_HAC_32_M_AND     },
+    { RevFlag::F_AMOOR,   RevFlag::F_AMONN, 4, Forza::zopOpc::Z_HAC_32_M_OR      },
+    { RevFlag::F_AMOSWAP, RevFlag::F_AMONN, 4, Forza::zopOpc::Z_HAC_32_M_SWAP    },
+    { RevFlag::F_AMOMIN,  RevFlag::F_AMONN, 4, Forza::zopOpc::Z_HAC_32_M_SMIN    },
+    { RevFlag::F_AMOMAX,  RevFlag::F_AMONN, 4, Forza::zopOpc::Z_HAC_32_M_SMAX    },
+    { RevFlag::F_AMOMINU, RevFlag::F_AMONN, 4, Forza::zopOpc::Z_HAC_32_M_MIN     },
+    { RevFlag::F_AMOMAXU, RevFlag::F_AMONN, 4, Forza::zopOpc::Z_HAC_32_M_MAX     },
+    { RevFlag::F_AMOADD,  RevFlag::F_AMONN, 8, Forza::zopOpc::Z_HAC_64_M_ADD     },
+    { RevFlag::F_AMOXOR,  RevFlag::F_AMONN, 8, Forza::zopOpc::Z_HAC_64_M_XOR     },
+    { RevFlag::F_AMOAND,  RevFlag::F_AMONN, 8, Forza::zopOpc::Z_HAC_64_M_AND     },
+    { RevFlag::F_AMOOR,   RevFlag::F_AMONN, 8, Forza::zopOpc::Z_HAC_64_M_OR      },
+    { RevFlag::F_AMOSWAP, RevFlag::F_AMONN, 8, Forza::zopOpc::Z_HAC_64_M_SWAP    },
+    { RevFlag::F_AMOMIN,  RevFlag::F_AMONN, 8, Forza::zopOpc::Z_HAC_64_M_SMIN    },
+    { RevFlag::F_AMOMAX,  RevFlag::F_AMONN, 8, Forza::zopOpc::Z_HAC_64_M_SMAX    },
+    { RevFlag::F_AMOMINU, RevFlag::F_AMONN, 8, Forza::zopOpc::Z_HAC_64_M_MIN     },
+    { RevFlag::F_AMOMAXU, RevFlag::F_AMONN, 8, Forza::zopOpc::Z_HAC_64_M_MAX     },
+
+    { RevFlag::F_AMOADD,  RevFlag::F_AMOON, 1, Forza::zopOpc::Z_HAC_8_S_ADD      },
+    { RevFlag::F_AMOXOR,  RevFlag::F_AMOON, 1, Forza::zopOpc::Z_HAC_8_S_XOR      },
+    { RevFlag::F_AMOAND,  RevFlag::F_AMOON, 1, Forza::zopOpc::Z_HAC_8_S_AND      },
+    { RevFlag::F_AMOOR,   RevFlag::F_AMOON, 1, Forza::zopOpc::Z_HAC_8_S_OR       },
+    { RevFlag::F_AMOSWAP, RevFlag::F_AMOON, 1, Forza::zopOpc::Z_HAC_8_S_SWAP     },
+    { RevFlag::F_AMOMIN,  RevFlag::F_AMOON, 1, Forza::zopOpc::Z_HAC_8_S_SMIN     },
+    { RevFlag::F_AMOMAX,  RevFlag::F_AMOON, 1, Forza::zopOpc::Z_HAC_8_S_SMAX     },
+    { RevFlag::F_AMOMINU, RevFlag::F_AMOON, 1, Forza::zopOpc::Z_HAC_8_S_MIN      },
+    { RevFlag::F_AMOMAXU, RevFlag::F_AMOON, 1, Forza::zopOpc::Z_HAC_8_S_MAX      },
+    { RevFlag::F_AMOADD,  RevFlag::F_AMOON, 2, Forza::zopOpc::Z_HAC_16_S_ADD     },
+    { RevFlag::F_AMOXOR,  RevFlag::F_AMOON, 2, Forza::zopOpc::Z_HAC_16_S_XOR     },
+    { RevFlag::F_AMOAND,  RevFlag::F_AMOON, 2, Forza::zopOpc::Z_HAC_16_S_AND     },
+    { RevFlag::F_AMOOR,   RevFlag::F_AMOON, 2, Forza::zopOpc::Z_HAC_16_S_OR      },
+    { RevFlag::F_AMOSWAP, RevFlag::F_AMOON, 2, Forza::zopOpc::Z_HAC_16_S_SWAP    },
+    { RevFlag::F_AMOMIN,  RevFlag::F_AMOON, 2, Forza::zopOpc::Z_HAC_16_S_SMIN    },
+    { RevFlag::F_AMOMAX,  RevFlag::F_AMOON, 2, Forza::zopOpc::Z_HAC_16_S_SMAX    },
+    { RevFlag::F_AMOMINU, RevFlag::F_AMOON, 2, Forza::zopOpc::Z_HAC_16_S_MIN     },
+    { RevFlag::F_AMOMAXU, RevFlag::F_AMOON, 2, Forza::zopOpc::Z_HAC_16_S_MAX     },
+    { RevFlag::F_AMOADD,  RevFlag::F_AMOON, 4, Forza::zopOpc::Z_HAC_32_S_ADD     },
+    { RevFlag::F_AMOXOR,  RevFlag::F_AMOON, 4, Forza::zopOpc::Z_HAC_32_S_XOR     },
+    { RevFlag::F_AMOAND,  RevFlag::F_AMOON, 4, Forza::zopOpc::Z_HAC_32_S_AND     },
+    { RevFlag::F_AMOOR,   RevFlag::F_AMOON, 4, Forza::zopOpc::Z_HAC_32_S_OR      },
+    { RevFlag::F_AMOSWAP, RevFlag::F_AMOON, 4, Forza::zopOpc::Z_HAC_32_S_SWAP    },
+    { RevFlag::F_AMOMIN,  RevFlag::F_AMOON, 4, Forza::zopOpc::Z_HAC_32_S_SMIN    },
+    { RevFlag::F_AMOMAX,  RevFlag::F_AMOON, 4, Forza::zopOpc::Z_HAC_32_S_SMAX    },
+    { RevFlag::F_AMOMINU, RevFlag::F_AMOON, 4, Forza::zopOpc::Z_HAC_32_S_MIN     },
+    { RevFlag::F_AMOMAXU, RevFlag::F_AMOON, 4, Forza::zopOpc::Z_HAC_32_S_MAX     },
+    { RevFlag::F_AMOADD,  RevFlag::F_AMOON, 8, Forza::zopOpc::Z_HAC_64_S_ADD     },
+    { RevFlag::F_AMOXOR,  RevFlag::F_AMOON, 8, Forza::zopOpc::Z_HAC_64_S_XOR     },
+    { RevFlag::F_AMOAND,  RevFlag::F_AMOON, 8, Forza::zopOpc::Z_HAC_64_S_AND     },
+    { RevFlag::F_AMOOR,   RevFlag::F_AMOON, 8, Forza::zopOpc::Z_HAC_64_S_OR      },
+    { RevFlag::F_AMOSWAP, RevFlag::F_AMOON, 8, Forza::zopOpc::Z_HAC_64_S_SWAP    },
+    { RevFlag::F_AMOMIN,  RevFlag::F_AMOON, 8, Forza::zopOpc::Z_HAC_64_S_SMIN    },
+    { RevFlag::F_AMOMAX,  RevFlag::F_AMOON, 8, Forza::zopOpc::Z_HAC_64_S_SMAX    },
+    { RevFlag::F_AMOMINU, RevFlag::F_AMOON, 8, Forza::zopOpc::Z_HAC_64_S_MIN     },
+    { RevFlag::F_AMOMAXU, RevFlag::F_AMOON, 8, Forza::zopOpc::Z_HAC_64_S_MAX     },
+
+    { RevFlag::F_AMOADD,  RevFlag::F_AMONO, 1, Forza::zopOpc::Z_HAC_8_MS_ADD     },
+    { RevFlag::F_AMOXOR,  RevFlag::F_AMONO, 1, Forza::zopOpc::Z_HAC_8_MS_XOR     },
+    { RevFlag::F_AMOAND,  RevFlag::F_AMONO, 1, Forza::zopOpc::Z_HAC_8_MS_AND     },
+    { RevFlag::F_AMOOR,   RevFlag::F_AMONO, 1, Forza::zopOpc::Z_HAC_8_MS_OR      },
+    { RevFlag::F_AMOSWAP, RevFlag::F_AMONO, 1, Forza::zopOpc::Z_HAC_8_MS_SWAP    },
+    { RevFlag::F_AMOMIN,  RevFlag::F_AMONO, 1, Forza::zopOpc::Z_HAC_8_MS_SMIN    },
+    { RevFlag::F_AMOMAX,  RevFlag::F_AMONO, 1, Forza::zopOpc::Z_HAC_8_MS_SMAX    },
+    { RevFlag::F_AMOMINU, RevFlag::F_AMONO, 1, Forza::zopOpc::Z_HAC_8_MS_MIN     },
+    { RevFlag::F_AMOMAXU, RevFlag::F_AMONO, 1, Forza::zopOpc::Z_HAC_8_MS_MAX     },
+    { RevFlag::F_AMOADD,  RevFlag::F_AMONO, 2, Forza::zopOpc::Z_HAC_16_MS_ADD    },
+    { RevFlag::F_AMOXOR,  RevFlag::F_AMONO, 2, Forza::zopOpc::Z_HAC_16_MS_XOR    },
+    { RevFlag::F_AMOAND,  RevFlag::F_AMONO, 2, Forza::zopOpc::Z_HAC_16_MS_AND    },
+    { RevFlag::F_AMOOR,   RevFlag::F_AMONO, 2, Forza::zopOpc::Z_HAC_16_MS_OR     },
+    { RevFlag::F_AMOSWAP, RevFlag::F_AMONO, 2, Forza::zopOpc::Z_HAC_16_MS_SWAP   },
+    { RevFlag::F_AMOMIN,  RevFlag::F_AMONO, 2, Forza::zopOpc::Z_HAC_16_MS_SMIN   },
+    { RevFlag::F_AMOMAX,  RevFlag::F_AMONO, 2, Forza::zopOpc::Z_HAC_16_MS_SMAX   },
+    { RevFlag::F_AMOMINU, RevFlag::F_AMONO, 2, Forza::zopOpc::Z_HAC_16_MS_MIN    },
+    { RevFlag::F_AMOMAXU, RevFlag::F_AMONO, 2, Forza::zopOpc::Z_HAC_16_MS_MAX    },
+    { RevFlag::F_AMOADD,  RevFlag::F_AMONO, 4, Forza::zopOpc::Z_HAC_32_MS_ADD    },
+    { RevFlag::F_AMOXOR,  RevFlag::F_AMONO, 4, Forza::zopOpc::Z_HAC_32_MS_XOR    },
+    { RevFlag::F_AMOAND,  RevFlag::F_AMONO, 4, Forza::zopOpc::Z_HAC_32_MS_AND    },
+    { RevFlag::F_AMOOR,   RevFlag::F_AMONO, 4, Forza::zopOpc::Z_HAC_32_MS_OR     },
+    { RevFlag::F_AMOSWAP, RevFlag::F_AMONO, 4, Forza::zopOpc::Z_HAC_32_MS_SWAP   },
+    { RevFlag::F_AMOMIN,  RevFlag::F_AMONO, 4, Forza::zopOpc::Z_HAC_32_MS_SMIN   },
+    { RevFlag::F_AMOMAX,  RevFlag::F_AMONO, 4, Forza::zopOpc::Z_HAC_32_MS_SMAX   },
+    { RevFlag::F_AMOMINU, RevFlag::F_AMONO, 4, Forza::zopOpc::Z_HAC_32_MS_MIN    },
+    { RevFlag::F_AMOMAXU, RevFlag::F_AMONO, 4, Forza::zopOpc::Z_HAC_32_MS_MAX    },
+    { RevFlag::F_AMOADD,  RevFlag::F_AMONO, 8, Forza::zopOpc::Z_HAC_64_MS_ADD    },
+    { RevFlag::F_AMOXOR,  RevFlag::F_AMONO, 8, Forza::zopOpc::Z_HAC_64_MS_XOR    },
+    { RevFlag::F_AMOAND,  RevFlag::F_AMONO, 8, Forza::zopOpc::Z_HAC_64_MS_AND    },
+    { RevFlag::F_AMOOR,   RevFlag::F_AMONO, 8, Forza::zopOpc::Z_HAC_64_MS_OR     },
+    { RevFlag::F_AMOSWAP, RevFlag::F_AMONO, 8, Forza::zopOpc::Z_HAC_64_MS_SWAP   },
+    { RevFlag::F_AMOMIN,  RevFlag::F_AMONO, 8, Forza::zopOpc::Z_HAC_64_MS_SMIN   },
+    { RevFlag::F_AMOMAX,  RevFlag::F_AMONO, 8, Forza::zopOpc::Z_HAC_64_MS_SMAX   },
+    { RevFlag::F_AMOMINU, RevFlag::F_AMONO, 8, Forza::zopOpc::Z_HAC_64_MS_MIN    },
+    { RevFlag::F_AMOMAXU, RevFlag::F_AMONO, 8, Forza::zopOpc::Z_HAC_64_MS_MAX    },
+
+    { RevFlag::F_AMOADD,  RevFlag::F_NONE,    1, Forza::zopOpc::Z_HAC_8_BASE_ADD   },
+    { RevFlag::F_AMOXOR,  RevFlag::F_NONE,    1, Forza::zopOpc::Z_HAC_8_BASE_XOR   },
+    { RevFlag::F_AMOAND,  RevFlag::F_NONE,    1, Forza::zopOpc::Z_HAC_8_BASE_AND   },
+    { RevFlag::F_AMOOR,   RevFlag::F_NONE,    1, Forza::zopOpc::Z_HAC_8_BASE_OR    },
+    { RevFlag::F_AMOSWAP, RevFlag::F_NONE,    1, Forza::zopOpc::Z_HAC_8_BASE_SWAP  },
+    { RevFlag::F_AMOMIN,  RevFlag::F_NONE,    1, Forza::zopOpc::Z_HAC_8_BASE_SMIN  },
+    { RevFlag::F_AMOMAX,  RevFlag::F_NONE,    1, Forza::zopOpc::Z_HAC_8_BASE_SMAX  },
+    { RevFlag::F_AMOMINU, RevFlag::F_NONE,    1, Forza::zopOpc::Z_HAC_8_BASE_MIN   },
+    { RevFlag::F_AMOMAXU, RevFlag::F_NONE,    1, Forza::zopOpc::Z_HAC_8_BASE_MAX   },
+    { RevFlag::F_AMOADD,  RevFlag::F_NONE,    2, Forza::zopOpc::Z_HAC_16_BASE_ADD  },
+    { RevFlag::F_AMOXOR,  RevFlag::F_NONE,    2, Forza::zopOpc::Z_HAC_16_BASE_XOR  },
+    { RevFlag::F_AMOAND,  RevFlag::F_NONE,    2, Forza::zopOpc::Z_HAC_16_BASE_AND  },
+    { RevFlag::F_AMOOR,   RevFlag::F_NONE,    2, Forza::zopOpc::Z_HAC_16_BASE_OR   },
+    { RevFlag::F_AMOSWAP, RevFlag::F_NONE,    2, Forza::zopOpc::Z_HAC_16_BASE_SWAP },
+    { RevFlag::F_AMOMIN,  RevFlag::F_NONE,    2, Forza::zopOpc::Z_HAC_16_BASE_SMIN },
+    { RevFlag::F_AMOMAX,  RevFlag::F_NONE,    2, Forza::zopOpc::Z_HAC_16_BASE_SMAX },
+    { RevFlag::F_AMOMINU, RevFlag::F_NONE,    2, Forza::zopOpc::Z_HAC_16_BASE_MIN  },
+    { RevFlag::F_AMOMAXU, RevFlag::F_NONE,    2, Forza::zopOpc::Z_HAC_16_BASE_MAX  },
+    { RevFlag::F_AMOADD,  RevFlag::F_NONE,    4, Forza::zopOpc::Z_HAC_32_BASE_ADD  },
+    { RevFlag::F_AMOXOR,  RevFlag::F_NONE,    4, Forza::zopOpc::Z_HAC_32_BASE_XOR  },
+    { RevFlag::F_AMOAND,  RevFlag::F_NONE,    4, Forza::zopOpc::Z_HAC_32_BASE_AND  },
+    { RevFlag::F_AMOOR,   RevFlag::F_NONE,    4, Forza::zopOpc::Z_HAC_32_BASE_OR   },
+    { RevFlag::F_AMOSWAP, RevFlag::F_NONE,    4, Forza::zopOpc::Z_HAC_32_BASE_SWAP },
+    { RevFlag::F_AMOMIN,  RevFlag::F_NONE,    4, Forza::zopOpc::Z_HAC_32_BASE_SMIN },
+    { RevFlag::F_AMOMAX,  RevFlag::F_NONE,    4, Forza::zopOpc::Z_HAC_32_BASE_SMAX },
+    { RevFlag::F_AMOMINU, RevFlag::F_NONE,    4, Forza::zopOpc::Z_HAC_32_BASE_MIN  },
+    { RevFlag::F_AMOMAXU, RevFlag::F_NONE,    4, Forza::zopOpc::Z_HAC_32_BASE_MAX  },
+    { RevFlag::F_AMOADD,  RevFlag::F_NONE,    8, Forza::zopOpc::Z_HAC_64_BASE_ADD  },
+    { RevFlag::F_AMOXOR,  RevFlag::F_NONE,    8, Forza::zopOpc::Z_HAC_64_BASE_XOR  },
+    { RevFlag::F_AMOAND,  RevFlag::F_NONE,    8, Forza::zopOpc::Z_HAC_64_BASE_AND  },
+    { RevFlag::F_AMOOR,   RevFlag::F_NONE,    8, Forza::zopOpc::Z_HAC_64_BASE_OR   },
+    { RevFlag::F_AMOSWAP, RevFlag::F_NONE,    8, Forza::zopOpc::Z_HAC_64_BASE_SWAP },
+    { RevFlag::F_AMOMIN,  RevFlag::F_NONE,    8, Forza::zopOpc::Z_HAC_64_BASE_SMIN },
+    { RevFlag::F_AMOMAX,  RevFlag::F_NONE,    8, Forza::zopOpc::Z_HAC_64_BASE_SMAX },
+    { RevFlag::F_AMOMINU, RevFlag::F_NONE,    8, Forza::zopOpc::Z_HAC_64_BASE_MIN  },
+    { RevFlag::F_AMOMAXU, RevFlag::F_NONE,    8, Forza::zopOpc::Z_HAC_64_BASE_MAX  },
+  // clang-format on
   };
 
-  for( auto& flag : table ) {
-    if( ( flags & (uint32_t) ( std::get<0>( flag ) ) ) && ( Len == std::get<1>( flag ) ) ) {
-      return std::get<2>( flag );
-      break;
-    }
+  for( const auto& [amo, ret, len, opc] : table ) {
+    if( RevFlagAtomic( flags ) == amo && RevFlagReturn( flags ) == ret && Len == len )
+      return opc;
   }
 
-  std::cout << "Z_NULL_OPC" << std::endl;
+  output->verbose(
+    CALL_INFO,
+    4,
+    0,
+    "WARNING: Failed to convert memory request flags to HZOP opcode; "
+    "flags=%" PRIu32 ", len=%" PRIuPTR "\n",
+    safe_static_cast<uint32_t>( flags ),
+    Len
+  );
   return SST::Forza::zopOpc::Z_NULL_OPC;
 }
 
-SST::Forza::zopOpc RevMem::memToZOP( uint32_t flags, size_t Len, bool Write ) {
+SST::Forza::zopOpc RevMem::memToZOP( RevFlag flags, size_t Len, bool Write ) {
 
-  static const std::tuple<RevCPU::RevFlag, size_t, bool, Forza::zopOpc> table[] = {
-    {  RevFlag::F_NONE, 1, false,  SST::Forza::zopOpc::Z_MZOP_LB},
-    {  RevFlag::F_NONE, 2, false,  SST::Forza::zopOpc::Z_MZOP_LH},
-    {  RevFlag::F_NONE, 4, false,  SST::Forza::zopOpc::Z_MZOP_LW},
-    {  RevFlag::F_NONE, 8, false,  SST::Forza::zopOpc::Z_MZOP_LD},
+  static constexpr std::tuple<RevFlag, size_t, bool, Forza::zopOpc> table[] = {
+  // clang-format off
+    {   RevFlag::F_NONE, 1, false,  SST::Forza::zopOpc::Z_MZOP_LB },
+    {   RevFlag::F_NONE, 2, false,  SST::Forza::zopOpc::Z_MZOP_LH },
+    {   RevFlag::F_NONE, 4, false,  SST::Forza::zopOpc::Z_MZOP_LW },
+    {   RevFlag::F_NONE, 8, false,  SST::Forza::zopOpc::Z_MZOP_LD },
 
-    {RevFlag::F_ZEXT64, 1, false,  SST::Forza::zopOpc::Z_MZOP_LB},
-    {RevFlag::F_ZEXT64, 2, false,  SST::Forza::zopOpc::Z_MZOP_LH},
-    {RevFlag::F_ZEXT64, 4, false,  SST::Forza::zopOpc::Z_MZOP_LW},
-    {RevFlag::F_ZEXT64, 8, false,  SST::Forza::zopOpc::Z_MZOP_LD},
+    { RevFlag::F_ZEXT64, 1, false,  SST::Forza::zopOpc::Z_MZOP_LB },
+    { RevFlag::F_ZEXT64, 2, false,  SST::Forza::zopOpc::Z_MZOP_LH },
+    { RevFlag::F_ZEXT64, 4, false,  SST::Forza::zopOpc::Z_MZOP_LW },
+    { RevFlag::F_ZEXT64, 8, false,  SST::Forza::zopOpc::Z_MZOP_LD },
 
-    {RevFlag::F_SEXT64, 1, false, SST::Forza::zopOpc::Z_MZOP_LSB},
-    {RevFlag::F_SEXT64, 2, false, SST::Forza::zopOpc::Z_MZOP_LSH},
-    {RevFlag::F_SEXT64, 4, false, SST::Forza::zopOpc::Z_MZOP_LSW},
+    { RevFlag::F_SEXT64, 1, false, SST::Forza::zopOpc::Z_MZOP_LSB },
+    { RevFlag::F_SEXT64, 2, false, SST::Forza::zopOpc::Z_MZOP_LSH },
+    { RevFlag::F_SEXT64, 4, false, SST::Forza::zopOpc::Z_MZOP_LSW },
 
-    {  RevFlag::F_NONE, 1,  true,  SST::Forza::zopOpc::Z_MZOP_SB},
-    {  RevFlag::F_NONE, 2,  true,  SST::Forza::zopOpc::Z_MZOP_SH},
-    {  RevFlag::F_NONE, 4,  true,  SST::Forza::zopOpc::Z_MZOP_SW},
-    {  RevFlag::F_NONE, 8,  true,  SST::Forza::zopOpc::Z_MZOP_SD},
+    {   RevFlag::F_NONE, 1,  true,  SST::Forza::zopOpc::Z_MZOP_SB },
+    {   RevFlag::F_NONE, 2,  true,  SST::Forza::zopOpc::Z_MZOP_SH },
+    {   RevFlag::F_NONE, 4,  true,  SST::Forza::zopOpc::Z_MZOP_SW },
+    {   RevFlag::F_NONE, 8,  true,  SST::Forza::zopOpc::Z_MZOP_SD },
 
-    {RevFlag::F_ZEXT64, 1,  true,  SST::Forza::zopOpc::Z_MZOP_SB},
-    {RevFlag::F_ZEXT64, 2,  true,  SST::Forza::zopOpc::Z_MZOP_SH},
-    {RevFlag::F_ZEXT64, 4,  true,  SST::Forza::zopOpc::Z_MZOP_SW},
-    {RevFlag::F_ZEXT64, 8,  true,  SST::Forza::zopOpc::Z_MZOP_SD},
+    { RevFlag::F_ZEXT64, 1,  true,  SST::Forza::zopOpc::Z_MZOP_SB },
+    { RevFlag::F_ZEXT64, 2,  true,  SST::Forza::zopOpc::Z_MZOP_SH },
+    { RevFlag::F_ZEXT64, 4,  true,  SST::Forza::zopOpc::Z_MZOP_SW },
+    { RevFlag::F_ZEXT64, 8,  true,  SST::Forza::zopOpc::Z_MZOP_SD },
 
-    {RevFlag::F_SEXT64, 1,  true, SST::Forza::zopOpc::Z_MZOP_SSB},
-    {RevFlag::F_SEXT64, 2,  true, SST::Forza::zopOpc::Z_MZOP_SSH},
-    {RevFlag::F_SEXT64, 4,  true, SST::Forza::zopOpc::Z_MZOP_SSW},
+    { RevFlag::F_SEXT64, 1,  true, SST::Forza::zopOpc::Z_MZOP_SSB },
+    { RevFlag::F_SEXT64, 2,  true, SST::Forza::zopOpc::Z_MZOP_SSH },
+    { RevFlag::F_SEXT64, 4,  true, SST::Forza::zopOpc::Z_MZOP_SSW },
+  // clang-format on
   };
 
-  for( auto& flag : table ) {
-    if( flags == 0 ) {
-      // match on null flags
-      if( ( std::get<0>( flag ) == RevFlag::F_NONE ) && ( Len == std::get<1>( flag ) ) && ( Write == std::get<2>( flag ) ) ) {
-        return std::get<3>( flag );
-        break;
-      }
-    } else {
-      // match on non-null flags
-      if( ( flags & (uint32_t) ( std::get<0>( flag ) ) ) && ( Len == std::get<1>( flag ) ) && ( Write == std::get<2>( flag ) ) ) {
-        return std::get<3>( flag );
-        break;
-      }
-    }
+  for( const auto& [resp, len, write, opc] : table ) {
+    if( Len == len && Write == write && RevFlagResp( flags ) == resp )
+      return opc;
   }
 
   output->verbose(
@@ -946,7 +1010,7 @@ SST::Forza::zopOpc RevMem::memToZOP( uint32_t flags, size_t Len, bool Write ) {
     0,
     "WARNING: Failed to convert memory request to MZOP opcode; "
     "flags=%" PRIu32 ", len=%" PRIuPTR ", write=%" PRIu32 "\n",
-    flags,
+    safe_static_cast<uint32_t>( flags ),
     Len,
     (uint32_t) Write
   );
@@ -965,7 +1029,7 @@ bool RevMem::ZOP_AMOMem( uint32_t Hart, uint64_t Addr, size_t Len, void* Data, v
   // set all the fields
   zev->setType( SST::Forza::zopMsgT::Z_HZOPAC );
   zev->setID( uint16_t( Hart ) );  // -- we set this to the Hart temporarily.  The zNic will set the actual message ID
-  zev->setOpc( flagToZOP( (uint32_t) ( flags ), Len ) );
+  zev->setOpc( flagToZOP( flags, Len ) );
   zev->setAppID( 0 );
   zev->setDestHart( Forza::Z_HZOP_PIPE_HART );
   zev->setDestZCID( (uint8_t) ( SST::Forza::zopCompID::Z_RZA ) );
@@ -1004,7 +1068,7 @@ bool RevMem::ZOP_READMem( uint32_t Hart, uint64_t Addr, size_t Len, void* Target
   // set all the fields : FIXME
   zev->setType( SST::Forza::zopMsgT::Z_MZOP );
   zev->setID( uint16_t( Hart ) );  // -- we set this to the Hart temporarily.  The zNic will set the actual message ID
-  zev->setOpc( memToZOP( uint32_t( flags ), Len, false ) );
+  zev->setOpc( memToZOP( flags, Len, false ) );
   zev->setAppID( 0 );
   zev->setDestHart( Forza::Z_MZOP_PIPE_HART );
   Forza::zopCompID end_dest = ( Forza::zopCompID::Z_RZA );
@@ -1063,7 +1127,7 @@ bool RevMem::ZOP_WRITEMem( uint32_t Hart, uint64_t Addr, size_t Len, const void*
 
     while( BytesWritten != Len ) {
       // dispatch the next write operation
-      if( !__ZOP_WRITEMemBase( Hart, CurAddr, CurLen, CurData, flags, memToZOP( (uint32_t) ( flags ), CurLen, true ) ) ) {
+      if( !__ZOP_WRITEMemBase( Hart, CurAddr, CurLen, CurData, flags, memToZOP( flags, CurLen, true ) ) ) {
         return false;
       }
 
@@ -1439,9 +1503,9 @@ void RevMem::updatePhysHistorytoOutput() {
   //PhysAddr,Private/Shared, True/False,appID
   outputfile << "PhysAddr,Type,Valid,AppID\n";
 
-  for( const auto& element : OutputPhysAddrHist ) {
-    outputfile << element.first << "," << std::get<0>( element.second ) << ","
-               << ( std::get<1>( element.second ) ? "True" : "False" ) << "," << std::get<2>( element.second ) << "\n";
+  for( auto& [first, second] : OutputPhysAddrHist ) {
+    auto& [type, valid, appIDs] = second;
+    outputfile << first << "," << type << "," << ( valid ? "True" : "False" ) << "," << appIDs << "\n";
   }
 
   outputfile.close();

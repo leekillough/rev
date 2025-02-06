@@ -876,7 +876,7 @@ class FORZA:
                       # if this works will need to change it for
                       # multi zone/precinct designs
                       # "memSize": (self.memSize + 1024*1024*200*k),
-                      "machine": "[CORES:RV64GC]",
+                      "machine": "[CORES:RV64GC_Xforza]",
                       # "startAddr": "[CORES:0x00000000]",
                       "program": self.program,
                       "args": self.progArgs,

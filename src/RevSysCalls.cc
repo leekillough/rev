@@ -47,8 +47,7 @@ EcallStatus RevCore::EcallLoadAndParseString( uint64_t straddr, std::function<vo
         HartToExecID,
         MemOp::MemOpREAD,
         true,
-        [=]( const MemReq& req ) { this->MarkLoadComplete( req ); }
-      };
+        [=]( const MemReq& req ) { this->MarkLoadComplete( req ); } };
       LSQueue->insert( req.LSQHashPair() );
       mem->ReadVal( HartToExecID, straddr + EcallState.string.size(), EcallState.buf.data(), req, RevFlag::F_NONE );
       EcallState.bytesRead = 1;
@@ -4134,8 +4133,9 @@ EcallStatus RevCore::ECALL_forza_receive_word() {
   if( release_msg )
     rt = Forza::ringMsgT::R_UPDATE;
 
-  SST::Forza::ringEvent* ring_ev =
-    new SST::Forza::ringEvent( zNic->getEndpointType(), HartToExecID, SST::Forza::zopCompID::Z_ZQM, rt, reg_id, 0 );
+  SST::Forza::ringEvent* ring_ev = new SST::Forza::ringEvent(
+    zNic->getEndpointType(), uint16_t( HartToExecID ), SST::Forza::zopCompID::Z_ZQM, rt, uint16_t( reg_id ), 0
+  );
 
   if( zoneRing ) {
     int64_t next_dest = zoneRing->getNextAddress();

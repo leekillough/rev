@@ -159,6 +159,10 @@ enum class zopOpc : uint8_t {
   // -- 'S' = S-Type (aka ON - mem unchanged, Rd gets result)
   // -- 'MS' = MS-Type (aka NO - mem gets result, Rd gets orig memory)
   // Function defined in bits [7:4] - function codes 0xB and 0xF unused
+  //
+  // TODO:
+  // - missing SUB operation
+  //
   Z_HAC_8_BASE_ADD     = 0x00,  /// zopOpc: HZOP-AC 8bit BASE AMO ADD
   Z_HAC_8_BASE_AND     = 0x10,  /// zopOpc: HZOP-AC 8bit BASE AMO AND
   Z_HAC_8_BASE_OR      = 0x20,  /// zopOpc: HZOP-AC 8bit BASE AMO OR
@@ -727,7 +731,7 @@ public:
   zopMsgT getType() { return Type; }
 
   /// zopEvent: get the payload length
-  uint8_t getLength() { return Packet.size() - Z_NUM_HEADER_FLITS; }
+  uint8_t getLength() { return uint8_t( Packet.size() - Z_NUM_HEADER_FLITS ); }
 
   /// zopEvent: get which flit this is in the transaction
   uint8_t getSeqNum() { return SeqNum; }
@@ -801,6 +805,7 @@ public:
       Packet[i] = 0;  // ensure any "old" data is cleared out
     }
     Length = uint8_t( Packet.size() - Z_NUM_HEADER_FLITS );
+
     Packet[Z_FLIT_DEST] |= ( (uint64_t) ( DestHart & Z_MASK_HARTID ) << Z_SHIFT_HARTID );
     Packet[Z_FLIT_DEST] |= ( (uint64_t) ( DestZCID & Z_MASK_ZCID ) << Z_SHIFT_ZCID );
     Packet[Z_FLIT_DEST] |= ( (uint64_t) ( DestPCID & Z_MASK_PCID ) << Z_SHIFT_PCID );
@@ -955,7 +960,7 @@ public:
   void serialize_order( SST::Core::Serialization::serializer& ser ) override {
     // we only serialize the raw packet
     Event::serialize_order( ser );
-    ser & Packet;
+    ser& Packet;
   }
 
   // zopEvent: implements the nic serialization
@@ -1276,18 +1281,9 @@ private:
   std::vector<std::pair<zopEvent*, zopCompID>>          preInitQ;  ///< zopNIC: holds buffered requests before the network boots
   std::vector<SST::Interfaces::SimpleNetwork::Request*> sendQ;     ///< zopNIC: buffered send queue
 
-#define _HM_ENDP_T 0
-#define _HM_ZID    1
-#define _HM_PID    2
   std::map<SST::Interfaces::SimpleNetwork::nid_t, std::tuple<zopCompID, zopPrecID, uint32_t>>
     hostMap;  ///< zopNIC: network ID to endpoint type mapping
 
-#define _ZNIC_OUT_HART   0
-#define _ZNIC_OUT_ID     1
-#define _ZNIC_OUT_READ   2
-#define _ZNIC_OUT_TARGET 3
-#define _ZNIC_OUT_OPC    4
-#define _ZNIC_OUT_REQ    5
   std::vector<std::tuple<
     uint16_t,
     uint8_t,
@@ -1298,7 +1294,7 @@ private:
     outstanding;  ///< zopNIC: tracks outstanding requests
 
   std::vector<Statistic<uint64_t>*> stats;  ///< zopNIC: statistics vector
-};  // zopNIC
+};                                          // zopNIC
 
 }  // namespace SST::Forza
 

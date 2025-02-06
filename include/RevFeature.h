@@ -45,6 +45,7 @@ enum RevFeatureType : uint32_t {
   RV_ZFH      = 1 << 19,  ///< RevFeatureType: H-extension
   RV_ZFHMIN   = 1 << 20,  ///< RevFeatureRtpe: Zfhmin extension
   RV_ZTSO     = 1 << 21,  ///< RevFeatureType: Ztso-extension
+  RV_XFORZA   = 1 << 22,  ///< RevFeatureType: XForza-extension
 };
 
 class RevFeature {

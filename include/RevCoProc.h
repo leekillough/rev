@@ -1,7 +1,7 @@
 //
 // _RevCoProc_h_
 //
-// Copyright (C) 2017-2024 Tactical Computing Laboratories, LLC
+// Copyright (C) 2017-2025 Tactical Computing Laboratories, LLC
 // All Rights Reserved
 // contact@tactcomplabs.com
 //
@@ -12,17 +12,11 @@
 #define _SST_REVCPU_REVCOPROC_H_
 
 // -- C++ Headers
-#include <algorithm>
-#include <ctime>
-#include <list>
-#include <mutex>
-
+#include <functional>
 #include <queue>
-#include <random>
-#include <stdio.h>
-#include <stdlib.h>
-#include <time.h>
+#include <string>
 #include <tuple>
+#include <utility>
 #include <vector>
 
 // -- SST Headers
@@ -507,8 +501,6 @@ private:
   /// RZALSCoProc: record the target statistic
   void recordStat( mzopStats Stat, uint64_t Data );
 
-#define LOADQ_ZEV 0
-#define LOADQ_RS2 1
   std::vector<std::pair<Forza::zopEvent*, uint32_t>> LoadQ;  ///< RZALSCoProc: Outstanding load queue
 
   std::function<void( const MemReq& )> MarkLoadCompleteFunc;  ///< RZALSCoProc: Hazard function
@@ -1014,9 +1006,6 @@ private:
   /// RZAAMOCoProc: record the target statistic
   void recordStat( hzopStats Stat, uint64_t Data );
 
-#define AMOQ_ZEV 0
-#define AMOQ_RS1 1
-#define AMOQ_RS2 2
   std::vector<std::tuple<Forza::zopEvent*, uint32_t, uint32_t>> AMOQ;  ///< RZAAMOCoProc: Outstanding load queue
 
   std::function<void( const MemReq& )> MarkLoadCompleteFunc;  ///< RZAAMOCoProc: Hazard function

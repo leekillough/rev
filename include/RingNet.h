@@ -241,12 +241,12 @@ public:
   // ringEvent: event serializer
   void serialize_order( SST::Core::Serialization::serializer& ser ) override {
     Event::serialize_order( ser );
-    ser & SrcComp;
-    ser & Hart;
-    ser & DestComp;
-    ser & Type;
-    ser & CSR;
-    ser & Datum;
+    ser& SrcComp;
+    ser& Hart;
+    ser& DestComp;
+    ser& Type;
+    ser& CSR;
+    ser& Datum;
   }
 
   // ringEvent: implements the nic serialization

@@ -215,6 +215,11 @@ bool RevCore::SeedInstTable() try {
     EnableExt( new Zfa( feature, mem, output ) );
   }
 
+  // XForza Extension
+  if( feature->IsModeEnabled( RV_XFORZA ) ) {
+    EnableExt( new XForza( feature, mem, output ) );
+  }
+
   return true;
 } catch( ... ) {
 
@@ -1330,7 +1335,7 @@ RevInst RevCore::DecodeInst( uint32_t Inst ) const {
   const uint32_t inst42 = Opcode >> 2 & 0b111;
   const uint32_t inst65 = Opcode >> 5 & 0b11;
 
-  if( ( inst42 == 0b011 ) && ( inst65 == 0b11 ) ) {
+  if( inst42 == 0b011 && inst65 == 0b11 ) {
     // JAL
     Funct3 = 0;
   } else if( inst42 == 0b101 && inst65 == 0b00 ) {
@@ -1355,6 +1360,9 @@ RevInst RevCore::DecodeInst( uint32_t Inst ) const {
         Funct2or7 = BitExtract<2, 5>( Funct2or7 );
       }
     }
+  } else if( inst65 == 0b00 && inst42 == 0b010 ) {
+    // Forza instructions
+    Funct2or7 = DECODE_FUNCT7( Inst );
   } else if( inst65 == 0b10 && inst42 < 0b100 ) {
     // R4-Type encodings -- we store the Funct2 precision field in Funct2or7
     Funct2or7 = DECODE_FUNCT2( Inst );
@@ -1536,8 +1544,7 @@ bool RevCore::DependencyCheck( uint32_t HartID, const RevInst* I ) const {
   // For ECALL, check for any outstanding dependencies on a0-a7
   if( I->opcode == 0b1110011 && I->imm == 0 && I->funct3 == 0 && I->rd == 0 && I->rs1 == 0 ) {
     for( RevReg reg : { RevReg::a7, RevReg::a0, RevReg::a1, RevReg::a2, RevReg::a3, RevReg::a4, RevReg::a5, RevReg::a6 } ) {
-      if( LSQCheck( HartToDecodeID, RegFile, safe_static_cast<uint16_t>( reg ), RevRegClass::RegGPR ) ||
-          ScoreboardCheck( RegFile, uint16_t( reg ), RevRegClass::RegGPR ) ) {
+      if( LSQCheck( HartToDecodeID, RegFile, safe_static_cast<uint16_t>( reg ), RevRegClass::RegGPR ) || ScoreboardCheck( RegFile, uint16_t( reg ), RevRegClass::RegGPR ) ) {
         return true;
       }
     }
@@ -1861,9 +1868,7 @@ bool RevCore::ClockTick( SST::Cycle_t currentCycle ) {
       RegFile->IncrementInstRet();
 
       // Only clear the dependency if there is no outstanding load
-      if( ( RegFile->GetLSQueue()->count(
-            LSQHash( Pipeline.front().second.rd, InstTable[Pipeline.front().second.entry].rdClass, HartID )
-          ) ) == 0 ) {
+      if( ( RegFile->GetLSQueue()->count( LSQHash( Pipeline.front().second.rd, InstTable[Pipeline.front().second.entry].rdClass, HartID ) ) ) == 0 ) {
         DependencyClear( HartID, &( Pipeline.front().second ) );
       }
       Pipeline.pop_front();
