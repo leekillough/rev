@@ -64,8 +64,6 @@ class XForza : public RevExt {
   // Remote Atomics
   // ------------------------------------------------------------
   template<typename TYPE, RevFlag Op, RevFlag Rtn>
-#VTUNE_OPTS="-collect io -k collect-memory-bandwidth=false -r ./nocpt -data-limit=0"
-#VTUNE_CPT_OPTS="-collect io -k collect-memory-bandwidth=false -r ./cpt -data-limit=0"
   static bool forzaamo_rem( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) {
     RevFlag flags{ Op };
     RevFlagSet( flags, Rtn );
