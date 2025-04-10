@@ -1708,6 +1708,9 @@ bool RevCore::ClockTick( SST::Cycle_t currentCycle ) {
   // ready to decode
   UpdateStatusOfHarts();
 
+  // process the ThreadQ FSM : may need to hoist this up to the Core level
+  mem->ThreadQProcess();
+
   if( HartsClearToDecode.any() && ( !Halted ) ) {
     // Determine what hart is ready to decode
     HartToDecodeID = GetNextHartToDecodeID();
