@@ -26,12 +26,23 @@ class XForza : public RevExt {
     // -- RS2 = is copied into register X31 of the child and is expected to
     //          contain a pointer to an arbitrary block of data in memory to
     //          be imported by the Child.
-    //uint64_t TPC = R->GetX<uint64_t>( Inst.rs1 );
-    //uint64_t X31 = R->GetX<uint64_t>( Inst.rs2 );
 
-    // update the cost
-    R->cost += M->RandCost( F->GetMinCost(), F->GetMaxCost() );
-    R->AdvancePC( Inst );
+    // If the FSM is not active, insert a new starting state into the ThreadQ
+    if( !M->ThreadQIsActive(F->GetHartToExecID()) ){
+      // I believe a Fence is required.  Remove this call if it's not
+      M->FenceMem( F->GetHartToExecID() );
+      M->ThreadQInsert(F->GetHartToExecID(),
+                       R->GetX<uint64_t>( Inst.rs1 ),
+                       R->GetX<uint64_t>( Inst.rs2 ));
+    }
+
+    // If the FSM is complete, advance the PC.  Otherwise, the PC should remain as is
+    // This will stall the pipeline of the calling Hart
+    if( M->ThreadQIsComplete(F->GetHartToExecID()) ){
+      R->cost += M->RandCost( F->GetMinCost(), F->GetMaxCost() );
+      R->AdvancePC( Inst );
+    }
+
     return true;
   }
 
@@ -53,6 +64,8 @@ class XForza : public RevExt {
   // Remote Atomics
   // ------------------------------------------------------------
   template<typename TYPE, RevFlag Op, RevFlag Rtn>
+#VTUNE_OPTS="-collect io -k collect-memory-bandwidth=false -r ./nocpt -data-limit=0"
+#VTUNE_CPT_OPTS="-collect io -k collect-memory-bandwidth=false -r ./cpt -data-limit=0"
   static bool forzaamo_rem( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) {
     RevFlag flags{ Op };
     RevFlagSet( flags, Rtn );

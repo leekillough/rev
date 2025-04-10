@@ -1626,6 +1626,37 @@ void RevMem::DumpThreadMem( const uint64_t bytesPerRow, std::ostream& outputStre
 void RevMem::AddDumpRange( const std::string& Name, const uint64_t BaseAddr, const uint64_t Size ) {
   DumpRanges[Name] = std::make_shared<MemSegment>( BaseAddr, Size );
 }
+
+bool RevMem::ThreadQIsActive(uint32_t SpawnHart){
+  // search the ThreadQ for a spawn request from the 'Hart'
+  for( auto const& [Hart, TPC, X31, State] : ThreadQ ){
+    if( Hart == SpawnHart ){
+      return true;
+    }
+  }
+  return false;
+}
+
+bool RevMem::ThreadQIsComplete(uint32_t Hart){
+  for( auto const& [Hart, TPC, X31, State] : ThreadQ ){
+    if( State == Complete ){
+      // TODO: REMOVE THE ENTRY FROM THE VECTOR
+      return true;
+    }
+  }
+  return false;
+}
+
+bool RevMem::ThreadQInsert(uint32_t Hart, uint64_t TPC, uint64_t X31){
+  ThreadQ.insert(std::make_tuple(Hart, TPC, X31, Inserted));
+  return true;
+}
+
+bool RevMem::ThreadQProcess(){
+  // process the FSM here
+  return true;
+}
+
 }  // namespace SST::RevCPU
 
 // EOF
