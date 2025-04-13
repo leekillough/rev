@@ -445,6 +445,18 @@ public:
 
   void DumpThreadMem( const uint64_t bytesPerRow = 16, std::ostream& outputStream = std::cout );
 
+  /// FORZA: determines if the current spawn instruction has been previously fired
+  bool ThreadQIsActive(uint32_t Hart);
+
+  /// FORZA: determines if the current spawn instruction FSM is complete
+  bool ThreadQIsComplete(uint32_t Hart);
+
+  /// FORZA: injects a new thread into the ThreadQ FSM
+  bool ThreadQInsert(uint32_t Hart, uint64_t TPC, uint64_t X31);
+
+  /// FORZA: process the ThreadQ FSM: This should ONLY be called from the CPU's clock method
+  bool ThreadQProcess();
+
 private:
   /// FORZA: convert a standard RISC-V AMO opcode to a ZOP opcode
   Forza::zopOpc flagToZOP( RevFlag flags, size_t Len );
@@ -532,6 +544,15 @@ private:
   bool                                                                PhysAddrCheck{};
   bool                                                                PhysAddrLogging{};
   std::string                                                         outputFile;
+
+  // FORZA Thread State
+  enum class ThreadQState {
+    Inserted = 0,
+    Complete = 1,
+  };
+  // Hart, TPC, X31, ThreadQState enum
+  std::vector<std::tuple<uint32_t,uint64_t,uint64_t,ThreadQState>>  ThreadQ;
+
   // std::ofstream output_file;
   // std::ofstream input_file;
 
