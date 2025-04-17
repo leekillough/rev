@@ -1629,18 +1629,17 @@ void RevMem::AddDumpRange( const std::string& Name, const uint64_t BaseAddr, con
 
 bool RevMem::ThreadQIsActive(uint32_t SpawnHart){
   // search the ThreadQ for a spawn request from the 'Hart'
-  for( auto const& [Hart, TPC, X31, State] : ThreadQ ){
-    if( Hart == SpawnHart ){
+  if(InsertionStatTrack.find(SpawnHart) != InsertionStatTrack.end()){
       return true;
-    }
   }
   return false;
 }
 
 bool RevMem::ThreadQIsComplete(uint32_t Hart){
-  for( auto const& [Hart, TPC, X31, State] : ThreadQ ){
-    if( State == Complete ){
-      // TODO: REMOVE THE ENTRY FROM THE VECTOR
+  auto check = InsertionStatTrack.find(Hart);
+  if(check != InsertionStatTrack.end()){
+    if( check->second == ThreadQState::Complete ){
+      InsertionStatTrack.erase(Hart);
       return true;
     }
   }
@@ -1648,12 +1647,56 @@ bool RevMem::ThreadQIsComplete(uint32_t Hart){
 }
 
 bool RevMem::ThreadQInsert(uint32_t Hart, uint64_t TPC, uint64_t X31){
-  ThreadQ.insert(std::make_tuple(Hart, TPC, X31, Inserted));
+  spn_pzp_input to_insert;
+  to_insert.valid = true;
+  to_insert.op = 0;
+  to_insert.hart = Hart;
+  to_insert.tcb = 0;
+  to_insert.func5 = 0;
+  to_insert.rs1Data = TPC;
+  to_insert.rs2Data = X31;
+  to_insert.rs3Data = 0;
+  to_insert.rd = 0;
+  InsertionStatTrack[Hart] = ThreadQState::Inserted;
+  std::cout << "We're inserting to queue." << std::endl;
+  //ThreadQ.push_back(std::make_tuple(Hart, TPC, X31, ThreadQState::Inserted));
+  sp_req_q.push(to_insert);
   return true;
 }
 
 bool RevMem::ThreadQProcess(){
+  // Update sp_state
+  sp_state = next_state;
   // process the FSM here
+  
+  // Determine next state
+  next_state = FSMState::Idle;
+
+  switch(sp_state){
+    case IDLE:
+    case  STATUS_RD:
+    case  STATUS_RTN:
+    case  SEND_PC_TCB:
+    case  SEND_WRD_1:
+    case  SEND_WRD_2:
+    case  SEND_WRD_3:
+    case  SEND_WRD_4:
+    case  WR_BACK:
+  }
+
+  // Perform current action
+  
+  // Select data to use for current track (verify importance given insertion is elsewhere)
+  
+  // Update ring return as needed
+  
+ 
+
+  if(!sp_req_q.empty()){
+  	spn_pzp_input out = sp_req_q.front();
+  	InsertionStatTrack[out.hart] = ThreadQState::Complete;
+  	sp_req_q.pop();
+  }
   return true;
 }
 

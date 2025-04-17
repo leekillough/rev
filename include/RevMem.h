@@ -25,6 +25,7 @@
 #include <map>
 #include <memory>
 #include <mutex>
+#include <queue>
 #include <random>
 #include <tuple>
 #include <unordered_map>
@@ -42,6 +43,7 @@
 #include "RevTracer.h"
 
 // -- FORZA Headers
+#include "RingNet.h"
 #include "ZOPNET.h"
 
 #ifndef _REVMEM_BASE_
@@ -544,6 +546,9 @@ private:
   bool                                                                PhysAddrLogging{};
   std::string                                                         outputFile;
 
+
+
+  // KL: WIP SPAWN/PZOP LOGIC HEREIN
   // FORZA Thread State
   enum class ThreadQState {
     Inserted = 0,
@@ -551,7 +556,177 @@ private:
   };
   // Hart, TPC, X31, ThreadQState enum
   std::vector<std::tuple<uint32_t,uint64_t,uint64_t,ThreadQState>>  ThreadQ;
+  
+  // I'm using this to make it so an entire vector isn't traversed per check-in from 
+  // HART on its spawns. 
+  std::map<uint32_t, ThreadQState> InsertionStatTrack; 
 
+  /* // Hold control info while status is read
+   typedef struct packed {
+      logic        pzp_valid;
+      logic        spn_valid;
+      tcb_t        tcb;
+      logic [4:0]  func5; // this has something to do with instructions to run -- and apparently does take 3 registers at times. It shows up in instruction formats. 
+      logic [63:0] rs1_data;
+      logic [63:0] rs2_data;
+      logic [63:0] rs3_data;
+      regnum_t     rd;
+   } sp_track_t;*/
+
+  // Every bool herein is tied to a 'logic' in RTL, which supports 4 states.
+  // However, in terms of behavior, they seem to be evaluated in terms of on/off, so I use a bool here instead
+  // of managing 2 bits. 
+  struct sp_track_t{
+    bool pzpValid;
+    bool spnValid;
+    uint32_t tcb;
+    uint8_t func5; // Technically too big -- defined as 4 bits.
+    uint64_t rs1Data;
+    uint64_t rs2Data;
+    uint64_t rs3Data;
+    uint8_t rd; // I think this is too big -- refers to a register number, defined in ZAP doc as 4 bits. 
+  };
+
+/*
+   typedef struct  packed {
+      logic        valid;
+      exec_op_t    op;
+      hart_t       hart;
+      tcb_t        tcb;
+      logic [4:0]  func5;
+      logic [63:0] rs1_data;
+      logic [63:0] rs2_data;
+      logic [63:0] rs3_data;
+      regnum_t     rd;
+   } spn_pzp_late_t;     //used
+*/
+
+  struct spn_pzp_input{
+    bool valid;
+    uint8_t op;
+    uint32_t hart;
+    uint32_t tcb;
+    uint8_t func5;
+    uint64_t rs1Data;
+    uint64_t rs2Data;
+    uint64_t rs3Data;
+    uint8_t rd;
+  };
+
+/* for
+   inst_sp_req_q (
+                  .clk         (clk),
+                  .resetn      (resetn),
+                  .i_data_in   (sp_req_q_wdata),
+                  .i_write     (sp_req_q_wr),
+                  .o_data_out  (sp_req_q_rdata),
+                  // verilator lint_off PINCONNECTEMPTY 
+                  .o_full      (),
+                  .o_near_full (),
+                  .o_used      (),
+                  // lint_on 
+                  .o_empty     (sp_req_q_empty),
+                  .i_read      (sp_req_q_rd)
+                  );
+		  */
+  // request queue
+  std::queue<spn_pzp_input>  sp_req_q; 
+  // data waiting to be used for request fulfillment
+  std::queue<sp_track_t> sp_track_q;
+
+
+  struct sp_status_t{
+    uint32_t hart; 
+    bool zenEn;
+    bool SPWriteError;
+    bool busy;
+  };
+  
+  std::queue<sp_status_t> status_rtn_q;
+
+  enum class FSMState {
+    IDLE = 0,
+    STATUS_RD = 1,
+    STATUS_RTN = 2,
+    SEND_PC_TCB = 3,
+    SEND_WRD_1 = 4,
+    SEND_WRD_2 = 5,
+    SEND_WRD_3 = 6,
+    SEND_WRD_4 = 7,
+    WR_BACK = 8,
+  };
+
+  FSMState sp_state = FSMState::0;
+  FSMState next_state = FSMState::0;
+
+/*   typedef enum [1:0] {
+                 NA,
+                 CSR_READ,
+                 CSR_WRITE,
+                 CSR_RMW
+                 } csr_func_t;*/
+
+  // use Forza::ringMsgT to represent csr_func_t
+  // update == write, read == read, return_data isn't used here but is a simulator-only command
+  // for returning data from ring to service read. 
+
+/*typedef enum logic [ZXB_ZC_WID-1:0]
+{
+  ZAP0  = 0,
+  ZAP1  = 1,
+  ZAP2  = 2,
+  ZAP3  = 3,
+  RZA0  = 4, //CXL0
+  RZA1  = 5, //CXL1
+  RZA2  = 6,
+  RZA3  = 7, // HBM
+  ZEN   = 8,
+  ZQM   = 9
+} zone_comp_t;*/
+// Satisfied by Forza::zopCompID
+
+/*   typedef struct packed
+                  {
+                     csr_func_t                        func;
+                     zone_comp_t                       dev_no;
+                     logic [CSR_AID_WID-1:0]           aid;
+                     logic [CSR_RING_ADDRESS_WID-1:0]  addr;
+                     logic                             sp_vld;
+                     logic [ZXB_ZAPS_PER_ZONE_WID-1:0] zapid;
+                     logic [ZXB_HART_ID_WID-1:0]       hartid;
+                     logic [ZXB_DATA_WID-1:0]          data;
+                  } csr_ring_t;*/
+
+
+  // Might be defined elsewhere? 
+  struct csr_ring_t {
+    Forza::ringMsgT func;
+    Forza::zopCompID deviceNum;
+    uint32_t aid;
+    uint32_t addr;
+    bool spValid;
+    uint32_t zapID;
+    uint32_t hartID;
+    uint32_t data;
+  };
+
+  std::queue<csr_ring_t> ring_req_q;
+
+/*    typedef struct packed { // Send to pc_tcb_mux without tcb update info
+      logic        reg_valid;
+      hart_t       hart;
+      regnum_t     reg_no;
+      logic [63:0] data;
+   } wb_tcb_pc_t;          //used*/
+
+  struct wb_tcb_pc_t{
+    bool regValid;
+    uint32_t hartID;
+    uint32_t regNumber;
+    uint64_t data;
+  };
+
+  std::queue<wb_tcb_pc_t> wbQueue;
   // std::ofstream output_file;
   // std::ofstream input_file;
 
