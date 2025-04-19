@@ -35,7 +35,7 @@ inline constexpr uint64_t ACTOR_MSG_LENGTH           = 8;
 inline constexpr uint64_t SPN_PZOP_MSG_LENGTH        = 5;
 
 // CSR registers used by the ZEN
-inline constexpr uint64_t R_ZENSTAT                  = 0x802;
+inline constexpr uint64_t R_ZENSTAT                  = 0x804;
 // messaging
 inline constexpr uint64_t R_ZENEQC                   = 0x840;
 inline constexpr uint64_t R_ZENEQD                   = 0x841;
@@ -45,8 +45,8 @@ inline constexpr uint64_t R_ZENOMC                   = 0xcc3;
 // spawning
 
 // CSR registers used by the ZQM
-inline constexpr uint64_t R_ZQMSTAT                  = 0x803;
-inline constexpr uint64_t R_ZQMMBOXREG               = 0x804;
+inline constexpr uint64_t R_ZQMSTAT                  = 0x805;
+inline constexpr uint64_t R_ZQMMBOXREG               = 0x806;
 inline constexpr uint64_t R_ZQMDQ_0                  = 0x808;
 inline constexpr uint64_t R_ZQMDQ_7                  = 0x80F;
 

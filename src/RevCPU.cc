@@ -227,6 +227,8 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params ) : SST::Compon
         output.verbose( CALL_INFO, 4, 0, "[FORZA] device=%s create zone ring\n", getName().c_str() );
         zoneRing->setMsgHandler( new Event::Handler<RevCPU>( this, &RevCPU::handleRingMsg ) );
         zoneRing->setEndpointType( zapId );
+	// INITIALIZING RINGNET IN REVMEM
+	Mem->setZRing(zoneRing);
       } else {
         output.verbose( CALL_INFO, 4, 0, "[FORZA] device=%s failed to create zone ring\n", getName().c_str() );
       }
@@ -1165,7 +1167,11 @@ void RevCPU::handleRingMsg( Event* ev ) {
       (uint8_t) ring_ev->getOp()
     );
   }
-
+  if(ring_ev->getCSR() == Forza::R_ZENSTAT &&  Mem->ThreadQIsActive(ring_ev->getHart()) &&
+		  ring_ev->getOp() == Forza::ringMsgT::R_RETDATA){
+    Mem->ThreadQReceiveZen(ring_ev);
+    return;
+  }
   Procs[0]->handleRingReadData( ring_ev );
 }
 

@@ -1664,24 +1664,98 @@ bool RevMem::ThreadQInsert(uint32_t Hart, uint64_t TPC, uint64_t X31){
   return true;
 }
 
+void RevMem::FSMReadZen(uint16_t Hart){
+   SST::Forza::ringEvent* ring_ev = new SST::Forza::ringEvent(
+    zNic->getEndpointType(),
+    Hart,
+    SST::Forza::zopCompID::Z_ZEN,
+    SST::Forza::ringMsgT::R_READ,
+    Forza::R_ZENSTAT,
+    0xdefafUL
+  );
+
+  if( zoneRing ) {
+    int64_t next_dest = zoneRing->getNextAddress();
+    zoneRing->send( ring_ev, next_dest );
+    std::cout << "We send!" << std::endl;
+  } else {
+    output->verbose( CALL_INFO, 5, 0, "[ERROR] NO RING NETWORK\n" );
+    delete ring_ev;
+  }
+}
+
+void RevMem::ThreadQReceiveZen( Forza::ringEvent * ev ){
+  sp_status_t zenReturn;
+  zenReturn.hart = ev->getHart();
+  zenReturn.busy = ((1UL << Forza::ZENSTAT_SHIFT_SPNBUSY) & ev->getDatum()) ? true : false;
+  ring_rtn_q.push(zenReturn);
+  std::cout << "Zen output: " << ev->getDatum() << " Ternary out: " <<  zenReturn.busy << std::endl; 
+}
+
+void RevMem::FSMSendZenWord(uint16_t Hart, uint64_t Datum){
+   SST::Forza::ringEvent* ring_ev = new SST::Forza::ringEvent(
+    zNic->getEndpointType(),
+    Hart,
+    SST::Forza::zopCompID::Z_ZEN,
+    SST::Forza::ringMsgT::R_UPDATE,
+    Forza::R_ZENEQS,
+    Datum
+  );
+
+  if( zoneRing ) {
+    int64_t next_dest = zoneRing->getNextAddress();
+    zoneRing->send( ring_ev, next_dest );
+    std::cout << "We send!" << std::endl;
+  } else {
+    output->verbose( CALL_INFO, 5, 0, "[ERROR] NO RING NETWORK\n" );
+    delete ring_ev;
+  }
+}
+
 bool RevMem::ThreadQProcess(){
   // Update sp_state
-  sp_state = next_state;
+  sp_state = next_sp_state;
   // process the FSM here
-  
+  bool status_busy = true; 
   // Determine next state
-  next_state = FSMState::Idle;
-
+  next_sp_state = FSMState::IDLE;
   switch(sp_state){
-    case IDLE:
-    case  STATUS_RD:
-    case  STATUS_RTN:
-    case  SEND_PC_TCB:
-    case  SEND_WRD_1:
-    case  SEND_WRD_2:
-    case  SEND_WRD_3:
-    case  SEND_WRD_4:
-    case  WR_BACK:
+	  case FSMState::IDLE:
+	    //next_sp_state = (~sp_req_q_empty & ~sp_track_q_full & ~ring_req_q_full) ? STATUS_RD :
+                       //      ((~ring_rtn_q_empty & ~sp_track_q_empty) ? STATUS_RTN : IDLE);
+      next_sp_state = (!sp_req_q.empty() && !(sp_track_q.size() != SP_TRACK_FIFO_D)) ? FSMState::STATUS_RD :
+                          ((!(ring_rtn_q.empty()) && !(sp_track_q.empty())) ? FSMState::STATUS_RTN : FSMState::IDLE);
+      break;
+	  case  FSMState::STATUS_RD:
+      //next_sp_state = (~ring_rtn_q_empty & ~sp_track_q_empty) ? STATUS_RTN : IDLE;
+      next_sp_state = (!(ring_rtn_q.empty()) && !(sp_track_q.empty())) ? FSMState::STATUS_RTN : FSMState::IDLE;
+      break;
+	  case  FSMState::STATUS_RTN:
+      //next_sp_state = status_busy ?
+      //                     (~ring_req_q_full ? STATUS_RD : STATUS_RTN) : SEND_PC_TCB;
+      next_sp_state = status_busy ? FSMState::STATUS_RD : FSMState::SEND_PC_TCB;
+      break;
+	  case  FSMState::SEND_PC_TCB:
+      //next_sp_state = (ring_req_q_full | (sp_track_q_rdata.pzp_valid & ~pzpb_rd_vld)) ?
+        //                   SEND_PC_TCB : SEND_WRD_1;
+	next_sp_state = FSMState::SEND_WRD_1;
+	break;
+	  case  FSMState::SEND_WRD_1:
+	//next_sp_state = ~ring_req_q_full ?
+                           //(sp_track_q_rdata.pzp_valid ? SEND_WRD_2 : WR_BACK) : SEND_WRD_1;
+	next_sp_state = FSMState::WR_BACK;
+	break;
+    // These next states are for 
+    //case  SEND_WRD_2:
+    //case  SEND_WRD_3:
+    //case  SEND_WRD_4:
+	  case  FSMState::WR_BACK:
+      //next_sp_state = (~wb_q_full) ?
+                          // ((~ring_rtn_q_empty & ~sp_track_q_empty) ? STATUS_RTN : IDLE) : WR_BACK;
+      next_sp_state = !(wbQueue.size() != WB_FIFO_D) ? ((!(ring_rtn_q.empty()) && !(sp_track_q.empty())) ? FSMState::STATUS_RTN : FSMState::IDLE) : FSMState::WR_BACK;
+      break;
+	  default:
+      break;
   }
 
   // Perform current action
@@ -1694,8 +1768,10 @@ bool RevMem::ThreadQProcess(){
 
   if(!sp_req_q.empty()){
   	spn_pzp_input out = sp_req_q.front();
-  	InsertionStatTrack[out.hart] = ThreadQState::Complete;
-  	sp_req_q.pop();
+	FSMReadZen(out.hart);
+       
+  	//InsertionStatTrack[out.hart] = ThreadQState::Complete;
+  	//sp_req_q.pop();
   }
   return true;
 }

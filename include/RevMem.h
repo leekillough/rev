@@ -65,6 +65,17 @@
 #define Z_VIEW_SHIFT 57
 #define Z_SEG_SHIFT  58
 
+// KL: Since depth == NHARTS, and each HART can only be requesting one spawn presently, I'm simplifying.
+//#define SP_REQ_FIFO_D       = NHARTS;
+//#define SP_REQ_FIFO_D_LOG2  = LOG_NHARTS;
+#define SP_TRACK_FIFO_D       32
+#define SP_TRACK_FIFO_D_LOG2  5
+#define RING_REQ_FIFO_D       32
+#define RING_REQ_FIFO_D_LOG2  5
+#define WB_FIFO_D             16
+#define WB_FIFO_D_LOG2        4
+
+
 namespace SST::RevCPU {
 
 class RevMem {
@@ -384,6 +395,10 @@ public:
   // ----------------------------------------------------
   // ---- FORZA Interfaces
   // ----------------------------------------------------
+  
+  /// FORZA: set the Zone Ring object
+  void setZRing( Forza::RingNetAPI* R ) { zoneRing = R;  }
+  
   /// FORZA: set the ZOP NIC object
   void setZNic( Forza::zopAPI* Z ) { zNic = Z; }
 
@@ -458,6 +473,12 @@ public:
   /// FORZA: process the ThreadQ FSM: This should ONLY be called from the CPU's clock method
   bool ThreadQProcess();
 
+  /// FORZA: receive response from ZEN during spawn FSM
+  void ThreadQReceiveZen( Forza::ringEvent * ev );
+
+  // FORZA: send word to Zen for spawning
+  void FSMSendZenWord( uint16_t Hart, uint64_t Datum );
+
 private:
   /// FORZA: convert a standard RISC-V AMO opcode to a ZOP opcode
   Forza::zopOpc flagToZOP( RevFlag flags, size_t Len );
@@ -470,6 +491,8 @@ private:
 
   /// FORZA: send a READ request
   bool ZOP_READMem( uint32_t Hart, uint64_t Addr, size_t Len, void* Target, const MemReq& req, RevFlag flags );
+
+  void FSMReadZen(uint16_t Hart);
 
   /// FORZA: send a WRITE request
   bool ZOP_WRITEMem( uint32_t Hart, uint64_t Addr, size_t Len, const void* Data, RevFlag flags );
@@ -498,7 +521,8 @@ private:
   RevOpts*            opts{};      ///< RevMem: options object
   RevMemCtrl*         ctrl{};      ///< RevMem: memory controller object
   SST::Output*        output{};    ///< RevMem: output handler
-
+ 
+  Forza::RingNetAPI* zoneRing{}; ///< RevMem: FORZA RingNet; Necessary for spawn messages
   Forza::zopAPI* zNic{};   ///< RevMem: FORZA ZOP NIC
   bool           isRZA{};  ///< RevMem: FORZA RZA flag; true if this device is an RZA
 
@@ -642,7 +666,7 @@ private:
     bool busy;
   };
   
-  std::queue<sp_status_t> status_rtn_q;
+  std::queue<sp_status_t> ring_rtn_q;
 
   enum class FSMState {
     IDLE = 0,
@@ -656,8 +680,8 @@ private:
     WR_BACK = 8,
   };
 
-  FSMState sp_state = FSMState::0;
-  FSMState next_state = FSMState::0;
+  FSMState sp_state = FSMState::IDLE;
+  FSMState next_sp_state = FSMState::IDLE;
 
 /*   typedef enum [1:0] {
                  NA,
