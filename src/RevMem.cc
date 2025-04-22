@@ -1712,11 +1712,14 @@ void RevMem::FSMSendZenWord(uint16_t Hart, uint64_t Datum){
   }
 }
 
+/* Excluded from v1:
+ * Ring req queue. There's no concept of fullness/contention in the RingNet send queue, so there's no easy interface to build our own queue to leak into that one. Sending would just happen every step
+ * since we can't test for fullness of the RingNet sendQ.
+ * PZOPs. This is a matter of tightening requirements -- PZOPs must go here at some point, and the additional logic is possible within the framework.
+ */
 bool RevMem::ThreadQProcess(){
   // Update sp_state
   sp_state = next_sp_state;
-  // process the FSM here
-  bool status_busy = true; 
   // Determine next state
   next_sp_state = FSMState::IDLE;
   switch(sp_state){
@@ -1745,7 +1748,7 @@ bool RevMem::ThreadQProcess(){
                            //(sp_track_q_rdata.pzp_valid ? SEND_WRD_2 : WR_BACK) : SEND_WRD_1;
 	next_sp_state = FSMState::WR_BACK;
 	break;
-    // These next states are for 
+    // These next states are for PZOP support in the future.
     //case  SEND_WRD_2:
     //case  SEND_WRD_3:
     //case  SEND_WRD_4:
@@ -1761,7 +1764,60 @@ bool RevMem::ThreadQProcess(){
   // Perform current action
   
   // Select data to use for current track (verify importance given insertion is elsewhere)
-  
+  if(!ring_rtn_q.empty()){
+    status_rtn_hart = ring_rtn_q.front().hart;
+    status_busy = ring_rtn_q.front().busy;
+    ring_rtn_q.pop(); 
+  }
+
+  if(!sp_req_q.empty()){
+    if(sp_req_q.front().valid){
+      spn_valid = true;
+    }
+    else{
+      spn_valid = false;
+    }
+  }
+  else{
+    spn_valid = false;
+  }
+
+  sp_wr_hart = ((sp_state == FSMState::STATUS_RTN) && !status_busy) ? status_rtn_hart : sp_wr_hart;
+  if((sp_state == FSMState::STATUS_RTN) && status_busy){
+    sp_track_busy_data = sp_track_q.front();
+    sp_track_q.pop();
+  }
+  else{
+    sp_track_busy_data = sp_track_busy_data;
+  }
+  sp_track_data_vld = (sp_state == FSMState::STATUS_RTN) && (next_sp_state == FSMState::STATUS_RD);
+
+  if(sp_state == FSMState::STATUS_RD){
+    sp_track_t trackAddition;
+    if(sp_track_data_vld){
+      trackAddition.pzpValid = sp_track_busy_data.pzpValid;
+      trackAddition.spnValid = sp_track_busy_data.spnValid; 
+      trackAddition.tcb       = sp_track_busy_data.tcb;
+      trackAddition.func5     = sp_track_busy_data.func5;
+      trackAddition.rs1Data  = sp_track_busy_data.rs1Data;
+      trackAddition.rs2Data  = sp_track_busy_data.rs2Data;
+      trackAddition.rs3Data  = sp_track_busy_data.rs3Data;
+      trackAddition.rd        = sp_track_busy_data.rd;
+    }
+    else{
+      trackAddition.pzpValid = pzp_valid;
+      trackAddition.spnValid = spn_valid;
+      trackAddition.tcb       = sp_req_q.front().tcb;
+      trackAddition.func5     = sp_req_q.front().func5;
+      trackAddition.rs1Data  = sp_req_q.front().rs1Data;
+      trackAddition.rs2Data  = sp_req_q.front().rs2Data;
+      trackAddition.rs3Data  = sp_req_q.front().rs3Data;
+      trackAddition.rd        = sp_req_q.front().rd;
+    }
+    sp_track_q.push(trackAddition);
+  }
+
+
   // Update ring return as needed
   
  

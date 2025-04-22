@@ -751,6 +751,13 @@ private:
   };
 
   std::queue<wb_tcb_pc_t> wbQueue;
+  sp_track_t sp_track_busy_data;
+  bool sp_track_data_vld;
+  uint16_t sp_wr_hart;
+  uint16_t status_rtn_hart;
+  bool status_busy;
+  bool spn_valid;
+  bool pzp_valid;
   // std::ofstream output_file;
   // std::ofstream input_file;
 
