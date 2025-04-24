@@ -476,7 +476,7 @@ public:
   /// FORZA: receive response from ZEN during spawn FSM
   void ThreadQReceiveZen( Forza::ringEvent * ev );
 
-  // FORZA: send word to Zen for spawning
+  /// FORZA: send word to Zen for spawning
   void FSMSendZenWord( uint16_t Hart, uint64_t Datum );
 
 private:
@@ -492,6 +492,7 @@ private:
   /// FORZA: send a READ request
   bool ZOP_READMem( uint32_t Hart, uint64_t Addr, size_t Len, void* Target, const MemReq& req, RevFlag flags );
 
+  /// FORZA : send READ request to Zen for HART
   void FSMReadZen(uint16_t Hart);
 
   /// FORZA: send a WRITE request
@@ -683,6 +684,8 @@ private:
   FSMState sp_state = FSMState::IDLE;
   FSMState next_sp_state = FSMState::IDLE;
 
+  const char* FSMReportState(FSMState state);
+
 /*   typedef enum [1:0] {
                  NA,
                  CSR_READ,
@@ -725,12 +728,12 @@ private:
   // Might be defined elsewhere? 
   struct csr_ring_t {
     Forza::ringMsgT func;
-    Forza::zopCompID deviceNum;
+    Forza::zopCompID dev_no;
     uint32_t aid;
     uint32_t addr;
-    bool spValid;
-    uint32_t zapID;
-    uint32_t hartID;
+    bool sp_vld;
+    uint32_t zapid;
+    uint32_t hartid;
     uint32_t data;
   };
 
