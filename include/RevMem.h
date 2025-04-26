@@ -601,7 +601,7 @@ private:
   // Every bool herein is tied to a 'logic' in RTL, which supports 4 states.
   // However, in terms of behavior, they seem to be evaluated in terms of on/off, so I use a bool here instead
   // of managing 2 bits. 
-  struct sp_track_t{
+  struct spawnTracker{
     bool pzpValid;
     bool spnValid;
     uint32_t tcb;
@@ -626,7 +626,7 @@ private:
    } spn_pzp_late_t;     //used
 */
 
-  struct spn_pzp_input{
+  struct spawnPZOPInput{
     bool valid;
     uint8_t op;
     uint32_t hart;
@@ -655,19 +655,19 @@ private:
                   );
 		  */
   // request queue
-  std::queue<spn_pzp_input>  sp_req_q; 
+  std::queue<spawnPZOPInput>  sp_req_q; 
   // data waiting to be used for request fulfillment
-  std::queue<sp_track_t> sp_track_q;
+  std::queue<spawnTracker> sp_track_q;
 
 
-  struct sp_status_t{
+  struct zenSpawnStatus{
     uint32_t hart; 
     bool zenEn;
     bool SPWriteError;
     bool busy;
   };
   
-  std::queue<sp_status_t> ring_rtn_q;
+  std::queue<zenSpawnStatus> ring_rtn_q;
 
   enum class FSMState {
     IDLE = 0,
@@ -726,7 +726,7 @@ private:
 
 
   // Might be defined elsewhere? 
-  struct csr_ring_t {
+  struct ringMessage {
     Forza::ringMsgT func;
     Forza::zopCompID dev_no;
     uint32_t aid;
@@ -737,7 +737,7 @@ private:
     uint32_t data;
   };
 
-  std::queue<csr_ring_t> ring_req_q;
+  std::queue<ringMessage> ring_req_q;
 
 /*    typedef struct packed { // Send to pc_tcb_mux without tcb update info
       logic        reg_valid;
@@ -754,7 +754,7 @@ private:
   };
 
   std::queue<wb_tcb_pc_t> wbQueue;
-  sp_track_t sp_track_busy_data;
+  spawnTracker sp_track_busy_data;
   bool sp_track_data_vld;
   uint16_t sp_wr_hart;
   uint16_t status_rtn_hart;

@@ -1647,7 +1647,7 @@ bool RevMem::ThreadQIsComplete(uint32_t Hart){
 }
 
 bool RevMem::ThreadQInsert(uint32_t Hart, uint64_t TPC, uint64_t X31){
-  spn_pzp_input to_insert;
+  spawnPZOPInput to_insert;
   to_insert.valid = true;
   to_insert.op = 0;
   to_insert.hart = Hart;
@@ -1687,7 +1687,7 @@ void RevMem::FSMReadZen(uint16_t Hart){
 }
 
 void RevMem::ThreadQReceiveZen( Forza::ringEvent * ev ){
-  sp_status_t zenReturn;
+  zenSpawnStatus zenReturn;
   zenReturn.hart = ev->getHart();
   zenReturn.busy = ((1UL << Forza::ZENSTAT_SHIFT_SPNBUSY) & ev->getDatum()) ? true : false;
   ring_rtn_q.push(zenReturn);
@@ -1825,7 +1825,7 @@ bool RevMem::ThreadQProcess(){
   sp_track_data_vld = (sp_state == FSMState::STATUS_RTN) && (next_sp_state == FSMState::STATUS_RD);
 
   if(sp_state == FSMState::STATUS_RD){
-    sp_track_t trackAddition;
+    spawnTracker trackAddition;
     if(sp_track_data_vld){
       trackAddition.pzpValid = sp_track_busy_data.pzpValid;
       trackAddition.spnValid = sp_track_busy_data.spnValid; 
