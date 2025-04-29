@@ -174,7 +174,7 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params ) : SST::Compon
     if( !zNic ) {
       output.fatal( CALL_INFO, -1, "Error: no ZONE NIC object loaded into RevCPU\n" );
     }
-    zNic->setNumHarts( numHarts );
+    zNic->setNumHarts( numHarts ); // TODO: Check if needs to change to numHarts*numCores
     zNic->setPrecinctID( Precinct );
     zNic->setZoneID( Zone );
 
@@ -289,7 +289,7 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params ) : SST::Compon
     if( numCores != 2 ) {
       output.fatal( CALL_INFO, -1, "Error : FORZA RZA devices require at least 2 cores\n" );
     }
-
+ 
     // Force the coprocs to be enabled
     EnableCoProc = true;
 
@@ -333,6 +333,8 @@ RevCPU::RevCPU( SST::ComponentId_t id, const SST::Params& params ) : SST::Compon
       Procs.push_back( std::move( tmpNewRevCore ) );
     }
   }
+
+  Mem.get()->ThreadQuitSetup(numHarts); // TODO: check if needs to change to numHarts*numCores
 
   // Memory dumping option(s)
   std::vector<std::string> memDumpRanges;

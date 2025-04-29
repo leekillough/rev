@@ -1910,6 +1910,21 @@ bool RevCore::ClockTick( SST::Cycle_t currentCycle ) {
     }
   }
 
+#if 1
+  if( mem->CheckThreadQuit(HartToDecodeID) ){
+    if( HartHasNoDependencies( HartToDecodeID ) ) {
+      output->verbose( CALL_INFO, 9, 0, "TJD: Core %" PRIu32 " ; No dependency found\n", id );
+      std::unique_ptr<RevThread> ActiveThread = PopThreadFromHart( HartToDecodeID );
+      HartsClearToExecute[HartToDecodeID] = false;
+      HartsClearToDecode[HartToDecodeID]  = false;
+      IdleHarts.set( HartToDecodeID );
+      AddThreadsThatChangedState( std::move( ActiveThread ) );
+      mem->FinalizeThreadQuit(HartToDecodeID);
+      output->verbose( CALL_INFO, 3, 0, "KL: Quitting on HART %u\n", HartToDecodeID);
+    }
+  }
+#endif
+
 #ifndef NO_REV_TRACER
   // Dump trace state
   if( Tracer )

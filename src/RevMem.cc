@@ -1984,7 +1984,7 @@ bool RevMem::ThreadQProcess(){
     if(finishedHart != InsertionStatTrack.end()){
         finishedHart->second = ThreadQState::Complete;
       }
-
+    sp_track_q.pop();
 
   }
 

@@ -200,6 +200,26 @@ public:
   /// RevMem: Enable tracing of load and store instructions.
   void SetTracer( RevTracer* tracer ) { Tracer = tracer; }
 
+  /// RevMem: Allocate and zero thread done vector
+  void ThreadQuitSetup(uint32_t num_harts){
+    threadQuits.assign(num_harts, 0);  
+  }
+  
+  /// RevMem: Mark quitting thread
+  void IssueThreadQuit(uint32_t hart){
+    threadQuits[hart] = true;
+  }
+
+  /// RevMem: Finish quitting -- unmark thread quit at minimum
+  void FinalizeThreadQuit(uint32_t hart){
+    threadQuits[hart] = false;
+  }
+
+  /// RevMem: Check for quitting thread
+  bool CheckThreadQuit(uint32_t hart){
+    return threadQuits[hart];
+  }
+
   // ----------------------------------------------------
   // ---- Base Memory Interfaces
   // ----------------------------------------------------
@@ -557,6 +577,8 @@ private:
   uint64_t heapend{};     ///< RevMem: top of the stack
   uint64_t heapstart{};   ///< RevMem: top of the stack
   uint64_t stacktop{};    ///< RevMem: top of the stack
+
+  std::vector<bool> threadQuits; ///< RevMem: array of threads to enable quit signaling to RevCore  
 
   std::vector<uint64_t>                                     FutureRes{};  ///< RevMem: future operation reservations
   std::unordered_map<uint32_t, std::pair<uint64_t, size_t>> LRSC{};       ///< RevMem: load reserve/store conditional set

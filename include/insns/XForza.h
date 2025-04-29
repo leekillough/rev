@@ -47,9 +47,9 @@ class XForza : public RevExt {
   }
 
   static bool quit( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) {
-    // update the cost
     M->FenceMem( F->GetHartToExecID() );
-    R->AdvancePC( Inst );
+    
+    M->IssueThreadQuit( F->GetHartToExecID() );
     return true;
   }
 
