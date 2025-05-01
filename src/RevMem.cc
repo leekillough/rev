@@ -1415,7 +1415,7 @@ bool RevMem::isLocalAddr( uint64_t vAddr, uint32_t& Zone, uint32_t& Precinct ) {
 // Handles an RZA response message
 // This specifically handles MZOP and HZOP responses
 bool RevMem::handleRZAResponse( Forza::zopEvent* zev ) {
-  output->verbose( CALL_INFO, 5, 0, "[FORZA][ZAP] Handling ZOP Response in RevMem; ID=%" PRIu16 "\n", zev->getID() );
+  output->verbose( CALL_INFO, 9, 0, "[FORZA][ZAP] Handling ZOP Response in RevMem; ID=%" PRIu16 "\n", zev->getID() );
   auto req = zev->getMemReq();
   req.MarkLoadComplete();
   return true;
@@ -1660,7 +1660,6 @@ bool RevMem::ThreadQInsert(uint32_t Hart, uint64_t TPC, uint64_t X31){
 
   output->verbose( CALL_INFO, 5, 0, "Sending out TPC %lx and X31 (spawn block pointer) %lx \n", TPC, X31); 
   InsertionStatTrack[Hart] = ThreadQState::Inserted;
-  std::cout << "We're inserting to queue." << std::endl;
   //ThreadQ.push_back(std::make_tuple(Hart, TPC, X31, ThreadQState::Inserted));
   sp_req_q.push(to_insert);
   return true;
@@ -1679,7 +1678,6 @@ void RevMem::FSMReadZen(uint16_t Hart){
   if( zoneRing ) {
     int64_t next_dest = zoneRing->getNextAddress();
     zoneRing->send( ring_ev, next_dest );
-    std::cout << "We send!" << std::endl;
   } else {
     output->verbose( CALL_INFO, 5, 0, "[ERROR] NO RING NETWORK\n" );
     delete ring_ev;
@@ -1690,8 +1688,8 @@ void RevMem::ThreadQReceiveZen( Forza::ringEvent * ev ){
   zenSpawnStatus zenReturn;
   zenReturn.hart = ev->getHart();
   zenReturn.busy = ((1UL << Forza::ZENSTAT_SHIFT_SPNBUSY) & ev->getDatum()) ? true : false;
+  output->verbose( CALL_INFO, 5, 0, "RECEIVING ZEN STATUS\n" );
   ring_rtn_q.push(zenReturn);
-  std::cout << "Zen output: " << ev->getDatum() << " Ternary out: " <<  zenReturn.busy << std::endl; 
 }
 
 void RevMem::FSMSendZenWord(uint16_t Hart, uint64_t Datum){
@@ -1707,7 +1705,6 @@ void RevMem::FSMSendZenWord(uint16_t Hart, uint64_t Datum){
   if( zoneRing ) {
     int64_t next_dest = zoneRing->getNextAddress();
     zoneRing->send( ring_ev, next_dest );
-    std::cout << "Send word!" << std::endl;
   } else {
     output->verbose( CALL_INFO, 5, 0, "[ERROR] NO RING NETWORK\n" );
     delete ring_ev;
@@ -1752,7 +1749,10 @@ bool RevMem::ThreadQProcess(){
   sp_state = next_sp_state;
   // Determine next state
   next_sp_state = FSMState::IDLE;
-  //std::cout << "On this step, we are in state: " << FSMReportState(sp_state) << std::endl;
+ // std::cout << "On this step, we are in state: " << FSMReportState(sp_state) << std::endl;
+  //if(sp_state == FSMState::IDLE && (!sp_req_q.empty() || !sp_track_q.empty())){
+  //  output->verbose(CALL_INFO, 5, 0, "There is something to do and we aren't doing it %lu\n", sp_track_q.size());
+  //}
   switch(sp_state){
 	  case FSMState::IDLE:
 	    //next_sp_state = (~sp_req_q_empty & ~sp_track_q_full & ~ring_req_q_full) ? STATUS_RD :
@@ -1793,14 +1793,21 @@ bool RevMem::ThreadQProcess(){
       break;
   }
 
+  if(sp_state != next_sp_state){
+    output->verbose(CALL_INFO, 5, 0, "On this step, we are in state: %s\n", FSMReportState(sp_state));
+  }
+
   // Perform current action
   
   // Select data to use for current track (verify importance given insertion is elsewhere)
   if(!ring_rtn_q.empty()){
     status_rtn_hart = ring_rtn_q.front().hart;
     status_busy = ring_rtn_q.front().busy;
-    ring_rtn_q.pop(); 
+    if(sp_state==FSMState::STATUS_RTN){
+       ring_rtn_q.pop();
+    }
   }
+ 
 
   if(!sp_req_q.empty()){
     if(sp_req_q.front().valid){
@@ -1977,7 +1984,11 @@ bool RevMem::ThreadQProcess(){
    
 
 
-  if(willPopSpawnQueue){ sp_req_q.pop(); }
+  if(willPopSpawnQueue){
+    output->verbose(CALL_INFO, 5, 0, "Popping request made by %u\n", sp_req_q.front().hart); 
+    sp_req_q.pop(); 
+
+  }
 
   if(sp_state == FSMState::WR_BACK){
     auto finishedHart = InsertionStatTrack.find(sp_wr_hart);
