@@ -227,6 +227,8 @@ add_forza_test(forza_barrier1 forza_barrier 30 "all;memh;rv64;loader;forza" "har
 add_forza_test(forza_barrier2 forza_barrier 30 "all;memh;rv64;loader;forza" "hartsperzap=1;zaps=4;zones=1;precincts=1;program=forza_barrier_test_4zap")
 add_forza_test(forza_barrier_multi forza_barrier 30 "all;memh;rv64;loader;forza" "hartsperzap=1;zaps=4;zones=1;precincts=1;program=forza_barrier_test_multi_barrier")
 
+add_forza_test(forza_spawn forza_spawn 30 "all;memh;rv64;loader;forza" "hartsperzap=5;zaps=1;zones=1;precincts=1;program=forza_spawn")
+
 #NOTE: security related tests are still using original rev test with custom script
 #Security related test
 # add_rev_test(private_access_allowed_rza forza_security 120 "all;memh;rv64;loader;forza;" SCRIPT "run_private_valid.sh")
