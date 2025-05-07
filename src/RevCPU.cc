@@ -992,7 +992,6 @@ void RevCPU::handleZOPThreadMigrateSpawn( Forza::zopEvent* zev ) {
   for( uint32_t i = 0; i < pkt.size(); i++ )
     output.verbose( CALL_INFO, 5, 0, "[FORZA][ZAP] SpawnPacket[%" PRIu32 "]=0x%" PRIx64 "\n", i, pkt[i] );
 
-  output.verbose( CALL_INFO, 5, 0, "[FORZA][ZAP] Handling thread migration - Spawn case. Handling incomplete; deleting packet\n" );
 
   // Reset RevCore::ThreadReqd; very hacky, but only one core per CPU in the current model
   Procs[0]->ThreadReceivedFromZqm();
