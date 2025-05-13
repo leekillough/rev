@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 #
-# Copyright (C) 2017-2024 Tactical Computing Laboratories, LLC
+# Copyright (C) 2017-2025 Tactical Computing Laboratories, LLC
 # All Rights Reserved
 # contact@tactcomplabs.com
 #
@@ -81,7 +81,7 @@ if args.enableMemH:
         "max_loads": 16,
         "max_stores": 16,
         "max_flush": 16,
-        "max_llsc": 16,
+        "max_lrsc": 16,
         "max_readlock": 16,
         "max_writeunlock": 16,
         "max_custom": 16,

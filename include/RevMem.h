@@ -163,7 +163,7 @@ public:
   bool outstandingRqsts() const { return ctrl && ctrl->outstandingRqsts(); }
 
   /// RevMem: handle incoming memory event
-  void handleEvent( Interfaces::StandardMem::Request* ev ) {}
+  void handleEvent( StandardMem::Request* ev ) {}
 
   /// RevMem: handle memory injection
   void HandleMemFault( uint32_t width );
@@ -231,12 +231,12 @@ public:
 
   /// RevMem: flush a cache line
   bool FlushLine( uint32_t Hart, uint64_t Addr ) {
-    return !ctrl || ctrl->sendFLUSHRequest( Hart, Addr, 0, getLineSize(), false, RevFlag::F_NONE );
+    return !ctrl || ctrl->sendFLUSHRequest( Hart, Addr, 0, getLineSize(), RevFlag::F_NONE, false );
   }
 
   /// RevMem: invalidate a cache line
   bool InvLine( uint32_t Hart, uint64_t Addr ) {
-    return !ctrl || ctrl->sendFLUSHRequest( Hart, Addr, 0, getLineSize(), true, RevFlag::F_NONE );
+    return !ctrl || ctrl->sendFLUSHRequest( Hart, Addr, 0, getLineSize(), RevFlag::F_NONE, true );
   }
 
   /// RevMem: clean a line
@@ -263,6 +263,9 @@ public:
     return AMOMem( Hart, Addr, uint32_t{ sizeof( T ) }, Data, Target, req, flags );
   }
 
+  /// RevMem: Initiated an AMO request
+  bool AMOMem( uint32_t Hart, uint64_t Addr, uint32_t Len, void* Data, void* Target, const MemReq& req, RevFlag flags );
+
   // ----------------------------------------------------
   // ---- Write Memory Interfaces
   // ----------------------------------------------------
@@ -288,8 +291,6 @@ public:
   // ----------------------------------------------------
   // ---- Atomic/Future/LRSC Interfaces
   // ----------------------------------------------------
-  /// RevMem: Initiated an AMO request
-  bool AMOMem( uint32_t Hart, uint64_t Addr, uint32_t Len, void* Data, void* Target, const MemReq& req, RevFlag flags );
 
   /// RevMem: Invalidate Matching LR reservations
   bool InvalidateLRReservations( uint32_t hart, uint64_t addr, size_t len );

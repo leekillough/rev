@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 #
-# Copyright (C) 2017-2024 Tactical Computing Laboratories, LLC
+# Copyright (C) 2017-2025 Tactical Computing Laboratories, LLC
 # All Rights Reserved
 # contact@tactcomplabs.com
 #
@@ -45,7 +45,7 @@ comp_lsq.addParams(
         "max_loads": 64,
         "max_stores": 64,
         "max_flush": 64,
-        "max_llsc": 64,
+        "max_lrsc": 64,
         "max_readlock": 64,
         "max_writeunlock": 64,
         "max_custom": 64,

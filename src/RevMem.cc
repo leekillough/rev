@@ -88,7 +88,7 @@ void RevMem::LR( uint32_t hart, uint64_t addr, size_t len, void* target, const M
   LRSC.insert_or_assign( hart, std::pair( addr, len ) );
 
   if( ctrl ) {
-    ctrl->sendREADLOCKRequest( hart, addr, 0, uint32_t( len ), target, req, flags );
+    ctrl->sendREADLOCKRequest( hart, addr, 0, uint32_t( len ), flags, target, req );
   } else {
     // now handle the memory operation
     uint64_t       pageNum  = addr >> addrShift;
@@ -96,6 +96,7 @@ void RevMem::LR( uint32_t hart, uint64_t addr, size_t len, void* target, const M
     unsigned char* BaseMem  = &physMem[physAddr];
 
     memcpy( target, BaseMem, len );
+
     RevBasicMemCtrl::RevHandleFlagResp( target, len, flags );
     // clear the hazard
     req.MarkLoadComplete();
@@ -120,13 +121,11 @@ bool RevMem::InvalidateLRReservations( uint32_t hart, uint64_t addr, size_t len 
 
 bool RevMem::SC( uint32_t hart, uint64_t addr, uint32_t len, void* data, RevFlag flags ) {
   // Find the reservation for this hart (there can only be one active reservation per hart)
-  auto it = LRSC.find( hart );
-  if( it != LRSC.end() ) {
+  // Invalidate the reservation for this hart unconditionally
+  auto node = LRSC.extract( hart );
+  if( !node.empty() ) {
     // Get the address and length of the reservation
-    auto [Addr, Len] = it->second;
-
-    // Invalidate the reservation for this hart unconditionally
-    LRSC.erase( it );
+    auto [Addr, Len] = node.mapped();
 
     // SC succeeds only if the store's address range lies totally within the reservation
     if( addr >= Addr && addr + len <= Addr + Len ) {
@@ -490,13 +489,16 @@ uint64_t RevMem::AllocMemAt( const uint64_t& BaseAddr, const uint64_t& SegSize )
 }
 
 bool RevMem::AMOMem( uint32_t Hart, uint64_t Addr, uint32_t Len, void* Data, void* Target, const MemReq& req, RevFlag flags ) {
+  if( RevFlagAtomic( flags ) == RevFlag::F_NONE )
+    return false;
+
 #ifdef _REV_DEBUG_
   std::cout << "AMO of " << Len << " Bytes Starting at 0x" << std::hex << Addr << std::dec << std::endl;
 #endif
 
   if( ctrl ) {
     // sending to the RevMemCtrl
-    ctrl->sendAMORequest( Hart, Addr, 0, Len, static_cast<unsigned char*>( Data ), Target, req, flags );
+    ctrl->sendAMORequest( Hart, Addr, 0, Len, flags, static_cast<unsigned char*>( Data ), Target, req );
   } else if( zNic && !isRZA ) {
     // send a ZOP request to the RZA
     ZOP_AMOMem( Hart, Addr, Len, Data, Target, req, flags );
@@ -514,7 +516,10 @@ bool RevMem::AMOMem( uint32_t Hart, uint64_t Addr, uint32_t Len, void* Data, voi
     auto newMem = RevBasicMemCtrl::performAMO( flags, Len, Target, &data );
 
     // Write new value to memory
-    WriteMem( Hart, Addr, Len, &newMem, flags );
+    WriteMem( Hart, Addr, Len, newMem.uc, flags );
+
+    // Handle flag response
+    RevBasicMemCtrl::RevHandleFlagResp( Target, Len, flags );
 
     // clear the hazard
     req.MarkLoadComplete();
@@ -540,7 +545,7 @@ bool RevMem::WriteMem( uint32_t Hart, uint64_t Addr, uint32_t Len, const void* D
 
   if( ctrl ) {
     // write the memory using RevMemCtrl
-    ctrl->sendWRITERequest( Hart, Addr, 0, Len, const_cast<unsigned char*>( DataMem ), flags );
+    ctrl->sendWRITERequest( Hart, Addr, 0, Len, flags, const_cast<uint8_t*>( DataMem ) );
   } else if( zNic && !isRZA ) {
     ZOP_WRITEMem( Hart, Addr, Len, DataMem, flags );
   } else {
@@ -588,7 +593,9 @@ bool RevMem::ReadMem( uint32_t Hart, uint64_t Addr, uint32_t Len, void* Target, 
   TRACE_MEM_READ( Addr, Len, DataMem );
 
   if( ctrl ) {
-    ctrl->sendREADRequest( Hart, Addr, 0, Len, Target, req, flags );
+    // read the memory using RevMemCtrl
+    TRACE_MEMH_SENDREAD( req.Addr, Len, req.DestReg );
+    ctrl->sendREADRequest( Hart, Addr, 0, Len, flags, DataMem, req );
   } else if( zNic && !isRZA ) {
     ZOP_READMem( Hart, Addr, Len, Target, req, flags );
   } else {
@@ -598,12 +605,13 @@ bool RevMem::ReadMem( uint32_t Hart, uint64_t Addr, uint32_t Len, void* Target, 
     memcpy( DataMem, &physMem[physAddr], remainder );
     memcpy( DataMem + remainder, &physMem[adjPhysAddr], Len - remainder );
 
-    // Handle flag response
-    RevBasicMemCtrl::RevHandleFlagResp( Target, Len, flags );
+    if( RevFlagAtomic( flags ) == RevFlag::F_NONE ) {
+      // Handle flag response
+      RevBasicMemCtrl::RevHandleFlagResp( Target, Len, flags );
 
-    // clear the hazard - if this was an AMO operation then we will clear outside of this function in AMOMem()
-    if( MemOp::MemOpAMO != req.ReqType )
+      // clear the hazard
       req.MarkLoadComplete();
+    }
   }
 
   memStats.bytesRead += Len;
