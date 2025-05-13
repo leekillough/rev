@@ -328,8 +328,8 @@ private:
 
   std::queue<std::pair<uint32_t, char*>> ZeroRqst{};   ///< RevCPU: tracks incoming zero address put requests; pair<Size, Data>
   std::list<std::pair<uint8_t, int>>     TrackTags{};  ///< RevCPU: tracks the outgoing messages; pair<Tag, Dest>
-  std::vector<std::tuple<uint8_t, uint64_t, uint32_t>>
-    TrackGets{};  ///< RevCPU: tracks the outstanding get messages; tuple<Tag, Addr, Sz>
+  std::vector<std::tuple<uint8_t, uint64_t, uint32_t>> TrackGets{
+  };  ///< RevCPU: tracks the outstanding get messages; tuple<Tag, Addr, Sz>
   ///<         - Tag
   ///<         - Size
   ///<         - Cost
@@ -424,7 +424,7 @@ private:
   void handleZOPMessageZAP( Forza::zopEvent* zev );
 
   /// RevCPU: Handle FORZA MZOP requests
-  void handleZOPMZOP( Forza::zopEvent* zev );
+  [[noreturn]] void handleZOPMZOP( Forza::zopEvent* zev );
 
   /// RevCPU: Handle FORZA Thread Migration with FP regs
   void handleZOPThreadMigrateIntRegs( Forza::zopEvent* zev );

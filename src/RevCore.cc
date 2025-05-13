@@ -1362,7 +1362,11 @@ RevInst RevCore::DecodeInst( uint32_t Inst ) const {
     }
   } else if( inst65 == 0b00 && inst42 == 0b010 ) {
     // Forza instructions
-    Funct2or7 = DECODE_FUNCT7( Inst );
+    if( Funct3 == 0b100 ) {
+      Funct2or7 = DECODE_FUNCT2( Inst );  // CAS instructions
+    } else {
+      Funct2or7 = DECODE_FUNCT7( Inst );  // Other AMO instructions
+    }
   } else if( inst65 == 0b10 && inst42 < 0b100 ) {
     // R4-Type encodings -- we store the Funct2 precision field in Funct2or7
     Funct2or7 = DECODE_FUNCT2( Inst );
@@ -1544,7 +1548,8 @@ bool RevCore::DependencyCheck( uint32_t HartID, const RevInst* I ) const {
   // For ECALL, check for any outstanding dependencies on a0-a7
   if( I->opcode == 0b1110011 && I->imm == 0 && I->funct3 == 0 && I->rd == 0 && I->rs1 == 0 ) {
     for( RevReg reg : { RevReg::a7, RevReg::a0, RevReg::a1, RevReg::a2, RevReg::a3, RevReg::a4, RevReg::a5, RevReg::a6 } ) {
-      if( LSQCheck( HartToDecodeID, RegFile, safe_static_cast<uint16_t>( reg ), RevRegClass::RegGPR ) || ScoreboardCheck( RegFile, uint16_t( reg ), RevRegClass::RegGPR ) ) {
+      if( LSQCheck( HartToDecodeID, RegFile, safe_static_cast<uint16_t>( reg ), RevRegClass::RegGPR ) ||
+          ScoreboardCheck( RegFile, uint16_t( reg ), RevRegClass::RegGPR ) ) {
         return true;
       }
     }
@@ -1871,7 +1876,9 @@ bool RevCore::ClockTick( SST::Cycle_t currentCycle ) {
       RegFile->IncrementInstRet();
 
       // Only clear the dependency if there is no outstanding load
-      if( ( RegFile->GetLSQueue()->count( LSQHash( Pipeline.front().second.rd, InstTable[Pipeline.front().second.entry].rdClass, HartID ) ) ) == 0 ) {
+      if( ( RegFile->GetLSQueue()->count(
+            LSQHash( Pipeline.front().second.rd, InstTable[Pipeline.front().second.entry].rdClass, HartID )
+          ) ) == 0 ) {
         DependencyClear( HartID, &( Pipeline.front().second ) );
       }
       Pipeline.pop_front();
@@ -1911,16 +1918,16 @@ bool RevCore::ClockTick( SST::Cycle_t currentCycle ) {
   }
 
 #if 1
-  if( mem->CheckThreadQuit(HartToDecodeID) ){
+  if( mem->CheckThreadQuit( HartToDecodeID ) ) {
     if( HartHasNoDependencies( HartToDecodeID ) ) {
       output->verbose( CALL_INFO, 9, 0, "TJD: Core %" PRIu32 " ; No dependency found\n", id );
       std::unique_ptr<RevThread> ActiveThread = PopThreadFromHart( HartToDecodeID );
-      HartsClearToExecute[HartToDecodeID] = false;
-      HartsClearToDecode[HartToDecodeID]  = false;
+      HartsClearToExecute[HartToDecodeID]     = false;
+      HartsClearToDecode[HartToDecodeID]      = false;
       IdleHarts.set( HartToDecodeID );
       AddThreadsThatChangedState( std::move( ActiveThread ) );
-      mem->FinalizeThreadQuit(HartToDecodeID);
-      output->verbose( CALL_INFO, 3, 0, "KL: Quitting on HART %u\n", HartToDecodeID);
+      mem->FinalizeThreadQuit( HartToDecodeID );
+      output->verbose( CALL_INFO, 3, 0, "KL: Quitting on HART %u\n", HartToDecodeID );
     }
   }
 #endif

@@ -28,17 +28,15 @@ class XForza : public RevExt {
     //          be imported by the Child.
 
     // If the FSM is not active, insert a new starting state into the ThreadQ
-    if( !M->ThreadQIsActive(F->GetHartToExecID()) ){
+    if( !M->ThreadQIsActive( F->GetHartToExecID() ) ) {
       // I believe a Fence is required.  Remove this call if it's not
       M->FenceMem( F->GetHartToExecID() );
-      M->ThreadQInsert(F->GetHartToExecID(),
-                       R->GetX<uint64_t>( Inst.rs1 ),
-                       R->GetX<uint64_t>( Inst.rs2 ));
+      M->ThreadQInsert( F->GetHartToExecID(), R->GetX<uint64_t>( Inst.rs1 ), R->GetX<uint64_t>( Inst.rs2 ) );
     }
 
     // If the FSM is complete, advance the PC.  Otherwise, the PC should remain as is
     // This will stall the pipeline of the calling Hart
-    if( M->ThreadQIsComplete(F->GetHartToExecID()) ){
+    if( M->ThreadQIsComplete( F->GetHartToExecID() ) ) {
       R->cost += M->RandCost( F->GetMinCost(), F->GetMaxCost() );
       R->AdvancePC( Inst );
     }
@@ -48,7 +46,7 @@ class XForza : public RevExt {
 
   static bool quit( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) {
     M->FenceMem( F->GetHartToExecID() );
-    
+
     M->IssueThreadQuit( F->GetHartToExecID() );
     return true;
   }
@@ -117,6 +115,19 @@ class XForza : public RevExt {
     R->AdvancePC( Inst );
     return true;
   }
+
+  template<typename TYPE, OpKind KIND>
+  static bool forzaamo_cas( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) {
+    // TODO: Implement CAS instructions similar to the above atomics
+
+    R->AdvancePC( Inst );
+    return true;
+  }
+
+  static constexpr auto& amo_r_cas32 = forzaamo_cas<uint32_t, OpKind::Reg>;
+  static constexpr auto& amo_r_cas64 = forzaamo_cas<uint32_t, OpKind::Reg>;
+  static constexpr auto& amo_i_cas32 = forzaamo_cas<uint32_t, OpKind::Imm>;
+  static constexpr auto& amo_i_cas64 = forzaamo_cas<uint32_t, OpKind::Imm>;
 
   // XForza Encoding Notes
   // All the Forza atomic instructions implemented in the RZA have four
@@ -355,25 +366,31 @@ class XForza : public RevExt {
       .SetMnemonic( #name "64.rem_no %rd, %rs1, %rs2" )  \
       .SetFunct3( 0b001 )                                \
       .SetFunct2or7( 0b##u4##111 )                       \
-      .SetImplFunc( name##64rem_no ),
+      .SetImplFunc( name##64rem_no )
 
   // clang-format off
   std::vector<RevInstEntry> XForzaTable = {
-    FORZA_AMO_MACRO( amo_r_add,  0000 )
-    FORZA_AMO_MACRO( amo_r_sub,  0001 )
-    FORZA_AMO_MACRO( amo_r_and,  0010 )
-    FORZA_AMO_MACRO( amo_r_or,   0011 )
-    FORZA_AMO_MACRO( amo_r_xor,  0100 )
-    FORZA_AMO_MACRO( amo_r_smax, 0101 )
-    FORZA_AMO_MACRO( amo_r_umax, 0110 )
-    FORZA_AMO_MACRO( amo_r_smin, 0111 )
-    FORZA_AMO_MACRO( amo_r_umin, 1000 )
-    FORZA_AMO_MACRO( amo_r_swap, 1001 )
-    FORZA_AMO_MACRO( amo_r_thrs, 1110 )
+      FORZA_AMO_MACRO( amo_r_add,  0000 ),
+      FORZA_AMO_MACRO( amo_r_sub,  0001 ),
+      FORZA_AMO_MACRO( amo_r_and,  0010 ),
+      FORZA_AMO_MACRO( amo_r_or,   0011 ),
+      FORZA_AMO_MACRO( amo_r_xor,  0100 ),
+      FORZA_AMO_MACRO( amo_r_smax, 0101 ),
+      FORZA_AMO_MACRO( amo_r_umax, 0110 ),
+      FORZA_AMO_MACRO( amo_r_smin, 0111 ),
+      FORZA_AMO_MACRO( amo_r_umin, 1000 ),
+      FORZA_AMO_MACRO( amo_r_swap, 1001 ),
+      FORZA_AMO_MACRO( amo_r_thrs, 1110 ),
 
-    XForzaInstThreadDefaults().SetMnemonic( "spawn %rd, %rs1, %rs2" ).SetFunct3( 0b000 ).SetFunct2or7( 0b0000000000 ).SetImplFunc( spawn ),
-    XForzaInstThreadSpcDefaults().SetMnemonic( "quit" ).SetFunct3( 0b010 ).SetImplFunc( quit ),
-    XForzaInstThreadSpcDefaults().SetMnemonic( "resched" ).SetFunct3( 0b011 ).SetImplFunc( resched ),
+      // leekillough: "cas0" forms with immediate==0 or rs2==0 (which is unclear) should be handled carefully
+      XForzaInstDefaults().SetMnemonic( "amo_i_cas32.rem_no %rd, %rs1, %rs2, imm"  ).SetFunct3( 0b100 ).SetFunct2or7( 0b00 ).SetImplFunc( amo_i_cas32 ),
+      XForzaInstDefaults().SetMnemonic( "amo_i_cas64.rem_no %rd, %rs1, %rs2, imm"  ).SetFunct3( 0b100 ).SetFunct2or7( 0b01 ).SetImplFunc( amo_i_cas64 ),
+      XForzaInstDefaults().SetMnemonic( "amo_r_cas32.rem_no %rd, %rs1, %rs2, %rs3" ).SetFunct3( 0b100 ).SetFunct2or7( 0b10 ).SetImplFunc( amo_r_cas32 ),
+      XForzaInstDefaults().SetMnemonic( "amo_r_cas64.rem_no %rd, %rs1, %rs2, %rs3" ).SetFunct3( 0b100 ).SetFunct2or7( 0b11 ).SetImplFunc( amo_r_cas64 ),
+
+      XForzaInstThreadDefaults().SetMnemonic( "spawn %rd, %rs1, %rs2" ).SetFunct3( 0b000 ).SetFunct2or7( 0b0000000000 ).SetImplFunc( spawn ),
+      XForzaInstThreadSpcDefaults().SetMnemonic( "quit" ).SetFunct3( 0b010 ).SetImplFunc( quit ),
+      XForzaInstThreadSpcDefaults().SetMnemonic( "resched" ).SetFunct3( 0b011 ).SetImplFunc( resched ),
   };
   // clang-format on
 

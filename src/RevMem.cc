@@ -186,7 +186,7 @@ void RevMem::AddToTLB( uint64_t vAddr, uint64_t physAddr ) {
     // Insert the vAddr and physAddr into the TLB and LRU list
     LRUQueue.push_front( vAddr );
     TLB.insert( {
-      vAddr, {physAddr, LRUQueue.begin()}
+      vAddr, { physAddr, LRUQueue.begin() }
     } );
   }
 }
@@ -805,7 +805,7 @@ SST::Forza::zopOpc RevMem::flagToZOP( RevFlag flags, size_t Len ) {
   // -- 'MS' = MS-Type (aka NO - mem gets result, Rd gets orig memory)
   // Function defined in bits [7:4] - function codes 0xB and 0xF unused
   static constexpr std::tuple<RevFlag, RevFlag, size_t, Forza::zopOpc> table[] = {
-  // clang-format off
+    // clang-format off
     { RevFlag::F_AMOADD,  RevFlag::F_AMONN, 1, Forza::zopOpc::Z_HAC_8_M_ADD      },
     { RevFlag::F_AMOXOR,  RevFlag::F_AMONN, 1, Forza::zopOpc::Z_HAC_8_M_XOR      },
     { RevFlag::F_AMOAND,  RevFlag::F_AMONN, 1, Forza::zopOpc::Z_HAC_8_M_AND      },
@@ -953,7 +953,7 @@ SST::Forza::zopOpc RevMem::flagToZOP( RevFlag flags, size_t Len ) {
     { RevFlag::F_AMOMAX,  RevFlag::F_NONE,    8, Forza::zopOpc::Z_HAC_64_BASE_SMAX },
     { RevFlag::F_AMOMINU, RevFlag::F_NONE,    8, Forza::zopOpc::Z_HAC_64_BASE_MIN  },
     { RevFlag::F_AMOMAXU, RevFlag::F_NONE,    8, Forza::zopOpc::Z_HAC_64_BASE_MAX  },
-  // clang-format on
+    // clang-format on
   };
 
   for( const auto& [amo, ret, len, opc] : table ) {
@@ -976,7 +976,7 @@ SST::Forza::zopOpc RevMem::flagToZOP( RevFlag flags, size_t Len ) {
 SST::Forza::zopOpc RevMem::memToZOP( RevFlag flags, size_t Len, bool Write ) {
 
   static constexpr std::tuple<RevFlag, size_t, bool, Forza::zopOpc> table[] = {
-  // clang-format off
+    // clang-format off
     {   RevFlag::F_NONE, 1, false,  SST::Forza::zopOpc::Z_MZOP_LB },
     {   RevFlag::F_NONE, 2, false,  SST::Forza::zopOpc::Z_MZOP_LH },
     {   RevFlag::F_NONE, 4, false,  SST::Forza::zopOpc::Z_MZOP_LW },
@@ -1004,7 +1004,7 @@ SST::Forza::zopOpc RevMem::memToZOP( RevFlag flags, size_t Len, bool Write ) {
     { RevFlag::F_SEXT64, 1,  true, SST::Forza::zopOpc::Z_MZOP_SSB },
     { RevFlag::F_SEXT64, 2,  true, SST::Forza::zopOpc::Z_MZOP_SSH },
     { RevFlag::F_SEXT64, 4,  true, SST::Forza::zopOpc::Z_MZOP_SSW },
-  // clang-format on
+    // clang-format on
   };
 
   for( const auto& [resp, len, write, opc] : table ) {
@@ -1635,52 +1635,47 @@ void RevMem::AddDumpRange( const std::string& Name, const uint64_t BaseAddr, con
   DumpRanges[Name] = std::make_shared<MemSegment>( BaseAddr, Size );
 }
 
-bool RevMem::ThreadQIsActive(uint32_t SpawnHart){
+bool RevMem::ThreadQIsActive( uint32_t SpawnHart ) {
   // search the ThreadQ for a spawn request from the 'Hart'
-  if(InsertionStatTrack.find(SpawnHart) != InsertionStatTrack.end()){
-      return true;
+  if( InsertionStatTrack.find( SpawnHart ) != InsertionStatTrack.end() ) {
+    return true;
   }
   return false;
 }
 
-bool RevMem::ThreadQIsComplete(uint32_t Hart){
-  auto check = InsertionStatTrack.find(Hart);
-  if(check != InsertionStatTrack.end()){
-    if( check->second == ThreadQState::Complete ){
-      InsertionStatTrack.erase(Hart);
+bool RevMem::ThreadQIsComplete( uint32_t Hart ) {
+  auto check = InsertionStatTrack.find( Hart );
+  if( check != InsertionStatTrack.end() ) {
+    if( check->second == ThreadQState::Complete ) {
+      InsertionStatTrack.erase( Hart );
       return true;
     }
   }
   return false;
 }
 
-bool RevMem::ThreadQInsert(uint32_t Hart, uint64_t TPC, uint64_t X31){
+bool RevMem::ThreadQInsert( uint32_t Hart, uint64_t TPC, uint64_t X31 ) {
   spawnPZOPInput to_insert;
-  to_insert.valid = true;
-  to_insert.op = 0;
-  to_insert.hart = Hart;
-  to_insert.tcb = 0;
-  to_insert.func5 = 0;
+  to_insert.valid   = true;
+  to_insert.op      = 0;
+  to_insert.hart    = Hart;
+  to_insert.tcb     = 0;
+  to_insert.func5   = 0;
   to_insert.rs1Data = TPC;
   to_insert.rs2Data = X31;
   to_insert.rs3Data = 0;
-  to_insert.rd = 0;
+  to_insert.rd      = 0;
 
-  output->verbose( CALL_INFO, 5, 0, "Sending out TPC %lx and X31 (spawn block pointer) %lx \n", TPC, X31); 
+  output->verbose( CALL_INFO, 5, 0, "Sending out TPC %lx and X31 (spawn block pointer) %lx \n", TPC, X31 );
   InsertionStatTrack[Hart] = ThreadQState::Inserted;
   //ThreadQ.push_back(std::make_tuple(Hart, TPC, X31, ThreadQState::Inserted));
-  sp_req_q.push(to_insert);
+  sp_req_q.push( to_insert );
   return true;
 }
 
-void RevMem::FSMReadZen(uint16_t Hart){
-   SST::Forza::ringEvent* ring_ev = new SST::Forza::ringEvent(
-    zNic->getEndpointType(),
-    Hart,
-    SST::Forza::zopCompID::Z_ZEN,
-    SST::Forza::ringMsgT::R_READ,
-    Forza::R_ZENSTAT,
-    0xdefafUL
+void RevMem::FSMReadZen( uint16_t Hart ) {
+  SST::Forza::ringEvent* ring_ev = new SST::Forza::ringEvent(
+    zNic->getEndpointType(), Hart, SST::Forza::zopCompID::Z_ZEN, SST::Forza::ringMsgT::R_READ, Forza::R_ZENSTAT, 0xdefafUL
   );
 
   if( zoneRing ) {
@@ -1692,22 +1687,17 @@ void RevMem::FSMReadZen(uint16_t Hart){
   }
 }
 
-void RevMem::ThreadQReceiveZen( Forza::ringEvent * ev ){
+void RevMem::ThreadQReceiveZen( Forza::ringEvent* ev ) {
   zenSpawnStatus zenReturn;
   zenReturn.hart = ev->getHart();
-  zenReturn.busy = ((1UL << Forza::ZENSTAT_SHIFT_SPNBUSY) & ev->getDatum()) ? true : false;
+  zenReturn.busy = ( ( 1UL << Forza::ZENSTAT_SHIFT_SPNBUSY ) & ev->getDatum() ) ? true : false;
   output->verbose( CALL_INFO, 5, 0, "RECEIVING ZEN STATUS\n" );
-  ring_rtn_q.push(zenReturn);
+  ring_rtn_q.push( zenReturn );
 }
 
-void RevMem::FSMSendZenWord(uint16_t Hart, uint64_t Datum){
-   SST::Forza::ringEvent* ring_ev = new SST::Forza::ringEvent(
-    zNic->getEndpointType(),
-    Hart,
-    SST::Forza::zopCompID::Z_ZEN,
-    SST::Forza::ringMsgT::R_UPDATE,
-    Forza::R_ZENEQS,
-    Datum
+void RevMem::FSMSendZenWord( uint16_t Hart, uint64_t Datum ) {
+  SST::Forza::ringEvent* ring_ev = new SST::Forza::ringEvent(
+    zNic->getEndpointType(), Hart, SST::Forza::zopCompID::Z_ZEN, SST::Forza::ringMsgT::R_UPDATE, Forza::R_ZENEQS, Datum
   );
 
   if( zoneRing ) {
@@ -1719,236 +1709,221 @@ void RevMem::FSMSendZenWord(uint16_t Hart, uint64_t Datum){
   }
 }
 
-const char* RevMem::FSMReportState(FSMState state){
-  switch(state){
-	  case FSMState::IDLE:
-		  return "IDLE";
-	  case  FSMState::STATUS_RD: 
-		  return "STATUS_RD";
-	  case  FSMState::STATUS_RTN:
-		  return "STATUS_RTN";
-	  case  FSMState::SEND_PC_TCB: 
-		  return "SEND_PC_TCB";
-	  case  FSMState::SEND_WRD_1:
-		  return "SEND_WRD_1";
-	  case  FSMState::SEND_WRD_2:
-		  return "SEND_WRD_2";
-	  case  FSMState::SEND_WRD_3:
-		  return "SEND_WRD_3";
-	  case  FSMState::SEND_WRD_4:
-		  return "SEND_WRD_4";
-	  case  FSMState::WR_BACK:
-		  return "WR_BACK";
+const char* RevMem::FSMReportState( FSMState state ) {
+  switch( state ) {
+  case FSMState::IDLE: return "IDLE";
+  case FSMState::STATUS_RD: return "STATUS_RD";
+  case FSMState::STATUS_RTN: return "STATUS_RTN";
+  case FSMState::SEND_PC_TCB: return "SEND_PC_TCB";
+  case FSMState::SEND_WRD_1: return "SEND_WRD_1";
+  case FSMState::SEND_WRD_2: return "SEND_WRD_2";
+  case FSMState::SEND_WRD_3: return "SEND_WRD_3";
+  case FSMState::SEND_WRD_4: return "SEND_WRD_4";
+  case FSMState::WR_BACK: return "WR_BACK";
   }
-  return "NO_STATE"; 
+  return "NO_STATE";
 }
-
 
 /* Excluded from v1:
  * Ring req queue. There's no concept of fullness/contention in the RingNet send queue, so there's no easy interface to build our own queue to leak into that one. Sending would just happen every step
  * since we can't test for fullness of the RingNet sendQ.
  * PZOPs. This is a matter of tightening requirements -- PZOPs must go here at some point, and the additional logic is possible within the framework.
  * TCB data. It needs further implementation in REV before we can send it.
- * Validity fields. I need clarity on who sets these when before I can reliably use them. 
+ * Validity fields. I need clarity on who sets these when before I can reliably use them.
  */
-bool RevMem::ThreadQProcess(){
+bool RevMem::ThreadQProcess() {
   bool willPopSpawnQueue = false;
   // Update sp_state
-  sp_state = next_sp_state;
+  sp_state               = next_sp_state;
   // Determine next state
-  next_sp_state = FSMState::IDLE;
- // std::cout << "On this step, we are in state: " << FSMReportState(sp_state) << std::endl;
+  next_sp_state          = FSMState::IDLE;
+  // std::cout << "On this step, we are in state: " << FSMReportState(sp_state) << std::endl;
   //if(sp_state == FSMState::IDLE && (!sp_req_q.empty() || !sp_track_q.empty())){
   //  output->verbose(CALL_INFO, 5, 0, "There is something to do and we aren't doing it %lu\n", sp_track_q.size());
   //}
-  switch(sp_state){
-	  case FSMState::IDLE:
-	    //next_sp_state = (~sp_req_q_empty & ~sp_track_q_full & ~ring_req_q_full) ? STATUS_RD :
-                       //      ((~ring_rtn_q_empty & ~sp_track_q_empty) ? STATUS_RTN : IDLE);
-	//std::cout << "sp_req_q_empty " << sp_req_q.empty() << " sp_track_q_size " << sp_track_q.size() << std::endl;
-      next_sp_state = (!sp_req_q.empty() && (sp_track_q.size() != SP_TRACK_FIFO_D)) ? FSMState::STATUS_RD :
-                          ((!(ring_rtn_q.empty()) && !(sp_track_q.empty())) ? FSMState::STATUS_RTN : FSMState::IDLE);
-      break;
-	  case  FSMState::STATUS_RD:
-      //next_sp_state = (~ring_rtn_q_empty & ~sp_track_q_empty) ? STATUS_RTN : IDLE;
-      next_sp_state = (!(ring_rtn_q.empty()) && !(sp_track_q.empty())) ? FSMState::STATUS_RTN : FSMState::IDLE;
-      break;
-	  case  FSMState::STATUS_RTN:
-      //next_sp_state = status_busy ?
-      //                     (~ring_req_q_full ? STATUS_RD : STATUS_RTN) : SEND_PC_TCB;
-      next_sp_state = status_busy ? FSMState::STATUS_RD : FSMState::SEND_PC_TCB;
-      break;
-	  case  FSMState::SEND_PC_TCB:
-      //next_sp_state = (ring_req_q_full | (sp_track_q_rdata.pzp_valid & ~pzpb_rd_vld)) ?
-        //                   SEND_PC_TCB : SEND_WRD_1;
-	next_sp_state = FSMState::SEND_WRD_1;
-	break;
-	  case  FSMState::SEND_WRD_1:
-	//next_sp_state = ~ring_req_q_full ?
-                           //(sp_track_q_rdata.pzp_valid ? SEND_WRD_2 : WR_BACK) : SEND_WRD_1;
-	next_sp_state = FSMState::WR_BACK;
-	break;
+  switch( sp_state ) {
+  case FSMState::IDLE:
+    //next_sp_state = (~sp_req_q_empty & ~sp_track_q_full & ~ring_req_q_full) ? STATUS_RD :
+    //      ((~ring_rtn_q_empty & ~sp_track_q_empty) ? STATUS_RTN : IDLE);
+    //std::cout << "sp_req_q_empty " << sp_req_q.empty() << " sp_track_q_size " << sp_track_q.size() << std::endl;
+    next_sp_state = ( !sp_req_q.empty() && ( sp_track_q.size() != SP_TRACK_FIFO_D ) ) ?
+                      FSMState::STATUS_RD :
+                      ( ( !( ring_rtn_q.empty() ) && !( sp_track_q.empty() ) ) ? FSMState::STATUS_RTN : FSMState::IDLE );
+    break;
+  case FSMState::STATUS_RD:
+    //next_sp_state = (~ring_rtn_q_empty & ~sp_track_q_empty) ? STATUS_RTN : IDLE;
+    next_sp_state = ( !( ring_rtn_q.empty() ) && !( sp_track_q.empty() ) ) ? FSMState::STATUS_RTN : FSMState::IDLE;
+    break;
+  case FSMState::STATUS_RTN:
+    //next_sp_state = status_busy ?
+    //                     (~ring_req_q_full ? STATUS_RD : STATUS_RTN) : SEND_PC_TCB;
+    next_sp_state = status_busy ? FSMState::STATUS_RD : FSMState::SEND_PC_TCB;
+    break;
+  case FSMState::SEND_PC_TCB:
+    //next_sp_state = (ring_req_q_full | (sp_track_q_rdata.pzp_valid & ~pzpb_rd_vld)) ?
+    //                   SEND_PC_TCB : SEND_WRD_1;
+    next_sp_state = FSMState::SEND_WRD_1;
+    break;
+  case FSMState::SEND_WRD_1:
+    //next_sp_state = ~ring_req_q_full ?
+    //(sp_track_q_rdata.pzp_valid ? SEND_WRD_2 : WR_BACK) : SEND_WRD_1;
+    next_sp_state = FSMState::WR_BACK;
+    break;
     // These next states are for PZOP support in the future.
     //case  SEND_WRD_2:
     //case  SEND_WRD_3:
     //case  SEND_WRD_4:
-	  case  FSMState::WR_BACK:
-      //next_sp_state = (~wb_q_full) ?
-                          // ((~ring_rtn_q_empty & ~sp_track_q_empty) ? STATUS_RTN : IDLE) : WR_BACK;
-      next_sp_state = (wbQueue.size() != WB_FIFO_D) ? ((!(ring_rtn_q.empty()) && !(sp_track_q.empty())) ? FSMState::STATUS_RTN : FSMState::IDLE) : FSMState::WR_BACK;
-      break;
-	  default:
-      break;
+  case FSMState::WR_BACK:
+    //next_sp_state = (~wb_q_full) ?
+    // ((~ring_rtn_q_empty & ~sp_track_q_empty) ? STATUS_RTN : IDLE) : WR_BACK;
+    next_sp_state = ( wbQueue.size() != WB_FIFO_D ) ?
+                      ( ( !( ring_rtn_q.empty() ) && !( sp_track_q.empty() ) ) ? FSMState::STATUS_RTN : FSMState::IDLE ) :
+                      FSMState::WR_BACK;
+    break;
+  default: break;
   }
 
-  if(sp_state != next_sp_state){
-    output->verbose(CALL_INFO, 5, 0, "On this step, we are in state: %s\n", FSMReportState(sp_state));
+  if( sp_state != next_sp_state ) {
+    output->verbose( CALL_INFO, 5, 0, "On this step, we are in state: %s\n", FSMReportState( sp_state ) );
   }
 
   // Perform current action
-  
+
   // Select data to use for current track (verify importance given insertion is elsewhere)
-  if(!ring_rtn_q.empty()){
+  if( !ring_rtn_q.empty() ) {
     status_rtn_hart = ring_rtn_q.front().hart;
-    status_busy = ring_rtn_q.front().busy;
-    if(sp_state==FSMState::STATUS_RTN){
-       ring_rtn_q.pop();
+    status_busy     = ring_rtn_q.front().busy;
+    if( sp_state == FSMState::STATUS_RTN ) {
+      ring_rtn_q.pop();
     }
   }
- 
 
-  if(!sp_req_q.empty()){
-    if(sp_req_q.front().valid){
+  if( !sp_req_q.empty() ) {
+    if( sp_req_q.front().valid ) {
       spn_valid = true;
-    }
-    else{
+    } else {
       spn_valid = false;
     }
-  }
-  else{
+  } else {
     spn_valid = false;
   }
 
-  sp_wr_hart = ((sp_state == FSMState::STATUS_RTN) && !status_busy) ? status_rtn_hart : sp_wr_hart;
-  if((sp_state == FSMState::STATUS_RTN) && status_busy){
+  sp_wr_hart = ( ( sp_state == FSMState::STATUS_RTN ) && !status_busy ) ? status_rtn_hart : sp_wr_hart;
+  if( ( sp_state == FSMState::STATUS_RTN ) && status_busy ) {
     sp_track_busy_data = sp_track_q.front();
     sp_track_q.pop();
-  }
-  else{
+  } else {
     sp_track_busy_data = sp_track_busy_data;
   }
-  sp_track_data_vld = (sp_state == FSMState::STATUS_RTN) && (next_sp_state == FSMState::STATUS_RD);
+  sp_track_data_vld = ( sp_state == FSMState::STATUS_RTN ) && ( next_sp_state == FSMState::STATUS_RD );
 
-  if(sp_state == FSMState::STATUS_RD){
+  if( sp_state == FSMState::STATUS_RD ) {
     spawnTracker trackAddition;
-    if(sp_track_data_vld){
+    if( sp_track_data_vld ) {
       trackAddition.pzpValid = sp_track_busy_data.pzpValid;
-      trackAddition.spnValid = sp_track_busy_data.spnValid; 
-      trackAddition.tcb       = sp_track_busy_data.tcb;
-      trackAddition.func5     = sp_track_busy_data.func5;
+      trackAddition.spnValid = sp_track_busy_data.spnValid;
+      trackAddition.tcb      = sp_track_busy_data.tcb;
+      trackAddition.func5    = sp_track_busy_data.func5;
       trackAddition.rs1Data  = sp_track_busy_data.rs1Data;
       trackAddition.rs2Data  = sp_track_busy_data.rs2Data;
       trackAddition.rs3Data  = sp_track_busy_data.rs3Data;
-      trackAddition.rd        = sp_track_busy_data.rd;
-    }
-    else{
+      trackAddition.rd       = sp_track_busy_data.rd;
+    } else {
       trackAddition.pzpValid = pzp_valid;
       trackAddition.spnValid = spn_valid;
-      trackAddition.tcb       = sp_req_q.front().tcb;
-      trackAddition.func5     = sp_req_q.front().func5;
+      trackAddition.tcb      = sp_req_q.front().tcb;
+      trackAddition.func5    = sp_req_q.front().func5;
       trackAddition.rs1Data  = sp_req_q.front().rs1Data;
       trackAddition.rs2Data  = sp_req_q.front().rs2Data;
       trackAddition.rs3Data  = sp_req_q.front().rs3Data;
-      trackAddition.rd        = sp_req_q.front().rd;
-      // In original state machine, sp_req_q_rd is set if STATUS_RD && !sp_track_data_vld. Those same conditions are met here. 
-      willPopSpawnQueue = true;
+      trackAddition.rd       = sp_req_q.front().rd;
+      // In original state machine, sp_req_q_rd is set if STATUS_RD && !sp_track_data_vld. Those same conditions are met here.
+      willPopSpawnQueue      = true;
     }
-    sp_track_q.push(trackAddition);
+    sp_track_q.push( trackAddition );
   }
 
-
   // Update ring return as needed
-  
- 
-// Format CSR request data and write to req_q FIFO
-   // This is where *we* get to write, as the SM module. 
-   // This all being under always_comb is why it's always ready to go, every time it ticks. 
-      // It'll always be getting these on hand each time -- reminder that track handles the currently stored spawn data (or pzop, hence sp)
-      // sp_tcb is always assigned sp_track_q_rdata.tcb every step, and then used in the same step when
-      // it is used. I'm filtering out the addition of a new variable, for now. 
-      //sp_tcb                  = sp_track_q_rdata.tcb;
-      // send CSR_READ over request? 
-      // This is reassigned in every case.
+
+  // Format CSR request data and write to req_q FIFO
+  // This is where *we* get to write, as the SM module.
+  // This all being under always_comb is why it's always ready to go, every time it ticks.
+  // It'll always be getting these on hand each time -- reminder that track handles the currently stored spawn data (or pzop, hence sp)
+  // sp_tcb is always assigned sp_track_q_rdata.tcb every step, and then used in the same step when
+  // it is used. I'm filtering out the addition of a new variable, for now.
+  //sp_tcb                  = sp_track_q_rdata.tcb;
+  // send CSR_READ over request?
+  // This is reassigned in every case.
+  //ring_req_q_wdata.func   = CSR_READ;
+  //csr_ring_t ring_req_q_wdata;
+  //ring_req_q_wdata.dev_no = ZEN;
+  // I don't know what aid is. TODO: learn that, implement this alongside TCB functionality
+  //ring_req_q_wdata.aid    = sp_track_q.front().tcb.aid;
+  // Validity set to 1 by default on the spawn/pzop wdata.
+  //ring_req_q_wdata.sp_vld = 1;
+  // ZAP id is presumably my ZAP.
+  //ring_req_q_wdata.zapid  = ZAP_NUM[ZXB_ZAPS_PER_ZONE_WID-1:0];
+  // mapped to nothing on comb, then updates in state
+  // always updated in state
+  //ring_req_q_wdata.hartid = 'd0;
+  //ring_req_q_wdata.data   = 'd0;
+  // Everything is based on SP_STATE.
+  switch( sp_state ) {
+    // Initial read of status register
+  case FSMState::STATUS_RD:
+    // At this point, we're getting our initial read onto the ring, it seems. Assign a bunch of info to our wdata on the request ring.
+    //ring_req_q_wr           = 1'b1;
+    //ring_req_q_wdata.func   = CSR_READ;
+    //ring_req_q_wdata.aid    = sp_req_q_rdata.tcb.aid;
+    //ring_req_q_wdata.addr   = CSR_ZEN_STAT_ADDR;
+    //ring_req_q_wdata.hartid = sp_req_q_rdata.hart;
+    FSMReadZen( (uint16_t) sp_req_q.front().hart );
+    break;
+    // Read status register again if busy
+  case FSMState::STATUS_RTN:
+    // Continue making demands of the request ring -- a FIFO that is declared below this.
+    if( status_busy ) {
+      //ring_req_q_wr           = ~ring_req_q_full & status_busy;
       //ring_req_q_wdata.func   = CSR_READ;
-      //csr_ring_t ring_req_q_wdata;
-      //ring_req_q_wdata.dev_no = ZEN;
-      // I don't know what aid is. TODO: learn that, implement this alongside TCB functionality
-      //ring_req_q_wdata.aid    = sp_track_q.front().tcb.aid;
-      // Validity set to 1 by default on the spawn/pzop wdata. 
-      //ring_req_q_wdata.sp_vld = 1;
-      // ZAP id is presumably my ZAP. 
-      //ring_req_q_wdata.zapid  = ZAP_NUM[ZXB_ZAPS_PER_ZONE_WID-1:0];
-      // mapped to nothing on comb, then updates in state
-      // always updated in state
-      //ring_req_q_wdata.hartid = 'd0;
-      //ring_req_q_wdata.data   = 'd0;
-      // Everything is based on SP_STATE. 
-      switch(sp_state){
-        // Initial read of status register
-	      case FSMState::STATUS_RD:
-           // At this point, we're getting our initial read onto the ring, it seems. Assign a bunch of info to our wdata on the request ring. 
-           //ring_req_q_wr           = 1'b1;
-           //ring_req_q_wdata.func   = CSR_READ;
-           //ring_req_q_wdata.aid    = sp_req_q_rdata.tcb.aid;
-           //ring_req_q_wdata.addr   = CSR_ZEN_STAT_ADDR;
-           //ring_req_q_wdata.hartid = sp_req_q_rdata.hart;
-	   FSMReadZen(sp_req_q.front().hart);
-        break;
-        // Read status register again if busy
-	      case FSMState::STATUS_RTN:
-           // Continue making demands of the request ring -- a FIFO that is declared below this.
-	   if(status_busy){ 
-             //ring_req_q_wr           = ~ring_req_q_full & status_busy;
-             //ring_req_q_wdata.func   = CSR_READ;
-             //ring_req_q_wdata.aid    = sp_track_q_rdata.tcb.aid;
-             //ring_req_q_wdata.addr   = CSR_ZEN_STAT_ADDR;
-             //ring_req_q_wdata.hartid = status_rtn_hart;
-	     FSMReadZen(status_rtn_hart);
-	   }
-        break;
-        // Send PZOP/SPN CSR writes used to build PZOP and SPAWN TSRs
-	      case FSMState::SEND_PC_TCB:
-           // This must be the status of our write into the ring request queue. 
-           // After all, it requires the ring to not be full, and either our pzop or spawn to be valid. 
-	   // Since we lack the notion of ring fullness and currently do not implement validity, skip.
-           //ring_req_q_wr           = ~ring_req_q_full &
-           //                          ((sp_track_q_rdata.pzp_valid & pzpb_rd_vld) | sp_track_q_rdata.spn_valid);
-           //ring_req_q_wdata.func   = CSR_WRITE;
-           //ring_req_q_wdata.aid    = sp_track_q_rdata.tcb.aid;
-           // If it's a valid pzop, put it into ZEN, ENQP, otherwise into ENQS. 
-	   // We are currently only doing spawn, so skip.
-           //ring_req_q_wdata.addr   = sp_track_q_rdata.pzp_valid ? CSR_ZEN_ENQP_ADDR : CSR_ZEN_ENQS_ADDR;
-           // Spawn/psop hart id. 
-           //ring_req_q_wdata.hartid = sp_wr_hart;
-           // Ship the PZOP rdata, if pzop. Otherwise, ship PC and TCB. PC is within RS1 for a spawn, if I do recall correctly. 
-           //ring_req_q_wdata.data   = sp_track_q_rdata.pzp_valid ? {pzpb_rdata} :
-           //                          {sp_track_q_rdata.rs1_data[32:1],sp_tcb};
-	   FSMSendZenWord(sp_wr_hart, sp_track_q.front().rs1Data);
-        break;
-        // Send the first word of spawn data. 
-	      case FSMState::SEND_WRD_1:
-           // We have much less checking -- validity is assumed now. 
-           //ring_req_q_wr    =       ~ring_req_q_full;
-           //ring_req_q_wdata.func   = CSR_WRITE;
-           //ring_req_q_wdata.aid    = sp_track_q_rdata.tcb.aid;
-           //ring_req_q_wdata.addr   = sp_track_q_rdata.pzp_valid ? CSR_ZEN_ENQP_ADDR : CSR_ZEN_ENQS_ADDR;
-           //ring_req_q_wdata.hartid = sp_wr_hart;
-           // This time, write out rs1 if it was a pzop, otherwise it's rs2 for a spawn, since we did RS1 on previous step for spawns. At this point, spawn is done -- note from now on that we just assume pzopness, going off my assumption on the ENQP vs ENQS. 
-           //ring_req_q_wdata.data   = sp_track_q_rdata.pzp_valid ? sp_track_q_rdata.rs1_data :
-           //                          sp_track_q_rdata.rs2_data;
-	   FSMSendZenWord(sp_wr_hart, sp_track_q.front().rs2Data);
-	   break;
-       /* // Send second word of probably PZOP. 
+      //ring_req_q_wdata.aid    = sp_track_q_rdata.tcb.aid;
+      //ring_req_q_wdata.addr   = CSR_ZEN_STAT_ADDR;
+      //ring_req_q_wdata.hartid = status_rtn_hart;
+      FSMReadZen( status_rtn_hart );
+    }
+    break;
+    // Send PZOP/SPN CSR writes used to build PZOP and SPAWN TSRs
+  case FSMState::SEND_PC_TCB:
+    // This must be the status of our write into the ring request queue.
+    // After all, it requires the ring to not be full, and either our pzop or spawn to be valid.
+    // Since we lack the notion of ring fullness and currently do not implement validity, skip.
+    //ring_req_q_wr           = ~ring_req_q_full &
+    //                          ((sp_track_q_rdata.pzp_valid & pzpb_rd_vld) | sp_track_q_rdata.spn_valid);
+    //ring_req_q_wdata.func   = CSR_WRITE;
+    //ring_req_q_wdata.aid    = sp_track_q_rdata.tcb.aid;
+    // If it's a valid pzop, put it into ZEN, ENQP, otherwise into ENQS.
+    // We are currently only doing spawn, so skip.
+    //ring_req_q_wdata.addr   = sp_track_q_rdata.pzp_valid ? CSR_ZEN_ENQP_ADDR : CSR_ZEN_ENQS_ADDR;
+    // Spawn/psop hart id.
+    //ring_req_q_wdata.hartid = sp_wr_hart;
+    // Ship the PZOP rdata, if pzop. Otherwise, ship PC and TCB. PC is within RS1 for a spawn, if I do recall correctly.
+    //ring_req_q_wdata.data   = sp_track_q_rdata.pzp_valid ? {pzpb_rdata} :
+    //                          {sp_track_q_rdata.rs1_data[32:1],sp_tcb};
+    FSMSendZenWord( sp_wr_hart, sp_track_q.front().rs1Data );
+    break;
+    // Send the first word of spawn data.
+  case FSMState::SEND_WRD_1:
+    // We have much less checking -- validity is assumed now.
+    //ring_req_q_wr    =       ~ring_req_q_full;
+    //ring_req_q_wdata.func   = CSR_WRITE;
+    //ring_req_q_wdata.aid    = sp_track_q_rdata.tcb.aid;
+    //ring_req_q_wdata.addr   = sp_track_q_rdata.pzp_valid ? CSR_ZEN_ENQP_ADDR : CSR_ZEN_ENQS_ADDR;
+    //ring_req_q_wdata.hartid = sp_wr_hart;
+    // This time, write out rs1 if it was a pzop, otherwise it's rs2 for a spawn, since we did RS1 on previous step for spawns. At this point, spawn is done -- note from now on that we just assume pzopness, going off my assumption on the ENQP vs ENQS.
+    //ring_req_q_wdata.data   = sp_track_q_rdata.pzp_valid ? sp_track_q_rdata.rs1_data :
+    //                          sp_track_q_rdata.rs2_data;
+    FSMSendZenWord( sp_wr_hart, sp_track_q.front().rs2Data );
+    break;
+    /* // Send second word of probably PZOP.
         SEND_WRD_2: begin
            ring_req_q_wr           = ~ring_req_q_full;
            ring_req_q_wdata.func   = CSR_WRITE;
@@ -1957,7 +1932,7 @@ bool RevMem::ThreadQProcess(){
            ring_req_q_wdata.hartid = sp_wr_hart;
            ring_req_q_wdata.data   = sp_track_q_rdata.rs2_data;
         end
-        // Send third word, once more seemingly only for pzops. 
+        // Send third word, once more seemingly only for pzops.
         SEND_WRD_3: begin
            ring_req_q_wr           = ~ring_req_q_full;
            ring_req_q_wdata.func   = CSR_WRITE;
@@ -1965,7 +1940,7 @@ bool RevMem::ThreadQProcess(){
            ring_req_q_wdata.addr   = CSR_ZEN_ENQP_ADDR;
            ring_req_q_wdata.hartid = sp_wr_hart;
             ring_req_q_wdata.data   = sp_track_q_rdata.rs3_data;
-        // Send the func5 through, (presumably for pzop reasons) but note down if the PZOP fence incrementer is valid and ready. 
+        // Send the func5 through, (presumably for pzop reasons) but note down if the PZOP fence incrementer is valid and ready.
         SEND_WRD_4: begin
            ring_req_q_wr           = pzp_fence_inc_vld & i_pzp_fence_inc_rdy;
            ring_req_q_wdata.func   = CSR_WRITE;
@@ -1974,41 +1949,34 @@ bool RevMem::ThreadQProcess(){
            ring_req_q_wdata.hartid = sp_wr_hart;
            ring_req_q_wdata.data   = {{59{1'b0}},sp_track_q_rdata.func5};
        end*/
-       // DEFAULT is interesting. IDLE is missing here -- maybe this is what we do in idle? Just submit another request for request acknowledgement? 
-       // Also used in writeback.
-        default:
-	   // I'm not actually sure what a hart 0 ZEN read accomplishes for us. 
-	   // I assume it has to do with writing back somehow?
-           //ring_req_q_wr           = 1'b0;
-           //ring_req_q_wdata.func   = CSR_READ;
-           //ring_req_q_wdata.dev_no = ZEN;
-           //ring_req_q_wdata.aid    = sp_track_q_rdata.tcb.aid;
-           //ring_req_q_wdata.sp_vld = 1'b1;
-           //ring_req_q_wdata.zapid  = ZAP_NUM[ZXB_ZAPS_PER_ZONE_WID-1:0];
-           //ring_req_q_wdata.hartid = 'd0;
-           //ring_req_q_wdata.data   = 'd0;
-        break;
-      }
-   
-
-
-  if(willPopSpawnQueue){
-    output->verbose(CALL_INFO, 5, 0, "Popping request made by %u\n", sp_req_q.front().hart); 
-    sp_req_q.pop(); 
-
+    // DEFAULT is interesting. IDLE is missing here -- maybe this is what we do in idle? Just submit another request for request acknowledgement?
+    // Also used in writeback.
+  default:
+    // I'm not actually sure what a hart 0 ZEN read accomplishes for us.
+    // I assume it has to do with writing back somehow?
+    //ring_req_q_wr           = 1'b0;
+    //ring_req_q_wdata.func   = CSR_READ;
+    //ring_req_q_wdata.dev_no = ZEN;
+    //ring_req_q_wdata.aid    = sp_track_q_rdata.tcb.aid;
+    //ring_req_q_wdata.sp_vld = 1'b1;
+    //ring_req_q_wdata.zapid  = ZAP_NUM[ZXB_ZAPS_PER_ZONE_WID-1:0];
+    //ring_req_q_wdata.hartid = 'd0;
+    //ring_req_q_wdata.data   = 'd0;
+    break;
   }
 
-  if(sp_state == FSMState::WR_BACK){
-    auto finishedHart = InsertionStatTrack.find(sp_wr_hart);
-    if(finishedHart != InsertionStatTrack.end()){
-        finishedHart->second = ThreadQState::Complete;
-      }
+  if( willPopSpawnQueue ) {
+    output->verbose( CALL_INFO, 5, 0, "Popping request made by %u\n", sp_req_q.front().hart );
+    sp_req_q.pop();
+  }
+
+  if( sp_state == FSMState::WR_BACK ) {
+    auto finishedHart = InsertionStatTrack.find( sp_wr_hart );
+    if( finishedHart != InsertionStatTrack.end() ) {
+      finishedHart->second = ThreadQState::Complete;
+    }
     sp_track_q.pop();
-
   }
-
-
-
 
   return true;
 }
