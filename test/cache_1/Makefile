@@ -3,7 +3,7 @@
 #
 # makefile: large_bss
 #
-# Copyright (C) 2017-2024 Tactical Computing Laboratories, LLC
+# Copyright (C) 2017-2025 Tactical Computing Laboratories, LLC
 # All Rights Reserved
 # contact@tactcomplabs.com
 #
@@ -14,7 +14,7 @@
 
 EXAMPLE=cache_1
 CC=${RVCC}
-ARCH=rv32i
+ARCH=rv32g
 ABI=ilp32
 
 all: $(EXAMPLE).exe
