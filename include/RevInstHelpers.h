@@ -480,7 +480,7 @@ bool fnmadd( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst 
 
 // Square root
 template<typename T>
-static bool fsqrt( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) {
+bool fsqrt( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) {
   R->SetFP( Inst.rd, std::sqrt( R->GetFP<T>( Inst.rs1 ) ) );
   R->AdvancePC( Inst );
   return true;
@@ -488,7 +488,7 @@ static bool fsqrt( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst&
 
 // Transfer sign bit
 template<typename T>
-static bool fsgnj( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) {
+bool fsgnj( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) {
   R->SetFP( Inst.rd, std::copysign( R->GetFP<T>( Inst.rs1 ), R->GetFP<T>( Inst.rs2 ) ) );
   R->AdvancePC( Inst );
   return true;
@@ -496,7 +496,7 @@ static bool fsgnj( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst&
 
 // Negated transfer sign bit
 template<typename T>
-static bool fsgnjn( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) {
+bool fsgnjn( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) {
   R->SetFP( Inst.rd, std::copysign( R->GetFP<T>( Inst.rs1 ), negate( R->GetFP<T>( Inst.rs2 ) ) ) );
   R->AdvancePC( Inst );
   return true;
@@ -504,7 +504,7 @@ static bool fsgnjn( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst
 
 // Xor transfer sign bit
 template<typename T>
-static bool fsgnjx( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) {
+bool fsgnjx( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) {
   T rs1 = R->GetFP<T>( Inst.rs1 ), rs2 = R->GetFP<T>( Inst.rs2 );
   R->SetFP( Inst.rd, std::copysign( rs1, std::signbit( rs1 ) ? negate( rs2 ) : rs2 ) );
   R->AdvancePC( Inst );
@@ -513,7 +513,7 @@ static bool fsgnjx( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst
 
 // Move floating-point register to integer register
 template<typename T>
-static bool fmvif( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) {
+bool fmvif( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) {
   std::make_signed_t<uint_type_t<T>> i;
   T                                  fp = R->GetFP<T, true>( Inst.rs1 );  // The FP value
   static_assert( sizeof( i ) == sizeof( fp ) );
@@ -525,7 +525,7 @@ static bool fmvif( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst&
 
 // Move integer register to floating-point register
 template<typename T>
-static bool fmvfi( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) {
+bool fmvfi( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) {
   T    fp;
   auto i = R->GetX<uint_type_t<T>>( Inst.rs1 );  // The X register
   static_assert( sizeof( i ) == sizeof( fp ) );
@@ -537,7 +537,7 @@ static bool fmvfi( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst&
 
 // Floating-point classify
 template<typename T>
-static bool fclassify( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) {
+bool fclassify( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) {
   R->SetX( Inst.rd, fclass( R->GetFP<T>( Inst.rs1 ) ) );
   R->AdvancePC( Inst );
   return true;
@@ -545,7 +545,7 @@ static bool fclassify( const RevFeature* F, RevRegFile* R, RevMem* M, const RevI
 
 // Convert integer to floating point
 template<typename FP, typename INT>
-static bool fcvtfi( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) {
+bool fcvtfi( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) {
   R->SetFP( Inst.rd, static_cast<FP>( R->GetX<INT>( Inst.rs1 ) ) );
   R->AdvancePC( Inst );
   return true;
@@ -553,7 +553,7 @@ static bool fcvtfi( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst
 
 // Convert floating point to floating point
 template<typename FP2, typename FP1>
-static bool fcvtff( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) {
+bool fcvtff( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) {
   R->SetFP( Inst.rd, static_cast<FP2>( R->GetFP<FP1>( Inst.rs1 ) ) );
   R->AdvancePC( Inst );
   return true;
