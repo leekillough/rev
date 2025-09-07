@@ -495,6 +495,12 @@ struct RevCSR : RevZicntr {
   /// Set Floating-Point flags
   void SetFFlags( FCSR flags ) { CSR[fcsr] |= static_cast<uint32_t>( flags ) & 0b11111; }
 
+  /// Get the Posit mode
+  bool GetPositMode() const { return BitExtract<8, 1>( CSR[fcsr] ); }
+
+  /// Set the Posit mode
+  void SetPositMode( bool PM ) { BitDeposit<8, 1>( CSR[fcsr], PM ); }
+
   /// Get a CSR register
   template<typename XLEN>
   XLEN GetCSR( uint32_t csr ) const {
@@ -512,7 +518,7 @@ struct RevCSR : RevZicntr {
       // Floating Point flags
       case fflags:   return BitExtract<0, 5>( XLEN( CSR[fcsr] ) );
       case frm:      return BitExtract<5, 3>( XLEN( CSR[fcsr] ) );
-      case fcsr:     return BitExtract<0, 8>( XLEN( CSR[fcsr] ) );
+      case fcsr:     return BitExtract<0, 9>( XLEN( CSR[fcsr] ) );
 
       // Performance Counters
       case cycle:    return GetPerfCounter<XLEN, Half::Lo, rdcycle  >();
@@ -549,7 +555,7 @@ struct RevCSR : RevZicntr {
       // Floating Point flags
       case fflags: BitDeposit<0, 5>(CSR[fcsr], val); break;
       case frm:    BitDeposit<5, 3>(CSR[fcsr], val); break;
-      case fcsr:   BitDeposit<0, 8>(CSR[fcsr], val); break;
+      case fcsr:   BitDeposit<0, 9>(CSR[fcsr], val); break;
 
       // Default behavior is to write to it as an ordinary register
       default:     CSR.at( csr ) = val;

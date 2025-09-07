@@ -1,7 +1,7 @@
 //
 // _RV32D_h_
 //
-// Copyright (C) 2017-2024 Tactical Computing Laboratories, LLC
+// Copyright (C) 2017-2025 Tactical Computing Laboratories, LLC
 // All Rights Reserved
 // contact@tactcomplabs.com
 //
@@ -21,50 +21,50 @@ namespace SST::RevCPU {
 
 class RV32D : public RevExt {
   // Standard instructions
-  static constexpr auto& fld     = fload<double>;
-  static constexpr auto& fsd     = fstore<double>;
+  static constexpr auto& fld     = float_or_posit<fload<double>, fload<posit64>>;
+  static constexpr auto& fsd     = float_or_posit<fstore<double>, fstore<posit64>>;
 
   // FMA instructions
-  static constexpr auto& fmaddd  = fmadd<double>;
-  static constexpr auto& fmsubd  = fmsub<double>;
-  static constexpr auto& fnmsubd = fnmsub<double>;
-  static constexpr auto& fnmaddd = fnmadd<double>;
+  static constexpr auto& fmaddd  = float_or_posit<fmadd<double>, fmadd<posit64>>;
+  static constexpr auto& fmsubd  = float_or_posit<fmsub<double>, fmsub<posit64>>;
+  static constexpr auto& fnmsubd = float_or_posit<fnmsub<double>, fnmsub<posit64>>;
+  static constexpr auto& fnmaddd = float_or_posit<fnmadd<double>, fnmadd<posit64>>;
 
   // Binary FP instructions
-  static constexpr auto& faddd   = foper<double, std::plus>;
-  static constexpr auto& fsubd   = foper<double, std::minus>;
-  static constexpr auto& fmuld   = foper<double, std::multiplies>;
-  static constexpr auto& fdivd   = foper<double, std::divides>;
-  static constexpr auto& fmind   = foper<double, FMin>;
-  static constexpr auto& fmaxd   = foper<double, FMax>;
+  static constexpr auto& faddd   = float_or_posit<foper<double, std::plus>, foper<posit64, std::plus>>;
+  static constexpr auto& fsubd   = float_or_posit<foper<double, std::minus>, foper<posit64, std::minus>>;
+  static constexpr auto& fmuld   = float_or_posit<foper<double, std::multiplies>, foper<posit64, std::multiplies>>;
+  static constexpr auto& fdivd   = float_or_posit<foper<double, std::divides>, foper<posit64, std::divides>>;
+  static constexpr auto& fmind   = float_or_posit<foper<double, FMin>, foper<posit64, FMin>>;
+  static constexpr auto& fmaxd   = float_or_posit<foper<double, FMax>, foper<posit64, FMax>>;
 
   // FP Comparison instructions
-  static constexpr auto& feqd    = fcondop<double, std::equal_to>;
-  static constexpr auto& fltd    = fcondop<double, std::less>;
-  static constexpr auto& fled    = fcondop<double, std::less_equal>;
+  static constexpr auto& feqd    = float_or_posit<fcondop<double, std::equal_to>, fcondop<posit64, std::equal_to>>;
+  static constexpr auto& fltd    = float_or_posit<fcondop<double, std::less>, fcondop<posit64, std::less>>;
+  static constexpr auto& fled    = float_or_posit<fcondop<double, std::less_equal>, fcondop<posit64, std::less_equal>>;
 
   // FP to Integer Conversion instructions
-  static constexpr auto& fcvtwd  = fcvtif<int32_t, double>;
-  static constexpr auto& fcvtwud = fcvtif<uint32_t, double>;
+  static constexpr auto& fcvtwd  = float_or_posit<fcvtif<int32_t, double>, fcvtif<int32_t, posit64>>;
+  static constexpr auto& fcvtwud = float_or_posit<fcvtif<uint32_t, double>, fcvtif<uint32_t, posit64>>;
 
   // Square root
-  static constexpr auto& fsqrtd  = fsqrt<double>;
+  static constexpr auto& fsqrtd  = float_or_posit<fsqrt<double>, fsqrt<posit64>>;
 
   // Sign transfer
-  static constexpr auto& fsgnjd  = fsgnj<double>;
-  static constexpr auto& fsgnjnd = fsgnjn<double>;
-  static constexpr auto& fsgnjxd = fsgnjx<double>;
+  static constexpr auto& fsgnjd  = float_or_posit<fsgnj<double>, fsgnj<posit64>>;
+  static constexpr auto& fsgnjnd = float_or_posit<fsgnjn<double>, fsgnjn<posit64>>;
+  static constexpr auto& fsgnjxd = float_or_posit<fsgnjx<double>, fsgnjx<posit64>>;
 
   // Conversions between single and double precision FP
-  static constexpr auto& fcvtsd  = fcvtff<float, double>;
-  static constexpr auto& fcvtds  = fcvtff<double, float>;
+  static constexpr auto& fcvtsd  = float_or_posit<fcvtff<float, double>, fcvtff<posit32, posit64>>;
+  static constexpr auto& fcvtds  = float_or_posit<fcvtff<double, float>, fcvtff<posit64, posit32>>;
 
-  // FP Classify
-  static constexpr auto& fclassd = fclassify<double>;
+  // FP Classify, invalid in posit mode
+  static constexpr auto& fclassd = float_or_posit<fclassify<double>, nullptr>;
 
   // Conversion from integer to double
-  static constexpr auto& fcvtdw  = fcvtfi<double, int32_t>;
-  static constexpr auto& fcvtdwu = fcvtfi<double, uint32_t>;
+  static constexpr auto& fcvtdw  = float_or_posit<fcvtfi<double, int32_t>, fcvtfi<posit64, int32_t>>;
+  static constexpr auto& fcvtdwu = float_or_posit<fcvtfi<double, uint32_t>, fcvtfi<posit64, uint32_t>>;
 
   // Compressed instructions
   static constexpr auto& cfldsp  = fld;

@@ -47,7 +47,7 @@ RevCore::RevCore(
 
   // Create the Hart Objects
   for( uint32_t i = 0; i < numHarts; i++ ) {
-    Harts.emplace_back( new RevHart( i, LSQueue, [=]( const MemReq& req ) { this->MarkLoadComplete( req ); } ) );
+    Harts.emplace_back( new RevHart( i, LSQueue, [this]( const MemReq& req ) { this->MarkLoadComplete( req ); } ) );
     ValidHarts.set( i, true );
   }
 
@@ -58,7 +58,7 @@ RevCore::RevCore(
   }
 
   sfetch =
-    std::make_unique<RevPrefetcher>( mem, feature, Depth, LSQueue, [=]( const MemReq& req ) { this->MarkLoadComplete( req ); } );
+    std::make_unique<RevPrefetcher>( mem, feature, Depth, LSQueue, [this]( const MemReq& req ) { this->MarkLoadComplete( req ); } );
   if( !sfetch )
     output->fatal( CALL_INFO, -1, "Error: failed to create the RevPrefetcher object for core=%" PRIu32 "\n", id );
 

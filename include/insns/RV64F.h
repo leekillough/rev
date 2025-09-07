@@ -1,7 +1,7 @@
 //
 // _RV64F_h_
 //
-// Copyright (C) 2017-2024 Tactical Computing Laboratories, LLC
+// Copyright (C) 2017-2025 Tactical Computing Laboratories, LLC
 // All Rights Reserved
 // contact@tactcomplabs.com
 //
@@ -20,10 +20,10 @@
 namespace SST::RevCPU {
 
 class RV64F : public RevExt {
-  static constexpr auto& fcvtls  = fcvtif<int64_t, float>;
-  static constexpr auto& fcvtlus = fcvtif<uint64_t, float>;
-  static constexpr auto& fcvtsl  = fcvtfi<float, int64_t>;
-  static constexpr auto& fcvtslu = fcvtfi<float, uint64_t>;
+  static constexpr auto& fcvtls  = float_or_posit<fcvtif<int64_t, float>, fcvtif<int64_t, posit32>>;
+  static constexpr auto& fcvtlus = float_or_posit<fcvtif<uint64_t, float>, fcvtif<uint64_t, posit32>>;
+  static constexpr auto& fcvtsl  = float_or_posit<fcvtfi<float, int64_t>, fcvtfi<posit32, int64_t>>;
+  static constexpr auto& fcvtslu = float_or_posit<fcvtfi<float, uint64_t>, fcvtfi<posit32, uint64_t>>;
 
   // ----------------------------------------------------------------------
   //

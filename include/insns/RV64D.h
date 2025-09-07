@@ -1,7 +1,7 @@
 //
 // _RV64D_h_
 //
-// Copyright (C) 2017-2024 Tactical Computing Laboratories, LLC
+// Copyright (C) 2017-2025 Tactical Computing Laboratories, LLC
 // All Rights Reserved
 // contact@tactcomplabs.com
 //
@@ -21,16 +21,16 @@ namespace SST::RevCPU {
 
 class RV64D : public RevExt {
   // Conversion from double to integer
-  static constexpr auto& fcvtld  = fcvtif<int64_t, double>;
-  static constexpr auto& fcvtlud = fcvtif<uint64_t, double>;
+  static constexpr auto& fcvtld  = float_or_posit<fcvtif<int64_t, double>, fcvtif<int64_t, posit64>>;
+  static constexpr auto& fcvtlud = float_or_posit<fcvtif<uint64_t, double>, fcvtif<uint64_t, posit64>>;
 
   // Conversion from integer to double
-  static constexpr auto& fcvtdl  = fcvtfi<double, int64_t>;
-  static constexpr auto& fcvtdlu = fcvtfi<double, uint64_t>;
+  static constexpr auto& fcvtdl  = float_or_posit<fcvtfi<double, int64_t>, fcvtfi<posit64, int64_t>>;
+  static constexpr auto& fcvtdlu = float_or_posit<fcvtfi<double, uint64_t>, fcvtfi<posit64, uint64_t>>;
 
   // Moves between FP and integer registers
-  static constexpr auto& fmvxd   = fmvif<double>;
-  static constexpr auto& fmvdx   = fmvfi<double>;
+  static constexpr auto& fmvxd   = float_or_posit<fmvif<double>, fmvif<posit64>>;
+  static constexpr auto& fmvdx   = float_or_posit<fmvfi<double>, fmvfi<posit64>>;
 
   // ----------------------------------------------------------------------
   //

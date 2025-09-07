@@ -90,6 +90,8 @@ set(CMAKE_CXX_FLAGS "-std=c++17 ${FP_MODE_FLAG} -O2 -Wall -Wextra -Wsuggest-over
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0 -Wall ${REVCPU_COMPILER_MACROS}")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -Wall ${REVCPU_COMPILER_MACROS}")
 
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/stillwater-sc/universal/include/sw/)
+
 # Find SST packages
 find_package(SST REQUIRED CONFIG)
 message(STATUS "Found SST execute_process(COMMAND sst --version)")

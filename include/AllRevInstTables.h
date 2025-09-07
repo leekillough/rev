@@ -31,6 +31,7 @@
 #include "insns/Zaamo.h"
 #include "insns/Zalrsc.h"
 #include "insns/Zfa.h"
+#include "insns/Zfgatling.h"
 #include "insns/Zicbom.h"
 #include "insns/Zicsr.h"
 #include "insns/Zifencei.h"

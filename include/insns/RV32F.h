@@ -1,7 +1,7 @@
 //
 // _RV32F_h_
 //
-// Copyright (C) 2017-2024 Tactical Computing Laboratories, LLC
+// Copyright (C) 2017-2025 Tactical Computing Laboratories, LLC
 // All Rights Reserved
 // contact@tactcomplabs.com
 //
@@ -21,50 +21,50 @@ namespace SST::RevCPU {
 
 class RV32F : public RevExt {
   // Standard instructions
-  static constexpr auto& flw     = fload<float>;
-  static constexpr auto& fsw     = fstore<float>;
+  static constexpr auto& flw     = float_or_posit<fload<float>, fload<posit32>>;
+  static constexpr auto& fsw     = float_or_posit<fstore<float>, fstore<posit32>>;
 
   // FMA instructions
-  static constexpr auto& fmadds  = fmadd<float>;
-  static constexpr auto& fmsubs  = fmsub<float>;
-  static constexpr auto& fnmsubs = fnmsub<float>;
-  static constexpr auto& fnmadds = fnmadd<float>;
+  static constexpr auto& fmadds  = float_or_posit<fmadd<float>, nullptr>;
+  static constexpr auto& fmsubs  = float_or_posit<fmsub<float>, nullptr>;
+  static constexpr auto& fnmsubs = float_or_posit<fnmsub<float>, nullptr>;
+  static constexpr auto& fnmadds = float_or_posit<fnmadd<float>, nullptr>;
 
   // Binary FP instructions
-  static constexpr auto& fadds   = foper<float, std::plus>;
-  static constexpr auto& fsubs   = foper<float, std::minus>;
-  static constexpr auto& fmuls   = foper<float, std::multiplies>;
-  static constexpr auto& fdivs   = foper<float, std::divides>;
-  static constexpr auto& fmins   = foper<float, FMin>;
-  static constexpr auto& fmaxs   = foper<float, FMax>;
+  static constexpr auto& fadds   = float_or_posit<foper<float, std::plus>, foper<posit32, std::plus>>;
+  static constexpr auto& fsubs   = float_or_posit<foper<float, std::minus>, foper<posit32, std::minus>>;
+  static constexpr auto& fmuls   = float_or_posit<foper<float, std::multiplies>, foper<posit32, std::multiplies>>;
+  static constexpr auto& fdivs   = float_or_posit<foper<float, std::divides>, foper<posit32, std::divides>>;
+  static constexpr auto& fmins   = float_or_posit<foper<float, FMin>, foper<posit32, FMin>>;
+  static constexpr auto& fmaxs   = float_or_posit<foper<float, FMax>, foper<posit32, FMax>>;
 
   // FP Comparison instructions
-  static constexpr auto& feqs    = fcondop<float, std::equal_to>;
-  static constexpr auto& flts    = fcondop<float, std::less>;
-  static constexpr auto& fles    = fcondop<float, std::less_equal>;
+  static constexpr auto& feqs    = float_or_posit<fcondop<float, std::equal_to>, fcondop<posit32, std::equal_to>>;
+  static constexpr auto& flts    = float_or_posit<fcondop<float, std::less>, fcondop<posit32, std::less>>;
+  static constexpr auto& fles    = float_or_posit<fcondop<float, std::less_equal>, fcondop<posit32, std::less_equal>>;
 
   // FP to Integer Conversion instructions
-  static constexpr auto& fcvtws  = fcvtif<int32_t, float>;
-  static constexpr auto& fcvtwus = fcvtif<uint32_t, float>;
+  static constexpr auto& fcvtws  = float_or_posit<fcvtif<int32_t, float>, fcvtif<int32_t, posit32>>;
+  static constexpr auto& fcvtwus = float_or_posit<fcvtif<uint32_t, float>, fcvtif<uint32_t, posit32>>;
 
   // Square root
-  static constexpr auto& fsqrts  = fsqrt<float>;
+  static constexpr auto& fsqrts  = float_or_posit<fsqrt<float>, fsqrt<posit32>>;
 
   // Sign transfer
-  static constexpr auto& fsgnjs  = fsgnj<float>;
-  static constexpr auto& fsgnjns = fsgnjn<float>;
-  static constexpr auto& fsgnjxs = fsgnjx<float>;
+  static constexpr auto& fsgnjs  = float_or_posit<fsgnj<float>, fsgnj<posit32>>;
+  static constexpr auto& fsgnjns = float_or_posit<fsgnjn<float>, fsgnjn<posit32>>;
+  static constexpr auto& fsgnjxs = float_or_posit<fsgnjx<float>, fsgnjx<posit32>>;
 
   // Transfers between integer and FP registers
-  static constexpr auto& fmvxw   = fmvif<float>;
-  static constexpr auto& fmvwx   = fmvfi<float>;
+  static constexpr auto& fmvxw   = float_or_posit<fmvif<float>, fmvif<posit32>>;
+  static constexpr auto& fmvwx   = float_or_posit<fmvfi<float>, fmvfi<posit32>>;
 
-  // FP classification
-  static constexpr auto& fclasss = fclassify<float>;
+  // FP classification, invalid in posit mode
+  static constexpr auto& fclasss = float_or_posit<fclassify<float>, nullptr>;
 
   // Conversion from integer to float
-  static constexpr auto& fcvtsw  = fcvtfi<float, int32_t>;
-  static constexpr auto& fcvtswu = fcvtfi<float, uint32_t>;
+  static constexpr auto& fcvtsw  = float_or_posit<fcvtfi<float, int32_t>, fcvtfi<posit32, int32_t>>;
+  static constexpr auto& fcvtswu = float_or_posit<fcvtfi<float, uint32_t>, fcvtfi<posit32, uint32_t>>;
 
   // Compressed instructions
   static constexpr auto& cflwsp  = flw;

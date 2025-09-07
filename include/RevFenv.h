@@ -1,7 +1,7 @@
 //
 // _RevFenv_h_
 //
-// Copyright (C) 2017-2024 Tactical Computing Laboratories, LLC
+// Copyright (C) 2017-2025 Tactical Computing Laboratories, LLC
 // All Rights Reserved
 // contact@tactcomplabs.com
 //
@@ -16,6 +16,17 @@
 #include <cfenv>
 #include <cmath>
 #include <stdexcept>
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wconversion"
+#pragma GCC diagnostic ignored "-Wsign-conversion"
+#pragma GCC diagnostic ignored "-Wdouble-promotion"
+#pragma GCC diagnostic ignored "-Wignored-qualifiers"
+#include "universal/number/cfloat/cfloat.hpp"
+#pragma GCC diagnostic pop
+
+using posit32 = float;
+using posit64 = double;
 
 // GCC and Clang do not fully support FENV_ACCESS now. See:
 //

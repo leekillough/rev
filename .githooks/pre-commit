@@ -228,6 +228,7 @@ reformat_files() {
 
 # Fix formatting on text files
     for file in "${FILES[@]}"; do
+        [[ $file = *stillwater-sc* ]] && continue
         if [[ -f $file ]] && is_text_file "$file"; then
             # Replace non-ASCII characters with ASCII equivalents
             if ! iconv -s -f utf-8 -t ascii//TRANSLIT "$file" > "$temp"; then

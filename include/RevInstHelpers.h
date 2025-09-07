@@ -24,11 +24,23 @@
 
 namespace SST::RevCPU {
 
+// Automatic dispatcher of floating-point or posit function based on runtime mode
+template<auto FLOAT, auto POSIT>
+bool float_or_posit( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& I ) {
+  if( !R->GetPositMode() )
+    return FLOAT( F, R, M, I );
+  else if constexpr( !std::is_null_pointer_v<decltype( POSIT )> )
+    return POSIT( F, R, M, I );
+  else
+    make_dependent<decltype( POSIT )>( R->GetCore() )
+      ->output->fatal( CALL_INFO, -1, "Invalid Instruction in Posit mode at PC = 0x%" PRIx64 "\n", R->GetPC() );
+}
+
 // Limits when converting from floating-point to integer
 template<typename FP, typename INT>
-inline constexpr FP fpmax = 0;
+constexpr auto fpmax = [] { static_assert( make_dependent<FP>( false ), "Invalid fpmax template arguments" ); };
 template<typename FP, typename INT>
-inline constexpr FP fpmin = 0;
+constexpr auto fpmin = [] { static_assert( make_dependent<FP>( false ), "Invalid fpmin template arguments" ); };
 template<>
 inline constexpr float fpmax<float, int32_t> = 0x1.fffffep+30f;
 template<>
@@ -511,14 +523,14 @@ bool bcond( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst )
 
 /// Negation function which flips sign bit, even of NaN
 template<typename T>
-inline auto negate( T x ) {
+auto negate( T x ) {
   return std::copysign( x, std::signbit( x ) ? T{ 1 } : T{ -1 } );
 }
 
 /// Rev FMA template which handles 0.0 * NAN and NAN * 0.0 correctly
 // RISC-V requires INVALID exception when x * y is INVALID even when z = qNaN
 template<typename T>
-inline auto revFMA( T x, T y, T z ) {
+auto revFMA( T x, T y, T z ) {
   if( ( y == 0 && std::isinf( x ) ) || ( x == 0 && std::isinf( y ) ) ) {
     feraiseexcept( FE_INVALID );
   }
@@ -559,7 +571,7 @@ bool fnmadd( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst 
 
 // Square root
 template<typename T>
-static bool fsqrt( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) {
+bool fsqrt( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) {
   R->SetFP( Inst.rd, std::sqrt( R->GetFP<T>( Inst.rs1 ) ) );
   R->AdvancePC( Inst );
   return true;
@@ -567,7 +579,7 @@ static bool fsqrt( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst&
 
 // Transfer sign bit
 template<typename T>
-static bool fsgnj( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) {
+bool fsgnj( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) {
   R->SetFP( Inst.rd, std::copysign( R->GetFP<T>( Inst.rs1 ), R->GetFP<T>( Inst.rs2 ) ) );
   R->AdvancePC( Inst );
   return true;
@@ -575,7 +587,7 @@ static bool fsgnj( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst&
 
 // Negated transfer sign bit
 template<typename T>
-static bool fsgnjn( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) {
+bool fsgnjn( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) {
   R->SetFP( Inst.rd, std::copysign( R->GetFP<T>( Inst.rs1 ), negate( R->GetFP<T>( Inst.rs2 ) ) ) );
   R->AdvancePC( Inst );
   return true;
@@ -583,7 +595,7 @@ static bool fsgnjn( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst
 
 // Xor transfer sign bit
 template<typename T>
-static bool fsgnjx( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) {
+bool fsgnjx( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) {
   T rs1 = R->GetFP<T>( Inst.rs1 ), rs2 = R->GetFP<T>( Inst.rs2 );
   R->SetFP( Inst.rd, std::copysign( rs1, std::signbit( rs1 ) ? negate( rs2 ) : rs2 ) );
   R->AdvancePC( Inst );
@@ -592,7 +604,7 @@ static bool fsgnjx( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst
 
 // Move floating-point register to integer register
 template<typename T>
-static bool fmvif( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) {
+bool fmvif( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) {
   std::make_signed_t<uint_type_t<T>> i;
   T                                  fp = R->GetFP<T, true>( Inst.rs1 );  // The FP value
   static_assert( sizeof( i ) == sizeof( fp ) );
@@ -604,7 +616,7 @@ static bool fmvif( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst&
 
 // Move integer register to floating-point register
 template<typename T>
-static bool fmvfi( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) {
+bool fmvfi( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) {
   T    fp;
   auto i = R->GetX<uint_type_t<T>>( Inst.rs1 );  // The X register
   static_assert( sizeof( i ) == sizeof( fp ) );
@@ -616,7 +628,7 @@ static bool fmvfi( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst&
 
 // Floating-point classify
 template<typename T>
-static bool fclassify( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) {
+bool fclassify( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) {
   R->SetX( Inst.rd, fclass( R->GetFP<T>( Inst.rs1 ) ) );
   R->AdvancePC( Inst );
   return true;
@@ -624,7 +636,7 @@ static bool fclassify( const RevFeature* F, RevRegFile* R, RevMem* M, const RevI
 
 // Convert integer to floating point
 template<typename FP, typename INT>
-static bool fcvtfi( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) {
+bool fcvtfi( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) {
   R->SetFP( Inst.rd, static_cast<FP>( R->GetX<INT>( Inst.rs1 ) ) );
   R->AdvancePC( Inst );
   return true;
@@ -632,7 +644,7 @@ static bool fcvtfi( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst
 
 // Convert floating point to floating point
 template<typename FP2, typename FP1>
-static bool fcvtff( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) {
+bool fcvtff( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) {
   R->SetFP( Inst.rd, static_cast<FP2>( R->GetFP<FP1>( Inst.rs1 ) ) );
   R->AdvancePC( Inst );
   return true;
