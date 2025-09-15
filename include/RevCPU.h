@@ -424,7 +424,7 @@ private:
   void handleZOPMessageZAP( Forza::zopEvent* zev );
 
   /// RevCPU: Handle FORZA MZOP requests
-  void handleZOPMZOP( Forza::zopEvent* zev );
+  [[noreturn]] void handleZOPMZOP( Forza::zopEvent* zev );
 
   /// RevCPU: Handle FORZA Thread Migration with FP regs
   void handleZOPThreadMigrateIntRegs( Forza::zopEvent* zev );
