@@ -1,0 +1,64 @@
+name: CMake
+
+on:
+  push:
+    branches: [ riscv, main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
+  BUILD_TYPE: Release
+
+jobs:
+  build:
+    concurrency:
+      group: cmake-${{ matrix.os }}-${{ github.ref }}
+      cancel-in-progress: true
+    # The CMake configure and build commands are platform agnostic and work equally well on Windows or Mac.  
+    # Use a matrix build to enable cross-platform coverage.
+    name: "Run for ${{ matrix.os }}"
+    runs-on: "${{ matrix.os }}"
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ windows-latest, ubuntu-latest, macos-latest ] 
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Configure CMake
+        # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
+        # See https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html?highlight=cmake_build_type
+        run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DUNIVRSL_BUILD_CI=ON
+        #run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DUNIVRSL_BUILD_ALL=ON
+        #run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DBUILD_NUMBER_LNS=ON 
+
+      - name: Build
+        # Build your program with the given configuration
+        run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
+
+      - name: Test
+        working-directory: ${{github.workspace}}/build
+        # Execute tests defined by the CMake configuration.  
+        # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
+        #run: ctest -V -C ${{env.BUILD_TYPE}}
+        run: ctest -C ${{env.BUILD_TYPE}} --output-on-failure
+
+      - name: Rerun failed tests
+        if: failure()
+        working-directory: ${{github.workspace}}/build
+        run: ctest -C ${{env.BUILD_TYPE}} --rerun-failed --output-on-failure
+
+      - name: Upload test logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-logs
+          path: |
+            ${{github.workspace}}/build/Testing
+            ${{github.workspace}}/build/CMakeCache.txt
+            ${{github.workspace}}/build/CMakeFiles/CMakeOutput.log
+            ${{github.workspace}}/build/CMakeFiles/CMakeError.log
+      
