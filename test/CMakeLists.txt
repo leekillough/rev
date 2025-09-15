@@ -1,6 +1,6 @@
 # RevCPU test/CMakeLists.txt
 #
-# Copyright (C) 2017-2024 Tactical Computing Laboratories, LLC
+# Copyright (C) 2017-2025 Tactical Computing Laboratories, LLC
 # All Rights Reserved
 # contact@tactcomplabs.com
 #
@@ -60,7 +60,7 @@ else()
 endif()
 
 set (passRegex "Simulation is complete")
-
+set (failRegex "[^A-Za-z_0-9][Ee][Rr][Rr][Oo][Rr][^A-Za-z_0-9]")
 
 #------- TESTS  ---------------
 message(STATUS "CTest Setup")
@@ -171,17 +171,19 @@ macro(add_rev_test test_name test_dir timeout labels)
 
         set_tests_properties(${test_name_lower}_revmem_${numHarts}_harts_${numCores}_cores
           PROPERTIES
-          ENVIRONMENT "RVCC=${RVCC};RVCXX=${RVCXX}"
+          ENVIRONMENT "RVCC=${RVCC};RVCXX=${RVCXX};REVHOME=${CMAKE_SOURCE_DIR}"
           TIMEOUT ${timeout}
           PASS_REGULAR_EXPRESSION "${passRegex}"
+	  FAIL_REGULAR_EXPRESSION "${failRegex}"
           LABELS "${labels}"
 	)
         if(add_memh_test)
           set_tests_properties(${test_name_lower}_memh_${numHarts}_harts_${numCores}_cores
             PROPERTIES
-            ENVIRONMENT "RVCC=${RVCC};RVCXX=${RVCXX}"
+            ENVIRONMENT "RVCC=${RVCC};RVCXX=${RVCXX};REVHOME=${CMAKE_SOURCE_DIR}"
             TIMEOUT ${timeout}
             PASS_REGULAR_EXPRESSION "${passRegex}"
+	    FAIL_REGULAR_EXPRESSION "${failRegex}"
             LABELS "${labels}"
           )
         endif()
@@ -216,9 +218,10 @@ macro(add_rev_test test_name test_dir timeout labels)
     # Set test properties for the script test
     set_tests_properties(${test_name_lower}_script
       PROPERTIES
-      ENVIRONMENT "RVCC=${RVCC};RVCXX=${RVCXX}"
+      ENVIRONMENT "RVCC=${RVCC};RVCXX=${RVCXX};REVHOME=${CMAKE_SOURCE_DIR}"
       TIMEOUT ${timeout}
       PASS_REGULAR_EXPRESSION "${passRegex}"
+      FAIL_REGULAR_EXPRESSION "${failRegex}"
       LABELS "${labels}"
     )
     if(((NOT ${rv32_label_index} EQUAL -1) AND DEFINED RV32_DISABLED) OR test_level GREATER TEST_LEVEL)

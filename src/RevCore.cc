@@ -64,7 +64,7 @@ RevCore::RevCore(
 
   // load the instruction tables
   if( !LoadInstructionTable() )
-    output->fatal( CALL_INFO, -1, "Error : failed to load instruction table for core=%" PRIu32 "\n", id );
+    output->fatal( CALL_INFO, -1, "Error: failed to load instruction table for core=%" PRIu32 "\n", id );
 
   // reset the core
   if( !Reset() )
@@ -1718,8 +1718,8 @@ bool RevCore::ClockTick( SST::Cycle_t currentCycle ) {
 
     feature->SetHartToExecID( HartToDecodeID );
 
-    // fetch the next instruction
-    if( !PrefetchInst() ) {
+    // fetch the next instruction unless exception is active
+    if( !PrefetchInst() || RegFile->isExceptionActive() ) {
       Stalled = true;
       Stats.cyclesStalled++;
     } else {
@@ -2016,7 +2016,7 @@ void RevCore::CreateThread( uint32_t NewTID, uint64_t firstPC, void* arg ) {
 //
 // Returns true if an ECALL is in progress
 bool RevCore::ExecEcall() {
-  if( RegFile->GetSCAUSE() != RevExceptionCause::ECALL_USER_MODE )
+  if( !RegFile->isExceptionActive() )
     return false;
 
   // ECALL in progress

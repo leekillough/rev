@@ -21,6 +21,7 @@
 #pragma GCC diagnostic ignored "-Wdouble-promotion"
 #pragma GCC diagnostic ignored "-Wsign-conversion"
 #pragma GCC diagnostic ignored "-Wconversion"
+#pragma GCC diagnostic ignored "-Wmissing-noreturn"
 
 #if defined( __GNUC__ ) && !defined( __clang__ )
 #pragma GCC diagnostic ignored "-Wsuggest-final-methods"
@@ -44,5 +45,9 @@
 // clang-format on
 
 #pragma GCC diagnostic pop
+
+namespace SST::RevCPU {
+using namespace SST::Interfaces;
+}
 
 #endif

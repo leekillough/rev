@@ -1,7 +1,7 @@
 //
 // _RevCoProc_h_
 //
-// Copyright (C) 2017-2024 Tactical Computing Laboratories, LLC
+// Copyright (C) 2017-2025 Tactical Computing Laboratories, LLC
 // All Rights Reserved
 // contact@tactcomplabs.com
 //
@@ -14,15 +14,13 @@
 // -- C++ Headers
 #include <algorithm>
 #include <ctime>
+#include <functional>
 #include <list>
 #include <mutex>
-
 #include <queue>
-#include <random>
-#include <stdio.h>
-#include <stdlib.h>
-#include <time.h>
+#include <string>
 #include <tuple>
+#include <utility>
 #include <vector>
 
 // -- SST Headers

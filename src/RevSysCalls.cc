@@ -1,3 +1,14 @@
+//
+// _RevSysCalls_cc_
+//
+// Copyright (C) 2017-2025 Tactical Computing Laboratories, LLC
+// All Rights Reserved
+// contact@tactcomplabs.com
+//
+// See LICENSE in the top level directory for licensing details
+//
+//
+
 #include "RevCPU.h"
 #include "RevCommon.h"
 #include "RevCore.h"
@@ -5,9 +16,16 @@
 #include "RevSysCalls.h"
 #include <bitset>
 #include <filesystem>
+#include <sys/fcntl.h>
 #include <sys/xattr.h>
 
 #include "RingNet.h"
+
+#ifndef _REV_ECALL_OVERRIDE
+#define UNIMPLEMENTED() output->verbose( CALL_INFO, 0, 0, "Error: unimplemented ecall\n" )
+#else
+#define UNIMPLEMENTED()
+#endif
 
 namespace SST::RevCPU {
 
@@ -64,6 +82,7 @@ EcallStatus RevCore::ECALL_io_setup() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: io_setup called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -72,6 +91,7 @@ EcallStatus RevCore::ECALL_io_destroy() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: io_destroy called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -80,6 +100,7 @@ EcallStatus RevCore::ECALL_io_submit() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: io_submit called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -88,6 +109,7 @@ EcallStatus RevCore::ECALL_io_cancel() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: io_cancel called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -96,6 +118,7 @@ EcallStatus RevCore::ECALL_io_getevents() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: io_getevents called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -155,6 +178,7 @@ EcallStatus RevCore::ECALL_setxattr() {
     return EcallLoadAndParseString(name, action);
   }
 #else
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 #endif
 }
@@ -164,6 +188,7 @@ EcallStatus RevCore::ECALL_lsetxattr() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: lsetxattr called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -172,6 +197,7 @@ EcallStatus RevCore::ECALL_fsetxattr() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: fsetxattr called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -180,6 +206,7 @@ EcallStatus RevCore::ECALL_getxattr() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: getxattr called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -188,6 +215,7 @@ EcallStatus RevCore::ECALL_lgetxattr() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: lgetxattr called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -196,6 +224,7 @@ EcallStatus RevCore::ECALL_fgetxattr() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: fgetxattr called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -204,6 +233,7 @@ EcallStatus RevCore::ECALL_listxattr() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: listxattr called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -212,6 +242,7 @@ EcallStatus RevCore::ECALL_llistxattr() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: llistxattr called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -220,6 +251,7 @@ EcallStatus RevCore::ECALL_flistxattr() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: flistxattr called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -228,6 +260,7 @@ EcallStatus RevCore::ECALL_removexattr() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: removexattr called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -236,6 +269,7 @@ EcallStatus RevCore::ECALL_lremovexattr() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: lremovexattr called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -244,6 +278,7 @@ EcallStatus RevCore::ECALL_fremovexattr() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: fremovexattr called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -266,6 +301,7 @@ EcallStatus RevCore::ECALL_lookup_dcookie() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: lookup_dcookie called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -274,6 +310,7 @@ EcallStatus RevCore::ECALL_eventfd2() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: eventfd2 called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -282,6 +319,7 @@ EcallStatus RevCore::ECALL_epoll_create1() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: epoll_create1 called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -290,6 +328,7 @@ EcallStatus RevCore::ECALL_epoll_ctl() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: epoll_ctl called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -298,11 +337,13 @@ EcallStatus RevCore::ECALL_epoll_pwait() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: epoll_pwait called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
 // 23, rev_dup(unsigned int fildes)
 EcallStatus RevCore::ECALL_dup() {
+  UNIMPLEMENTED();
   output->verbose( CALL_INFO, 2, 0, "ECALL: dup called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID );
   return EcallStatus::SUCCESS;
 }
@@ -312,6 +353,7 @@ EcallStatus RevCore::ECALL_dup3() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: dup3 called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -320,6 +362,7 @@ EcallStatus RevCore::ECALL_fcntl64() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: fcntl64 called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -328,6 +371,7 @@ EcallStatus RevCore::ECALL_inotify_init1() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: inotify_init1 called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -336,6 +380,7 @@ EcallStatus RevCore::ECALL_inotify_add_watch() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: inotify_add_watch called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -344,6 +389,7 @@ EcallStatus RevCore::ECALL_inotify_rm_watch() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: inotify_rm_watch called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -352,6 +398,7 @@ EcallStatus RevCore::ECALL_ioctl() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: ioctl called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -360,6 +407,7 @@ EcallStatus RevCore::ECALL_ioprio_set() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: ioprio_set called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -368,6 +416,7 @@ EcallStatus RevCore::ECALL_ioprio_get() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: ioprio_get called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -376,6 +425,7 @@ EcallStatus RevCore::ECALL_flock() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: flock called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -384,6 +434,7 @@ EcallStatus RevCore::ECALL_mknodat() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: mknodat called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -414,6 +465,7 @@ EcallStatus RevCore::ECALL_unlinkat() {
     ActiveThreadID,
     HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -422,6 +474,7 @@ EcallStatus RevCore::ECALL_symlinkat() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: symlinkat called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -430,6 +483,7 @@ EcallStatus RevCore::ECALL_linkat() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: linkat called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -438,6 +492,7 @@ EcallStatus RevCore::ECALL_renameat() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: renameat called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -446,6 +501,7 @@ EcallStatus RevCore::ECALL_umount() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: umount called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -454,6 +510,7 @@ EcallStatus RevCore::ECALL_mount() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: mount called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -462,6 +519,7 @@ EcallStatus RevCore::ECALL_pivot_root() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: pivot_root called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -470,6 +528,7 @@ EcallStatus RevCore::ECALL_ni_syscall() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: ni_syscall called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -478,6 +537,7 @@ EcallStatus RevCore::ECALL_statfs64() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: statfs64 called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -486,6 +546,7 @@ EcallStatus RevCore::ECALL_fstatfs64() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: fstatfs64 called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -494,6 +555,7 @@ EcallStatus RevCore::ECALL_truncate64() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: truncate64 called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -502,6 +564,7 @@ EcallStatus RevCore::ECALL_ftruncate64() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: ftruncate64 called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -510,6 +573,7 @@ EcallStatus RevCore::ECALL_fallocate() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: fallocate called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -518,6 +582,7 @@ EcallStatus RevCore::ECALL_faccessat() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: faccessat called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -543,6 +608,7 @@ EcallStatus RevCore::ECALL_fchdir() {
     ActiveThreadID,
     HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -551,6 +617,7 @@ EcallStatus RevCore::ECALL_chroot() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: chroot called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -559,6 +626,7 @@ EcallStatus RevCore::ECALL_fchmod() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: fchmod called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -567,6 +635,7 @@ EcallStatus RevCore::ECALL_fchmodat() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: fchmodat called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -575,6 +644,7 @@ EcallStatus RevCore::ECALL_fchownat() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: fchownat called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -583,6 +653,7 @@ EcallStatus RevCore::ECALL_fchown() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: fchown called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -618,6 +689,55 @@ EcallStatus RevCore::ECALL_openat() {
     Harts.at( HartToExecID )->Thread->AddFD( fd );
 
     // openat returns the file descriptor of the opened file
+    Harts.at( HartToExecID )->RegFile->SetX( RevReg::a0, fd );
+  };
+
+  return EcallLoadAndParseString( pathname, action );
+}
+
+// 1024, int rev_open(const char *filename, int flags, /* int mode */)
+EcallStatus RevCore::ECALL_open() {
+  auto& EcallState = Harts.at( HartToExecID )->GetEcallState();
+  if( EcallState.bytesRead == 0 ) {
+    output->verbose(
+      CALL_INFO, 2, 0, "ECALL: open called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
+    );
+  }
+  auto pathname = RegFile->GetX<uint64_t>( RevReg::a0 );
+  auto flags    = RegFile->GetX<int>( RevReg::a1 );
+  auto mode     = RegFile->GetX<int>( RevReg::a2 );  // ignore unless O_CREAT is set
+
+  /* Read the filename from memory one character at a time until we find '\0' */
+  auto action   = [&] {
+    flags                       = hostOFlags( flags );
+    std::string const full_path = std::filesystem::current_path().append( EcallState.string ).string();
+    int               fd;
+    if( ( flags & O_CREAT ) != 0 ) {
+      output->verbose( CALL_INFO, 2, 0, "open( %s, 0x%" PRIx32 ", 0%o)\n", full_path.c_str(), flags, mode );
+      fd = open( full_path.c_str(), flags, mode );
+    } else {
+      output->verbose( CALL_INFO, 2, 0, "open( %s, 0x%" PRIx32 ")\n", full_path.c_str(), flags );
+      fd = open( full_path.c_str(), flags );
+    }
+
+    if( fd != -1 ) {
+      // Add the file descriptor to this thread
+      Harts.at( HartToExecID )->Thread->AddFD( fd );
+    } else {
+      output->verbose(
+        CALL_INFO,
+        2,
+        0,
+        "ECALL: open called by thread %" PRIu32 " on hart %" PRIu32 " returned fd=%" PRId32 " errno=%" PRId32 " (%s)\n",
+        ActiveThreadID,
+        HartToExecID,
+        fd,
+        errno,
+        strerror( errno )
+      );
+    }
+
+    // open returns the file descriptor of the opened file
     Harts.at( HartToExecID )->RegFile->SetX( RevReg::a0, fd );
   };
 
@@ -663,6 +783,7 @@ EcallStatus RevCore::ECALL_vhangup() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: vhangup called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -671,6 +792,7 @@ EcallStatus RevCore::ECALL_pipe2() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: pipe2 called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -679,6 +801,7 @@ EcallStatus RevCore::ECALL_quotactl() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: quotactl called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -687,14 +810,21 @@ EcallStatus RevCore::ECALL_getdents64() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: getdents64 called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
-// 62, rev_llseek(unsigned int fd, unsigned long offset_high, unsigned long offset_low, loff_t  *result, unsigned int whence)
+// https://man7.org/linux/man-pages/man2/lseek.2.html
+// 62, off_t rev_lseek( int fd, off_t offset, int whence)
 EcallStatus RevCore::ECALL_lseek() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: lseek called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  auto fd     = RegFile->GetX<int>( RevReg::a0 );
+  auto offset = RegFile->GetX<off_t>( RevReg::a1 );
+  auto whence = RegFile->GetX<int>( RevReg::a2 );
+  auto off    = lseek( fd, offset, whence );
+  RegFile->SetX( RevReg::a0, off );
   return EcallStatus::SUCCESS;
 }
 
@@ -810,6 +940,7 @@ EcallStatus RevCore::ECALL_readv() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: readv called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -818,6 +949,7 @@ EcallStatus RevCore::ECALL_writev() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: writev called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -826,6 +958,7 @@ EcallStatus RevCore::ECALL_pread64() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: pread64 called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -834,6 +967,7 @@ EcallStatus RevCore::ECALL_pwrite64() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: pwrite64 called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -842,6 +976,7 @@ EcallStatus RevCore::ECALL_preadv() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: preadv called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -850,6 +985,7 @@ EcallStatus RevCore::ECALL_pwritev() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: pwritev called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -858,6 +994,7 @@ EcallStatus RevCore::ECALL_sendfile64() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: sendfile64 called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -866,6 +1003,7 @@ EcallStatus RevCore::ECALL_pselect6_time32() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: pselect6_time32 called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -874,6 +1012,7 @@ EcallStatus RevCore::ECALL_ppoll_time32() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: ppoll_time32 called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -882,6 +1021,7 @@ EcallStatus RevCore::ECALL_signalfd4() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: signalfd4 called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -890,6 +1030,7 @@ EcallStatus RevCore::ECALL_vmsplice() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: vmsplice called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -898,12 +1039,14 @@ EcallStatus RevCore::ECALL_splice() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: splice called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
 // 77, rev_tee(int fdin, int fdout, size_t len, unsigned int flags)
 EcallStatus RevCore::ECALL_tee() {
   output->verbose( CALL_INFO, 2, 0, "ECALL: tee called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -912,6 +1055,7 @@ EcallStatus RevCore::ECALL_readlinkat() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: readlinkat called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -920,6 +1064,7 @@ EcallStatus RevCore::ECALL_newfstatat() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: newfstatat called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -928,6 +1073,7 @@ EcallStatus RevCore::ECALL_newfstat() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: newfstat called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -936,6 +1082,7 @@ EcallStatus RevCore::ECALL_sync() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: sync called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -944,6 +1091,7 @@ EcallStatus RevCore::ECALL_fsync() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: fsync called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -952,6 +1100,7 @@ EcallStatus RevCore::ECALL_fdatasync() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: fdatasync called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -960,6 +1109,7 @@ EcallStatus RevCore::ECALL_sync_file_range2() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: sync_file_range2 called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -968,6 +1118,7 @@ EcallStatus RevCore::ECALL_sync_file_range() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: sync_file_range called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -976,6 +1127,7 @@ EcallStatus RevCore::ECALL_timerfd_create() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: timerfd_create called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -984,6 +1136,7 @@ EcallStatus RevCore::ECALL_timerfd_settime() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: timerfd_settime called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -992,6 +1145,7 @@ EcallStatus RevCore::ECALL_timerfd_gettime() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: timerfd_gettime called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1000,6 +1154,7 @@ EcallStatus RevCore::ECALL_utimensat() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: utimensat called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1008,6 +1163,7 @@ EcallStatus RevCore::ECALL_acct() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: acct called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1016,6 +1172,7 @@ EcallStatus RevCore::ECALL_capget() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: capget called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1024,6 +1181,7 @@ EcallStatus RevCore::ECALL_capset() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: capset called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1032,6 +1190,7 @@ EcallStatus RevCore::ECALL_personality() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: personality called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1046,12 +1205,19 @@ EcallStatus RevCore::ECALL_exit() {
     CALL_INFO,
     0,
     0,
-    "thread %" PRIu32 " on hart %" PRIu32 "exiting with"
+    "thread %" PRIu32 " on hart %" PRIu32 " exiting with"
     " status %" PRIu64 "\n",
     ActiveThreadID,
     HartToExecID,
     status
   );
+  // TODO exit shuts down the sst process which circumvents the
+  //      component lifecycle and overrides sst status code. We
+  //      should instead indicate the simulated component is finished
+  //      and let sst shutdown cleanly. The status code from REV is
+  //      printed to the log file for post-processing. We can support
+  //      testing by providing on option to 'fatal' out when status
+  //      is not 0 (or a user desired value if non-zero is expected)
   exit( int( status ) );
   // return EcallStatus::SUCCESS;
 }
@@ -1061,6 +1227,7 @@ EcallStatus RevCore::ECALL_exit_group() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: exit_group called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1069,6 +1236,7 @@ EcallStatus RevCore::ECALL_waitid() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: waitid called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1077,6 +1245,7 @@ EcallStatus RevCore::ECALL_set_tid_address() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: set_tid_address called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1085,6 +1254,7 @@ EcallStatus RevCore::ECALL_unshare() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: unshare called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1093,6 +1263,7 @@ EcallStatus RevCore::ECALL_futex() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: futex called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1101,6 +1272,7 @@ EcallStatus RevCore::ECALL_set_robust_list() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: set_robust_list called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1109,6 +1281,7 @@ EcallStatus RevCore::ECALL_get_robust_list() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: get_robust_list called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1117,6 +1290,7 @@ EcallStatus RevCore::ECALL_nanosleep() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: nanosleep called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1125,6 +1299,7 @@ EcallStatus RevCore::ECALL_getitimer() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: getitimer called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1133,6 +1308,7 @@ EcallStatus RevCore::ECALL_setitimer() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: setitimer called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1141,6 +1317,7 @@ EcallStatus RevCore::ECALL_kexec_load() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: kexec_load called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1149,6 +1326,7 @@ EcallStatus RevCore::ECALL_init_module() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: init_module called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1157,6 +1335,7 @@ EcallStatus RevCore::ECALL_delete_module() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: delete_module called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1165,6 +1344,7 @@ EcallStatus RevCore::ECALL_timer_create() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: timer_create called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1173,6 +1353,7 @@ EcallStatus RevCore::ECALL_timer_gettime() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: timer_gettime called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1181,6 +1362,7 @@ EcallStatus RevCore::ECALL_timer_getoverrun() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: timer_getoverrun called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1189,6 +1371,7 @@ EcallStatus RevCore::ECALL_timer_settime() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: timer_settime called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1197,6 +1380,7 @@ EcallStatus RevCore::ECALL_timer_delete() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: timer_delete called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1205,6 +1389,7 @@ EcallStatus RevCore::ECALL_clock_settime() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: clock_settime called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1233,6 +1418,7 @@ EcallStatus RevCore::ECALL_clock_getres() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: clock_getres called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1241,6 +1427,7 @@ EcallStatus RevCore::ECALL_clock_nanosleep() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: clock_nanosleep called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1249,6 +1436,7 @@ EcallStatus RevCore::ECALL_syslog() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: syslog called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1257,6 +1445,7 @@ EcallStatus RevCore::ECALL_ptrace() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: ptrace called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1265,6 +1454,7 @@ EcallStatus RevCore::ECALL_sched_setparam() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: sched_setparam called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1273,6 +1463,7 @@ EcallStatus RevCore::ECALL_sched_setscheduler() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: sched_setscheduler called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1281,6 +1472,7 @@ EcallStatus RevCore::ECALL_sched_getscheduler() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: sched_getscheduler called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1289,6 +1481,7 @@ EcallStatus RevCore::ECALL_sched_getparam() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: sched_getparam called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1297,6 +1490,7 @@ EcallStatus RevCore::ECALL_sched_setaffinity() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: sched_setaffinity called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1305,6 +1499,7 @@ EcallStatus RevCore::ECALL_sched_getaffinity() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: sched_getaffinity called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1313,6 +1508,7 @@ EcallStatus RevCore::ECALL_sched_yield() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: sched_yield called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1326,6 +1522,7 @@ EcallStatus RevCore::ECALL_sched_get_priority_max() {
     ActiveThreadID,
     HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1339,6 +1536,7 @@ EcallStatus RevCore::ECALL_sched_get_priority_min() {
     ActiveThreadID,
     HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1347,6 +1545,7 @@ EcallStatus RevCore::ECALL_sched_rr_get_interval() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: sched_rr_get_interval called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1355,6 +1554,7 @@ EcallStatus RevCore::ECALL_restart_syscall() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: restart_syscall called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1363,6 +1563,7 @@ EcallStatus RevCore::ECALL_kill() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: kill called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1371,6 +1572,7 @@ EcallStatus RevCore::ECALL_tkill() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: tkill called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1379,6 +1581,7 @@ EcallStatus RevCore::ECALL_tgkill() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: tgkill called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1387,6 +1590,7 @@ EcallStatus RevCore::ECALL_sigaltstack() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: sigaltstack called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1395,6 +1599,7 @@ EcallStatus RevCore::ECALL_rt_sigsuspend() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: rt_sigsuspend called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1403,6 +1608,7 @@ EcallStatus RevCore::ECALL_rt_sigaction() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: rt_sigaction called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1411,6 +1617,7 @@ EcallStatus RevCore::ECALL_rt_sigprocmask() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: rt_sigprocmask called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1419,6 +1626,7 @@ EcallStatus RevCore::ECALL_rt_sigpending() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: rt_sigpending called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1432,6 +1640,7 @@ EcallStatus RevCore::ECALL_rt_sigtimedwait_time32() {
     ActiveThreadID,
     HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1440,6 +1649,7 @@ EcallStatus RevCore::ECALL_rt_sigqueueinfo() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: rt_sigqueueinfo called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1448,6 +1658,7 @@ EcallStatus RevCore::ECALL_setpriority() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: setpriority called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1456,6 +1667,7 @@ EcallStatus RevCore::ECALL_getpriority() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: getpriority called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1464,6 +1676,7 @@ EcallStatus RevCore::ECALL_reboot() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: reboot called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1472,6 +1685,7 @@ EcallStatus RevCore::ECALL_setregid() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: setregid called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1480,6 +1694,7 @@ EcallStatus RevCore::ECALL_setgid() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: setgid called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1488,6 +1703,7 @@ EcallStatus RevCore::ECALL_setreuid() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: setreuid called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1496,6 +1712,7 @@ EcallStatus RevCore::ECALL_setuid() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: setuid called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1504,6 +1721,7 @@ EcallStatus RevCore::ECALL_setresuid() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: setresuid called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1512,6 +1730,7 @@ EcallStatus RevCore::ECALL_getresuid() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: getresuid called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1520,6 +1739,7 @@ EcallStatus RevCore::ECALL_setresgid() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: setresgid called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1528,6 +1748,7 @@ EcallStatus RevCore::ECALL_getresgid() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: getresgid called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1536,6 +1757,7 @@ EcallStatus RevCore::ECALL_setfsuid() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: setfsuid called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1544,6 +1766,7 @@ EcallStatus RevCore::ECALL_setfsgid() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: setfsgid called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1552,6 +1775,7 @@ EcallStatus RevCore::ECALL_times() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: times called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1560,6 +1784,7 @@ EcallStatus RevCore::ECALL_setpgid() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: setpgid called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1568,6 +1793,7 @@ EcallStatus RevCore::ECALL_getpgid() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: getpgid called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1576,6 +1802,7 @@ EcallStatus RevCore::ECALL_getsid() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: getsid called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1584,6 +1811,7 @@ EcallStatus RevCore::ECALL_setsid() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: setsid called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1592,6 +1820,7 @@ EcallStatus RevCore::ECALL_getgroups() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: getgroups called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1600,6 +1829,7 @@ EcallStatus RevCore::ECALL_setgroups() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: setgroups called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1608,6 +1838,7 @@ EcallStatus RevCore::ECALL_newuname() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: newuname called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1616,6 +1847,7 @@ EcallStatus RevCore::ECALL_sethostname() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: sethostname called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1624,6 +1856,7 @@ EcallStatus RevCore::ECALL_setdomainname() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: setdomainname called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1632,6 +1865,7 @@ EcallStatus RevCore::ECALL_getrlimit() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: getrlimit called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1640,6 +1874,7 @@ EcallStatus RevCore::ECALL_setrlimit() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: setrlimit called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1648,6 +1883,7 @@ EcallStatus RevCore::ECALL_getrusage() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: getrusage called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1656,6 +1892,7 @@ EcallStatus RevCore::ECALL_umask() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: umask called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1664,6 +1901,7 @@ EcallStatus RevCore::ECALL_prctl() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: prctl called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1672,6 +1910,7 @@ EcallStatus RevCore::ECALL_getcpu() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: getcpu called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1680,6 +1919,7 @@ EcallStatus RevCore::ECALL_gettimeofday() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: gettimeofday called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1688,6 +1928,7 @@ EcallStatus RevCore::ECALL_settimeofday() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: settimeofday called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1696,12 +1937,14 @@ EcallStatus RevCore::ECALL_adjtimex() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: adjtimex called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
 // 172, rev_getpid(void)
 EcallStatus RevCore::ECALL_getpid() {
   output->verbose( CALL_INFO, 2, 0, "ECALL: getpid called (Rev only supports a single process)\n" );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1714,6 +1957,7 @@ EcallStatus RevCore::ECALL_getppid() {
 
     "ECALL: getppid called (Rev only supports a single process)\n"
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1728,6 +1972,7 @@ EcallStatus RevCore::ECALL_getuid() {
     ActiveThreadID,
     HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1736,6 +1981,7 @@ EcallStatus RevCore::ECALL_geteuid() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: geteuid called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1744,6 +1990,7 @@ EcallStatus RevCore::ECALL_getgid() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: getgid called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1752,6 +1999,7 @@ EcallStatus RevCore::ECALL_getegid() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: getegid called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1771,6 +2019,7 @@ EcallStatus RevCore::ECALL_sysinfo() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: sysinfo called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1779,6 +2028,7 @@ EcallStatus RevCore::ECALL_mq_open() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: mq_open called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1787,6 +2037,7 @@ EcallStatus RevCore::ECALL_mq_unlink() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: mq_unlink called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1795,6 +2046,7 @@ EcallStatus RevCore::ECALL_mq_timedsend() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: mq_timedsend called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1803,6 +2055,7 @@ EcallStatus RevCore::ECALL_mq_timedreceive() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: mq_timedreceive called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1811,6 +2064,7 @@ EcallStatus RevCore::ECALL_mq_notify() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: mq_notify called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1819,6 +2073,7 @@ EcallStatus RevCore::ECALL_mq_getsetattr() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: mq_getsetattr called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1827,6 +2082,7 @@ EcallStatus RevCore::ECALL_msgget() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: msgget called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1835,6 +2091,7 @@ EcallStatus RevCore::ECALL_msgctl() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: msgctl called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1843,6 +2100,7 @@ EcallStatus RevCore::ECALL_msgrcv() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: msgrcv called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1851,6 +2109,7 @@ EcallStatus RevCore::ECALL_msgsnd() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: msgsnd called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1859,6 +2118,7 @@ EcallStatus RevCore::ECALL_semget() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: semget called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1867,6 +2127,7 @@ EcallStatus RevCore::ECALL_semctl() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: semctl called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1875,6 +2136,7 @@ EcallStatus RevCore::ECALL_semtimedop() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: semtimedop called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1883,6 +2145,7 @@ EcallStatus RevCore::ECALL_semop() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: semop called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1891,6 +2154,7 @@ EcallStatus RevCore::ECALL_shmget() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: shmget called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1899,6 +2163,7 @@ EcallStatus RevCore::ECALL_shmctl() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: shmctl called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1907,6 +2172,7 @@ EcallStatus RevCore::ECALL_shmat() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: shmat called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1915,6 +2181,7 @@ EcallStatus RevCore::ECALL_shmdt() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: shmdt called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1923,6 +2190,7 @@ EcallStatus RevCore::ECALL_socket() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: socket called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1931,6 +2199,7 @@ EcallStatus RevCore::ECALL_socketpair() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: socketpair called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1939,6 +2208,7 @@ EcallStatus RevCore::ECALL_bind() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: bind called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1947,6 +2217,7 @@ EcallStatus RevCore::ECALL_listen() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: listen called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1955,6 +2226,7 @@ EcallStatus RevCore::ECALL_accept() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: accept called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1963,6 +2235,7 @@ EcallStatus RevCore::ECALL_connect() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: connect called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1971,6 +2244,7 @@ EcallStatus RevCore::ECALL_getsockname() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: getsockname called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1979,6 +2253,7 @@ EcallStatus RevCore::ECALL_getpeername() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: getpeername called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1987,6 +2262,7 @@ EcallStatus RevCore::ECALL_sendto() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: sendto called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -1995,6 +2271,7 @@ EcallStatus RevCore::ECALL_recvfrom() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: recvfrom called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -2003,6 +2280,7 @@ EcallStatus RevCore::ECALL_setsockopt() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: setsockopt called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -2011,6 +2289,7 @@ EcallStatus RevCore::ECALL_getsockopt() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: getsockopt called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -2019,6 +2298,7 @@ EcallStatus RevCore::ECALL_shutdown() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: shutdown called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -2027,6 +2307,7 @@ EcallStatus RevCore::ECALL_sendmsg() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: sendmsg called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -2035,6 +2316,7 @@ EcallStatus RevCore::ECALL_recvmsg() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: recvmsg called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -2043,6 +2325,7 @@ EcallStatus RevCore::ECALL_readahead() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: readahead called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -2089,6 +2372,7 @@ EcallStatus RevCore::ECALL_mremap() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: mremap called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -2097,6 +2381,7 @@ EcallStatus RevCore::ECALL_add_key() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: add_key called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -2105,6 +2390,7 @@ EcallStatus RevCore::ECALL_request_key() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: request_key called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -2113,6 +2399,7 @@ EcallStatus RevCore::ECALL_keyctl() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: keyctl called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -2272,6 +2559,7 @@ EcallStatus RevCore::ECALL_execve() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: execve called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -2308,6 +2596,7 @@ EcallStatus RevCore::ECALL_fadvise64_64() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: fadvise64_64 called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -2316,6 +2605,7 @@ EcallStatus RevCore::ECALL_swapon() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: swapon called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -2324,6 +2614,7 @@ EcallStatus RevCore::ECALL_swapoff() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: swapoff called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -2332,6 +2623,7 @@ EcallStatus RevCore::ECALL_mprotect() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: mprotect called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -2340,6 +2632,7 @@ EcallStatus RevCore::ECALL_msync() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: msync called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -2348,6 +2641,7 @@ EcallStatus RevCore::ECALL_mlock() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: mlock called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -2356,6 +2650,7 @@ EcallStatus RevCore::ECALL_munlock() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: munlock called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -2364,6 +2659,7 @@ EcallStatus RevCore::ECALL_mlockall() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: mlockall called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -2372,6 +2668,7 @@ EcallStatus RevCore::ECALL_munlockall() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: munlockall called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -2380,6 +2677,7 @@ EcallStatus RevCore::ECALL_mincore() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: mincore called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -2388,6 +2686,7 @@ EcallStatus RevCore::ECALL_madvise() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: madvise called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -2396,6 +2695,7 @@ EcallStatus RevCore::ECALL_remap_file_pages() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: remap_file_pages called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -2404,6 +2704,7 @@ EcallStatus RevCore::ECALL_mbind() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: mbind called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -2412,6 +2713,7 @@ EcallStatus RevCore::ECALL_get_mempolicy() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: get_mempolicy called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -2420,6 +2722,7 @@ EcallStatus RevCore::ECALL_set_mempolicy() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: set_mempolicy called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -2428,6 +2731,7 @@ EcallStatus RevCore::ECALL_migrate_pages() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: migrate_pages called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -2436,6 +2740,7 @@ EcallStatus RevCore::ECALL_move_pages() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: move_pages called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -2444,6 +2749,7 @@ EcallStatus RevCore::ECALL_rt_tgsigqueueinfo() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: rt_tgsigqueueinfo called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -2452,6 +2758,7 @@ EcallStatus RevCore::ECALL_perf_event_open() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: perf_event_open called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -2460,6 +2767,7 @@ EcallStatus RevCore::ECALL_accept4() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: accept4 called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -2468,6 +2776,7 @@ EcallStatus RevCore::ECALL_recvmmsg_time32() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: recvmmsg_time32 called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -2476,6 +2785,7 @@ EcallStatus RevCore::ECALL_wait4() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: wait4 called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -2484,6 +2794,7 @@ EcallStatus RevCore::ECALL_prlimit64() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: prlimit64 called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -2492,6 +2803,7 @@ EcallStatus RevCore::ECALL_fanotify_init() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: fanotify_init called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -2500,6 +2812,7 @@ EcallStatus RevCore::ECALL_fanotify_mark() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: fanotify_mark called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -2508,6 +2821,7 @@ EcallStatus RevCore::ECALL_name_to_handle_at() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: name_to_handle_at called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -2516,6 +2830,7 @@ EcallStatus RevCore::ECALL_open_by_handle_at() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: open_by_handle_at called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -2524,6 +2839,7 @@ EcallStatus RevCore::ECALL_clock_adjtime() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: clock_adjtime called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -2532,6 +2848,7 @@ EcallStatus RevCore::ECALL_syncfs() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: syncfs called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -2540,6 +2857,7 @@ EcallStatus RevCore::ECALL_setns() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: setns called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -2548,6 +2866,7 @@ EcallStatus RevCore::ECALL_sendmmsg() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: sendmmsg called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -2556,6 +2875,7 @@ EcallStatus RevCore::ECALL_process_vm_readv() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: process_vm_readv called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -2565,6 +2885,7 @@ EcallStatus RevCore::ECALL_process_vm_writev() {
     CALL_INFO, 2, 0, "ECALL: process_vm_writev called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
 
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -2573,6 +2894,7 @@ EcallStatus RevCore::ECALL_kcmp() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: kcmp called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -2581,6 +2903,7 @@ EcallStatus RevCore::ECALL_finit_module() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: finit_module called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -2589,6 +2912,7 @@ EcallStatus RevCore::ECALL_sched_setattr() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: sched_setattr called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -2597,6 +2921,7 @@ EcallStatus RevCore::ECALL_sched_getattr() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: sched_getattr called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -2605,6 +2930,7 @@ EcallStatus RevCore::ECALL_renameat2() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: renameat2 called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -2613,6 +2939,7 @@ EcallStatus RevCore::ECALL_seccomp() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: seccomp called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -2621,6 +2948,7 @@ EcallStatus RevCore::ECALL_getrandom() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: getrandom called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -2629,11 +2957,13 @@ EcallStatus RevCore::ECALL_memfd_create() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: memfd_create called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
 // 280, rev_bpf(int cmd, union bpf_attr *attr, unsigned int size)
 EcallStatus RevCore::ECALL_bpf() {
+  UNIMPLEMENTED();
   output->verbose( CALL_INFO, 2, 0, "ECALL: bpf called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID );
   return EcallStatus::SUCCESS;
 }
@@ -2643,6 +2973,7 @@ EcallStatus RevCore::ECALL_execveat() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: execveat called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -2651,6 +2982,7 @@ EcallStatus RevCore::ECALL_userfaultfd() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: userfaultfd called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -2659,6 +2991,7 @@ EcallStatus RevCore::ECALL_membarrier() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: membarrier called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -2667,6 +3000,7 @@ EcallStatus RevCore::ECALL_mlock2() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: mlock2 called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -2675,6 +3009,7 @@ EcallStatus RevCore::ECALL_copy_file_range() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: copy_file_range called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -2683,6 +3018,7 @@ EcallStatus RevCore::ECALL_preadv2() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: preadv2 called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -2691,6 +3027,7 @@ EcallStatus RevCore::ECALL_pwritev2() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: pwritev2 called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -2699,6 +3036,7 @@ EcallStatus RevCore::ECALL_pkey_mprotect() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: pkey_mprotect called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -2707,6 +3045,7 @@ EcallStatus RevCore::ECALL_pkey_alloc() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: pkey_alloc called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -2715,6 +3054,7 @@ EcallStatus RevCore::ECALL_pkey_free() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: pkey_free called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -2723,6 +3063,7 @@ EcallStatus RevCore::ECALL_statx() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: statx called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -2731,6 +3072,7 @@ EcallStatus RevCore::ECALL_io_pgetevents() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: io_pgetevents called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -2739,6 +3081,7 @@ EcallStatus RevCore::ECALL_rseq() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: rseq called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -2747,6 +3090,7 @@ EcallStatus RevCore::ECALL_kexec_file_load() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: kexec_file_load called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -2884,6 +3228,7 @@ EcallStatus RevCore::ECALL_pidfd_send_signal() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: pidfd_send_signal called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -2892,6 +3237,7 @@ EcallStatus RevCore::ECALL_io_uring_setup() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: io_uring_setup called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -2900,6 +3246,7 @@ EcallStatus RevCore::ECALL_io_uring_enter() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: io_uring_enter called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -2908,6 +3255,7 @@ EcallStatus RevCore::ECALL_io_uring_register() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: io_uring_register called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -2916,6 +3264,7 @@ EcallStatus RevCore::ECALL_open_tree() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: open_tree called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -2924,6 +3273,7 @@ EcallStatus RevCore::ECALL_move_mount() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: move_mount called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -2932,6 +3282,7 @@ EcallStatus RevCore::ECALL_fsopen() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: fsopen called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -2940,6 +3291,7 @@ EcallStatus RevCore::ECALL_fsconfig() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: fsconfig called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -2948,6 +3300,7 @@ EcallStatus RevCore::ECALL_fsmount() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: fsmount called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -2956,6 +3309,7 @@ EcallStatus RevCore::ECALL_fspick() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: fspick called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -2964,6 +3318,7 @@ EcallStatus RevCore::ECALL_pidfd_open() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: pidfd_open called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -3123,6 +3478,7 @@ EcallStatus RevCore::ECALL_close_range() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: close_range called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -3131,6 +3487,7 @@ EcallStatus RevCore::ECALL_openat2() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: openat2 called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -3139,6 +3496,7 @@ EcallStatus RevCore::ECALL_pidfd_getfd() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: pidfd_getfd called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -3147,6 +3505,7 @@ EcallStatus RevCore::ECALL_faccessat2() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: faccessat2 called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -3155,6 +3514,7 @@ EcallStatus RevCore::ECALL_process_madvise() {
   output->verbose(
     CALL_INFO, 2, 0, "ECALL: process_madvise called by thread %" PRIu32 " on hart %" PRIu32 "\n", ActiveThreadID, HartToExecID
   );
+  UNIMPLEMENTED();
   return EcallStatus::SUCCESS;
 }
 
@@ -3435,340 +3795,325 @@ EcallStatus RevCore::ECALL_fast_printf() {
 /* System Call (ecall) Implementations Below */
 /* ========================================= */
 // clang-format off
-const std::unordered_map<uint32_t, EcallStatus(RevCore::*)()> RevCore::Ecalls = {
-    { 0,   &RevCore::ECALL_io_setup },               //  rev_io_setup(unsigned nr_reqs, aio_context_t  *ctx)
-    { 1,   &RevCore::ECALL_io_destroy },             //  rev_io_destroy(aio_context_t ctx)
-    { 2,   &RevCore::ECALL_io_submit },              //  rev_io_submit(aio_context_t, long, struct iocb  *  *)
-    { 3,   &RevCore::ECALL_io_cancel },              //  rev_io_cancel(aio_context_t ctx_id, struct iocb  *iocb, struct io_event  *result)
-    { 4,   &RevCore::ECALL_io_getevents },           //  rev_io_getevents(aio_context_t ctx_id, long min_nr, long nr, struct io_event  *events, struct __kernel_timespec  *timeout)
-    { 5,   &RevCore::ECALL_setxattr },               //  rev_setxattr(const char  *path, const char  *name, const void  *value, size_t size, int flags)
-    { 6,   &RevCore::ECALL_lsetxattr },              //  rev_lsetxattr(const char  *path, const char  *name, const void  *value, size_t size, int flags)
-    { 7,   &RevCore::ECALL_fsetxattr },              //  rev_fsetxattr(int fd, const char  *name, const void  *value, size_t size, int flags)
-    { 8,   &RevCore::ECALL_getxattr },               //  rev_getxattr(const char  *path, const char  *name, void  *value, size_t size)
-    { 9,   &RevCore::ECALL_lgetxattr },              //  rev_lgetxattr(const char  *path, const char  *name, void  *value, size_t size)
-    { 10,  &RevCore::ECALL_fgetxattr },              //  rev_fgetxattr(int fd, const char  *name, void  *value, size_t size)
-    { 11,  &RevCore::ECALL_listxattr },              //  rev_listxattr(const char  *path, char  *list, size_t size)
-    { 12,  &RevCore::ECALL_llistxattr },             //  rev_llistxattr(const char  *path, char  *list, size_t size)
-    { 13,  &RevCore::ECALL_flistxattr },             //  rev_flistxattr(int fd, char  *list, size_t size)
-    { 14,  &RevCore::ECALL_removexattr },            //  rev_removexattr(const char  *path, const char  *name)
-    { 15,  &RevCore::ECALL_lremovexattr },           //  rev_lremovexattr(const char  *path, const char  *name)
-    { 16,  &RevCore::ECALL_fremovexattr },           //  rev_fremovexattr(int fd, const char  *name)
-    { 17,  &RevCore::ECALL_getcwd },                 //  rev_getcwd(char  *buf, unsigned long size)
-    { 18,  &RevCore::ECALL_lookup_dcookie },         //  rev_lookup_dcookie(u64 cookie64, char  *buf, size_t len)
-    { 19,  &RevCore::ECALL_eventfd2 },               //  rev_eventfd2(unsigned int count, int flags)
-    { 20,  &RevCore::ECALL_epoll_create1 },          //  rev_epoll_create1(int flags)
-    { 21,  &RevCore::ECALL_epoll_ctl },              //  rev_epoll_ctl(int epfd, int op, int fd, struct epoll_event  *event)
-    { 22,  &RevCore::ECALL_epoll_pwait },            //  rev_epoll_pwait(int epfd, struct epoll_event  *events, int maxevents, int timeout, const sigset_t  *sigmask, size_t sigsetsize)
-    { 23,  &RevCore::ECALL_dup },                    //  rev_dup(unsigned int fildes)
-    { 24,  &RevCore::ECALL_dup3 },                   //  rev_dup3(unsigned int oldfd, unsigned int newfd, int flags)
-    { 25,  &RevCore::ECALL_fcntl64 },                //  rev_fcntl64(unsigned int fd, unsigned int cmd, unsigned long arg)
-    { 26,  &RevCore::ECALL_inotify_init1 },          //  rev_inotify_init1(int flags)
-    { 27,  &RevCore::ECALL_inotify_add_watch },      //  rev_inotify_add_watch(int fd, const char  *path, u32 mask)
-    { 28,  &RevCore::ECALL_inotify_rm_watch },       //  rev_inotify_rm_watch(int fd, __s32 wd)
-    { 29,  &RevCore::ECALL_ioctl },                  //  rev_ioctl(unsigned int fd, unsigned int cmd, unsigned long arg)
-    { 30,  &RevCore::ECALL_ioprio_set },             //  rev_ioprio_set(int which, int who, int ioprio)
-    { 31,  &RevCore::ECALL_ioprio_get },             //  rev_ioprio_get(int which, int who)
-    { 32,  &RevCore::ECALL_flock },                  //  rev_flock(unsigned int fd, unsigned int cmd)
-    { 33,  &RevCore::ECALL_mknodat },                //  rev_mknodat(int dfd, const char  * filename, umode_t mode, unsigned dev)
-    { 34,  &RevCore::ECALL_mkdirat },                //  rev_mkdirat(int dfd, const char  * pathname, umode_t mode)
-    { 35,  &RevCore::ECALL_unlinkat },               //  rev_unlinkat(int dfd, const char  * pathname, int flag)
-    { 36,  &RevCore::ECALL_symlinkat },              //  rev_symlinkat(const char  * oldname, int newdfd, const char  * newname)
-    { 37,  &RevCore::ECALL_linkat },                 //  rev_unlinkat(int dfd, const char  * pathname, int flag)
-    { 38,  &RevCore::ECALL_renameat },               //  rev_renameat(int olddfd, const char  * oldname, int newdfd, const char  * newname)
-    { 39,  &RevCore::ECALL_umount },                 //  rev_umount(char  *name, int flags)
-    { 40,  &RevCore::ECALL_mount },                  //  rev_umount(char  *name, int flags)
-    { 41,  &RevCore::ECALL_pivot_root },             //  rev_pivot_root(const char  *new_root, const char  *put_old)
-    { 42,  &RevCore::ECALL_ni_syscall },             //  rev_ni_syscall(void)
-    { 43,  &RevCore::ECALL_statfs64 },               //  rev_statfs64(const char  *path, size_t sz, struct statfs64  *buf)
-    { 44,  &RevCore::ECALL_fstatfs64 },              //  rev_fstatfs64(unsigned int fd, size_t sz, struct statfs64  *buf)
-    { 45,  &RevCore::ECALL_truncate64 },             //  rev_truncate64(const char  *path, loff_t length)
-    { 46,  &RevCore::ECALL_ftruncate64 },            //  rev_ftruncate64(unsigned int fd, loff_t length)
-    { 47,  &RevCore::ECALL_fallocate },              //  rev_fallocate(int fd, int mode, loff_t offset, loff_t len)
-    { 48,  &RevCore::ECALL_faccessat },              //  rev_faccessat(int dfd, const char  *filename, int mode)
-    { 49,  &RevCore::ECALL_chdir },                  //  rev_chdir(const char  *filename)
-    { 50,  &RevCore::ECALL_fchdir },                 //  rev_fchdir(unsigned int fd)
-    { 51,  &RevCore::ECALL_chroot },                 //  rev_chroot(const char  *filename)
-    { 52,  &RevCore::ECALL_fchmod },                 //  rev_fchmod(unsigned int fd, umode_t mode)
-    { 53,  &RevCore::ECALL_fchmodat },               //  rev_fchmodat(int dfd, const char  * filename, umode_t mode)
-    { 54,  &RevCore::ECALL_fchownat },               //  rev_fchownat(int dfd, const char  *filename, uid_t user, gid_t group, int flag)
-    { 55,  &RevCore::ECALL_fchown },                 //  rev_fchown(unsigned int fd, uid_t user, gid_t group)
-    { 56,  &RevCore::ECALL_openat },                 //  rev_openat(int dfd, const char  *filename, int flags, umode_t mode)
-    { 57,  &RevCore::ECALL_close },                  //  rev_close(unsigned int fd)
-    { 58,  &RevCore::ECALL_vhangup },                //  rev_vhangup(void)
-    { 59,  &RevCore::ECALL_pipe2 },                  //  rev_pipe2(int  *fildes, int flags)
-    { 60,  &RevCore::ECALL_quotactl },               //  rev_quotactl(unsigned int cmd, const char  *special, qid_t id, void  *addr)
-    { 61,  &RevCore::ECALL_getdents64 },             //  rev_getdents64(unsigned int fd, struct linux_dirent64  *dirent, unsigned int count)
-    { 62,  &RevCore::ECALL_lseek },                  //  rev_llseek(unsigned int fd, unsigned long offset_high, unsigned long offset_low, loff_t  *result, unsigned int whence)
-    { 63,  &RevCore::ECALL_read },                   //  rev_read(unsigned int fd, char  *buf, size_t count)
-    { 64,  &RevCore::ECALL_write },                  //  rev_write(unsigned int fd, const char  *buf, size_t count)
-    { 65,  &RevCore::ECALL_readv },                  //  rev_readv(unsigned long fd, const struct iovec  *vec, unsigned long vlen)
-    { 66,  &RevCore::ECALL_writev },                 //  rev_writev(unsigned long fd, const struct iovec  *vec, unsigned long vlen)
-    { 67,  &RevCore::ECALL_pread64 },                //  rev_pread64(unsigned int fd, char  *buf, size_t count, loff_t pos)
-    { 68,  &RevCore::ECALL_pwrite64 },               //  rev_pwrite64(unsigned int fd, const char  *buf, size_t count, loff_t pos)
-    { 69,  &RevCore::ECALL_preadv },                 //  rev_preadv(unsigned long fd, const struct iovec  *vec, unsigned long vlen, unsigned long pos_l, unsigned long pos_h)
-    { 70,  &RevCore::ECALL_pwritev },                //  rev_pwritev(unsigned long fd, const struct iovec  *vec, unsigned long vlen, unsigned long pos_l, unsigned long pos_h)
-    { 71,  &RevCore::ECALL_sendfile64 },             //  rev_sendfile64(int out_fd, int in_fd, loff_t  *offset, size_t count)
-    { 72,  &RevCore::ECALL_pselect6_time32 },        //  rev_pselect6_time32(int, fd_set  *, fd_set  *, fd_set  *, struct old_timespec32  *, void  *)
-    { 73,  &RevCore::ECALL_ppoll_time32 },           //  rev_ppoll_time32(struct pollfd  *, unsigned int, struct old_timespec32  *, const sigset_t  *, size_t)
-    { 74,  &RevCore::ECALL_signalfd4 },              //  rev_signalfd4(int ufd, sigset_t  *user_mask, size_t sizemask, int flags)
-    { 75,  &RevCore::ECALL_vmsplice },               //  rev_vmsplice(int fd, const struct iovec  *iov, unsigned long nr_segs, unsigned int flags)
-    { 76,  &RevCore::ECALL_splice },                 //  rev_vmsplice(int fd, const struct iovec  *iov, unsigned long nr_segs, unsigned int flags)
-    { 77,  &RevCore::ECALL_tee },                    //  rev_tee(int fdin, int fdout, size_t len, unsigned int flags)
-    { 78,  &RevCore::ECALL_readlinkat },             //  rev_readlinkat(int dfd, const char  *path, char  *buf, int bufsiz)
-    { 79,  &RevCore::ECALL_newfstatat },             //  rev_newfstatat(int dfd, const char  *filename, struct stat  *statbuf, int flag)
-    { 80,  &RevCore::ECALL_newfstat },               //  rev_newfstat(unsigned int fd, struct stat  *statbuf)
-    { 81,  &RevCore::ECALL_sync },                   //  rev_sync(void)
-    { 82,  &RevCore::ECALL_fsync },                  //  rev_fsync(unsigned int fd)
-    { 83,  &RevCore::ECALL_fdatasync },              //  rev_fdatasync(unsigned int fd)
-    { 84,  &RevCore::ECALL_sync_file_range2 },       //  rev_sync_file_range2(int fd, unsigned int flags, loff_t offset, loff_t nbytes)
-    { 84,  &RevCore::ECALL_sync_file_range },        //  rev_sync_file_range(int fd, loff_t offset, loff_t nbytes, unsigned int flags)
-    { 85,  &RevCore::ECALL_timerfd_create },         //  rev_timerfd_create(int clockid, int flags)
-    { 86,  &RevCore::ECALL_timerfd_settime },        //  rev_timerfd_settime(int ufd, int flags, const struct __kernel_itimerspec  *utmr, struct __kernel_itimerspec  *otmr)
-    { 87,  &RevCore::ECALL_timerfd_gettime },        //  rev_timerfd_gettime(int ufd, struct __kernel_itimerspec  *otmr)
-    { 88,  &RevCore::ECALL_utimensat },              //  rev_utimensat(int dfd, const char  *filename, struct __kernel_timespec  *utimes, int flags)
-    { 89,  &RevCore::ECALL_acct },                   //  rev_acct(const char  *name)
-    { 90,  &RevCore::ECALL_capget },                 //  rev_capget(cap_user_header_t header, cap_user_data_t dataptr)
-    { 91,  &RevCore::ECALL_capset },                 //  rev_capset(cap_user_header_t header, const cap_user_data_t data)
-    { 92,  &RevCore::ECALL_personality },            //  rev_personality(unsigned int personality)
-    { 93,  &RevCore::ECALL_exit },                   //  rev_exit(int error_code)
-    { 94,  &RevCore::ECALL_exit_group },             //  rev_exit_group(int error_code)
-    { 95,  &RevCore::ECALL_waitid },                 //  rev_waitid(int which, pid_t pid, struct siginfo  *infop, int options, struct rusage  *ru)
-    { 96,  &RevCore::ECALL_set_tid_address },        //  rev_set_tid_address(int  *tidptr)
-    { 97,  &RevCore::ECALL_unshare },                //  rev_unshare(unsigned long unshare_flags)
-    { 98,  &RevCore::ECALL_futex },                  //  rev_futex(u32  *uaddr, int op, u32 val, struct __kernel_timespec  *utime, u32  *uaddr2, u32 val3)
-    { 99,  &RevCore::ECALL_set_robust_list },        //  rev_set_robust_list(struct robust_list_head  *head, size_t len)
-    { 100, &RevCore::ECALL_get_robust_list },        //  rev_get_robust_list(int pid, struct robust_list_head  *  *head_ptr, size_t  *len_ptr)
-    { 101, &RevCore::ECALL_nanosleep },              //  rev_nanosleep(struct __kernel_timespec  *rqtp, struct __kernel_timespec  *rmtp)
-    { 102, &RevCore::ECALL_getitimer },              //  rev_getitimer(int which, struct __kernel_old_itimerval  *value)
-    { 103, &RevCore::ECALL_setitimer },              //  rev_setitimer(int which, struct __kernel_old_itimerval  *value, struct __kernel_old_itimerval  *ovalue)
-    { 104, &RevCore::ECALL_kexec_load },             //  rev_kexec_load(unsigned long entry, unsigned long nr_segments, struct kexec_segment  *segments, unsigned long flags)
-    { 105, &RevCore::ECALL_init_module },            //  rev_init_module(void  *umod, unsigned long len, const char  *uargs)
-    { 106, &RevCore::ECALL_delete_module },          //  rev_delete_module(const char  *name_user, unsigned int flags)
-    { 107, &RevCore::ECALL_timer_create },           //  rev_timer_create(clockid_t which_clock, struct sigevent  *timer_event_spec, timer_t  * created_timer_id)
-    { 108, &RevCore::ECALL_timer_gettime },          //  rev_timer_gettime(timer_t timer_id, struct __kernel_itimerspec  *setting)
-    { 109, &RevCore::ECALL_timer_getoverrun },       //  rev_timer_getoverrun(timer_t timer_id)
-    { 110, &RevCore::ECALL_timer_settime },          //  rev_timer_settime(timer_t timer_id, int flags, const struct __kernel_itimerspec  *new_setting, struct __kernel_itimerspec  *old_setting)
-    { 111, &RevCore::ECALL_timer_delete },           //  rev_timer_delete(timer_t timer_id)
-    { 112, &RevCore::ECALL_clock_settime },          //  rev_clock_settime(clockid_t which_clock, const struct __kernel_timespec  *tp)
-    { 113, &RevCore::ECALL_clock_gettime },          //  rev_clock_gettime(clockid_t which_clock, struct __kernel_timespec  *tp)
-    { 114, &RevCore::ECALL_clock_getres },           //  rev_clock_getres(clockid_t which_clock, struct __kernel_timespec  *tp)
-    { 115, &RevCore::ECALL_clock_nanosleep },        //  rev_clock_nanosleep(clockid_t which_clock, int flags, const struct __kernel_timespec  *rqtp, struct __kernel_timespec  *rmtp)
-    { 116, &RevCore::ECALL_syslog },                 //  rev_syslog(int type, char  *buf, int len)
-    { 117, &RevCore::ECALL_ptrace },                 //  rev_ptrace(long request, long pid, unsigned long addr, unsigned long data)
-    { 118, &RevCore::ECALL_sched_setparam },         //  rev_sched_setparam(pid_t pid, struct sched_param  *param)
-    { 119, &RevCore::ECALL_sched_setscheduler },     //  rev_sched_setscheduler(pid_t pid, int policy, struct sched_param  *param)
-    { 120, &RevCore::ECALL_sched_getscheduler },     //  rev_sched_getscheduler(pid_t pid)
-    { 121, &RevCore::ECALL_sched_getparam },         //  rev_sched_getparam(pid_t pid, struct sched_param  *param)
-    { 122, &RevCore::ECALL_sched_setaffinity },      //  rev_sched_setaffinity(pid_t pid, unsigned int len, unsigned long  *user_mask_ptr)
-    { 123, &RevCore::ECALL_sched_getaffinity },      //  rev_sched_getaffinity(pid_t pid, unsigned int len, unsigned long  *user_mask_ptr)
-    { 124, &RevCore::ECALL_sched_yield },            //  rev_sched_yield(void)
-    { 125, &RevCore::ECALL_sched_get_priority_max }, //  rev_sched_get_priority_max(int policy)
-    { 126, &RevCore::ECALL_sched_get_priority_min }, //  rev_sched_get_priority_min(int policy)
-    { 127, &RevCore::ECALL_sched_rr_get_interval },  //  rev_sched_rr_get_interval(pid_t pid, struct __kernel_timespec  *interval)
-    { 128, &RevCore::ECALL_restart_syscall },        //  rev_restart_syscall(void)
-    { 129, &RevCore::ECALL_kill },                   //  rev_kill(pid_t pid, int sig)
-    { 130, &RevCore::ECALL_tkill },                  //  rev_tkill(pid_t pid, int sig)
-    { 131, &RevCore::ECALL_tgkill },                 //  rev_tgkill(pid_t tgid, pid_t pid, int sig)
-    { 132, &RevCore::ECALL_sigaltstack },            //  rev_sigaltstack(const struct sigaltstack  *uss, struct sigaltstack  *uoss)
-    { 133, &RevCore::ECALL_rt_sigsuspend },          //  rev_rt_sigsuspend(sigset_t  *unewset, size_t sigsetsize)
-    { 134, &RevCore::ECALL_rt_sigaction },           //  rev_rt_sigaction(int, const struct sigaction  *, struct sigaction  *, size_t)
-    { 135, &RevCore::ECALL_rt_sigprocmask },         //  rev_rt_sigprocmask(int how, sigset_t  *set, sigset_t  *oset, size_t sigsetsize)
-    { 136, &RevCore::ECALL_rt_sigpending },          //  rev_rt_sigpending(sigset_t  *set, size_t sigsetsize)
-    { 137, &RevCore::ECALL_rt_sigtimedwait_time32 }, //  rev_rt_sigtimedwait_time32(const sigset_t  *uthese, siginfo_t  *uinfo, const struct old_timespec32  *uts, size_t sigsetsize)
-    { 138, &RevCore::ECALL_rt_sigqueueinfo },        //  rev_rt_sigqueueinfo(pid_t pid, int sig, siginfo_t  *uinfo)
-    { 140, &RevCore::ECALL_setpriority },            //  rev_setpriority(int which, int who, int niceval)
-    { 141, &RevCore::ECALL_getpriority },            //  rev_getpriority(int which, int who)
-    { 142, &RevCore::ECALL_reboot },                 //  rev_reboot(int magic1, int magic2, unsigned int cmd, void  *arg)
-    { 143, &RevCore::ECALL_setregid },               //  rev_setregid(gid_t rgid, gid_t egid)
-    { 144, &RevCore::ECALL_setgid },                 //  rev_setgid(gid_t gid)
-    { 145, &RevCore::ECALL_setreuid },               //  rev_setreuid(uid_t ruid, uid_t euid)
-    { 146, &RevCore::ECALL_setuid },                 //  rev_setuid(uid_t uid)
-    { 147, &RevCore::ECALL_setresuid },              //  rev_setresuid(uid_t ruid, uid_t euid, uid_t suid)
-    { 148, &RevCore::ECALL_getresuid },              //  rev_getresuid(uid_t  *ruid, uid_t  *euid, uid_t  *suid)
-    { 149, &RevCore::ECALL_setresgid },              //  rev_setresgid(gid_t rgid, gid_t egid, gid_t sgid)
-    { 150, &RevCore::ECALL_getresgid },              //  rev_getresgid(gid_t  *rgid, gid_t  *egid, gid_t  *sgid)
-    { 151, &RevCore::ECALL_setfsuid },               //  rev_setfsuid(uid_t uid)
-    { 152, &RevCore::ECALL_setfsgid },               //  rev_setfsgid(gid_t gid)
-    { 153, &RevCore::ECALL_times },                  //  rev_times(struct tms  *tbuf)
-    { 154, &RevCore::ECALL_setpgid },                //  rev_setpgid(pid_t pid, pid_t pgid)
-    { 155, &RevCore::ECALL_getpgid },                //  rev_getpgid(pid_t pid)
-    { 156, &RevCore::ECALL_getsid },                 //  rev_getsid(pid_t pid)
-    { 157, &RevCore::ECALL_setsid },                 //  rev_setsid(void)
-    { 158, &RevCore::ECALL_getgroups },              //  rev_getgroups(int gidsetsize, gid_t  *grouplist)
-    { 159, &RevCore::ECALL_setgroups },              //  rev_setgroups(int gidsetsize, gid_t  *grouplist)
-    { 160, &RevCore::ECALL_newuname },               //  rev_newuname(struct new_utsname  *name)
-    { 161, &RevCore::ECALL_sethostname },            //  rev_sethostname(char  *name, int len)
-    { 162, &RevCore::ECALL_setdomainname },          //  rev_setdomainname(char  *name, int len)
-    { 163, &RevCore::ECALL_getrlimit },              //  rev_getrlimit(unsigned int resource, struct rlimit  *rlim)
-    { 164, &RevCore::ECALL_setrlimit },              //  rev_setrlimit(unsigned int resource, struct rlimit  *rlim)
-    { 165, &RevCore::ECALL_getrusage },              //  rev_getrusage(int who, struct rusage  *ru)
-    { 166, &RevCore::ECALL_umask },                  //  rev_umask(int mask)
-    { 167, &RevCore::ECALL_prctl },                  //  rev_prctl(int option, unsigned long arg2, unsigned long arg3, unsigned long arg4, unsigned long arg5)
-    { 168, &RevCore::ECALL_getcpu },                 //  rev_getcpu(unsigned  *cpu, unsigned  *node, struct getcpu_cache  *cache)
-    { 169, &RevCore::ECALL_gettimeofday },           //  rev_gettimeofday(struct __kernel_old_timeval  *tv, struct timezone  *tz)
-    { 170, &RevCore::ECALL_settimeofday },           //  rev_settimeofday(struct __kernel_old_timeval  *tv, struct timezone  *tz)
-    { 171, &RevCore::ECALL_adjtimex },               //  rev_adjtimex(struct __kernel_timex  *txc_p)
-    { 172, &RevCore::ECALL_getpid },                 //  rev_getpid(void)
-    { 173, &RevCore::ECALL_getppid },                //  rev_getppid(void)
-    { 174, &RevCore::ECALL_getuid },                 //  rev_getuid(void)
-    { 175, &RevCore::ECALL_geteuid },                //  rev_geteuid(void)
-    { 176, &RevCore::ECALL_getgid },                 //  rev_getgid(void)
-    { 177, &RevCore::ECALL_getegid },                //  rev_getegid(void)
-    { 178, &RevCore::ECALL_gettid },                 //  rev_gettid(void)
-    { 179, &RevCore::ECALL_sysinfo },                //  rev_sysinfo(struct sysinfo  *info)
-    { 180, &RevCore::ECALL_mq_open },                //  rev_mq_open(const char  *name, int oflag, umode_t mode, struct mq_attr  *attr)
-    { 181, &RevCore::ECALL_mq_unlink },              //  rev_mq_unlink(const char  *name)
-    { 182, &RevCore::ECALL_mq_timedsend },           //  rev_mq_timedsend(mqd_t mqdes, const char  *msg_ptr, size_t msg_len, unsigned int msg_prio, const struct __kernel_timespec  *abs_timeout)
-    { 183, &RevCore::ECALL_mq_timedreceive },        //  rev_mq_timedreceive(mqd_t mqdes, char  *msg_ptr, size_t msg_len, unsigned int  *msg_prio, const struct __kernel_timespec  *abs_timeout)
-    { 184, &RevCore::ECALL_mq_notify },              //  rev_mq_notify(mqd_t mqdes, const struct sigevent  *notification)
-    { 185, &RevCore::ECALL_mq_getsetattr },          //  rev_mq_getsetattr(mqd_t mqdes, const struct mq_attr  *mqstat, struct mq_attr  *omqstat)
-    { 186, &RevCore::ECALL_msgget },                 //  rev_msgget(key_t key, int msgflg)
-    { 187, &RevCore::ECALL_msgctl },                 //  rev_old_msgctl(int msqid, int cmd, struct msqid_ds  *buf)
-    { 188, &RevCore::ECALL_msgrcv },                 //  rev_msgrcv(int msqid, struct msgbuf  *msgp, size_t msgsz, long msgtyp, int msgflg)
-    { 189, &RevCore::ECALL_msgsnd },                 //  rev_msgsnd(int msqid, struct msgbuf  *msgp, size_t msgsz, int msgflg)
-    { 190, &RevCore::ECALL_semget },                 //  rev_semget(key_t key, int nsems, int semflg)
-    { 191, &RevCore::ECALL_semctl },                 //  rev_semctl(int semid, int semnum, int cmd, unsigned long arg)
-    { 192, &RevCore::ECALL_semtimedop },             //  rev_semtimedop(int semid, struct sembuf  *sops, unsigned nsops, const struct __kernel_timespec  *timeout)
-    { 193, &RevCore::ECALL_semop },                  //  rev_semop(int semid, struct sembuf  *sops, unsigned nsops)
-    { 194, &RevCore::ECALL_shmget },                 //  rev_shmget(key_t key, size_t size, int flag)
-    { 195, &RevCore::ECALL_shmctl },                 //  rev_old_shmctl(int shmid, int cmd, struct shmid_ds  *buf)
-    { 196, &RevCore::ECALL_shmat },                  //  rev_shmat(int shmid, char  *shmaddr, int shmflg)
-    { 197, &RevCore::ECALL_shmdt },                  //  rev_shmdt(char  *shmaddr)
-    { 198, &RevCore::ECALL_socket },                 //  rev_socket(int, int, int)
-    { 199, &RevCore::ECALL_socketpair },             //  rev_socketpair(int, int, int, int  *)
-    { 200, &RevCore::ECALL_bind },                   //  rev_bind(int, struct sockaddr  *, int)
-    { 201, &RevCore::ECALL_listen },                 //  rev_listen(int, int)
-    { 202, &RevCore::ECALL_accept },                 //  rev_accept(int, struct sockaddr  *, int  *)
-    { 203, &RevCore::ECALL_connect },                //  rev_connect(int, struct sockaddr  *, int)
-    { 204, &RevCore::ECALL_getsockname },            //  rev_getsockname(int, struct sockaddr  *, int  *)
-    { 205, &RevCore::ECALL_getpeername },            //  rev_getpeername(int, struct sockaddr  *, int  *)
-    { 206, &RevCore::ECALL_sendto },                 //  rev_sendto(int, void  *, size_t, unsigned, struct sockaddr  *, int)
-    { 207, &RevCore::ECALL_recvfrom },               //  rev_recvfrom(int, void  *, size_t, unsigned, struct sockaddr  *, int  *)
-    { 208, &RevCore::ECALL_setsockopt },             //  rev_setsockopt(int fd, int level, int optname, char  *optval, int optlen)
-    { 209, &RevCore::ECALL_getsockopt },             //  rev_getsockopt(int fd, int level, int optname, char  *optval, int  *optlen)
-    { 210, &RevCore::ECALL_shutdown },               //  rev_shutdown(int, int)
-    { 211, &RevCore::ECALL_sendmsg },                //  rev_sendmsg(int fd, struct user_msghdr  *msg, unsigned flags)
-    { 212, &RevCore::ECALL_recvmsg },                //  rev_recvmsg(int fd, struct user_msghdr  *msg, unsigned flags)
-    { 213, &RevCore::ECALL_readahead },              //  rev_readahead(int fd, loff_t offset, size_t count)
-    { 214, &RevCore::ECALL_sbrk },                   //  rev_sbrk(size_t increment)
-    { 215, &RevCore::ECALL_munmap },                 //  rev_munmap(unsigned long addr, size_t len)
-    { 216, &RevCore::ECALL_mremap },                 //  rev_mremap(unsigned long addr, unsigned long old_len, unsigned long new_len, unsigned long flags, unsigned long new_addr)
-    { 217, &RevCore::ECALL_add_key },                //  rev_add_key(const char  *_type, const char  *_description, const void  *_payload, size_t plen, key_serial_t destringid)
-    { 218, &RevCore::ECALL_request_key },            //  rev_request_key(const char  *_type, const char  *_description, const char  *_callout_info, key_serial_t destringid)
-    { 219, &RevCore::ECALL_keyctl },                 //  rev_keyctl(int cmd, unsigned long arg2, unsigned long arg3, unsigned long arg4, unsigned long arg5)
-    { 220, &RevCore::ECALL_clone },                  //  rev_clone(unsigned long, unsigned long, int  *, unsigned long, int  *)
-    { 221, &RevCore::ECALL_execve },                 //  rev_execve(const char  *filename, const char  *const  *argv, const char  *const  *envp)
-    { 222, &RevCore::ECALL_mmap },                   //  rev_old_mmap(struct mmap_arg_struct  *arg)
-    { 223, &RevCore::ECALL_fadvise64_64 },           //  rev_fadvise64_64(int fd, loff_t offset, loff_t len, int advice)
-    { 224, &RevCore::ECALL_swapon },                 //  rev_swapon(const char  *specialfile, int swap_flags)
-    { 225, &RevCore::ECALL_swapoff },                //  rev_swapoff(const char  *specialfile)
-    { 226, &RevCore::ECALL_mprotect },               //  rev_mprotect(unsigned long start, size_t len, unsigned long prot)
-    { 227, &RevCore::ECALL_msync },                  //  rev_msync(unsigned long start, size_t len, int flags)
-    { 228, &RevCore::ECALL_mlock },                  //  rev_mlock(unsigned long start, size_t len)
-    { 229, &RevCore::ECALL_munlock },                //  rev_munlock(unsigned long start, size_t len)
-    { 230, &RevCore::ECALL_mlockall },               //  rev_mlockall(int flags)
-    { 231, &RevCore::ECALL_munlockall },             //  rev_munlockall(void)
-    { 232, &RevCore::ECALL_mincore },                //  rev_mincore(unsigned long start, size_t len, unsigned char  * vec)
-    { 233, &RevCore::ECALL_madvise },                //  rev_madvise(unsigned long start, size_t len, int behavior)
-    { 234, &RevCore::ECALL_remap_file_pages },       //  rev_remap_file_pages(unsigned long start, unsigned long size, unsigned long prot, unsigned long pgoff, unsigned long flags)
-    { 235, &RevCore::ECALL_mbind },                  //  rev_mbind(unsigned long start, unsigned long len, unsigned long mode, const unsigned long  *nmask, unsigned long maxnode, unsigned flags)
-    { 236, &RevCore::ECALL_get_mempolicy },          //  rev_get_mempolicy(int  *policy, unsigned long  *nmask, unsigned long maxnode, unsigned long addr, unsigned long flags)
-    { 237, &RevCore::ECALL_set_mempolicy },          //  rev_set_mempolicy(int mode, const unsigned long  *nmask, unsigned long maxnode)
-    { 238, &RevCore::ECALL_migrate_pages },          //  rev_migrate_pages(pid_t pid, unsigned long maxnode, const unsigned long  *from, const unsigned long  *to)
-    { 239, &RevCore::ECALL_move_pages },             //  rev_move_pages(pid_t pid, unsigned long nr_pages, const void  *  *pages, const int  *nodes, int  *status, int flags)
-    { 240, &RevCore::ECALL_rt_tgsigqueueinfo },      //  rev_rt_tgsigqueueinfo(pid_t tgid, pid_t pid, int sig, siginfo_t  *uinfo)
-    { 241, &RevCore::ECALL_perf_event_open },        //  rev_perf_event_open(")
-    { 242, &RevCore::ECALL_accept4 },                //  rev_accept4(int, struct sockaddr  *, int  *, int)
-    { 243, &RevCore::ECALL_recvmmsg_time32 },        //  rev_recvmmsg_time32(int fd, struct mmsghdr  *msg, unsigned int vlen, unsigned flags, struct old_timespec32  *timeout)
-    { 260, &RevCore::ECALL_wait4 },                  //  rev_wait4(pid_t pid, int  *stat_addr, int options, struct rusage  *ru)
-    { 261, &RevCore::ECALL_prlimit64 },              //  rev_prlimit64(pid_t pid, unsigned int resource, const struct rlimit64  *new_rlim, struct rlimit64  *old_rlim)
-    { 262, &RevCore::ECALL_fanotify_init },          //  rev_fanotify_init(unsigned int flags, unsigned int event_f_flags)
-    { 263, &RevCore::ECALL_fanotify_mark },          //  rev_fanotify_mark(int fanotify_fd, unsigned int flags, u64 mask, int fd, const char  *pathname)
-    { 264, &RevCore::ECALL_name_to_handle_at },      //  rev_name_to_handle_at(int dfd, const char  *name, struct file_handle  *handle, int  *mnt_id, int flag)
-    { 265, &RevCore::ECALL_open_by_handle_at },      //  rev_open_by_handle_at(int mountdirfd, struct file_handle  *handle, int flags)
-    { 266, &RevCore::ECALL_clock_adjtime },          //  rev_clock_adjtime(clockid_t which_clock, struct __kernel_timex  *tx)
-    { 267, &RevCore::ECALL_syncfs },                 //  rev_syncfs(int fd)
-    { 268, &RevCore::ECALL_setns },                  //  rev_setns(int fd, int nstype)
-    { 269, &RevCore::ECALL_sendmmsg },               //  rev_sendmmsg(int fd, struct mmsghdr  *msg, unsigned int vlen, unsigned flags)
-    { 270, &RevCore::ECALL_process_vm_readv },       //  rev_process_vm_readv(pid_t pid, const struct iovec  *lvec, unsigned long liovcnt, const struct iovec  *rvec, unsigned long riovcnt, unsigned long flags)
-    { 271, &RevCore::ECALL_process_vm_writev },      //  rev_process_vm_writev(pid_t pid, const struct iovec  *lvec, unsigned long liovcnt, const struct iovec  *rvec, unsigned long riovcnt, unsigned long flags)
-    { 272, &RevCore::ECALL_kcmp },                   //  rev_kcmp(pid_t pid1, pid_t pid2, int type, unsigned long idx1, unsigned long idx2)
-    { 273, &RevCore::ECALL_finit_module },           //  rev_finit_module(int fd, const char  *uargs, int flags)
-    { 274, &RevCore::ECALL_sched_setattr },          //  rev_sched_setattr(pid_t pid, struct sched_attr  *attr, unsigned int flags)
-    { 275, &RevCore::ECALL_sched_getattr },          //  rev_sched_getattr(pid_t pid, struct sched_attr  *attr, unsigned int size, unsigned int flags)
-    { 276, &RevCore::ECALL_renameat2 },              //  rev_renameat2(int olddfd, const char  *oldname, int newdfd, const char  *newname, unsigned int flags)
-    { 277, &RevCore::ECALL_seccomp },                //  rev_seccomp(unsigned int op, unsigned int flags, void  *uargs)
-    { 278, &RevCore::ECALL_getrandom },              //  rev_getrandom(char  *buf, size_t count, unsigned int flags)
-    { 279, &RevCore::ECALL_memfd_create },           //  rev_memfd_create(const char  *uname_ptr, unsigned int flags)
-    { 280, &RevCore::ECALL_bpf },                    //  rev_bpf(int cmd, union bpf_attr *attr, unsigned int size)
-    { 281, &RevCore::ECALL_execveat },               //  rev_execveat(int dfd, const char  *filename, const char  *const  *argv, const char  *const  *envp, int flags)
-    { 282, &RevCore::ECALL_userfaultfd },            //  rev_userfaultfd(int flags)
-    { 283, &RevCore::ECALL_membarrier },             //  rev_membarrier(int cmd, unsigned int flags, int cpu_id)
-    { 284, &RevCore::ECALL_mlock2 },                 //  rev_mlock2(unsigned long start, size_t len, int flags)
-    { 285, &RevCore::ECALL_copy_file_range },        //  rev_copy_file_range(int fd_in, loff_t  *off_in, int fd_out, loff_t  *off_out, size_t len, unsigned int flags)
-    { 286, &RevCore::ECALL_preadv2 },                //  rev_preadv2(unsigned long fd, const struct iovec  *vec, unsigned long vlen, unsigned long pos_l, unsigned long pos_h, rwf_t flags)
-    { 287, &RevCore::ECALL_pwritev2 },               //  rev_pwritev2(unsigned long fd, const struct iovec  *vec, unsigned long vlen, unsigned long pos_l, unsigned long pos_h, rwf_t flags)
-    { 288, &RevCore::ECALL_pkey_mprotect },          //  rev_pkey_mprotect(unsigned long start, size_t len, unsigned long prot, int pkey)
-    { 289, &RevCore::ECALL_pkey_alloc },             //  rev_pkey_alloc(unsigned long flags, unsigned long init_val)
-    { 290, &RevCore::ECALL_pkey_free },              //  rev_pkey_free(int pkey)
-    { 291, &RevCore::ECALL_statx },                  //  rev_statx(int dfd, const char  *path, unsigned flags, unsigned mask, struct statx  *buffer)
-    { 292, &RevCore::ECALL_io_pgetevents },          //  rev_io_pgetevents(aio_context_t ctx_id, long min_nr, long nr, struct io_event  *events, struct __kernel_timespec  *timeout, const struct __aio_sigset *sig)
-    { 293, &RevCore::ECALL_rseq },                   //  rev_rseq(struct rseq  *rseq, uint32_t rseq_len, int flags, uint32_t sig)
-    { 294, &RevCore::ECALL_kexec_file_load },        //  rev_kexec_file_load(int kernel_fd, int initrd_fd, unsigned long cmdline_len, const char  *cmdline_ptr, unsigned long flags)
-    { 403, &RevCore::ECALL_clock_gettime },          //  rev_clock_gettime(clockid_t which_clock, struct __kernel_timespec  *tp)
-    { 404, &RevCore::ECALL_clock_settime },          //  rev_clock_settime(clockid_t which_clock, const struct __kernel_timespec  *tp)
-    { 405, &RevCore::ECALL_clock_adjtime },          //  rev_clock_adjtime(clockid_t which_clock, struct __kernel_timex  *tx)
-    { 406, &RevCore::ECALL_clock_getres },           //  rev_clock_getres(clockid_t which_clock, struct __kernel_timespec  *tp)
-    { 407, &RevCore::ECALL_clock_nanosleep },        //  rev_clock_nanosleep(clockid_t which_clock, int flags, const struct __kernel_timespec  *rqtp, struct __kernel_timespec  *rmtp)
-    { 408, &RevCore::ECALL_timer_gettime },          //  rev_timer_gettime(timer_t timer_id, struct __kernel_itimerspec  *setting)
-    { 409, &RevCore::ECALL_timer_settime },          //  rev_timer_settime(timer_t timer_id, int flags, const struct __kernel_itimerspec  *new_setting, struct __kernel_itimerspec  *old_setting)
-    { 410, &RevCore::ECALL_timerfd_gettime },        //  rev_timerfd_gettime(int ufd, struct __kernel_itimerspec  *otmr)
-    { 411, &RevCore::ECALL_timerfd_settime },        //  rev_timerfd_settime(int ufd, int flags, const struct __kernel_itimerspec  *utmr, struct __kernel_itimerspec  *otmr)
-    { 412, &RevCore::ECALL_utimensat },              //  rev_utimensat(int dfd, const char  *filename, struct __kernel_timespec  *utimes, int flags)
-    { 416, &RevCore::ECALL_io_pgetevents },          //  rev_io_pgetevents(aio_context_t ctx_id, long min_nr, long nr, struct io_event  *events, struct __kernel_timespec  *timeout, const struct __aio_sigset *sig)
-    { 418, &RevCore::ECALL_mq_timedsend },           //  rev_mq_timedsend(mqd_t mqdes, const char  *msg_ptr, size_t msg_len, unsigned int msg_prio, const struct __kernel_timespec  *abs_timeout)
-    { 419, &RevCore::ECALL_mq_timedreceive },        //  rev_mq_timedreceive(mqd_t mqdes, char  *msg_ptr, size_t msg_len, unsigned int  *msg_prio, const struct __kernel_timespec  *abs_timeout)
-    { 420, &RevCore::ECALL_semtimedop },             //  rev_semtimedop(int semid, struct sembuf  *sops, unsigned nsops, const struct __kernel_timespec  *timeout)
-    { 422, &RevCore::ECALL_futex },                  //  rev_futex(u32  *uaddr, int op, u32 val, struct __kernel_timespec  *utime, u32  *uaddr2, u32 val3)
-    { 423, &RevCore::ECALL_sched_rr_get_interval },  //  rev_sched_rr_get_interval(pid_t pid, struct __kernel_timespec  *interval)
-    { 424, &RevCore::ECALL_pidfd_send_signal },      //  rev_pidfd_send_signal(int pidfd, int sig, siginfo_t  *info, unsigned int flags)
-    { 425, &RevCore::ECALL_io_uring_setup },         //  rev_io_uring_setup(u32 entries, struct io_uring_params  *p)
-    { 426, &RevCore::ECALL_io_uring_enter },         //  rev_io_uring_enter(unsigned int fd, u32 to_submit, u32 min_complete, u32 flags, const sigset_t  *sig, size_t sigsz)
-    { 427, &RevCore::ECALL_io_uring_register },      //  rev_io_uring_register(unsigned int fd, unsigned int op, void  *arg, unsigned int nr_args)
-    { 428, &RevCore::ECALL_open_tree },              //  rev_open_tree(int dfd, const char  *path, unsigned flags)
-    { 429, &RevCore::ECALL_move_mount },             //  rev_move_mount(int from_dfd, const char  *from_path, int to_dfd, const char  *to_path, unsigned int ms_flags)
-    { 430, &RevCore::ECALL_fsopen },                 //  rev_fsopen(const char  *fs_name, unsigned int flags)
-    { 431, &RevCore::ECALL_fsconfig },               //  rev_fsconfig(int fs_fd, unsigned int cmd, const char  *key, const void  *value, int aux)
-    { 432, &RevCore::ECALL_fsmount },                //  rev_fsmount(int fs_fd, unsigned int flags, unsigned int ms_flags)
-    { 433, &RevCore::ECALL_fspick },                 //  rev_fspick(int dfd, const char  *path, unsigned int flags)
-    { 434, &RevCore::ECALL_pidfd_open },             //  rev_pidfd_open(pid_t pid, unsigned int flags)
-    { 435, &RevCore::ECALL_clone3 },                 //  rev_clone3(struct clone_args  *uargs, size_t size)
-    { 436, &RevCore::ECALL_close_range },            //  rev_close_range(unsigned int fd, unsigned int max_fd, unsigned int flags)
-    { 437, &RevCore::ECALL_openat2 },                //  rev_openat2(int dfd, const char  *filename, struct open_how *how, size_t size)
-    { 438, &RevCore::ECALL_pidfd_getfd },            //  rev_pidfd_getfd(int pidfd, int fd, unsigned int flags)
-    { 439, &RevCore::ECALL_faccessat2 },             //  rev_faccessat2(int dfd, const char  *filename, int mode, int flags)
-    { 440, &RevCore::ECALL_process_madvise },        //  rev_process_madvise(int pidfd, const struct iovec  *vec, size_t vlen, int behavior, unsigned int flags)
-    { 500, &RevCore::ECALL_cpuinfo },                //  rev_cpuinfo(struct rev_cpuinfo *info)
-    { 501, &RevCore::ECALL_perf_stats },             //  rev_cpuinfo(struct rev_perf_stats *stats)
-    { 1000, &RevCore::ECALL_pthread_create },        //
-    { 1001, &RevCore::ECALL_pthread_join },          //
-    { 4000, &RevCore::ECALL_forza_read_zen_status }, // , forza_read_zen_status();
-    { 4001, &RevCore::ECALL_forza_read_zqm_status },  // , forza_read_zqm_status();
-    { 4002, &RevCore::ECALL_forza_get_hart_id },  // , forza_get_hart_id();
-    { 4003, &RevCore::ECALL_forza_send_word },    // , forza_send_word(uint64_t data);
-    { 4004, &RevCore::ECALL_forza_receive_word },  // , forza_receive_word(uint64_t mbox);
-    { 4005, &RevCore::ECALL_forza_zen_get_cntrs },  // , forza_zen_get_cntrs();
-    { 4006, &RevCore::ECALL_forza_zqm_setup }, // , forza_zqm_setup();
-    { 4007, &RevCore::ECALL_forza_get_harts_per_zap }, // , forza_get_harts_per_zap
-    { 4008, &RevCore::ECALL_forza_get_zaps_per_zone }, // , forza_get_zaps_per_zone();
-    { 4009, &RevCore::ECALL_forza_get_zones_per_precinct }, // , forza_get_zones_per_precinct();
-    { 4010, &RevCore::ECALL_forza_get_num_precincts }, // , forza_get_num_precincts();
-    { 4011, &RevCore::ECALL_forza_get_my_zap }, // , forza_get_my_zap();
-    { 4012, &RevCore::ECALL_forza_get_my_zone }, // , forza_get_my_zone();
-    { 4013, &RevCore::ECALL_forza_get_my_precinct }, // , forza_get_my_precinct();
-    { 4014, &RevCore::ECALL_forza_zone_barrier }, // , forza_zone_barrier();
-    { 4015, &RevCore::ECALL_forza_debug_print }, //, forza_debug_print();
-    { 4016, &RevCore::ECALL_forza_remote_update },      //, forza_remote_update(uint64_t *dest, uint64_t data);
+decltype(RevCore::Ecalls) RevCore::Ecalls = {
+    { 0,   &RevCore::ECALL_io_setup },                  //  rev_io_setup(unsigned nr_reqs, aio_context_t  *ctx)
+    { 1,   &RevCore::ECALL_io_destroy },                //  rev_io_destroy(aio_context_t ctx)
+    { 2,   &RevCore::ECALL_io_submit },                 //  rev_io_submit(aio_context_t, long, struct iocb  *  *)
+    { 3,   &RevCore::ECALL_io_cancel },                 //  rev_io_cancel(aio_context_t ctx_id, struct iocb  *iocb, struct io_event  *result)
+    { 4,   &RevCore::ECALL_io_getevents },              //  rev_io_getevents(aio_context_t ctx_id, long min_nr, long nr, struct io_event  *events, struct __kernel_timespec  *timeout)
+    { 5,   &RevCore::ECALL_setxattr },                  //  rev_setxattr(const char  *path, const char  *name, const void  *value, size_t size, int flags)
+    { 6,   &RevCore::ECALL_lsetxattr },                 //  rev_lsetxattr(const char  *path, const char  *name, const void  *value, size_t size, int flags)
+    { 7,   &RevCore::ECALL_fsetxattr },                 //  rev_fsetxattr(int fd, const char  *name, const void  *value, size_t size, int flags)
+    { 8,   &RevCore::ECALL_getxattr },                  //  rev_getxattr(const char  *path, const char  *name, void  *value, size_t size)
+    { 9,   &RevCore::ECALL_lgetxattr },                 //  rev_lgetxattr(const char  *path, const char  *name, void  *value, size_t size)
+    { 10,  &RevCore::ECALL_fgetxattr },                 //  rev_fgetxattr(int fd, const char  *name, void  *value, size_t size)
+    { 11,  &RevCore::ECALL_listxattr },                 //  rev_listxattr(const char  *path, char  *list, size_t size)
+    { 12,  &RevCore::ECALL_llistxattr },                //  rev_llistxattr(const char  *path, char  *list, size_t size)
+    { 13,  &RevCore::ECALL_flistxattr },                //  rev_flistxattr(int fd, char  *list, size_t size)
+    { 14,  &RevCore::ECALL_removexattr },               //  rev_removexattr(const char  *path, const char  *name)
+    { 15,  &RevCore::ECALL_lremovexattr },              //  rev_lremovexattr(const char  *path, const char  *name)
+    { 16,  &RevCore::ECALL_fremovexattr },              //  rev_fremovexattr(int fd, const char  *name)
+    { 17,  &RevCore::ECALL_getcwd },                    //  rev_getcwd(char  *buf, unsigned long size)
+    { 18,  &RevCore::ECALL_lookup_dcookie },            //  rev_lookup_dcookie(u64 cookie64, char  *buf, size_t len)
+    { 19,  &RevCore::ECALL_eventfd2 },                  //  rev_eventfd2(unsigned int count, int flags)
+    { 20,  &RevCore::ECALL_epoll_create1 },             //  rev_epoll_create1(int flags)
+    { 21,  &RevCore::ECALL_epoll_ctl },                 //  rev_epoll_ctl(int epfd, int op, int fd, struct epoll_event  *event)
+    { 22,  &RevCore::ECALL_epoll_pwait },               //  rev_epoll_pwait(int epfd, struct epoll_event  *events, int maxevents, int timeout, const sigset_t  *sigmask, size_t sigsetsize)
+    { 23,  &RevCore::ECALL_dup },                       //  rev_dup(unsigned int fildes)
+    { 24,  &RevCore::ECALL_dup3 },                      //  rev_dup3(unsigned int oldfd, unsigned int newfd, int flags)
+    { 25,  &RevCore::ECALL_fcntl64 },                   //  rev_fcntl64(unsigned int fd, unsigned int cmd, unsigned long arg)
+    { 26,  &RevCore::ECALL_inotify_init1 },             //  rev_inotify_init1(int flags)
+    { 27,  &RevCore::ECALL_inotify_add_watch },         //  rev_inotify_add_watch(int fd, const char  *path, u32 mask)
+    { 28,  &RevCore::ECALL_inotify_rm_watch },          //  rev_inotify_rm_watch(int fd, __s32 wd)
+    { 29,  &RevCore::ECALL_ioctl },                     //  rev_ioctl(unsigned int fd, unsigned int cmd, unsigned long arg)
+    { 30,  &RevCore::ECALL_ioprio_set },                //  rev_ioprio_set(int which, int who, int ioprio)
+    { 31,  &RevCore::ECALL_ioprio_get },                //  rev_ioprio_get(int which, int who)
+    { 32,  &RevCore::ECALL_flock },                     //  rev_flock(unsigned int fd, unsigned int cmd)
+    { 33,  &RevCore::ECALL_mknodat },                   //  rev_mknodat(int dfd, const char  * filename, umode_t mode, unsigned dev)
+    { 34,  &RevCore::ECALL_mkdirat },                   //  rev_mkdirat(int dfd, const char  * pathname, umode_t mode)
+    { 35,  &RevCore::ECALL_unlinkat },                  //  rev_unlinkat(int dfd, const char  * pathname, int flag)
+    { 36,  &RevCore::ECALL_symlinkat },                 //  rev_symlinkat(const char  * oldname, int newdfd, const char  * newname)
+    { 37,  &RevCore::ECALL_linkat },                    //  rev_unlinkat(int dfd, const char  * pathname, int flag)
+    { 38,  &RevCore::ECALL_renameat },                  //  rev_renameat(int olddfd, const char  * oldname, int newdfd, const char  * newname)
+    { 39,  &RevCore::ECALL_umount },                    //  rev_umount(char  *name, int flags)
+    { 40,  &RevCore::ECALL_mount },                     //  rev_umount(char  *name, int flags)
+    { 41,  &RevCore::ECALL_pivot_root },                //  rev_pivot_root(const char  *new_root, const char  *put_old)
+    { 42,  &RevCore::ECALL_ni_syscall },                //  rev_ni_syscall(void)
+    { 43,  &RevCore::ECALL_statfs64 },                  //  rev_statfs64(const char  *path, size_t sz, struct statfs64  *buf)
+    { 44,  &RevCore::ECALL_fstatfs64 },                 //  rev_fstatfs64(unsigned int fd, size_t sz, struct statfs64  *buf)
+    { 45,  &RevCore::ECALL_truncate64 },                //  rev_truncate64(const char  *path, loff_t length)
+    { 46,  &RevCore::ECALL_ftruncate64 },               //  rev_ftruncate64(unsigned int fd, loff_t length)
+    { 47,  &RevCore::ECALL_fallocate },                 //  rev_fallocate(int fd, int mode, loff_t offset, loff_t len)
+    { 48,  &RevCore::ECALL_faccessat },                 //  rev_faccessat(int dfd, const char  *filename, int mode)
+    { 49,  &RevCore::ECALL_chdir },                     //  rev_chdir(const char  *filename)
+    { 50,  &RevCore::ECALL_fchdir },                    //  rev_fchdir(unsigned int fd)
+    { 51,  &RevCore::ECALL_chroot },                    //  rev_chroot(const char  *filename)
+    { 52,  &RevCore::ECALL_fchmod },                    //  rev_fchmod(unsigned int fd, umode_t mode)
+    { 53,  &RevCore::ECALL_fchmodat },                  //  rev_fchmodat(int dfd, const char  * filename, umode_t mode)
+    { 54,  &RevCore::ECALL_fchownat },                  //  rev_fchownat(int dfd, const char  *filename, uid_t user, gid_t group, int flag)
+    { 55,  &RevCore::ECALL_fchown },                    //  rev_fchown(unsigned int fd, uid_t user, gid_t group)
+    { 56,  &RevCore::ECALL_openat },                    //  rev_openat(int dfd, const char  *filename, int flags, umode_t mode)
+    { 57,  &RevCore::ECALL_close },                     //  rev_close(unsigned int fd)
+    { 58,  &RevCore::ECALL_vhangup },                   //  rev_vhangup(void)
+    { 59,  &RevCore::ECALL_pipe2 },                     //  rev_pipe2(int  *fildes, int flags)
+    { 60,  &RevCore::ECALL_quotactl },                  //  rev_quotactl(unsigned int cmd, const char  *special, qid_t id, void  *addr)
+    { 61,  &RevCore::ECALL_getdents64 },                //  rev_getdents64(unsigned int fd, struct linux_dirent64  *dirent, unsigned int count)
+    { 62,  &RevCore::ECALL_lseek },                     //  rev_llseek(unsigned int fd, unsigned long offset_high, unsigned long offset_low, loff_t  *result, unsigned int whence)
+    { 63,  &RevCore::ECALL_read },                      //  rev_read(unsigned int fd, char  *buf, size_t count)
+    { 64,  &RevCore::ECALL_write },                     //  rev_write(unsigned int fd, const char  *buf, size_t count)
+    { 65,  &RevCore::ECALL_readv },                     //  rev_readv(unsigned long fd, const struct iovec  *vec, unsigned long vlen)
+    { 66,  &RevCore::ECALL_writev },                    //  rev_writev(unsigned long fd, const struct iovec  *vec, unsigned long vlen)
+    { 67,  &RevCore::ECALL_pread64 },                   //  rev_pread64(unsigned int fd, char  *buf, size_t count, loff_t pos)
+    { 68,  &RevCore::ECALL_pwrite64 },                  //  rev_pwrite64(unsigned int fd, const char  *buf, size_t count, loff_t pos)
+    { 69,  &RevCore::ECALL_preadv },                    //  rev_preadv(unsigned long fd, const struct iovec  *vec, unsigned long vlen, unsigned long pos_l, unsigned long pos_h)
+    { 70,  &RevCore::ECALL_pwritev },                   //  rev_pwritev(unsigned long fd, const struct iovec  *vec, unsigned long vlen, unsigned long pos_l, unsigned long pos_h)
+    { 71,  &RevCore::ECALL_sendfile64 },                //  rev_sendfile64(int out_fd, int in_fd, loff_t  *offset, size_t count)
+    { 72,  &RevCore::ECALL_pselect6_time32 },           //  rev_pselect6_time32(int, fd_set  *, fd_set  *, fd_set  *, struct old_timespec32  *, void  *)
+    { 73,  &RevCore::ECALL_ppoll_time32 },              //  rev_ppoll_time32(struct pollfd  *, unsigned int, struct old_timespec32  *, const sigset_t  *, size_t)
+    { 74,  &RevCore::ECALL_signalfd4 },                 //  rev_signalfd4(int ufd, sigset_t  *user_mask, size_t sizemask, int flags)
+    { 75,  &RevCore::ECALL_vmsplice },                  //  rev_vmsplice(int fd, const struct iovec  *iov, unsigned long nr_segs, unsigned int flags)
+    { 76,  &RevCore::ECALL_splice },                    //  rev_vmsplice(int fd, const struct iovec  *iov, unsigned long nr_segs, unsigned int flags)
+    { 77,  &RevCore::ECALL_tee },                       //  rev_tee(int fdin, int fdout, size_t len, unsigned int flags)
+    { 78,  &RevCore::ECALL_readlinkat },                //  rev_readlinkat(int dfd, const char  *path, char  *buf, int bufsiz)
+    { 79,  &RevCore::ECALL_newfstatat },                //  rev_newfstatat(int dfd, const char  *filename, struct stat  *statbuf, int flag)
+    { 80,  &RevCore::ECALL_newfstat },                  //  rev_newfstat(unsigned int fd, struct stat  *statbuf)
+    { 81,  &RevCore::ECALL_sync },                      //  rev_sync(void)
+    { 82,  &RevCore::ECALL_fsync },                     //  rev_fsync(unsigned int fd)
+    { 83,  &RevCore::ECALL_fdatasync },                 //  rev_fdatasync(unsigned int fd)
+    { 84,  &RevCore::ECALL_sync_file_range2 },          //  rev_sync_file_range2(int fd, unsigned int flags, loff_t offset, loff_t nbytes)
+    { 84,  &RevCore::ECALL_sync_file_range },           //  rev_sync_file_range(int fd, loff_t offset, loff_t nbytes, unsigned int flags)
+    { 85,  &RevCore::ECALL_timerfd_create },            //  rev_timerfd_create(int clockid, int flags)
+    { 86,  &RevCore::ECALL_timerfd_settime },           //  rev_timerfd_settime(int ufd, int flags, const struct __kernel_itimerspec  *utmr, struct __kernel_itimerspec  *otmr)
+    { 87,  &RevCore::ECALL_timerfd_gettime },           //  rev_timerfd_gettime(int ufd, struct __kernel_itimerspec  *otmr)
+    { 88,  &RevCore::ECALL_utimensat },                 //  rev_utimensat(int dfd, const char  *filename, struct __kernel_timespec  *utimes, int flags)
+    { 89,  &RevCore::ECALL_acct },                      //  rev_acct(const char  *name)
+    { 90,  &RevCore::ECALL_capget },                    //  rev_capget(cap_user_header_t header, cap_user_data_t dataptr)
+    { 91,  &RevCore::ECALL_capset },                    //  rev_capset(cap_user_header_t header, const cap_user_data_t data)
+    { 92,  &RevCore::ECALL_personality },               //  rev_personality(unsigned int personality)
+    { 93,  &RevCore::ECALL_exit },                      //  rev_exit(int error_code)
+    { 94,  &RevCore::ECALL_exit_group },                //  rev_exit_group(int error_code)
+    { 95,  &RevCore::ECALL_waitid },                    //  rev_waitid(int which, pid_t pid, struct siginfo  *infop, int options, struct rusage  *ru)
+    { 96,  &RevCore::ECALL_set_tid_address },           //  rev_set_tid_address(int  *tidptr)
+    { 97,  &RevCore::ECALL_unshare },                   //  rev_unshare(unsigned long unshare_flags)
+    { 98,  &RevCore::ECALL_futex },                     //  rev_futex(u32  *uaddr, int op, u32 val, struct __kernel_timespec  *utime, u32  *uaddr2, u32 val3)
+    { 99,  &RevCore::ECALL_set_robust_list },           //  rev_set_robust_list(struct robust_list_head  *head, size_t len)
+    { 100, &RevCore::ECALL_get_robust_list },           //  rev_get_robust_list(int pid, struct robust_list_head  *  *head_ptr, size_t  *len_ptr)
+    { 101, &RevCore::ECALL_nanosleep },                 //  rev_nanosleep(struct __kernel_timespec  *rqtp, struct __kernel_timespec  *rmtp)
+    { 102, &RevCore::ECALL_getitimer },                 //  rev_getitimer(int which, struct __kernel_old_itimerval  *value)
+    { 103, &RevCore::ECALL_setitimer },                 //  rev_setitimer(int which, struct __kernel_old_itimerval  *value, struct __kernel_old_itimerval  *ovalue)
+    { 104, &RevCore::ECALL_kexec_load },                //  rev_kexec_load(unsigned long entry, unsigned long nr_segments, struct kexec_segment  *segments, unsigned long flags)
+    { 105, &RevCore::ECALL_init_module },               //  rev_init_module(void  *umod, unsigned long len, const char  *uargs)
+    { 106, &RevCore::ECALL_delete_module },             //  rev_delete_module(const char  *name_user, unsigned int flags)
+    { 107, &RevCore::ECALL_timer_create },              //  rev_timer_create(clockid_t which_clock, struct sigevent  *timer_event_spec, timer_t  * created_timer_id)
+    { 108, &RevCore::ECALL_timer_gettime },             //  rev_timer_gettime(timer_t timer_id, struct __kernel_itimerspec  *setting)
+    { 109, &RevCore::ECALL_timer_getoverrun },          //  rev_timer_getoverrun(timer_t timer_id)
+    { 110, &RevCore::ECALL_timer_settime },             //  rev_timer_settime(timer_t timer_id, int flags, const struct __kernel_itimerspec  *new_setting, struct __kernel_itimerspec  *old_setting)
+    { 111, &RevCore::ECALL_timer_delete },              //  rev_timer_delete(timer_t timer_id)
+    { 112, &RevCore::ECALL_clock_settime },             //  rev_clock_settime(clockid_t which_clock, const struct __kernel_timespec  *tp)
+    { 113, &RevCore::ECALL_clock_gettime },             //  rev_clock_gettime(clockid_t which_clock, struct __kernel_timespec  *tp)
+    { 114, &RevCore::ECALL_clock_getres },              //  rev_clock_getres(clockid_t which_clock, struct __kernel_timespec  *tp)
+    { 115, &RevCore::ECALL_clock_nanosleep },           //  rev_clock_nanosleep(clockid_t which_clock, int flags, const struct __kernel_timespec  *rqtp, struct __kernel_timespec  *rmtp)
+    { 116, &RevCore::ECALL_syslog },                    //  rev_syslog(int type, char  *buf, int len)
+    { 117, &RevCore::ECALL_ptrace },                    //  rev_ptrace(long request, long pid, unsigned long addr, unsigned long data)
+    { 118, &RevCore::ECALL_sched_setparam },            //  rev_sched_setparam(pid_t pid, struct sched_param  *param)
+    { 119, &RevCore::ECALL_sched_setscheduler },        //  rev_sched_setscheduler(pid_t pid, int policy, struct sched_param  *param)
+    { 120, &RevCore::ECALL_sched_getscheduler },        //  rev_sched_getscheduler(pid_t pid)
+    { 121, &RevCore::ECALL_sched_getparam },            //  rev_sched_getparam(pid_t pid, struct sched_param  *param)
+    { 122, &RevCore::ECALL_sched_setaffinity },         //  rev_sched_setaffinity(pid_t pid, unsigned int len, unsigned long  *user_mask_ptr)
+    { 123, &RevCore::ECALL_sched_getaffinity },         //  rev_sched_getaffinity(pid_t pid, unsigned int len, unsigned long  *user_mask_ptr)
+    { 124, &RevCore::ECALL_sched_yield },               //  rev_sched_yield(void)
+    { 125, &RevCore::ECALL_sched_get_priority_max },    //  rev_sched_get_priority_max(int policy)
+    { 126, &RevCore::ECALL_sched_get_priority_min },    //  rev_sched_get_priority_min(int policy)
+    { 127, &RevCore::ECALL_sched_rr_get_interval },     //  rev_sched_rr_get_interval(pid_t pid, struct __kernel_timespec  *interval)
+    { 128, &RevCore::ECALL_restart_syscall },           //  rev_restart_syscall(void)
+    { 129, &RevCore::ECALL_kill },                      //  rev_kill(pid_t pid, int sig)
+    { 130, &RevCore::ECALL_tkill },                     //  rev_tkill(pid_t pid, int sig)
+    { 131, &RevCore::ECALL_tgkill },                    //  rev_tgkill(pid_t tgid, pid_t pid, int sig)
+    { 132, &RevCore::ECALL_sigaltstack },               //  rev_sigaltstack(const struct sigaltstack  *uss, struct sigaltstack  *uoss)
+    { 133, &RevCore::ECALL_rt_sigsuspend },             //  rev_rt_sigsuspend(sigset_t  *unewset, size_t sigsetsize)
+    { 134, &RevCore::ECALL_rt_sigaction },              //  rev_rt_sigaction(int, const struct sigaction  *, struct sigaction  *, size_t)
+    { 135, &RevCore::ECALL_rt_sigprocmask },            //  rev_rt_sigprocmask(int how, sigset_t  *set, sigset_t  *oset, size_t sigsetsize)
+    { 136, &RevCore::ECALL_rt_sigpending },             //  rev_rt_sigpending(sigset_t  *set, size_t sigsetsize)
+    { 137, &RevCore::ECALL_rt_sigtimedwait_time32 },    //  rev_rt_sigtimedwait_time32(const sigset_t  *uthese, siginfo_t  *uinfo, const struct old_timespec32  *uts, size_t sigsetsize)
+    { 138, &RevCore::ECALL_rt_sigqueueinfo },           //  rev_rt_sigqueueinfo(pid_t pid, int sig, siginfo_t  *uinfo)
+    { 140, &RevCore::ECALL_setpriority },               //  rev_setpriority(int which, int who, int niceval)
+    { 141, &RevCore::ECALL_getpriority },               //  rev_getpriority(int which, int who)
+    { 142, &RevCore::ECALL_reboot },                    //  rev_reboot(int magic1, int magic2, unsigned int cmd, void  *arg)
+    { 143, &RevCore::ECALL_setregid },                  //  rev_setregid(gid_t rgid, gid_t egid)
+    { 144, &RevCore::ECALL_setgid },                    //  rev_setgid(gid_t gid)
+    { 145, &RevCore::ECALL_setreuid },                  //  rev_setreuid(uid_t ruid, uid_t euid)
+    { 146, &RevCore::ECALL_setuid },                    //  rev_setuid(uid_t uid)
+    { 147, &RevCore::ECALL_setresuid },                 //  rev_setresuid(uid_t ruid, uid_t euid, uid_t suid)
+    { 148, &RevCore::ECALL_getresuid },                 //  rev_getresuid(uid_t  *ruid, uid_t  *euid, uid_t  *suid)
+    { 149, &RevCore::ECALL_setresgid },                 //  rev_setresgid(gid_t rgid, gid_t egid, gid_t sgid)
+    { 150, &RevCore::ECALL_getresgid },                 //  rev_getresgid(gid_t  *rgid, gid_t  *egid, gid_t  *sgid)
+    { 151, &RevCore::ECALL_setfsuid },                  //  rev_setfsuid(uid_t uid)
+    { 152, &RevCore::ECALL_setfsgid },                  //  rev_setfsgid(gid_t gid)
+    { 153, &RevCore::ECALL_times },                     //  rev_times(struct tms  *tbuf)
+    { 154, &RevCore::ECALL_setpgid },                   //  rev_setpgid(pid_t pid, pid_t pgid)
+    { 155, &RevCore::ECALL_getpgid },                   //  rev_getpgid(pid_t pid)
+    { 156, &RevCore::ECALL_getsid },                    //  rev_getsid(pid_t pid)
+    { 157, &RevCore::ECALL_setsid },                    //  rev_setsid(void)
+    { 158, &RevCore::ECALL_getgroups },                 //  rev_getgroups(int gidsetsize, gid_t  *grouplist)
+    { 159, &RevCore::ECALL_setgroups },                 //  rev_setgroups(int gidsetsize, gid_t  *grouplist)
+    { 160, &RevCore::ECALL_newuname },                  //  rev_newuname(struct new_utsname  *name)
+    { 161, &RevCore::ECALL_sethostname },               //  rev_sethostname(char  *name, int len)
+    { 162, &RevCore::ECALL_setdomainname },             //  rev_setdomainname(char  *name, int len)
+    { 163, &RevCore::ECALL_getrlimit },                 //  rev_getrlimit(unsigned int resource, struct rlimit  *rlim)
+    { 164, &RevCore::ECALL_setrlimit },                 //  rev_setrlimit(unsigned int resource, struct rlimit  *rlim)
+    { 165, &RevCore::ECALL_getrusage },                 //  rev_getrusage(int who, struct rusage  *ru)
+    { 166, &RevCore::ECALL_umask },                     //  rev_umask(int mask)
+    { 167, &RevCore::ECALL_prctl },                     //  rev_prctl(int option, unsigned long arg2, unsigned long arg3, unsigned long arg4, unsigned long arg5)
+    { 168, &RevCore::ECALL_getcpu },                    //  rev_getcpu(unsigned  *cpu, unsigned  *node, struct getcpu_cache  *cache)
+    { 169, &RevCore::ECALL_gettimeofday },              //  rev_gettimeofday(struct __kernel_old_timeval  *tv, struct timezone  *tz)
+    { 170, &RevCore::ECALL_settimeofday },              //  rev_settimeofday(struct __kernel_old_timeval  *tv, struct timezone  *tz)
+    { 171, &RevCore::ECALL_adjtimex },                  //  rev_adjtimex(struct __kernel_timex  *txc_p)
+    { 172, &RevCore::ECALL_getpid },                    //  rev_getpid(void)
+    { 173, &RevCore::ECALL_getppid },                   //  rev_getppid(void)
+    { 174, &RevCore::ECALL_getuid },                    //  rev_getuid(void)
+    { 175, &RevCore::ECALL_geteuid },                   //  rev_geteuid(void)
+    { 176, &RevCore::ECALL_getgid },                    //  rev_getgid(void)
+    { 177, &RevCore::ECALL_getegid },                   //  rev_getegid(void)
+    { 178, &RevCore::ECALL_gettid },                    //  rev_gettid(void)
+    { 179, &RevCore::ECALL_sysinfo },                   //  rev_sysinfo(struct sysinfo  *info)
+    { 180, &RevCore::ECALL_mq_open },                   //  rev_mq_open(const char  *name, int oflag, umode_t mode, struct mq_attr  *attr)
+    { 181, &RevCore::ECALL_mq_unlink },                 //  rev_mq_unlink(const char  *name)
+    { 182, &RevCore::ECALL_mq_timedsend },              //  rev_mq_timedsend(mqd_t mqdes, const char  *msg_ptr, size_t msg_len, unsigned int msg_prio, const struct __kernel_timespec  *abs_timeout)
+    { 183, &RevCore::ECALL_mq_timedreceive },           //  rev_mq_timedreceive(mqd_t mqdes, char  *msg_ptr, size_t msg_len, unsigned int  *msg_prio, const struct __kernel_timespec  *abs_timeout)
+    { 184, &RevCore::ECALL_mq_notify },                 //  rev_mq_notify(mqd_t mqdes, const struct sigevent  *notification)
+    { 185, &RevCore::ECALL_mq_getsetattr },             //  rev_mq_getsetattr(mqd_t mqdes, const struct mq_attr  *mqstat, struct mq_attr  *omqstat)
+    { 186, &RevCore::ECALL_msgget },                    //  rev_msgget(key_t key, int msgflg)
+    { 187, &RevCore::ECALL_msgctl },                    //  rev_old_msgctl(int msqid, int cmd, struct msqid_ds  *buf)
+    { 188, &RevCore::ECALL_msgrcv },                    //  rev_msgrcv(int msqid, struct msgbuf  *msgp, size_t msgsz, long msgtyp, int msgflg)
+    { 189, &RevCore::ECALL_msgsnd },                    //  rev_msgsnd(int msqid, struct msgbuf  *msgp, size_t msgsz, int msgflg)
+    { 190, &RevCore::ECALL_semget },                    //  rev_semget(key_t key, int nsems, int semflg)
+    { 191, &RevCore::ECALL_semctl },                    //  rev_semctl(int semid, int semnum, int cmd, unsigned long arg)
+    { 192, &RevCore::ECALL_semtimedop },                //  rev_semtimedop(int semid, struct sembuf  *sops, unsigned nsops, const struct __kernel_timespec  *timeout)
+    { 193, &RevCore::ECALL_semop },                     //  rev_semop(int semid, struct sembuf  *sops, unsigned nsops)
+    { 194, &RevCore::ECALL_shmget },                    //  rev_shmget(key_t key, size_t size, int flag)
+    { 195, &RevCore::ECALL_shmctl },                    //  rev_old_shmctl(int shmid, int cmd, struct shmid_ds  *buf)
+    { 196, &RevCore::ECALL_shmat },                     //  rev_shmat(int shmid, char  *shmaddr, int shmflg)
+    { 197, &RevCore::ECALL_shmdt },                     //  rev_shmdt(char  *shmaddr)
+    { 198, &RevCore::ECALL_socket },                    //  rev_socket(int, int, int)
+    { 199, &RevCore::ECALL_socketpair },                //  rev_socketpair(int, int, int, int  *)
+    { 200, &RevCore::ECALL_bind },                      //  rev_bind(int, struct sockaddr  *, int)
+    { 201, &RevCore::ECALL_listen },                    //  rev_listen(int, int)
+    { 202, &RevCore::ECALL_accept },                    //  rev_accept(int, struct sockaddr  *, int  *)
+    { 203, &RevCore::ECALL_connect },                   //  rev_connect(int, struct sockaddr  *, int)
+    { 204, &RevCore::ECALL_getsockname },               //  rev_getsockname(int, struct sockaddr  *, int  *)
+    { 205, &RevCore::ECALL_getpeername },               //  rev_getpeername(int, struct sockaddr  *, int  *)
+    { 206, &RevCore::ECALL_sendto },                    //  rev_sendto(int, void  *, size_t, unsigned, struct sockaddr  *, int)
+    { 207, &RevCore::ECALL_recvfrom },                  //  rev_recvfrom(int, void  *, size_t, unsigned, struct sockaddr  *, int  *)
+    { 208, &RevCore::ECALL_setsockopt },                //  rev_setsockopt(int fd, int level, int optname, char  *optval, int optlen)
+    { 209, &RevCore::ECALL_getsockopt },                //  rev_getsockopt(int fd, int level, int optname, char  *optval, int  *optlen)
+    { 210, &RevCore::ECALL_shutdown },                  //  rev_shutdown(int, int)
+    { 211, &RevCore::ECALL_sendmsg },                   //  rev_sendmsg(int fd, struct user_msghdr  *msg, unsigned flags)
+    { 212, &RevCore::ECALL_recvmsg },                   //  rev_recvmsg(int fd, struct user_msghdr  *msg, unsigned flags)
+    { 213, &RevCore::ECALL_readahead },                 //  rev_readahead(int fd, loff_t offset, size_t count)
+    { 214, &RevCore::ECALL_brk },                       //  rev_brk(unsigned long brk)
+    { 215, &RevCore::ECALL_munmap },                    //  rev_munmap(unsigned long addr, size_t len)
+    { 216, &RevCore::ECALL_mremap },                    //  rev_mremap(unsigned long addr, unsigned long old_len, unsigned long new_len, unsigned long flags, unsigned long new_addr)
+    { 217, &RevCore::ECALL_add_key },                   //  rev_add_key(const char  *_type, const char  *_description, const void  *_payload, size_t plen, key_serial_t destringid)
+    { 218, &RevCore::ECALL_request_key },               //  rev_request_key(const char  *_type, const char  *_description, const char  *_callout_info, key_serial_t destringid)
+    { 219, &RevCore::ECALL_keyctl },                    //  rev_keyctl(int cmd, unsigned long arg2, unsigned long arg3, unsigned long arg4, unsigned long arg5)
+    { 220, &RevCore::ECALL_clone },                     //  rev_clone(unsigned long, unsigned long, int  *, unsigned long, int  *)
+    { 221, &RevCore::ECALL_execve },                    //  rev_execve(const char  *filename, const char  *const  *argv, const char  *const  *envp)
+    { 222, &RevCore::ECALL_mmap },                      //  rev_old_mmap(struct mmap_arg_struct  *arg)
+    { 223, &RevCore::ECALL_fadvise64_64 },              //  rev_fadvise64_64(int fd, loff_t offset, loff_t len, int advice)
+    { 224, &RevCore::ECALL_swapon },                    //  rev_swapon(const char  *specialfile, int swap_flags)
+    { 225, &RevCore::ECALL_swapoff },                   //  rev_swapoff(const char  *specialfile)
+    { 226, &RevCore::ECALL_mprotect },                  //  rev_mprotect(unsigned long start, size_t len, unsigned long prot)
+    { 227, &RevCore::ECALL_msync },                     //  rev_msync(unsigned long start, size_t len, int flags)
+    { 228, &RevCore::ECALL_mlock },                     //  rev_mlock(unsigned long start, size_t len)
+    { 229, &RevCore::ECALL_munlock },                   //  rev_munlock(unsigned long start, size_t len)
+    { 230, &RevCore::ECALL_mlockall },                  //  rev_mlockall(int flags)
+    { 231, &RevCore::ECALL_munlockall },                //  rev_munlockall(void)
+    { 232, &RevCore::ECALL_mincore },                   //  rev_mincore(unsigned long start, size_t len, unsigned char  * vec)
+    { 233, &RevCore::ECALL_madvise },                   //  rev_madvise(unsigned long start, size_t len, int behavior)
+    { 234, &RevCore::ECALL_remap_file_pages },          //  rev_remap_file_pages(unsigned long start, unsigned long size, unsigned long prot, unsigned long pgoff, unsigned long flags)
+    { 235, &RevCore::ECALL_mbind },                     //  rev_mbind(unsigned long start, unsigned long len, unsigned long mode, const unsigned long  *nmask, unsigned long maxnode, unsigned flags)
+    { 236, &RevCore::ECALL_get_mempolicy },             //  rev_get_mempolicy(int  *policy, unsigned long  *nmask, unsigned long maxnode, unsigned long addr, unsigned long flags)
+    { 237, &RevCore::ECALL_set_mempolicy },             //  rev_set_mempolicy(int mode, const unsigned long  *nmask, unsigned long maxnode)
+    { 238, &RevCore::ECALL_migrate_pages },             //  rev_migrate_pages(pid_t pid, unsigned long maxnode, const unsigned long  *from, const unsigned long  *to)
+    { 239, &RevCore::ECALL_move_pages },                //  rev_move_pages(pid_t pid, unsigned long nr_pages, const void  *  *pages, const int  *nodes, int  *status, int flags)
+    { 240, &RevCore::ECALL_rt_tgsigqueueinfo },         //  rev_rt_tgsigqueueinfo(pid_t tgid, pid_t pid, int sig, siginfo_t  *uinfo)
+    { 241, &RevCore::ECALL_perf_event_open },           //  rev_perf_event_open(")
+    { 242, &RevCore::ECALL_accept4 },                   //  rev_accept4(int, struct sockaddr  *, int  *, int)
+    { 243, &RevCore::ECALL_recvmmsg_time32 },           //  rev_recvmmsg_time32(int fd, struct mmsghdr  *msg, unsigned int vlen, unsigned flags, struct old_timespec32  *timeout)
+    { 260, &RevCore::ECALL_wait4 },                     //  rev_wait4(pid_t pid, int  *stat_addr, int options, struct rusage  *ru)
+    { 261, &RevCore::ECALL_prlimit64 },                 //  rev_prlimit64(pid_t pid, unsigned int resource, const struct rlimit64  *new_rlim, struct rlimit64  *old_rlim)
+    { 262, &RevCore::ECALL_fanotify_init },             //  rev_fanotify_init(unsigned int flags, unsigned int event_f_flags)
+    { 263, &RevCore::ECALL_fanotify_mark },             //  rev_fanotify_mark(int fanotify_fd, unsigned int flags, u64 mask, int fd, const char  *pathname)
+    { 264, &RevCore::ECALL_name_to_handle_at },         //  rev_name_to_handle_at(int dfd, const char  *name, struct file_handle  *handle, int  *mnt_id, int flag)
+    { 265, &RevCore::ECALL_open_by_handle_at },         //  rev_open_by_handle_at(int mountdirfd, struct file_handle  *handle, int flags)
+    { 266, &RevCore::ECALL_clock_adjtime },             //  rev_clock_adjtime(clockid_t which_clock, struct __kernel_timex  *tx)
+    { 267, &RevCore::ECALL_syncfs },                    //  rev_syncfs(int fd)
+    { 268, &RevCore::ECALL_setns },                     //  rev_setns(int fd, int nstype)
+    { 269, &RevCore::ECALL_sendmmsg },                  //  rev_sendmmsg(int fd, struct mmsghdr  *msg, unsigned int vlen, unsigned flags)
+    { 270, &RevCore::ECALL_process_vm_readv },          //  rev_process_vm_readv(pid_t pid, const struct iovec  *lvec, unsigned long liovcnt, const struct iovec  *rvec, unsigned long riovcnt, unsigned long flags)
+    { 271, &RevCore::ECALL_process_vm_writev },         //  rev_process_vm_writev(pid_t pid, const struct iovec  *lvec, unsigned long liovcnt, const struct iovec  *rvec, unsigned long riovcnt, unsigned long flags)
+    { 272, &RevCore::ECALL_kcmp },                      //  rev_kcmp(pid_t pid1, pid_t pid2, int type, unsigned long idx1, unsigned long idx2)
+    { 273, &RevCore::ECALL_finit_module },              //  rev_finit_module(int fd, const char  *uargs, int flags)
+    { 274, &RevCore::ECALL_sched_setattr },             //  rev_sched_setattr(pid_t pid, struct sched_attr  *attr, unsigned int flags)
+    { 275, &RevCore::ECALL_sched_getattr },             //  rev_sched_getattr(pid_t pid, struct sched_attr  *attr, unsigned int size, unsigned int flags)
+    { 276, &RevCore::ECALL_renameat2 },                 //  rev_renameat2(int olddfd, const char  *oldname, int newdfd, const char  *newname, unsigned int flags)
+    { 277, &RevCore::ECALL_seccomp },                   //  rev_seccomp(unsigned int op, unsigned int flags, void  *uargs)
+    { 278, &RevCore::ECALL_getrandom },                 //  rev_getrandom(char  *buf, size_t count, unsigned int flags)
+    { 279, &RevCore::ECALL_memfd_create },              //  rev_memfd_create(const char  *uname_ptr, unsigned int flags)
+    { 280, &RevCore::ECALL_bpf },                       //  rev_bpf(int cmd, union bpf_attr *attr, unsigned int size)
+    { 281, &RevCore::ECALL_execveat },                  //  rev_execveat(int dfd, const char  *filename, const char  *const  *argv, const char  *const  *envp, int flags)
+    { 282, &RevCore::ECALL_userfaultfd },               //  rev_userfaultfd(int flags)
+    { 283, &RevCore::ECALL_membarrier },                //  rev_membarrier(int cmd, unsigned int flags, int cpu_id)
+    { 284, &RevCore::ECALL_mlock2 },                    //  rev_mlock2(unsigned long start, size_t len, int flags)
+    { 285, &RevCore::ECALL_copy_file_range },           //  rev_copy_file_range(int fd_in, loff_t  *off_in, int fd_out, loff_t  *off_out, size_t len, unsigned int flags)
+    { 286, &RevCore::ECALL_preadv2 },                   //  rev_preadv2(unsigned long fd, const struct iovec  *vec, unsigned long vlen, unsigned long pos_l, unsigned long pos_h, rwf_t flags)
+    { 287, &RevCore::ECALL_pwritev2 },                  //  rev_pwritev2(unsigned long fd, const struct iovec  *vec, unsigned long vlen, unsigned long pos_l, unsigned long pos_h, rwf_t flags)
+    { 288, &RevCore::ECALL_pkey_mprotect },             //  rev_pkey_mprotect(unsigned long start, size_t len, unsigned long prot, int pkey)
+    { 289, &RevCore::ECALL_pkey_alloc },                //  rev_pkey_alloc(unsigned long flags, unsigned long init_val)
+    { 290, &RevCore::ECALL_pkey_free },                 //  rev_pkey_free(int pkey)
+    { 291, &RevCore::ECALL_statx },                     //  rev_statx(int dfd, const char  *path, unsigned flags, unsigned mask, struct statx  *buffer)
+    { 292, &RevCore::ECALL_io_pgetevents },             //  rev_io_pgetevents(aio_context_t ctx_id, long min_nr, long nr, struct io_event  *events, struct __kernel_timespec  *timeout, const struct __aio_sigset *sig)
+    { 293, &RevCore::ECALL_rseq },                      //  rev_rseq(struct rseq  *rseq, uint32_t rseq_len, int flags, uint32_t sig)
+    { 294, &RevCore::ECALL_kexec_file_load },           //  rev_kexec_file_load(int kernel_fd, int initrd_fd, unsigned long cmdline_len, const char  *cmdline_ptr, unsigned long flags)
+    { 403, &RevCore::ECALL_clock_gettime },             //  rev_clock_gettime(clockid_t which_clock, struct __kernel_timespec  *tp)
+    { 404, &RevCore::ECALL_clock_settime },             //  rev_clock_settime(clockid_t which_clock, const struct __kernel_timespec  *tp)
+    { 405, &RevCore::ECALL_clock_adjtime },             //  rev_clock_adjtime(clockid_t which_clock, struct __kernel_timex  *tx)
+    { 406, &RevCore::ECALL_clock_getres },              //  rev_clock_getres(clockid_t which_clock, struct __kernel_timespec  *tp)
+    { 407, &RevCore::ECALL_clock_nanosleep },           //  rev_clock_nanosleep(clockid_t which_clock, int flags, const struct __kernel_timespec  *rqtp, struct __kernel_timespec  *rmtp)
+    { 408, &RevCore::ECALL_timer_gettime },             //  rev_timer_gettime(timer_t timer_id, struct __kernel_itimerspec  *setting)
+    { 409, &RevCore::ECALL_timer_settime },             //  rev_timer_settime(timer_t timer_id, int flags, const struct __kernel_itimerspec  *new_setting, struct __kernel_itimerspec  *old_setting)
+    { 410, &RevCore::ECALL_timerfd_gettime },           //  rev_timerfd_gettime(int ufd, struct __kernel_itimerspec  *otmr)
+    { 411, &RevCore::ECALL_timerfd_settime },           //  rev_timerfd_settime(int ufd, int flags, const struct __kernel_itimerspec  *utmr, struct __kernel_itimerspec  *otmr)
+    { 412, &RevCore::ECALL_utimensat },                 //  rev_utimensat(int dfd, const char  *filename, struct __kernel_timespec  *utimes, int flags)
+    { 416, &RevCore::ECALL_io_pgetevents },             //  rev_io_pgetevents(aio_context_t ctx_id, long min_nr, long nr, struct io_event  *events, struct __kernel_timespec  *timeout, const struct __aio_sigset *sig)
+    { 418, &RevCore::ECALL_mq_timedsend },              //  rev_mq_timedsend(mqd_t mqdes, const char  *msg_ptr, size_t msg_len, unsigned int msg_prio, const struct __kernel_timespec  *abs_timeout)
+    { 419, &RevCore::ECALL_mq_timedreceive },           //  rev_mq_timedreceive(mqd_t mqdes, char  *msg_ptr, size_t msg_len, unsigned int  *msg_prio, const struct __kernel_timespec  *abs_timeout)
+    { 420, &RevCore::ECALL_semtimedop },                //  rev_semtimedop(int semid, struct sembuf  *sops, unsigned nsops, const struct __kernel_timespec  *timeout)
+    { 422, &RevCore::ECALL_futex },                     //  rev_futex(u32  *uaddr, int op, u32 val, struct __kernel_timespec  *utime, u32  *uaddr2, u32 val3)
+    { 423, &RevCore::ECALL_sched_rr_get_interval },     //  rev_sched_rr_get_interval(pid_t pid, struct __kernel_timespec  *interval)
+    { 424, &RevCore::ECALL_pidfd_send_signal },         //  rev_pidfd_send_signal(int pidfd, int sig, siginfo_t  *info, unsigned int flags)
+    { 425, &RevCore::ECALL_io_uring_setup },            //  rev_io_uring_setup(u32 entries, struct io_uring_params  *p)
+    { 426, &RevCore::ECALL_io_uring_enter },            //  rev_io_uring_enter(unsigned int fd, u32 to_submit, u32 min_complete, u32 flags, const sigset_t  *sig, size_t sigsz)
+    { 427, &RevCore::ECALL_io_uring_register },         //  rev_io_uring_register(unsigned int fd, unsigned int op, void  *arg, unsigned int nr_args)
+    { 428, &RevCore::ECALL_open_tree },                 //  rev_open_tree(int dfd, const char  *path, unsigned flags)
+    { 429, &RevCore::ECALL_move_mount },                //  rev_move_mount(int from_dfd, const char  *from_path, int to_dfd, const char  *to_path, unsigned int ms_flags)
+    { 430, &RevCore::ECALL_fsopen },                    //  rev_fsopen(const char  *fs_name, unsigned int flags)
+    { 431, &RevCore::ECALL_fsconfig },                  //  rev_fsconfig(int fs_fd, unsigned int cmd, const char  *key, const void  *value, int aux)
+    { 432, &RevCore::ECALL_fsmount },                   //  rev_fsmount(int fs_fd, unsigned int flags, unsigned int ms_flags)
+    { 433, &RevCore::ECALL_fspick },                    //  rev_fspick(int dfd, const char  *path, unsigned int flags)
+    { 434, &RevCore::ECALL_pidfd_open },                //  rev_pidfd_open(pid_t pid, unsigned int flags)
+    { 435, &RevCore::ECALL_clone3 },                    //  rev_clone3(struct clone_args  *uargs, size_t size)
+    { 436, &RevCore::ECALL_close_range },               //  rev_close_range(unsigned int fd, unsigned int max_fd, unsigned int flags)
+    { 437, &RevCore::ECALL_openat2 },                   //  rev_openat2(int dfd, const char  *filename, struct open_how *how, size_t size)
+    { 438, &RevCore::ECALL_pidfd_getfd },               //  rev_pidfd_getfd(int pidfd, int fd, unsigned int flags)
+    { 439, &RevCore::ECALL_faccessat2 },                //  rev_faccessat2(int dfd, const char  *filename, int mode, int flags)
+    { 440, &RevCore::ECALL_process_madvise },           //  rev_process_madvise(int pidfd, const struct iovec  *vec, size_t vlen, int behavior, unsigned int flags)
+    { 500, &RevCore::ECALL_cpuinfo },                   //  rev_cpuinfo(struct rev_cpuinfo *info)
+    { 501, &RevCore::ECALL_perf_stats },                //  rev_cpuinfo(struct rev_perf_stats *stats)
+    { 1000, &RevCore::ECALL_pthread_create },           //
+    { 1001, &RevCore::ECALL_pthread_join },             //
+    { 1024, &RevCore::ECALL_open },                     //  rev_open(const char *filename, int flags, int mode)
+
     { 9000, &RevCore::ECALL_dump_mem_range },           // rev_dump_mem_range(uint64_t addr, uint64_t size)
     { 9001, &RevCore::ECALL_dump_mem_range_to_file },   // rev_dump_mem_range_to_file(const unsigned char* outputFile, uint64_t addr, uint64_t size)
     { 9002, &RevCore::ECALL_dump_stack },               // rev_dump_stack()
@@ -4487,5 +4832,39 @@ EcallStatus RevCore::ECALL_forza_remote_update() {
 
   return EcallStatus::SUCCESS;
 }
+
+/// Convert RV flags to local host flags for open* ECALLS.
+int RevCore::hostOFlags( int flags ) {
+  // This algorithm assumes there is only 1 alternative fixed mapping
+  //                  RV  MACOS   UBUNTU
+  // O_RDONLY        0x0    0x0      0x0
+  // O_WRONLY        0x1    0x1      0x1
+  // O_RDWR          0x2    0x2      0x2
+  // O_CREAT       0x200  0x200     0x40*
+  // O_EXCL        0x800  0x800     0x80*
+  // O_TRUNC       0x400  0x400    0x200*
+  // O_APPEND        0x8    0x8    0x400*
+
+  // Broadly assuming compatability here
+  if( O_CREAT == 0x200 )
+    return flags;
+
+  // mask for source bits that will be moved
+  int rvmask = O_CREAT | O_EXCL | O_TRUNC | O_APPEND;
+
+  // extract old values
+  int val    = ( flags & 0x200 ) ? O_CREAT : 0;
+  val |= ( flags & 0x800 ) ? O_EXCL : 0;
+  val |= ( flags & 0x400 ) ? O_TRUNC : 0;
+  val |= ( flags & 0x8 ) ? O_APPEND : 0;
+
+  // clear out old positions then write values to new positions.
+  int mask     = O_CREAT | O_EXCL | O_TRUNC | O_APPEND;
+  int newflags = flags & ~rvmask;
+  newflags     = ( newflags & ~mask ) | ( val & mask );
+
+  output->verbose( CALL_INFO, 1, 0, "0x%x -> 0x%x\n", flags, newflags );
+  return newflags;
+};
 
 }  // namespace SST::RevCPU

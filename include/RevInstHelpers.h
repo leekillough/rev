@@ -79,15 +79,24 @@ inline constexpr double fpmin<double, uint64_t> = 0x0p+0;
 /// at the integer type's numerical limits, whether signed or unsigned.
 template<typename INT, typename FP>
 bool fcvtif( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) {
+  // Get whether inexact exception existed before
+  int inexact = std::fetestexcept( FE_INEXACT );
+
   // Read the FP register. Round to integer according to current rounding mode.
-  FP fp = std::rint( R->GetFP<FP>( Inst.rs1 ) );
+  FP fp       = std::rint( R->GetFP<FP>( Inst.rs1 ) );
 
   // Convert to integer type
   INT res;
   if( std::isnan( fp ) || fp > fpmax<FP, INT> ) {
+    // If no inexact exception existed before rint, clear the inexact exception when raising invalid
+    if( !inexact )
+      std::feclearexcept( FE_INEXACT );
     std::feraiseexcept( FE_INVALID );
     res = std::numeric_limits<INT>::max();
   } else if( fp < fpmin<FP, INT> ) {
+    // If no inexact exception existed before rint, clear the inexact exception when raising invalid
+    if( !inexact )
+      std::feclearexcept( FE_INEXACT );
     std::feraiseexcept( FE_INVALID );
     res = std::numeric_limits<INT>::min();
   } else {
@@ -149,7 +158,7 @@ bool load( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) 
   // FORZA: check the address to see whether we need to migrate the thread
   uint32_t Zone     = 0;
   uint32_t Precinct = 0;
-  if( !M->isLocalAddr( R->GetX<uint64_t>( Inst.rs1 ) + uint64_t( Inst.ImmSignExt( 12 ) ), Zone, Precinct ) ) {
+  if( !make_dependent<T>( M )->isLocalAddr( R->GetX<uint64_t>( Inst.rs1 ) + uint64_t( Inst.ImmSignExt( 12 ) ), Zone, Precinct ) ) {
     // trigger the migration
     std::vector<uint64_t> P;
     P.reserve( 80 );
@@ -167,7 +176,7 @@ bool load( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) 
 
     R->SetSCAUSE( RevExceptionCause::THREAD_MIGRATED );
 
-    return M->ZOP_ThreadMigrate( F->GetHartToExecID(), std::move( P ), Zone, Precinct );
+    return make_dependent<T>( M )->ZOP_ThreadMigrate( F->GetHartToExecID(), std::move( P ), Zone, Precinct );
   }
 
   if( sizeof( T ) < sizeof( int64_t ) && !F->IsRV64() ) {
@@ -184,7 +193,7 @@ bool load( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) 
       R->GetMarkLoadComplete()
     };
     R->LSQueue->insert( req.LSQHashPair() );
-    M->ReadVal(
+    make_dependent<T>( M )->ReadVal(
       F->GetHartToExecID(),
       rs1 + uint64_t( Inst.ImmSignExt( 12 ) ),
       reinterpret_cast<T*>( &R->RV32[Inst.rd] ),
@@ -205,7 +214,7 @@ bool load( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) 
       R->GetMarkLoadComplete()
     };
     R->LSQueue->insert( req.LSQHashPair() );
-    M->ReadVal(
+    make_dependent<T>( M )->ReadVal(
       F->GetHartToExecID(),
       rs1 + uint64_t( Inst.ImmSignExt( 12 ) ),
       reinterpret_cast<T*>( &R->RV64[Inst.rd] ),
@@ -215,7 +224,7 @@ bool load( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst ) 
   }
 
   // update the cost
-  R->cost += M->RandCost( F->GetMinCost(), F->GetMaxCost() );
+  R->cost += make_dependent<T>( M )->RandCost( F->GetMinCost(), F->GetMaxCost() );
   R->AdvancePC( Inst );
   return true;
 }
@@ -226,7 +235,7 @@ bool store( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst )
   // FORZA: check the address to see whether we need to migrate the thread
   uint32_t Zone     = 0;
   uint32_t Precinct = 0;
-  if( !M->isLocalAddr( R->GetX<uint64_t>( Inst.rs1 ) + uint64_t( Inst.ImmSignExt( 12 ) ), Zone, Precinct ) ) {
+  if( !make_dependent<T>( M )->isLocalAddr( R->GetX<uint64_t>( Inst.rs1 ) + uint64_t( Inst.ImmSignExt( 12 ) ), Zone, Precinct ) ) {
     // trigger the migration
     std::vector<uint64_t> P;
     P.push_back( R->GetPC() );
@@ -241,11 +250,11 @@ bool store( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst )
     }
     P.push_back( static_cast<uint64_t>( R->GetThreadID() ) );
     R->SetSCAUSE( RevExceptionCause::THREAD_MIGRATED );
-    return M->ZOP_ThreadMigrate( F->GetHartToExecID(), P, Zone, Precinct );
+    return make_dependent<T>( M )->ZOP_ThreadMigrate( F->GetHartToExecID(), P, Zone, Precinct );
   }
-
-  M->Write( F->GetHartToExecID(), R->GetX<uint64_t>( Inst.rs1 ) + uint64_t( Inst.ImmSignExt( 12 ) ), R->GetX<T>( Inst.rs2 ) );
-
+  make_dependent<T>( M )->Write(
+    F->GetHartToExecID(), R->GetX<uint64_t>( Inst.rs1 ) + uint64_t( Inst.ImmSignExt( 12 ) ), R->GetX<T>( Inst.rs2 )
+  );
   R->AdvancePC( Inst );
   return true;
 }
@@ -257,7 +266,7 @@ bool fload( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst )
   // FORZA: check the address to see whether we need to migrate the thread
   uint32_t Zone     = 0;
   uint32_t Precinct = 0;
-  if( !M->isLocalAddr( R->GetX<uint64_t>( Inst.rs1 ) + uint64_t( Inst.ImmSignExt( 12 ) ), Zone, Precinct ) ) {
+  if( !make_dependent<T>( M )->isLocalAddr( R->GetX<uint64_t>( Inst.rs1 ) + uint64_t( Inst.ImmSignExt( 12 ) ), Zone, Precinct ) ) {
     // trigger the migration
     std::vector<uint64_t> P;
     P.push_back( R->GetPC() );
@@ -272,7 +281,7 @@ bool fload( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst )
     }
     P.push_back( static_cast<uint64_t>( R->GetThreadID() ) );
     R->SetSCAUSE( RevExceptionCause::THREAD_MIGRATED );
-    return M->ZOP_ThreadMigrate( F->GetHartToExecID(), P, Zone, Precinct );
+    return make_dependent<T>( M )->ZOP_ThreadMigrate( F->GetHartToExecID(), P, Zone, Precinct );
   }
 
   if( std::is_same_v<T, double> || F->HasD() ) {
@@ -288,7 +297,7 @@ bool fload( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst )
       R->GetMarkLoadComplete()
     };
     R->LSQueue->insert( req.LSQHashPair() );
-    M->ReadVal(
+    make_dependent<T>( M )->ReadVal(
       F->GetHartToExecID(),
       rs1 + uint64_t( Inst.ImmSignExt( 12 ) ),
       reinterpret_cast<T*>( &R->DPF[Inst.rd] ),
@@ -307,12 +316,12 @@ bool fload( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst )
       R->GetMarkLoadComplete()
     };
     R->LSQueue->insert( req.LSQHashPair() );
-    M->ReadVal(
+    make_dependent<T>( M )->ReadVal(
       F->GetHartToExecID(), rs1 + uint64_t( Inst.ImmSignExt( 12 ) ), &R->SPF[Inst.rd], std::move( req ), RevFlag::F_NONE
     );
   }
   // update the cost
-  R->cost += M->RandCost( F->GetMinCost(), F->GetMaxCost() );
+  R->cost += make_dependent<T>( M )->RandCost( F->GetMinCost(), F->GetMaxCost() );
   R->AdvancePC( Inst );
   return true;
 }
@@ -323,7 +332,7 @@ bool fstore( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst 
   // FORZA: check the address to see whether we need to migrate the thread
   uint32_t Zone     = 0;
   uint32_t Precinct = 0;
-  if( !M->isLocalAddr( R->GetX<uint64_t>( Inst.rs1 ) + uint64_t( Inst.ImmSignExt( 12 ) ), Zone, Precinct ) ) {
+  if( !make_dependent<T>( M )->isLocalAddr( R->GetX<uint64_t>( Inst.rs1 ) + uint64_t( Inst.ImmSignExt( 12 ) ), Zone, Precinct ) ) {
     // trigger the migration
     std::vector<uint64_t> P;
     P.push_back( R->GetPC() );
@@ -338,11 +347,11 @@ bool fstore( const RevFeature* F, RevRegFile* R, RevMem* M, const RevInst& Inst 
     }
     P.push_back( static_cast<uint64_t>( R->GetThreadID() ) );
     R->SetSCAUSE( RevExceptionCause::THREAD_MIGRATED );
-    return M->ZOP_ThreadMigrate( F->GetHartToExecID(), P, Zone, Precinct );
+    return make_dependent<T>( M )->ZOP_ThreadMigrate( F->GetHartToExecID(), P, Zone, Precinct );
   }
 
   T val = R->GetFP<T, true>( Inst.rs2 );
-  M->Write( F->GetHartToExecID(), R->GetX<uint64_t>( Inst.rs1 ) + uint64_t( Inst.ImmSignExt( 12 ) ), val );
+  make_dependent<T>( M )->Write( F->GetHartToExecID(), R->GetX<uint64_t>( Inst.rs1 ) + uint64_t( Inst.ImmSignExt( 12 ) ), val );
   R->AdvancePC( Inst );
   return true;
 }

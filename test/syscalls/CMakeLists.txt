@@ -1,7 +1,12 @@
 add_rev_test(CHDIR chdir 30 "rv64;syscalls;memh")
 add_rev_test(WRITE write 30 "test_level=2;rv64;syscalls;memh")
 add_rev_test(FILE_IO file_io 30 "rv64;syscalls;memh")
+add_rev_test(OPEN open 30 "rv64;syscalls;memh")
+add_rev_test(PRINTF printf 60 "rv64;syscalls;memh")
 add_rev_test(GETCWD getcwd 30 "rv64;syscalls;memh")
 add_rev_test(MUNMAP munmap 30 "rv64;syscalls;memh")
 add_rev_test(PERF_STATS perf_stats 30 "test_level=2;rv64;syscalls;memh")
 add_rev_test(MEM_DUMP_SYSCALLS mem_dump_syscalls 30 "test_level=2;rv64;syscalls")
+# exit test does not currently produce required 'Simulation is complete' message
+# manually run using `cd exit && make clean run`
+# add_rev_test(EXIT exit 30 "rv64;syscalls;memh")
