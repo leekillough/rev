@@ -171,7 +171,7 @@ public:
   uint64_t GetStackBottom() { return stacktop - _STACK_SIZE_; }
 
   /// RevMem: initiate a memory fence
-  bool FenceMem( uint32_t Hart ) { return !ctrl || ctrl->sendFENCE( Hart ); }
+  bool FenceMem( uint32_t Hart );
 
   /// RevMem: retrieves the cache line size.  Returns 0 if no cache is configured
   uint32_t getLineSize() { return ctrl ? ctrl->getLineSize() : 64; }

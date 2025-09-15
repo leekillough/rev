@@ -168,7 +168,7 @@ RZALSCoProc::RZALSCoProc( ComponentId_t id, Params& params, RevCore* parent )
   std::string ClockFreq = params.find<std::string>( "clock", "1Ghz" );
   registerClock( ClockFreq, new Clock::Handler<RZALSCoProc>( this, &RZALSCoProc::ClockTick ) );
   output->output( "Registering RZALSCoProc with frequency=%s\n", ClockFreq.c_str() );
-  MarkLoadCompleteFunc = [=]( const MemReq& req ) { this->MarkLoadComplete( req ); };
+  MarkLoadCompleteFunc = [this]( const MemReq& req ) { this->MarkLoadComplete( req ); };
 
   // register the stats
   registerStats();
@@ -534,7 +534,7 @@ RZAAMOCoProc::RZAAMOCoProc( ComponentId_t id, Params& params, RevCore* parent )
   std::string ClockFreq = params.find<std::string>( "clock", "1Ghz" );
   registerClock( ClockFreq, new Clock::Handler<RZAAMOCoProc>( this, &RZAAMOCoProc::ClockTick ) );
   output->output( "Registering RZAAMOCoProc with frequency=%s\n", ClockFreq.c_str() );
-  MarkLoadCompleteFunc = [=]( const MemReq& req ) { this->MarkLoadComplete( req ); };
+  MarkLoadCompleteFunc = [this]( const MemReq& req ) { this->MarkLoadComplete( req ); };
 
   // register the stats
   registerStats();
