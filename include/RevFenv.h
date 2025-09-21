@@ -12,21 +12,12 @@
 #define _REV_FENV_H_
 
 #include "RevFCSR.h"
+#include "RevPosit.h"
 #include "RevRegFile.h"
+
 #include <cfenv>
 #include <cmath>
 #include <stdexcept>
-
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wconversion"
-#pragma GCC diagnostic ignored "-Wsign-conversion"
-#pragma GCC diagnostic ignored "-Wdouble-promotion"
-#pragma GCC diagnostic ignored "-Wignored-qualifiers"
-#include "universal/number/cfloat/cfloat.hpp"
-#pragma GCC diagnostic pop
-
-using posit32 = float;
-using posit64 = double;
 
 // GCC and Clang do not fully support FENV_ACCESS now. See:
 //

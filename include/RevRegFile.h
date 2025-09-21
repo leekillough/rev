@@ -25,6 +25,7 @@
 
 #include "RevCSR.h"
 #include "RevCommon.h"
+#include "RevPosit.h"
 #include "RevTracer.h"
 
 namespace SST::RevCPU {
@@ -59,14 +60,27 @@ using uint_type_t = typename uint_type<T>::type;
 /// BoxNaN: Store a boxed floating point value inside a possibly larger one
 template<typename T, typename U, typename = std::enable_if_t<sizeof( T ) >= sizeof( U )>>
 inline void BoxNaN( T* dest, const U* value ) {
-  if constexpr( sizeof( T ) == sizeof( U ) ) {
-    *dest = *value;
+  if constexpr( std::is_floating_point_v<T> && std::is_floating_point_v<U> ) {
+    if constexpr( sizeof( T ) == sizeof( U ) ) {
+      *dest = *value;
+    } else {
+      uint_type_t<U> i;
+      memcpy( &i, value, sizeof( i ) );                                                    // The value
+      uint_type_t<T> box = uint_type_t<T>{ i } | ~uint_type_t<T>{ 0 } << sizeof( U ) * 8;  // Boxed NaN value
+      memcpy( dest, &box, sizeof( box ) );                                                 // Store in larger register
+      static_assert( sizeof( i ) == sizeof( U ) && sizeof( box ) == sizeof( T ) );
+    }
   } else {
-    uint_type_t<U> i;
-    memcpy( &i, value, sizeof( i ) );                                                    // The value
-    uint_type_t<T> box = uint_type_t<T>{ i } | ~uint_type_t<T>{ 0 } << sizeof( U ) * 8;  // Boxed NaN value
-    memcpy( dest, &box, sizeof( box ) );                                                 // Store in larger register
-    static_assert( sizeof( i ) == sizeof( U ) && sizeof( box ) == sizeof( T ) );
+    // Gatling posits are left-justified with trailing zeroes
+    if constexpr( sizeof( T ) == sizeof( U ) ) {
+      *dest = *value;
+    } else {
+      uint_type_t<U> i;
+      memcpy( &i, value, siezof( i ) );
+      uint_type_t<T> box = uint_type_t<T>( i ) << 8 * ( sizeof( U ) - sizeof( T ) );
+      memcpy( dest, &box, sizeof( box ) );
+      static_assert( sizeof( i ) == sizeof( U ) && sizeof( box ) == sizeof( T ) );
+    }
   }
 }
 
@@ -74,22 +88,38 @@ inline void BoxNaN( T* dest, const U* value ) {
 // The second argument indicates whether it is a FMV/FS move/store
 // instruction which just transfers bits and not care about NaN-Boxing.
 template<typename T, bool FMV_FS = false, typename U, typename = std::enable_if_t<sizeof( T ) <= sizeof( U )>>
-inline T UnBoxNaN( const U* val ) {
-  if constexpr( sizeof( T ) == sizeof( U ) ) {
-    return *val;
-  } else {
-    uint_type_t<U> i;
-    memcpy( &i, val, sizeof( i ) );
-    static_assert( sizeof( i ) == sizeof( val ) );
-    T fp;
-    if( !FMV_FS && ~i >> sizeof( T ) * 8 ) {
-      fp = std::numeric_limits<T>::quiet_NaN();
+T UnBoxNaN( const U* val ) {
+  if constexpr( std::is_floating_point_v<T> && std::is_floating_point_v<U> ) {
+    if constexpr( sizeof( T ) == sizeof( U ) ) {
+      return *val;
     } else {
-      auto ifp = static_cast<uint_type_t<T>>( i );
+      uint_type_t<U> i;
+      memcpy( &i, val, sizeof( i ) );
+      static_assert( sizeof( i ) == sizeof( val ) );
+      T fp;
+      if( !FMV_FS && ~i >> sizeof( T ) * 8 ) {
+        fp = std::numeric_limits<T>::quiet_NaN();
+      } else {
+        auto ifp = static_cast<uint_type_t<T>>( i );
+        memcpy( &fp, &ifp, sizeof( fp ) );
+        static_assert( sizeof( ifp ) == sizeof( fp ) );
+      }
+      return fp;
+    }
+  } else {
+    // posits
+    if constexpr( sizeof( T ) == sizeof( U ) ) {
+      return *val;
+    } else {
+      uint_type_t<U> i;
+      memcpy( &i, val, sizeof( i ) );
+      static_assert( sizeof( i ) == sizeof( val ) );
+      T            fp;
+      uint_type<T> ifp = static_cast<uint_type<T>>( i >> 8 * ( sizeof( U ) - sizeof( T ) ) );
       memcpy( &fp, &ifp, sizeof( fp ) );
       static_assert( sizeof( ifp ) == sizeof( fp ) );
+      return fp;
     }
-    return fp;
   }
 }
 
